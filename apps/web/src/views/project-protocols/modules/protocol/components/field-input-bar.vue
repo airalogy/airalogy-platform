@@ -207,6 +207,7 @@ import { computed, ref } from "vue"
 import { useI18n } from "vue-i18n"
 
 interface Props {
+  pendingSuggestions?: boolean
   beginTurn: () => RecorderTurn | undefined
   protocolId: string
 }
@@ -273,7 +274,7 @@ const lastResultClass = computed(() => {
 })
 
 const canSubmit = computed(() => {
-  return !isProcessing.value && (inputText.value.trim().length > 0 || attachments.value.length > 0)
+  return !props.pendingSuggestions && !isProcessing.value && (inputText.value.trim().length > 0 || attachments.value.length > 0)
 })
 
 async function handleSubmit() {
@@ -318,8 +319,8 @@ async function handleSubmit() {
 
     const jsonData = await response.json()
     const feedback = await turn.apply(jsonData.recorder_proposal)
-    lastResult.value = feedback
-    lastResultSuccess.value = Boolean(feedback)
+    lastResult.value = feedback || jsonData.messages?.at(-1)?.content || ""
+    lastResultSuccess.value = Boolean(lastResult.value)
 
     inputText.value = ""
     attachments.value = []

@@ -36,6 +36,10 @@
         {{ $t("page.protocol.draft.restoreAction") }}
       </n-button>
     </template>
+    <n-select
+      v-if="available.length > 1" v-model:value="selectedId" class="mb-3" :aria-label="$t('page.protocol.draft.restoreButton')"
+      :options="available.map(item => ({ value: item.draftId, label: new Date(item.timestamp).toLocaleString() }))"
+    />
     <template v-if="Boolean(draft)">
       <div>{{ $t("page.protocol.draft.prompt") }}</div>
 
@@ -79,7 +83,6 @@
 </template>
 
 <script setup lang="ts">
-import type { IDraftData } from "@/views/project-protocols/modules/protocol/composables/useDraftManagement"
 import type { ITimelineItem } from "@/views/project-protocols/types"
 import type { AimdRecordDataValue } from "@airalogy/aimd-core/utils"
 import type { IRecordData } from "@airalogy/shared"
@@ -87,10 +90,15 @@ import type { ProtocolModels } from "@airalogy/shared/types/models"
 import type { FieldRecord } from "../../views/project-protocols/modules/protocol/helpers/parseFieldStructure"
 import TimelineListItem from "@/components/common/protocol-timeline/timeline-list-item.vue"
 import { useClosableMessage, useLoading, useShowModal } from "@/composables"
+import { useAuthStore } from "@/store/modules/auth"
+import { type DraftScope, listProtocolDrafts } from "@/utils/recordDrafts"
 import { useDraftManagement } from "@/views/project-protocols/modules/protocol/composables/useDraftManagement"
+import { processFieldValue } from "@/views/project-protocols/utils"
 import { normalizeAimdRecordDataValue } from "@airalogy/aimd-core/utils"
 
 interface IProps {
+  draftId?: string
+  scope: DraftScope
   data: Partial<IRecordData>
   protocolId: string
   fieldModel: FieldRecord
@@ -105,7 +113,7 @@ const emit = defineEmits<IEmits>()
 interface IEmits {
   (e: "update:data", data: IRecordData): void
   (e: "update:field-model", fieldModel: FieldRecord): void
-  (e: "restore:draft", data: Partial<IRecordData>): boolean
+  (e: "restore:draft", data: Partial<IRecordData>, simulatedFields: string[], merge: boolean, removed: boolean): boolean
 }
 
 const { showModal, hideModal, isShown } = useShowModal()
@@ -114,14 +122,18 @@ const message = useClosableMessage()
 
 const data = useVModel(props, "data", emit)
 
-const { getDraft, deleteDraft: handleDeleteDraft, prepareRestoreDraft, formatLastModified } = useDraftManagement(() => props.protocol, data)
+const auth = useAuthStore()
+const selectedId = ref<string>()
+const { prepareRestoreDraft, formatLastModified } = useDraftManagement(() => props.protocol, data, () => selectedId.value, () => props.scope)
+const available = ref<ReturnType<typeof listProtocolDrafts>>([])
+watch(() => [props.protocolId, props.savedAt, props.draftId, props.scope, auth.userInfo.id, isShown.value], () => {
+  available.value = listProtocolDrafts(auth.userInfo.id, props.protocolId, props.scope)
+  if (!isShown.value || !available.value.some(item => item.draftId === selectedId.value))
+    selectedId.value = available.value.find(item => item.draftId === props.draftId)?.draftId || available.value[0]?.draftId
+}, { immediate: true })
+const draft = computed(() => available.value.find(item => item.draftId === selectedId.value))
 
-const draft = ref<IDraftData | null>(getDraft(props.protocolId))
-watch(() => [props.protocolId, props.savedAt], () => {
-  draft.value = getDraft(props.protocolId)
-})
-
-const lastModified = computed(() => formatLastModified(draft.value))
+const lastModified = computed(() => formatLastModified(draft.value ?? null))
 const draftViewTab = ref<"preview" | "json">("preview")
 
 const draftPreviewRecord = computed<AimdRecordDataValue>(() => {
@@ -172,13 +184,13 @@ function handleRestoreDraft() {
     return
   }
 
-  const result = emit("restore:draft", draftData)
-  if (result) {
-    if (deleteDraft.value) {
-      handleDeleteDraft(props.protocolId)
-      draft.value = null
-    }
-  }
+  const fields = (draft.value.simulatedFields || []).filter(field => Object.is(
+    processFieldValue(draft.value?.data.research_variable?.[field]),
+    processFieldValue(draftData.research_variable?.[field]),
+  ))
+  emit("restore:draft", draftData, fields, mergeDraft.value, deleteDraft.value)
+  if (deleteDraft.value)
+    available.value = available.value.filter(item => item.draftId !== selectedId.value)
 
   hideModal()
 }

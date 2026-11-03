@@ -492,14 +492,14 @@ function protocolRouteParams(protocol: ProtocolModels.ProjectProtocolInfo) {
 }
 
 function startRecord(protocol: ProtocolModels.ProjectProtocolInfo) {
-  void router.push({ name: "add-protocol-record", params: protocolRouteParams(protocol) })
+  void router.push({ name: "add-protocol-record", params: protocolRouteParams(protocol), query: { newRecord: "true" } })
 }
 
 function continueDraft(draft: ResolvedDraft) {
   void router.push({
     name: "add-protocol-record",
     params: protocolRouteParams(draft.protocol),
-    query: { resumeDraft: "true" },
+    query: { ...draft.scope?.query, draft: draft.draftId, resumeDraft: "true" },
   })
 }
 

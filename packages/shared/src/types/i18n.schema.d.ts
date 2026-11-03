@@ -447,12 +447,22 @@ declare namespace I18n {
     }
     page: {
       recorderAira: {
+        finishReview: string
+        noChanges: string
+        replacement: string
+        replaceField: string
+        keepField: string
+        undoField: string
+        adopt: string
+        simulatedOrigin: string
+        reviewSimulated: string
         preserved: string
         openForm: string
         askFields: string
-        tryExample: string
+        fillObserved: string
+        previewOnly: string
+        openPreview: string
         replace: string
-        simulated: string
         filled: string
         skipped: string
         undone: string
@@ -5261,6 +5271,18 @@ declare namespace I18n {
       }
     }
     editor: {
+      loadFailed: string
+      examplePreview: {
+        start: string
+        title: string
+        check: string
+        exit: string
+        hint: string
+        skipped: string
+        invalid: string
+        valid: string
+        issues: string
+      }
       sideMenus: {
         files: string
         aiEdit: string

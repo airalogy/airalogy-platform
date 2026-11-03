@@ -1,5 +1,6 @@
 import type { AimdNode } from "@airalogy/aimd-core/types"
 import type { AimdRendererContext, VueRendererOptions } from "@airalogy/aimd-renderer"
+import type { VNodeChild } from "vue"
 import type { IAIMDItemProps } from "../types/aimd-types"
 import { renderDefaultAimdNode } from "@airalogy/aimd-renderer"
 import { h } from "vue"
@@ -61,6 +62,7 @@ export function getPropsFromNode(node: BaseNode, variableList: IAIMDItemProps[])
 }
 
 export interface CreatePlatformAimdFormRenderersOptions {
+  renderFieldHint?: (field: string) => VNodeChild
   getTokenProps: (node: { id: string, scope: string, type?: string }) => IAIMDItemProps | null
 }
 
@@ -71,7 +73,9 @@ export interface CreatePlatformAimdFormRenderersOptions {
 export function createPlatformAimdFormRenderers(
   options: CreatePlatformAimdFormRenderersOptions,
 ): Record<string, AimdComponentRenderer> {
-  const { getTokenProps } = options
+  const { getTokenProps, renderFieldHint } = options
+  // AIMD caches rendered nodes. This child tracks live review state without rebuilding the input.
+  const FieldHint = ({ field }: { field: string }) => renderFieldHint?.(field)
 
   return {
     var: (node: AimdNode, context: AimdRendererContext) => {
@@ -85,7 +89,10 @@ export function createPlatformAimdFormRenderers(
         "id": `${node.scope}-${node.id}`,
         "data-has-variable": "true",
         "data-recorder-field": node.id,
-      }, [h(AIMDItem, syncItemValue(item, context)!)])
+      }, [
+        h(AIMDItem, syncItemValue(item, context)!),
+        renderFieldHint ? h(FieldHint, { field: node.id }) : null,
+      ])
     },
 
     var_table: (node: AimdNode, context: AimdRendererContext) => {

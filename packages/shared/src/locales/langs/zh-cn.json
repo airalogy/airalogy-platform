@@ -443,18 +443,28 @@
   },
   "page": {
     "recorderAira": {
+      "finishReview": "请先处理当前待确认的替换，再让 Aira 填写其他字段。",
+      "noChanges": "没有需要更新的字段。",
+      "adopt": "采用剩余建议",
+      "simulatedOrigin": "以下字段使用了模拟值",
+      "reviewSimulated": "请在提交前核对以下模拟值",
       "preserved": "保留了已填写或刚修改的值",
       "openForm": "请在可编辑的 Record 填写页发起字段修改。",
       "askFields": "解释一下这份记录中的字段和单位。",
-      "tryExample": "用模拟数据试填剩余的空字段。",
-      "replace": "确认替换已填值",
-      "simulated": "模拟试填",
+      "fillObserved": "帮我把实测值填入这份记录。",
+      "previewOnly": "示例数据仅用于 Protocol 编辑器预览。当前记录保持原样。",
+      "openPreview": "打开此版本的编辑器预览",
+      "replace": "待确认的替换",
       "filled": "已填写",
       "skipped": "未填写，请核对字段或手工填写",
       "undone": "已撤销",
-      "previewHint": "当前为模拟预览。退出后返回原草稿。",
-      "exit": "退出试填",
-      "undo": "撤销本次填写"
+      "previewHint": "可逐项处理，或一次采用剩余建议。也可以直接手填。",
+      "exit": "忽略剩余建议",
+      "undo": "撤销本次填写",
+      "replacement": "{before} → {after}",
+      "replaceField": "替换",
+      "keepField": "保留原值",
+      "undoField": "撤销此项"
     },
     "help": {
       "eyebrow": "文档与支持",
@@ -5249,6 +5259,18 @@
     }
   },
   "editor": {
+    "loadFailed": "Protocol 编辑器未能加载，请重新打开。",
+    "examplePreview": {
+      "start": "用示例数据测试",
+      "title": "示例测试",
+      "check": "校验测试表单",
+      "exit": "退出测试",
+      "hint": "已为 {count} 个字段填入示例。可继续修改并校验，退出后丢弃测试值。草稿按当前 AIMD 检查，Python 代码不在此运行。",
+      "skipped": "需手填或由计算产生的字段：{fields}",
+      "invalid": "无法读取当前字段，请检查 AIMD 源码后重试。",
+      "valid": "测试表单通过了当前预览的校验。",
+      "issues": "有 {count} 项需要检查，详情见对应字段。"
+    },
     "sideMenus": {
       "files": "Protocol 文件",
       "aiEdit": "让 Aira 修改 Protocol",

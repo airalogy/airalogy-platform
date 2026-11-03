@@ -90,29 +90,35 @@
       </n-spin>
     </template>
     <template #preview>
-      <n-spin v-if="fieldRecordDefault" :show="false" class="size-full" content-class="size-full !p-0">
-        <n-form
-          class="platform-aimd-form-preview"
-          :rules="fieldRecordDefault.rules"
-          :model="previewFieldModel"
-        >
-          <aimd-markdown-preview
-            ref="previewRef"
-            :content="liveProtocolContent"
-            :value="previewFieldModel"
-            :render-options="aimdEditRenderOptions"
-            :mermaid-component="MermaidBlock"
-            :resolve-url="resolveProtocolFile"
-            body-class="markdown-body"
-            mode="edit"
-            @render:result="handleFieldRendered"
-          />
-          <protocol-bubble-menu
-            v-if="instanceStore.aiEnabled && previewRef?.rootElement"
-            :container-ref="previewRef.rootElement"
-          />
-        </n-form>
-      </n-spin>
+      <protocol-example-preview
+        :key="route.fullPath" :active="isPreviewMode" :content="liveProtocolContent"
+        :schema="exampleValidationSchema" :assigned="exampleAssignedFields"
+        :model-source="liveModelContent || protocolModel" :assigner-source="liveAssignerContent || protocolAssigner"
+      >
+        <n-spin v-if="fieldRecordDefault" :show="false" class="size-full" content-class="size-full !p-0">
+          <n-form
+            class="platform-aimd-form-preview"
+            :rules="fieldRecordDefault.rules"
+            :model="previewFieldModel"
+          >
+            <aimd-markdown-preview
+              ref="previewRef"
+              :content="liveProtocolContent"
+              :value="previewFieldModel"
+              :render-options="aimdEditRenderOptions"
+              :mermaid-component="MermaidBlock"
+              :resolve-url="resolveProtocolFile"
+              body-class="markdown-body"
+              mode="edit"
+              @render:result="handleFieldRendered"
+            />
+            <protocol-bubble-menu
+              v-if="instanceStore.aiEnabled && previewRef?.rootElement"
+              :container-ref="previewRef.rootElement"
+            />
+          </n-form>
+        </n-spin>
+      </protocol-example-preview>
     </template>
   </editor-layout>
 
@@ -236,6 +242,7 @@ import { useFieldState } from "../project-protocols/modules/protocol/composables
 import { useTableManagement } from "../project-protocols/modules/protocol/composables/useTableManagement"
 import { useProvideProtocolEditorContext } from "./composables/useProtocolEditorContext"
 import LandingPage from "./modules/landing.vue"
+import ProtocolExamplePreview from "./modules/protocol-example-preview.vue"
 
 defineOptions({
   name: "EditorView",
@@ -1178,6 +1185,11 @@ watch([
 }, { immediate: true })
 
 const draftProtocolInfo = ref<ProtocolModels.ProtocolInfo | null | undefined>(null)
+
+// A draft may already differ from its published Python model. Only reuse an exact published schema.
+const exampleVersion = computed(() => isReadOnly.value && protocolInfo.value?.aimd === liveProtocolContent.value ? protocolInfo.value : undefined)
+const exampleValidationSchema = computed(() => exampleVersion.value?.json_schema ? { ...exampleVersion.value.json_schema } : undefined)
+const exampleAssignedFields = computed(() => Object.entries(exampleVersion.value?.assigners ?? {}).flatMap(([field, definition]) => [field, ...(definition.assigned_fields ?? [])]))
 
 // AIMD preview
 

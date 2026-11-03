@@ -59,7 +59,8 @@ def test_field_value_requires_source_and_schema(spec, raw, source, expected):
     assert recorder.grounded_value(spec, raw, source) == expected
 
 
-def test_simulation_skips_non_scalars_derived_fields_and_filled_values(monkeypatch):
+@pytest.mark.parametrize(("locale", "guide"), [("zh-CN", "用示例数据测试"), ("en-US", "Test with example data")])
+def test_simulation_redirects_to_editor_without_record_values(monkeypatch, locale, guide):
     response = {
         "intent": "simulate",
         "answer": "Preview",
@@ -69,13 +70,14 @@ def test_simulation_skips_non_scalars_derived_fields_and_filled_values(monkeypat
     request = AsyncMock(return_value=response)
     monkeypatch.setattr(recorder, "json_request", request)
     chat = SimpleNamespace(model={"name": "test"}, context={}, messages=[])
-    _, _, proposal = asyncio.run(
+    reply, _, proposal = asyncio.run(
         recorder.plan_recorder_turn(
-            chat, version(), target(filled=["sample_id"]), "simulate", None
+            chat, version(), target(filled=["sample_id"], locale=locale), "simulate", None
         )
     )
-    assert "sample_id" not in proposal["values"] and proposal["values"]["used"] is False
-    assert set(proposal["skipped"]) == {"output", "attachment", "sample"}
+    assert guide in reply
+    assert proposal["intent"] == "simulate"
+    assert proposal["values"] == {} and proposal["skipped"] == []
     assert request.await_args.args[0] == "endpoints/chat/field_input/turn"
 
 
@@ -140,3 +142,18 @@ def test_numeric_units_are_checked_without_silent_conversion():
 def test_number_substrings_are_not_observations():
     assert not recorder.matching_unit("set it to -31", "1", {"type": "integer"})
     assert not recorder.matching_unit("set it to -31", "31", {"type": "integer"})
+
+
+def test_record_retains_only_current_simulated_field_origins():
+    from app.routers.records import RecordCreateParams
+
+    initial = RecordCreateParams(step={}, check={}, report="", var={"a": 0, "b": False}, simulated_fields=["a", "b"])
+    previous = initial.record_data()
+    assert previous["simulated_fields"] == ["a", "b"]
+    legacy_revision = RecordCreateParams(step={}, check={}, report="", var={"a": 5, "b": False})
+    assert legacy_revision.record_data(previous)["simulated_fields"] == ["b"]
+    assert "simulated_fields" not in legacy_revision.record_data()
+    assert "simulated_fields" not in initial.model_copy(update={"simulated_fields": []}).record_data(previous)
+    with pytest.raises(HTTPException) as invalid:
+        initial.model_copy(update={"simulated_fields": ["missing"]}).record_data()
+    assert invalid.value.status_code == 422

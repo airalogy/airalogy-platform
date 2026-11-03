@@ -12,6 +12,8 @@ A Record stores one use of a Protocol: the entered values, completed steps and c
 
 Do not put credentials, private keys, or unrelated personal data in a Record. Follow your organization’s approved naming, retention, and sensitive-data procedures.
 
+Tell Aira your observed values to fill empty fields directly. Use **Undo this field** to reverse an individual fill. If a field already has a value, review the old and proposed values, then choose **Replace** or **Keep original**. For example data, follow Aira’s link to the current Protocol version and choose **Test with example data** in the editor preview. Test values stay in the editor.
+
 ## Validation and revisions
 
 The form opens on the field panel, with Aira available separately when enabled. **Save draft** stores unfinished work on this device; it is not a submitted Record. Submission asks you to confirm the destination and Protocol version. After successful submission, **View saved Record** opens that exact report; **Add another** starts a fresh Record.

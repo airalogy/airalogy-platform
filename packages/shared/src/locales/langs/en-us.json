@@ -443,18 +443,28 @@
   },
   "page": {
     "recorderAira": {
+      "finishReview": "Finish reviewing the current replacements, then ask Aira to fill more fields.",
+      "noChanges": "No fields to update.",
+      "adopt": "Apply remaining suggestions",
+      "simulatedOrigin": "Fields with simulated values",
+      "reviewSimulated": "Review these simulated values before submitting",
       "preserved": "Skipped — existing or changed values were kept",
       "openForm": "Open the editable Record to apply field changes.",
       "askFields": "Explain the fields and units in this Record.",
-      "tryExample": "Try filling the remaining empty fields with simulated data.",
-      "replace": "Replace existing values?",
-      "simulated": "Simulated fields",
+      "fillObserved": "Help me enter my observed values in this Record.",
+      "previewOnly": "Example data belongs in the Protocol editor preview. Your Record is unchanged.",
+      "openPreview": "Open the editor preview for this version",
+      "replace": "Suggested replacements",
       "filled": "Filled fields",
       "skipped": "Skipped — check the field or fill it manually",
       "undone": "Undone",
-      "previewHint": "Simulated preview. Exit to return to your original draft.",
-      "exit": "Exit simulation",
-      "undo": "Undo this fill"
+      "previewHint": "Review each field or apply the remaining suggestions together. You can also type your own values.",
+      "exit": "Ignore remaining suggestions",
+      "undo": "Undo this fill",
+      "replacement": "{before} → {after}",
+      "replaceField": "Replace",
+      "keepField": "Keep original",
+      "undoField": "Undo this field"
     },
     "help": {
       "eyebrow": "Documentation and support",
@@ -5257,6 +5267,18 @@
     }
   },
   "editor": {
+    "loadFailed": "The Protocol editor could not load. Reopen it to try again.",
+    "examplePreview": {
+      "start": "Test with example data",
+      "title": "Example test",
+      "check": "Validate test form",
+      "exit": "Exit test",
+      "hint": "Filled {count} fields with examples. Edit and validate this test form. Exiting discards test values. Draft checks use the current AIMD without running Python code.",
+      "skipped": "Fields to fill manually or calculate: {fields}",
+      "invalid": "Could not read these fields. Check the AIMD source and try again.",
+      "valid": "The test form passed the current preview checks.",
+      "issues": "Review {count} issues in the indicated fields."
+    },
     "sideMenus": {
       "files": "Protocol files",
       "aiEdit": "Ask Aira to edit the Protocol",

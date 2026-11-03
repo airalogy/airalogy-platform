@@ -134,6 +134,7 @@
         :protocol="protocol"
         :protocol-id="protocolId"
         :readonly="true"
+        :simulated-fields="simulatedFields"
         :record-data="recordData"
         @update:field="handleUpdateField"
         @update:split-size="handleUpdateSize"
@@ -297,6 +298,7 @@ const { t } = useI18n()
 const { endLoading, loading, startLoading } = useLoading()
 const { fetchProtocolInfoByUid, protocolInfo, protocolId } = useProvideProtocolInfoStore(null)
 
+const simulatedFields = ref<string[]>([])
 const recordData = ref<Partial<IRecordData>>({} as IRecordData)
 const isRevisionReady = computed(() => !loading.value && !!protocolInfo.value && !!record.value && !!protocol.value)
 const { projectInfo, fetchProjectInfoById } = useOrProvideProjectInfoStore(null)
@@ -636,6 +638,7 @@ async function fetchRecord() {
         : null
     }
 
+    simulatedFields.value = recordRes.data.simulated_fields || []
     const convertedData = createProtocolRecordData(recordRes.data)
     const variableData = convertedData.research_variable
 

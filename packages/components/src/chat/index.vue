@@ -165,7 +165,7 @@ const chatExamples = computed(() => {
   const docsLink = (page: string) => documentationPageUrl(docsBaseUrl, locale.value, page)
 
   if (activeRecorder?.enabled())
-    return [$t("page.recorderAira.askFields"), $t("page.recorderAira.tryExample"), $t("chat.examples.protocol.brief")]
+    return [$t("page.recorderAira.askFields"), $t("page.recorderAira.fillObserved"), $t("chat.examples.protocol.brief")]
 
   if (source === "protocol") {
     return [

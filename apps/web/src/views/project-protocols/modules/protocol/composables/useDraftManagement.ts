@@ -3,7 +3,7 @@ import type { ProtocolModels } from "@airalogy/shared/types"
 import type { MaybeRefOrGetter, Ref } from "vue"
 import { schemaCustomizer } from "@/service/api/project-protocols"
 import { useAuthStore } from "@/store/modules/auth"
-import { deleteRecordDraft, getRecordDraft, saveRecordDraft } from "@/utils/recordDrafts"
+import { deleteRecordDraft, type DraftScope, getRecordDraft, saveRecordDraft } from "@/utils/recordDrafts"
 
 import { extractAssetId } from "@/views/project-protocols/utils"
 import { useClosableMessage } from "@airalogy/composables"
@@ -13,16 +13,21 @@ import { mergeWith as _mergeWith } from "lodash-es"
 // Draft data structure
 export interface IDraftData<T = any> {
   data: T
+  draftId: string
+  simulatedFields?: string[]
   timestamp: number
 }
 
 interface SaveDraftOptions {
   silent?: boolean
+  simulatedFields?: string[]
 }
 
 export function useDraftManagement(
   protocol: MaybeRefOrGetter<ProtocolModels.ProtocolInfo | null | undefined>,
   recordData: Ref<Partial<IRecordData>>,
+  draftId?: () => string | undefined,
+  scope?: () => DraftScope,
 ) {
   // const draftEventBus = useEventBus<"restore-draft", Record<string, Record<string, string | number>>>(draftEventKey)
   const message = useClosableMessage()
@@ -33,14 +38,13 @@ export function useDraftManagement(
    * @param protocolId - Protocol identifier
    * @returns Draft data or null if not found
    */
-  function getDraft<T = any>(protocolId: string | number): IDraftData<T> | null {
+  function getDraft<T = any>(protocolId: string | number, id: string | null | undefined = draftId?.()): IDraftData<T> | null {
     const userId = authStore.userInfo.id
     if (!userId || !protocolId) {
       return null
     }
 
-    const draft = getRecordDraft<T>(userId, protocolId)
-    return draft ? { data: draft.data, timestamp: draft.timestamp } : null
+    return getRecordDraft<T>(userId, protocolId, id ?? undefined, scope?.())
   }
 
   /**
@@ -59,7 +63,7 @@ export function useDraftManagement(
     }
 
     try {
-      saveRecordDraft(userId, protocolId, data)
+      saveRecordDraft(userId, protocolId, data, { draftId: draftId?.(), scope: scope?.(), simulatedFields: options.simulatedFields })
       if (shouldNotify) {
         message.success("Draft saved.")
       }
@@ -106,7 +110,7 @@ export function useDraftManagement(
       return
     }
 
-    deleteRecordDraft(userId, protocolId)
+    deleteRecordDraft(userId, protocolId, draftId?.())
   }
 
   /**

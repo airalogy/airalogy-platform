@@ -10,12 +10,12 @@
           :include="routeStore.cacheRoutes.length === 0 ? undefined : routeStore.cacheRoutes"
         >
           <component
-            :is="Component" v-if="appStore.reloadFlag" :key="route.path" :class="{ 'p-8': props.showPadding }"
+            :is="Component" v-if="appStore.reloadFlag" :key="pageKey(route)" :class="{ 'p-8': props.showPadding }"
             class="transition-300"
           />
         </keep-alive>
         <component
-          :is="Component" v-else-if="appStore.reloadFlag" :key="route.path" :class="{ 'p-8': props.showPadding }"
+          :is="Component" v-else-if="appStore.reloadFlag" :key="pageKey(route)" :class="{ 'p-8': props.showPadding }"
           class="transition-300"
         />
       </n-spin>
@@ -26,12 +26,12 @@
           :include="routeStore.cacheRoutes.length === 0 ? undefined : routeStore.cacheRoutes"
         >
           <component
-            :is="Component" v-if="appStore.reloadFlag" :key="route.path" :class="{ 'p-8': props.showPadding }"
+            :is="Component" v-if="appStore.reloadFlag" :key="pageKey(route)" :class="{ 'p-8': props.showPadding }"
             class="transition-300"
           />
         </keep-alive>
         <component
-          :is="Component" v-else-if="appStore.reloadFlag" :key="route.path" :class="{ 'p-8': props.showPadding }"
+          :is="Component" v-else-if="appStore.reloadFlag" :key="pageKey(route)" :class="{ 'p-8': props.showPadding }"
           class="transition-300"
         />
       </template>
@@ -40,9 +40,11 @@
 </template>
 
 <script setup lang="ts">
+import type { RouteLocationNormalizedLoaded } from "vue-router"
 import { memoizedGetLabInfo } from "@/service/api/labs"
 import { useAppStore } from "@/store/modules/app/"
 import { useRouteStore } from "@/store/modules/route"
+import { recordDraftQuery } from "@/utils/recordDrafts"
 
 defineOptions({
   name: "GlobalContent",
@@ -53,6 +55,13 @@ const props = withDefaults(defineProps<Props>(), {
   containerContentClass: "w-full h-full",
   showSpin: false,
 })
+
+// Changing a revision or a work item needs fresh source data even on the same URL path.
+function pageKey(route: RouteLocationNormalizedLoaded) {
+  if (route.name === "add-protocol-record" || route.name === "add-protocol-record-from-workflow")
+    return JSON.stringify([route.path, recordDraftQuery(route.query)])
+  return route.path
+}
 
 interface Props {
   /** Show padding for content */

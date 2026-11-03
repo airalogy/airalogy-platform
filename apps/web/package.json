@@ -31,7 +31,7 @@
   "dependencies": {
     "@airalogy/aimd-core": "catalog:",
     "@airalogy/aimd-editor": "catalog:",
-    "@airalogy/aimd-recorder": "^1.25.1",
+    "@airalogy/aimd-recorder": "catalog:",
     "@airalogy/aimd-renderer": "catalog:",
     "@airalogy/components": "workspace:*",
     "@airalogy/composables": "workspace:*",

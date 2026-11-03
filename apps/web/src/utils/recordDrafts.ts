@@ -3,13 +3,32 @@ import { localStg } from "@/utils/storage"
 import { cloneDeep as _cloneDeep } from "lodash-es"
 import { toRaw } from "vue"
 
+const contextKeys = ["record", "recordVersion", "researchWorkItem", "chain", "target"] as const
+
+export function recordDraftQuery(query: Record<string, unknown>): Record<string, string> {
+  const selected: Record<string, string> = {}
+  for (const key of contextKeys) {
+    if (typeof query[key] === "string")
+      selected[key] = query[key]
+  }
+  return selected
+}
+
+export interface DraftScope {
+  version: string
+  query: Record<string, string>
+}
+
 export interface RecordDraft<T = Partial<IRecordData>> {
+  draftId: string
+  scope?: DraftScope
+  simulatedFields?: string[]
   protocolId: string
   data: T
   timestamp: number
 }
 
-type StoredRecordDraft<T = Partial<IRecordData>> = Omit<RecordDraft<T>, "protocolId">
+type StoredRecordDraft<T = Partial<IRecordData>> = Omit<RecordDraft<T>, "protocolId" | "draftId"> & { protocolId?: string }
 type DraftStorage = Record<string, Record<string, StoredRecordDraft<any>>>
 
 /** Empty form initialization is not outstanding work; keep 0 and false as data. */
@@ -75,15 +94,26 @@ export function listRecordDrafts(userId: string | number): RecordDraft[] {
   const drafts = storage[String(userId)] || {}
   return Object.entries(drafts)
     .filter(([, draft]) => draft && hasRecordDraftContent(draft.data))
-    .map(([protocolId, draft]) => ({ protocolId, ...draft }))
+    .map(([draftId, draft]) => ({ ...draft, protocolId: draft.protocolId || draftId, draftId }))
     .sort((a, b) => b.timestamp - a.timestamp)
+}
+
+export function listProtocolDrafts(userId: string | number, protocolId: string | number, scope?: DraftScope) {
+  return listRecordDrafts(userId).filter(item =>
+    item.protocolId === String(protocolId)
+    && (!scope || (item.scope
+      ? item.scope.version === scope.version && JSON.stringify(item.scope.query) === JSON.stringify(scope.query)
+      : !Object.keys(scope.query).length)),
+  )
 }
 
 export function getRecordDraft<T = Partial<IRecordData>>(
   userId: string | number,
   protocolId: string | number,
+  draftId?: string,
+  scope?: DraftScope,
 ): RecordDraft<T> | null {
-  const draft = listRecordDrafts(userId).find(item => item.protocolId === String(protocolId))
+  const draft = listProtocolDrafts(userId, protocolId, scope).find(item => !draftId || item.draftId === draftId)
   return draft as RecordDraft<T> | undefined || null
 }
 
@@ -91,29 +121,32 @@ export function saveRecordDraft<T>(
   userId: string | number,
   protocolId: string | number,
   data: T,
+  options: { draftId?: string, scope?: DraftScope, simulatedFields?: string[] } = {},
 ): RecordDraft<T> {
   const { storage } = readDraftStorage()
   const userKey = String(userId)
-  const protocolKey = String(protocolId)
+  const draftId = options.draftId || String(protocolId)
   const draft = {
+    protocolId: String(protocolId),
+    scope: options.scope,
+    simulatedFields: options.simulatedFields,
     data: _cloneDeep(toRaw(data)) as T,
     timestamp: Date.now(),
   }
-
   storage[userKey] ||= {}
-  storage[userKey][protocolKey] = draft
+  storage[userKey][draftId] = draft
   localStg.set("unitRecordDraft", storage)
-  return { protocolId: protocolKey, ...draft }
+  return { ...draft, draftId }
 }
 
-export function deleteRecordDraft(userId: string | number, protocolId: string | number) {
+export function deleteRecordDraft(userId: string | number, protocolId: string | number, draftId = String(protocolId)) {
   const { storage } = readDraftStorage()
   const userKey = String(userId)
-  if (!storage[userKey]) {
+  const draft = storage[userKey]?.[draftId]
+  if (!draft || (draft.protocolId || draftId) !== String(protocolId))
     return
-  }
 
-  delete storage[userKey][String(protocolId)]
+  delete storage[userKey][draftId]
   if (Object.keys(storage[userKey]).length === 0) {
     delete storage[userKey]
   }

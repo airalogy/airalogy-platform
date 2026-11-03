@@ -3,7 +3,7 @@
 import json
 import math
 import re
-from decimal import ROUND_CEILING, Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation
 from typing import Literal
 from uuid import UUID
 
@@ -118,40 +118,6 @@ def valid_value(spec, value):
     return Draft202012Validator(spec, format_checker=FormatChecker()).is_valid(value)
 
 
-def example_value(spec):
-    candidates = [*spec.get("enum", []), *([spec["const"]] if "const" in spec else [])]
-    kind = spec["type"]
-    if kind == "boolean":
-        candidates.append(False)
-    elif kind == "string":
-        examples = {
-            "date": "2000-01-01",
-            "date-time": "2000-01-01T12:00:00Z",
-            "time": "12:00:00Z",
-        }
-        length = min(2048, max(1, spec.get("minLength", 1)))
-        candidates.append(
-            examples.get(
-                spec.get("format"),
-                "Example".ljust(length, "X")[: spec.get("maxLength", 2048)],
-            )
-        )
-    else:
-        upper = spec.get("maximum", spec.get("exclusiveMaximum", 1))
-        lower = spec.get("minimum", spec.get("exclusiveMinimum", min(0, upper - 1)))
-        # Try boundaries and a midpoint as well as exact multiples. Some valid
-        # measurements occupy an interval narrower than an arbitrary step.
-        numbers = [0, lower, upper, (lower + upper) / 2]
-        step = Decimal(str(spec.get("multipleOf", 1)))
-        if step > 0:
-            base = (Decimal(str(lower)) / step).to_integral_value(
-                rounding=ROUND_CEILING
-            ) * step
-            numbers.extend((base, base + step))
-        candidates.extend(int(v) if kind == "integer" else float(v) for v in numbers)
-    return next((v for v in candidates if valid_value(spec, v)), None)
-
-
 _UNIT_ALIASES = {
     "°c": {"°c", "℃", "摄氏度"},
     "min": {"min", "mins", "minute", "minutes", "分钟"},
@@ -229,7 +195,7 @@ def grounded_value(spec, raw, source):
 
 
 async def plan_recorder_turn(chat, version, target, message, usage):
-    fields, unsupported = scalar_fields(version)
+    fields, _ = scalar_fields(version)
     scope = [str(version.id), str(target.record_id or ""), str(target.form_id)]
     prior = (chat.context or {}).get("recorder_focus", {})
     history = [
@@ -271,16 +237,13 @@ async def plan_recorder_turn(chat, version, target, message, usage):
     focus = [key for key in plan.references if key in fields]
     operations = {}
     skipped = []
+    reply = plan.answer
     if plan.intent == "simulate":
-        for key, spec in fields.items():
-            if key in target.filled:
-                continue
-            example = example_value(spec)
-            if example is None:
-                skipped.append(key)
-            else:
-                operations[key] = example
-        skipped.extend(k for k in unsupported if k not in target.filled)
+        reply = (
+            "要试用示例数据，请打开 Protocol 编辑器，在预览中选择「用示例数据测试」。当前记录保持原样。"
+            if target.locale == "zh-CN"
+            else "To try example data, open the Protocol editor and choose Test with example data in Preview. Your Record is unchanged."
+        )
     elif plan.intent == "fill":
         for op in plan.operations:
             key = op.rf_name
@@ -299,7 +262,7 @@ async def plan_recorder_turn(chat, version, target, message, usage):
             else:
                 operations[key] = value
     return (
-        plan.answer,
+        reply,
         {"scope": scope, "fields": focus},
         {
             "request_id": str(target.request_id),

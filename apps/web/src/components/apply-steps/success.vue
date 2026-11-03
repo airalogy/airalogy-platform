@@ -60,12 +60,14 @@ async function handleNavigate(type: "add-protocol-record" | "protocol-info" = "p
 
   if (targetLabUid && targetProjectUid && projectId) {
     routerReplaceByKey(type, {
+      query: type === "add-protocol-record" ? { newRecord: "true" } : {},
       params: { labUid: targetLabUid, projectUid: targetProjectUid, protocolUid, protocolVersion, projectId },
     })
   }
   else {
     if (projectInfo.value) {
       routerReplaceByKey(type, {
+        query: type === "add-protocol-record" ? { newRecord: "true" } : {},
         params: { protocolUid, protocolVersion, labUid: projectInfo.value.lab_uid, projectUid: projectInfo.value.uid },
       })
     }
@@ -74,6 +76,7 @@ async function handleNavigate(type: "add-protocol-record" | "protocol-info" = "p
       if (res) {
         projectInfo.value = res
         routerReplaceByKey(type, {
+          query: type === "add-protocol-record" ? { newRecord: "true" } : {},
           params: { protocolUid, protocolVersion, labUid: res.lab_uid, projectUid: res.uid },
         })
       }

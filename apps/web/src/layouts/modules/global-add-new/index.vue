@@ -100,6 +100,7 @@ function renderLabel(option: DropdownOption) {
         const { labUid, projectUid, protocolUid = "", protocolVersion = "" } = payload
 
         await routerPushByKey("add-protocol-record", {
+          query: { newRecord: "true" },
           params: { labUid, projectUid, protocolUid, protocolVersion },
         })
       },

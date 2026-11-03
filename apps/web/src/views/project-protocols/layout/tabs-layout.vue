@@ -293,6 +293,7 @@ function handleAddRecord() {
   const { lab, project, uid } = protocolInfo.value
 
   void routerPushByKey("add-protocol-record", {
+    query: { newRecord: "true" },
     params: { labUid: lab.uid, projectUid: project.uid, protocolUid: uid },
   })
 }

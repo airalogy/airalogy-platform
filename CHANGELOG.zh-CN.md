@@ -14,6 +14,9 @@ English changelog: [CHANGELOG.md](./CHANGELOG.md)。
 
 ## [未发布]
 
+- 首次打开已发布 Protocol 的预览时，编辑器加载完成后会继续打开协议文件。
+- 刷新 Recorder 后继续同一份本地草稿，新增记录独立保存。Aira 可填写实测值，逐项确认替换、保留原值和撤销。Protocol 编辑器在独立预览中调用 Airalogy SDK，按字段类型生成并校验示例 Record，历史记录的模拟来源仍可查阅。
+
 ## [0.4.1] - 2026-11-02
 
 ### 修复

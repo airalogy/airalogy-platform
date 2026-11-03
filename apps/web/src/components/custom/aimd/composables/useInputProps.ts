@@ -158,7 +158,8 @@ export function useInputProps(props: IAIMDInputProps) {
       "autosize": true,
       "type": "textarea" as const,
       // Use local text value buffer to prevent character swallowing during fast typing
-      "value": localTextValue.value,
+      // Keep the textarea controlled when restoring an empty field.
+      "value": localTextValue.value ?? "",
       "onUpdate:value": (value: any) => {
         // Update local value immediately for responsive UI
         localTextValue.value = value

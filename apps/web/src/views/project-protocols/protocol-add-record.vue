@@ -86,14 +86,15 @@
           v-if="protocolId && formRef?.fieldModel" v-model:data="recordData" :field-model="formRef.fieldModel"
           :protocol-id="protocolId"
           :protocol="protocol"
+          :draft-id="draftId" :scope="draftScope"
           :saved-at="autosaveState.lastSavedAt"
-          @restore:draft="handleRestoreDraft"
+          @restore:draft="handleManualRestore"
         />
-        <n-button data-testid="record-save-draft" size="medium" secondary :disabled="simulationActive || loading || submissionLoading" @click="handleManualSave">
+        <n-button data-testid="record-save-draft" size="medium" secondary :disabled="loading || submissionLoading" @click="handleManualSave">
           {{ $t("page.protocol.draft.saveButton") }}
         </n-button>
         <n-button
-          size="medium" type="primary" :disabled="simulationActive || loading || submissionLoading || isReadonly || (!!route.query.record && !correctionReason.trim())" :loading="submissionLoading" class="mr-4 px-4"
+          size="medium" type="primary" :disabled="reviewPending || loading || submissionLoading || isReadonly || (!!route.query.record && !correctionReason.trim())" :loading="submissionLoading" class="mr-4 px-4"
           @click="handleConfirm"
         >
           {{ $t("common.submit") }}
@@ -123,12 +124,14 @@
       :content-class="`h-full w-full overflow-visible ${protocol ? '' : ' flex-center flex-col'}`"
     >
       <protocol-add-record-form
-        v-if="protocol && protocolInfo && protocolId" ref="formRef" v-model:collapsed="isCollapsed" :protocol="protocol"
+        v-if="protocol && protocolInfo && protocolId" :key="formGeneration" ref="formRef" v-model:collapsed="isCollapsed" :protocol="protocol"
         :protocol-id="protocolId"
         :readonly="isReadonly"
         :recorder-version="displayProtocolVersion"
         :recorder-record-id="typeof route.query.record === 'string' ? route.query.record : undefined"
-        @simulation="simulationActive = $event"
+        :simulated-fields="simulatedFields"
+        @set-simulated="setSimulated"
+        @review-pending="reviewPending = $event"
         :record-data="recordData"
         @update:field="handleUpdateField"
         @update:split-size="handleUpdateSize"
@@ -180,7 +183,7 @@ import { baseURL } from "@/service/request"
 import { useAuthStore } from "@/store/modules/auth"
 import { useRouteStore } from "@/store/modules/route"
 import { useProtocolWorkflowStore } from "@/store/modules/workflow"
-import { hasRecordDraftContent } from "@/utils/recordDrafts"
+import { type DraftScope, hasRecordDraftContent, recordDraftQuery } from "@/utils/recordDrafts"
 import { useBeforeUnload, useClosableMessage } from "@airalogy/composables"
 import { formatValidateErrors, type PydanticError } from "@airalogy/shared/utils/errorFormatter.js"
 import { get as _get, set as _set } from "lodash-es"
@@ -192,7 +195,7 @@ import { useProvideProtocolInfoStore } from "./hooks/useProtocolInfoStore"
 import { useDraftManagement } from "./modules/protocol/composables/useDraftManagement"
 import { RecordCalculationError } from "./modules/protocol/helpers/recordCalculationError"
 import ProtocolAddRecordForm from "./modules/protocol/protocol-add-record-form.vue"
-import { assignFieldValue, extractAssetId } from "./utils"
+import { assignFieldValue, extractAssetId, processFieldValue } from "./utils"
 
 defineOptions({ name: "AddProtocolRecord" })
 
@@ -250,7 +253,7 @@ function handleCancel() {
 const protocol = ref<ProtocolModels.ProtocolInfo | null>(null)
 const editingProtocolVersion = ref<string | null>(null)
 const correctionReason = ref("")
-const simulationActive = ref(false)
+const reviewPending = ref(false)
 
 const formRef = ref<{
   validate: () => any
@@ -287,7 +290,29 @@ const recordData = ref<Partial<IRecordData>>({})
 const researchWorkItem = ref<ResearchWorkItemDetail | null>(null)
 const { bool: isReadonly, setTrue: setReadonly } = useBoolean()
 
-const { saveDraft, deleteDraft, getDraft, prepareRestoreDraft } = useDraftManagement(protocol, recordData)
+const draftId = ref("")
+const formGeneration = ref(0)
+const draftScope = ref<DraftScope>({ version: "", query: {} })
+const draftReady = ref(false)
+let initializingDraft = false
+let draftOwner: string | number | undefined
+const simulatedSources = ref<Record<string, unknown>>({})
+const valueOfField = (name: string) => processFieldValue(recordData.value.research_variable?.[name])
+const simulatedFields = computed(() => Object.keys(simulatedSources.value).filter(
+  field => Object.is(simulatedSources.value[field], valueOfField(field)),
+))
+function setSimulated(field: string, simulated: boolean) {
+  if (simulated)
+    simulatedSources.value[field] = valueOfField(field)
+  else
+    delete simulatedSources.value[field]
+}
+const { saveDraft, deleteDraft, getDraft } = useDraftManagement(
+  protocol,
+  recordData,
+  () => draftId.value || undefined,
+  () => draftScope.value,
+)
 
 const AUTOSAVE_DEBOUNCE_MS = 4000
 const AUTOSAVE_INTERVAL_MS = 60_000
@@ -308,12 +333,12 @@ const { cleanup } = useBeforeUnload(() => autosaveState.hasPendingChanges, {
 type AutosaveReason = "debounce" | "interval" | "visibility" | "unload" | "manual"
 
 function canAutosave() {
-  return Boolean(protocolId.value) && !isReadonly.value
+  return draftReady.value && draftOwner === authStore.userInfo.id && Boolean(protocolId.value) && !isReadonly.value
 }
 
 function getDraftSignature(data: Partial<IRecordData> = recordData.value) {
   try {
-    return JSON.stringify(toRaw(data ?? {}))
+    return JSON.stringify([toRaw(data ?? {}), simulatedFields.value])
   }
   catch (error) {
     console.warn("Failed to serialize draft data:", error)
@@ -364,7 +389,7 @@ function flushAutosave(reason: AutosaveReason, force = false) {
     return
   }
 
-  const saved = saveDraft(protocolId.value, recordData.value, { silent: true })
+  const saved = saveDraft(protocolId.value, recordData.value, { silent: true, simulatedFields: simulatedFields.value })
   if (!saved) {
     autosaveState.saveFailed = true
     autosaveState.hasPendingChanges = true
@@ -395,7 +420,7 @@ function clearDraftAfterSubmit() {
   message.success(t("page.protocol.draft.cleared"))
 }
 
-watch(recordData, () => {
+watch([recordData, simulatedFields], () => {
   markAutosavePending()
 }, { deep: true })
 
@@ -523,6 +548,7 @@ function resourceCommitSummary(
 function confirmRecordSubmission(
   values: Record<string, any>,
   isRevision: boolean,
+  examples: string[],
 ): Promise<boolean> {
   const summaries = resourceCommitSummary(values)
   return new Promise((resolve) => {
@@ -552,6 +578,14 @@ function confirmRecordSubmission(
               }))
               : null,
           ]),
+          ...(examples.length
+            ? [
+                h("div", { "class": "rounded border p-3", "data-testid": "review-simulated-fields" }, [
+                  h("strong", t("page.recorderAira.reviewSimulated")),
+                  h("ul", examples.map(key => h("li", `${key}: ${String(values[key])}`))),
+                ]),
+              ]
+            : []),
           ...(summaries.length
             ? [
                 h("p", { class: "font-medium" }, t("page.protocol.addRecord.resourceCommitTitle")),
@@ -619,7 +653,7 @@ async function showSubmissionErrors(error: unknown) {
 }
 
 async function handleConfirm() {
-  if (!formRef.value || isReadonly.value || simulationActive.value) {
+  if (!formRef.value || isReadonly.value || reviewPending.value) {
     return
   }
   submissionLoading.value = true
@@ -635,6 +669,7 @@ async function handleConfirm() {
 
     const payload = extractAssetId(toRaw(researchVariable)) || {}
 
+    const examples = [...simulatedFields.value]
     const { data: result, error: validateError } = await postValidateRecord(
       protocolId.value,
       payload,
@@ -653,12 +688,13 @@ async function handleConfirm() {
     const { research_variable = {} } = result
     // const preparedReport = formRef.value?.preparedReport()
     const { record } = route.query
-    if (!(await confirmRecordSubmission(research_variable, Boolean(record)))) {
+    if (!(await confirmRecordSubmission(research_variable, Boolean(record), examples))) {
       return
     }
 
     const { data, error } = await (record
       ? putUpdateResearchRecord(protocolId.value, record as string, {
+        simulated_fields: examples,
         research_variable: research_variable as any,
         research_check: research_check as any,
         research_result: research_result as any,
@@ -667,6 +703,7 @@ async function handleConfirm() {
         revision_reason: correctionReason.value.trim(),
       })
       : postNewResearchRecord(protocolId.value, {
+        simulated_fields: examples,
         research_variable: research_variable as any,
         research_check: research_check as any,
         research_result: research_result as any,
@@ -675,6 +712,7 @@ async function handleConfirm() {
       }))
 
     if (data) {
+      draftReady.value = false
       clearDraftAfterSubmit()
       if (researchWorkItem.value) {
         const completedWork = await submitResearchWorkItem(researchWorkItem.value.id, {
@@ -736,6 +774,7 @@ async function handleConfirm() {
         const { lab, project, uid } = protocolInfo.value
         const startAnother = await confirmRecordNextStep(Boolean(record))
         if (startAnother) {
+          simulatedSources.value = {}
           recordData.value = {}
           Object.keys(formRef.value.fieldModel).forEach((key) => {
             delete (formRef.value!.fieldModel as Record<string, unknown>)[key]
@@ -745,12 +784,11 @@ async function handleConfirm() {
           editingProtocolVersion.value = null
           autosaveState.lastSavedAt = 0
           resetAutosaveBaseline(recordData.value)
-          if (route.query.record) {
-            const query = { ...route.query }
-            delete query.record
-            delete query.recordVersion
-            await router.replace({ path: route.path, query })
-          }
+          const query: typeof route.query = { ...route.query, newRecord: "true" }
+          delete query.record
+          delete query.recordVersion
+          delete query.draft
+          await router.replace({ path: route.path, query })
         }
         else {
           cleanup()
@@ -941,28 +979,6 @@ onMounted(async () => {
   endLoading()
 })
 
-const researchWorkInitialValuesApplied = ref(false)
-watch(
-  [researchWorkItem, () => formRef.value, () => protocolId.value],
-  async ([workItem, currentForm, currentProtocolId]) => {
-    if (
-      researchWorkInitialValuesApplied.value
-      || !workItem
-      || !currentForm
-      || !currentProtocolId
-    ) {
-      return
-    }
-    const initialValues = workItem.action.protocol_run?.initial_values || {}
-    if (Object.keys(initialValues).length) {
-      await handleRestoreDraft({ research_variable: initialValues } as Partial<IRecordData>)
-      message.success(t("page.protocol.addRecord.researchWorkValuesApplied"))
-    }
-    researchWorkInitialValuesApplied.value = true
-  },
-  { flush: "post" },
-)
-
 onMounted(() => {
   resetAutosaveBaseline(recordData.value)
   autosaveIntervalId.value = window.setInterval(() => {
@@ -1025,7 +1041,7 @@ watch(() => formRef.value?.fieldRecord, (val) => {
 })
 
 const { error, warning } = useClosableMessage()
-async function handleRestoreDraft(data: Partial<IRecordData>) {
+async function handleRestoreDraft(data: Partial<IRecordData>, sources: string[] = []) {
   const { restoreFieldRecord } = formRef.value || {}
   if (!restoreFieldRecord) {
     warning(t("page.protocol.addRecord.noDraftFound"))
@@ -1035,6 +1051,7 @@ async function handleRestoreDraft(data: Partial<IRecordData>) {
   try {
     restoreFieldRecord(data)
     recordData.value = data
+    simulatedSources.value = Object.fromEntries(sources.map(field => [field, valueOfField(field)]))
     resetAutosaveBaseline(recordData.value)
 
     // await nextTick()
@@ -1054,34 +1071,63 @@ async function handleRestoreDraft(data: Partial<IRecordData>) {
   }
 }
 
-const resumeDraftHandled = ref(false)
+async function handleManualRestore(data: Partial<IRecordData>, fields: string[], merge: boolean, removed: boolean) {
+  const retained = merge ? { ...simulatedSources.value } : {}
+  await handleRestoreDraft(data, fields)
+  simulatedSources.value = { ...retained, ...simulatedSources.value }
+  if (!removed)
+    flushAutosave("manual", true)
+}
+
+// The URL identifies a draft on this browser. A plain entry continues the
+// latest compatible draft; an explicit New Record allocates a separate one.
 watch(
-  [() => route.query.resumeDraft, () => protocolId.value, () => formRef.value],
-  async ([shouldResume, currentProtocolId, currentForm]) => {
-    if (
-      resumeDraftHandled.value
-      || shouldResume !== "true"
-      || !currentProtocolId
-      || !currentForm
-    ) {
+  [() => route.query.draft, () => route.query.newRecord, protocolId, () => formRef.value?.fieldRecord, loading, () => authStore.userInfo.id],
+  async ([requested, fresh, id, form, busy, userId]) => {
+    if (initializingDraft || !["add-protocol-record", "add-protocol-record-from-workflow"].includes(String(route.name))
+      || !id || !form || busy || !userId || isReadonly.value || !displayProtocolVersion.value) {
       return
     }
-
-    resumeDraftHandled.value = true
-    const draft = getDraft(currentProtocolId)
-    const data = prepareRestoreDraft<Partial<IRecordData>>(currentProtocolId)
-    if (data) {
-      await handleRestoreDraft(data)
-      autosaveState.lastSavedAt = draft?.timestamp || 0
-      message.success(t("page.protocol.addRecord.draftResumed"))
+    if (draftId.value && requested === draftId.value && draftOwner === userId && !fresh)
+      return
+    initializingDraft = true
+    try {
+      flushAutosave("unload", true)
+      draftOwner = userId
+      draftReady.value = false
+      draftScope.value = { version: displayProtocolVersion.value, query: recordDraftQuery(route.query) }
+      const previousId = draftId.value
+      const saved = fresh === "true" ? null : getDraft<Partial<IRecordData>>(id, typeof requested === "string" ? requested : null)
+      draftId.value = saved?.draftId || nanoid()
+      if (previousId && previousId !== draftId.value)
+        formGeneration.value += 1
+      if (saved) {
+        await handleRestoreDraft(extractAssetId(saved.data) || {}, saved.simulatedFields)
+        autosaveState.lastSavedAt = saved.timestamp
+      }
+      else if (previousId) {
+        await handleRestoreDraft({})
+        autosaveState.lastSavedAt = 0
+      }
+      else if (researchWorkItem.value) {
+        const initial = researchWorkItem.value.action.protocol_run?.initial_values || {}
+        if (Object.keys(initial).length) {
+          await handleRestoreDraft({ research_variable: initial } as Partial<IRecordData>)
+          message.success(t("page.protocol.addRecord.researchWorkValuesApplied"))
+        }
+      }
+      const query: typeof route.query = { ...route.query, draft: draftId.value }
+      delete query.newRecord
+      delete query.resumeDraft
+      // Set the URL before allowing autosave so reload always selects this entry.
+      if (requested !== draftId.value || fresh || route.query.resumeDraft)
+        await router.replace({ path: route.path, query })
+      resetAutosaveBaseline()
+      draftReady.value = true
     }
-    else {
-      warning(t("page.protocol.addRecord.noDraftFound"))
+    finally {
+      initializingDraft = false
     }
-
-    const query = { ...route.query }
-    delete query.resumeDraft
-    await router.replace({ path: route.path, query })
   },
   { flush: "post" },
 )
@@ -1137,6 +1183,7 @@ async function fetchRecord() {
     protocol.value = protocolData
     editingProtocolVersion.value = sourceVersion
     recordData.value = convertedData
+    simulatedSources.value = Object.fromEntries((recordRes.data.simulated_fields || []).map(key => [key, valueOfField(key)]))
     resetAutosaveBaseline(recordData.value)
   }
   catch (e) {

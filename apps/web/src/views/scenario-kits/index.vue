@@ -34,7 +34,7 @@ const kitOptions = computed(() => activeKits.value.map(kit => ({ label: kit.name
 const protocolOptions = computed(() => assets.value.map(item => ({ label: `${item.name} · v${item.latest_version}`, value: item.protocol_id })))
 let sequence = 0
 function protocolRoute(name: "add-protocol-record" | "protocol-detail" | "protocol-records", item: KitAsset) {
-  return { name, params: { labUid: route.params.labUid, projectUid: route.params.projectUid, protocolUid: item.uid } }
+  return { name, query: name === "add-protocol-record" ? { newRecord: "true" } : {}, params: { labUid: route.params.labUid, projectUid: route.params.projectUid, protocolUid: item.uid } }
 }
 function errorText(err: unknown) {
   const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail

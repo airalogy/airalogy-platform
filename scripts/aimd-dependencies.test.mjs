@@ -6,7 +6,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const names = ["@airalogy/aimd-core", "@airalogy/aimd-editor", "@airalogy/aimd-renderer"]
+const names = ["@airalogy/aimd-core", "@airalogy/aimd-editor", "@airalogy/aimd-recorder", "@airalogy/aimd-renderer"]
 const readJson = file => JSON.parse(readFileSync(path.join(root, file), "utf8"))
 
 test("shared AIMD dependencies have a single exact release pin in the workspace catalog", () => {

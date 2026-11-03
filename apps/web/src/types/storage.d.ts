@@ -36,7 +36,13 @@ export namespace AppStorage {
     "promptStore": Chat.PromptState
     "protocol": Protocol.ResearchNodeData
     "pinyinDict": Record<string, string>
-    "unitRecordDraft": Record<string, Record<string, { data: IRecordData, timestamp: number }>>
+    "unitRecordDraft": Record<string, Record<string, {
+      data: IRecordData
+      timestamp: number
+      protocolId?: string
+      scope?: import("@/utils/recordDrafts").DraftScope
+      simulatedFields?: string[]
+    }>>
     "protocol-workflow": {
       flowNodesRecord: any
       modelRecord: any

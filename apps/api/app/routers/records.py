@@ -18,7 +18,7 @@ from fastapi import (
     HTTPException,
     UploadFile,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, cast, distinct, func, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -336,6 +336,21 @@ class RecordCreateParams(BaseModel):
     report: str
     revision_reason: str = ""
     expected_version: int | None = None
+    simulated_fields: list[str] | None = Field(default=None, max_length=1024)
+
+    def record_data(self, previous: dict | None = None) -> dict:
+        data = {"step": self.step, "var": self.var, "check": self.check}
+        fields = self.simulated_fields
+        if fields is None and previous:
+            fields = [
+                key for key in previous.get("simulated_fields", [])
+                if key in self.var and self.var[key] == previous["var"].get(key)
+            ]
+        if fields:
+            if any(key not in self.var for key in fields):
+                raise HTTPException(422, "Simulated fields must refer to submitted variables")
+            data["simulated_fields"] = sorted(set(fields))
+        return data
 
 
 def _serialize_import_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -772,11 +787,7 @@ async def create_protocol_record(
     )
 
     number = last_records[0].number + 1 if len(last_records) > 0 else 1
-    data = {
-        "step": params.step,
-        "var": params.var,
-        "check": params.check,
-    }
+    data = params.record_data()
     # set ignore str to empty string
     for k, v in protocol_version.json_schema["vars"]["properties"].items():
         if v.get("airalogy_type") == "IgnoreStr":
@@ -879,11 +890,7 @@ async def revise_record_transaction(protocol_id, id, params, current_user, db_se
             detail={"message": "validate error", "errors": data["errors"]},
         )
 
-    data = {
-        "step": params.step,
-        "var": params.var,
-        "check": params.check,
-    }
+    data = params.record_data(record.data)
     # set ignore str to empty string
     for k, v in protocol_version.json_schema["vars"]["properties"].items():
         if v.get("airalogy_type") == "IgnoreStr":

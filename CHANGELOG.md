@@ -14,6 +14,9 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Opening a published Protocol preview waits for the editor to finish loading before opening its files.
+- Resume the same local Recorder draft on reload and keep new entries separate. Aira enters observed values and supports per-field replacement and undo. The isolated Protocol editor preview uses the Airalogy SDK’s field-type policies to generate and validate example Records. Previously saved simulation labels are preserved.
+
 ## [0.4.1] - 2026-11-02
 
 ### Fixed

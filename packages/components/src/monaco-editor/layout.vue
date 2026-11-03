@@ -215,6 +215,8 @@ watch(isFullScreen, (val) => {
 })
 
 const { monaco, init, loadingState } = useLanguageClient()
+let editorReady: Promise<void> | undefined
+let disposed = false
 
 provideLocal("monaco", monaco)
 // Store initialization
@@ -420,16 +422,13 @@ async function saveData(id: string, data: FileSystemItem[]) {
 // const uploadPackage = () => Promise.resolve()
 async function handleInit(id: string, prevId?: string | null, resist = false) {
   if (!monaco.value) {
-    if (!loadingState.loading.value) {
-      init()
+    await (editorReady ??= init())
+    if (disposed)
+      return
+    if (!monaco.value) {
+      editorReady = undefined
+      throw new Error($t("editor.loadFailed"))
     }
-
-    await new Promise((resolve) => {
-      watchOnce(monaco, () => {
-        resolve(true)
-      })
-    })
-    return
   }
 
   if (prevId) {
@@ -532,10 +531,11 @@ function handleOpenPreviewAsText() {
 
 // Lifecycle hooks
 onMounted(() => {
-  init()
+  editorReady ??= init()
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   handleClean(false, packageId.value)
 })
 

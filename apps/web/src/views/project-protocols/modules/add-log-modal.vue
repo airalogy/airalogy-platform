@@ -49,6 +49,7 @@ function handleRedirect() {
   }
 
   void routerPushByKey("add-protocol-record", {
+    query: { newRecord: "true" },
     params: { protocolUid, labUid, projectUid },
   })
 }

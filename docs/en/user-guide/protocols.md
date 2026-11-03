@@ -14,6 +14,8 @@ In a Project, choose **New protocol → From template → First Record practice*
 
 The bilingual practice template contains two required fields, example values and instructions for saving, submitting and revising a Record. It creates an ordinary editable, versioned Protocol, not a separate demo mode. Its data is explicitly synthetic: keep it in a practice Project and do not treat it as research evidence. No AI service is needed.
 
+In **Preview**, choose **Test with example data**. Edit the example values and choose **Validate test form** to see which fields need attention. **Exit test** discards the test form. Draft checks use current AIMD declarations. A published version can also use its stored validation schema. Python code runs only in the normal Platform execution workflow.
+
 ## Edit with intent
 
 Before changing a Protocol that already has Records:

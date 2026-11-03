@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@airalogy/aimd-core": "catalog:",
-    "@airalogy/aimd-recorder": "^1.24.5",
+    "@airalogy/aimd-recorder": "catalog:",
     "@airalogy/aimd-renderer": "catalog:",
     "@airalogy/composables": "workspace:*",
     "@airalogy/masterbrain-client": "0.1.0",

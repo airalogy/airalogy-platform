@@ -42,7 +42,7 @@
         </div>
       </n-tab-pane>
       <n-tab-pane
-        name="form-fields" :disabled="Boolean(simulation)" class="relative" :tab="$t('common.fields')"
+        name="form-fields" class="relative" :tab="$t('common.fields')"
         display-directive="show"
         :style="{ paddingLeft: isCollapsed ? '32px' : undefined }"
       >
@@ -59,7 +59,7 @@
 
           <!-- Field Input Bar -->
           <div v-if="instanceStore.aiEnabled && !props.readonly && props.recorderVersion" class="mb-4">
-            <field-input-bar :protocol-id="props.protocolId" :begin-turn="beginRecorderTurn" />
+            <field-input-bar :protocol-id="props.protocolId" :begin-turn="beginRecorderTurn" :pending-suggestions="pending.size > 0 || busy" />
           </div>
         </div>
 
@@ -68,7 +68,10 @@
           class="px-4"
           :class="{ hidden: isCollapsed }"
         >
-          <n-form ref="formRef" class="record-fields-form h-full pb-3" :rules="validationRules" :model="fieldModel">
+          <n-form
+            ref="formRef" class="record-fields-form h-full pb-3" :rules="validationRules" :model="fieldModel"
+            @input.capture="markInput" @change.capture="markInput"
+          >
             <n-collapse-item v-for="(scopeName, idx) in scopeList" :key="scopeName" :name="scopeName">
               <template #header>
                 <span class="text-4 font-500 capitalize">
@@ -85,6 +88,7 @@
               <template v-for="(prop, index) in fieldPropList[idx]" :key="prop">
                 <protocol-add-record-form-item
                   v-bind="createFormItemProps(scopeName, prop)"
+                  :data-recorder-field="scopeName === 'research_variable' ? prop : undefined"
                   :should-scroll="shouldScroll"
                   @field:change="handleFieldChange"
                 />
@@ -96,7 +100,7 @@
       </n-tab-pane>
       <n-tab-pane
         v-if="hasWorkflowScope"
-        name="workflow" :disabled="Boolean(simulation)"
+        name="workflow"
         class="relative"
         :tab="$t('page.protocol.workflow.workspaceTab')"
         display-directive="show"
@@ -126,20 +130,38 @@
     </template>
     <template #content>
       <slot name="prefix" />
-      <n-alert v-if="receipt" class="mb-3 whitespace-pre-line break-words" :type="simulation ? 'warning' : 'info'" data-testid="recorder-receipt" aria-live="polite">
-        {{ receipt }}
-        <p v-if="simulation">{{ $t("page.recorderAira.previewHint") }}</p>
-        <n-button v-if="simulation" size="small" @click="exitSimulation">{{ $t("page.recorderAira.exit") }}</n-button>
-        <n-button v-else-if="edits.length" size="small" @click="undo">{{ $t("page.recorderAira.undo") }}</n-button>
+      <n-alert v-if="receipt || pending.size || edits.size || showPreviewLink" class="mb-3 break-words" :type="pending.size ? 'warning' : 'info'" data-testid="recorder-receipt">
+        <div class="whitespace-pre-line" aria-live="polite">{{ receipt }}</div>
+        <div v-if="showPreviewLink" aria-live="polite">{{ $t("page.recorderAira.previewOnly") }}</div>
+        <router-link v-if="showPreviewLink && editorPreviewRoute" :to="editorPreviewRoute" target="_blank" rel="noopener noreferrer" class="text-primary underline" data-testid="open-example-preview">
+          {{ $t("page.recorderAira.openPreview") }}
+        </router-link>
+        <details v-if="pending.size || edits.size">
+          <summary class="cursor-pointer">
+            {{ pending.size ? $t("page.recorderAira.replace") : $t("page.recorderAira.filled") }}
+            ({{ pending.size || edits.size }})
+          </summary>
+          <ul class="my-2 list-none p-0">
+            <li v-for="[field, change] in (pending.size ? pending : edits)" :key="field" class="flex flex-wrap items-center gap-x-2">
+              <span class="font-medium">{{ field }}</span>
+              <recorder-field-review :change="change" :pending="pending.has(field)" :busy="busy" @accept="accept" @dismiss="dismiss" @undo="undo" />
+            </li>
+          </ul>
+        </details>
+        <template v-if="pending.size">
+          <p>{{ $t("page.recorderAira.previewHint") }}</p>
+          <div class="flex flex-wrap gap-2">
+            <n-button size="small" :disabled="busy" @click="dismiss()">{{ $t("page.recorderAira.exit") }}</n-button>
+            <n-button size="small" type="primary" data-testid="accept-remaining" :disabled="busy" @click="accept()">
+              {{ $t("page.recorderAira.adopt") }}
+            </n-button>
+          </div>
+        </template>
+        <n-button v-else-if="edits.size" size="small" :disabled="busy" @click="undo()">{{ $t("page.recorderAira.undo") }}</n-button>
       </n-alert>
-      <aimd-markdown-preview
-        v-if="simulation"
-        class="simulated-record-preview"
-        :content="templateRef" mode="report"
-        :readonly-record-data="simulationData"
-        :mermaid-component="MermaidBlock" :resolve-url="resolvePreviewFile"
-        body-class="markdown-body"
-      />
+      <n-alert v-if="simulatedFields?.length" type="warning" class="mb-3" data-testid="simulated-fields" :title="$t('page.recorderAira.simulatedOrigin')">
+        {{ simulatedFields.join(", ") }}
+      </n-alert>
       <workflow-workspace
         v-if="selectedTab === 'workflow' && hasWorkflowScope"
         :workflow-id="workflowId"
@@ -147,7 +169,6 @@
       />
       <n-form
         v-else-if="fieldRecordDefault"
-        v-show="!simulation"
         class="platform-aimd-form-preview"
         @input.capture="markInput"
         @change.capture="markInput"
@@ -236,6 +257,7 @@ import { useI18n } from "vue-i18n"
 import { useProtocolInfoStore } from "../../hooks/useProtocolInfoStore"
 import AssignerProgressModal from "./components/AssignerProgressModal.vue"
 import FieldInputBar from "./components/field-input-bar.vue"
+import RecorderFieldReview from "./components/recorder-field-review.vue"
 import WorkflowWorkspace from "./components/workflow-workspace.vue"
 import { useAimdRecordValidation } from "./composables/useAimdRecordValidation"
 
@@ -262,6 +284,7 @@ interface IProps {
   protocol?: ProtocolModels.ProtocolInfo | null
   protocolId: string
   recorderVersion?: string
+  simulatedFields?: string[]
   recorderRecordId?: string
   defaultSpiltSize?: number
   readonly?: boolean
@@ -283,7 +306,8 @@ function handleToggleDetail() {
 }
 
 interface Emits {
-  (e: "simulation", active: boolean): void
+  (e: "setSimulated", field: string, value: boolean): void
+  (e: "reviewPending", active: boolean): void
   (e: "update:field", payload: { scope: IRecordDataKey, prop: string, value: any, info?: any }): void
   (e: "update:splitSize", payload: string | number): void
   (e: "update:collapsed", payload: boolean): void
@@ -1034,12 +1058,22 @@ const { setupFieldEventHandlers, hasPendingAssignments, applyLocalFieldChange } 
   props.protocol?.assigners,
 )
 
-const { begin: beginRecorderTurn, receipt, edits, undo, simulation, exitSimulation, markInput } = useRecorderConversation({
+const route = useRoute()
+const editorPreviewRoute = computed(() => {
+  const { labUid, projectUid, protocolUid } = route.params
+  if (!labUid || !projectUid || !protocolUid || !props.recorderVersion)
+    return undefined
+  return { name: "protocol-editor", params: { labUid, projectUid, protocolUid, protocolVersion: props.recorderVersion } } as const
+})
+
+const { begin: beginRecorderTurn, receipt, showPreviewLink, pending, edits, accept, dismiss, undo, busy, markInput, reset: resetReview } = useRecorderConversation({
   scope: () => JSON.stringify([props.protocolId, props.recorderVersion, props.recorderRecordId, props.readonly]),
   version: () => props.recorderVersion,
   recordId: () => props.recorderRecordId,
   editable: () => !props.readonly && instanceStore.aiEnabled,
   fields: () => Object.fromEntries(Object.entries(fieldModel.research_variable || {}).filter(([key]) => key !== "__SCOPE__")) as Record<string, { value?: unknown, assigner?: unknown }>,
+  isSimulated: prop => Boolean(props.simulatedFields?.includes(prop)),
+  setSimulated: (prop, value) => emit("setSimulated", prop, value),
   write: async (prop, value) => {
     const item = _get(fieldModel, ["research_variable", prop])
     let inputValue = value
@@ -1050,22 +1084,8 @@ const { begin: beginRecorderTurn, receipt, edits, undo, simulation, exitSimulati
     await applyLocalFieldChange({ ...item, scope: "research_variable", prop, value: inputValue })
   },
 })
-watch(simulation, value => emit("simulation", Boolean(value)), { flush: "sync" })
-watch(edits, async (changes, previous) => {
-  await nextTick()
-  const root = previewRef.value?.rootElement
-  if (!root)
-    return
-  for (const change of previous || [])
-    root.querySelector(`[data-recorder-field="${CSS.escape(change.field)}"], [data-rec-focus-key="var:${CSS.escape(change.field)}"]`)?.classList.remove("recorder-applied")
-  for (const change of changes)
-    root.querySelector(`[data-recorder-field="${CSS.escape(change.field)}"], [data-rec-focus-key="var:${CSS.escape(change.field)}"]`)?.classList.add("recorder-applied")
-})
-const simulationData = computed(() => ({
-  var: { ...props.recordData?.research_variable, ...simulation.value },
-  step: props.recordData?.research_step || {},
-  check: props.recordData?.research_check || {},
-}))
+watch(() => pending.value.size > 0 || busy.value, value => emit("reviewPending", value), { flush: "sync", immediate: true })
+onScopeDispose(() => emit("reviewPending", false))
 const previewMode = computed(() => props.readonly ? "report" : "edit")
 const previewValue = computed(() => props.readonly ? undefined : fieldModel as any)
 const readonlyRecordData = computed(() => {
@@ -1396,6 +1416,20 @@ function getNodeProps(node: { id: string, scope: string, type?: string }) {
 
 const aimdRenderers = createPlatformAimdFormRenderers({
   getTokenProps: getNodeProps,
+  renderFieldHint: (field) => {
+    const suggestion = pending.value.get(field)
+    const change = suggestion || edits.value.get(field)
+    if (!change)
+      return null
+    return h(RecorderFieldReview, {
+      change,
+      pending: Boolean(suggestion),
+      busy: busy.value,
+      onAccept: accept,
+      onDismiss: dismiss,
+      onUndo: undo,
+    })
+  },
 })
 const aimdEditRenderOptions = { aimdRenderers }
 const previewAimdRenderOptions = computed(() => props.readonly ? undefined : aimdEditRenderOptions)
@@ -1594,6 +1628,7 @@ defineExpose({
   fieldRecord: fieldRecordDefault,
   fieldModel,
   restoreFieldRecord: async (recordData?: Partial<IRecordData>) => {
+    resetReview()
     if (restoreFieldRecord) {
       restoreFieldRecord(recordData)
     }
@@ -1671,7 +1706,7 @@ defineExpose({
 </style>
 
 <style scoped>
-:deep(.recorder-applied) {
+:deep([data-recorder-field]:has(.recorder-field-undo)) {
   outline: 2px solid var(--primary-color, #0084e2);
   outline-offset: 2px;
 }
