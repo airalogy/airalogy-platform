@@ -14,6 +14,12 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Upgrade to the official AIMD Recorder 1.27.1 package and remove the temporary styles patch. Its public styles entry includes the matching compiled Vue component CSS, restoring toolbar and dialog layouts; cover desktop and narrow-screen input controls in browser tests.
+
+- Aira Protocol creation now checks generated AIMD and attempts at most one syntax repair before handing over a draft. Editor checks report file/line diagnostics; manual repairs require diff approval, invalid AI edits are blocked, and failed checks retain local drafts. Authoring checks support full Protocol source files and do not execute user code.
+
+- Record entry, revision and Protocol preview use the native AIMD Recorder. Aira reviews, local drafts and Platform-authorized file and calculation actions use the same field values; ordinary text values are excluded from attachment lookups. The Protocol editor supports recorder-aware visual authoring and source editing.
+
 - Opening a published Protocol preview waits for the editor to finish loading before opening its files.
 - Resume the same local Recorder draft on reload and keep new entries separate. Aira enters observed values and supports per-field replacement and undo. The isolated Protocol editor preview uses the Airalogy SDK’s field-type policies to generate and validate example Records. Previously saved simulation labels are preserved.
 

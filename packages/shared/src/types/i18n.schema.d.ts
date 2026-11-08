@@ -449,10 +449,6 @@ declare namespace I18n {
       recorderAira: {
         finishReview: string
         noChanges: string
-        replacement: string
-        replaceField: string
-        keepField: string
-        undoField: string
         adopt: string
         simulatedOrigin: string
         reviewSimulated: string
@@ -469,6 +465,10 @@ declare namespace I18n {
         previewHint: string
         exit: string
         undo: string
+        replacement: string
+        replaceField: string
+        keepField: string
+        undoField: string
       }
       help: {
         eyebrow: string
@@ -5271,7 +5271,24 @@ declare namespace I18n {
       }
     }
     editor: {
+      validation: {
+        generating: string
+        generatedValid: string
+        generatedRepaired: string
+        generatedUnchecked: string
+        valid: string
+        invalid: string
+        unavailable: string
+        unchecked: string
+        checking: string
+        check: string
+        repair: string
+        scope: string
+        saveBlocked: string
+        repairInstruction: string
+      }
       loadFailed: string
+      visualFenceConflict: string
       examplePreview: {
         start: string
         title: string

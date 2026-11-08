@@ -227,7 +227,7 @@ import { useI18n } from "vue-i18n"
 import { useOrProvideChatInfoStore } from "../../../chat/composables/useChatInfoStore"
 import "@airalogy/masterbrain-vue/style.css"
 
-type PlatformCodeEditPayload = Omit<CodeEditRequest, "model"> & { model: ChatModelConfig }
+type PlatformCodeEditPayload = Omit<CodeEditRequest, "model"> & { model: ChatModelConfig, syntax_repair?: boolean }
 
 interface CodeEditFileDef {
   id: string
@@ -239,11 +239,14 @@ const props = withDefaults(defineProps<{
   protocolId?: string | null
   airalogyId?: string | null
   codeEdit?: (payload: PlatformCodeEditPayload) => Promise<{ data?: unknown | null, error?: unknown }>
+  syntaxRepairRequest?: number
 }>(), {
   protocolId: null,
   airalogyId: null,
   codeEdit: undefined,
+  syntaxRepairRequest: 0,
 })
+const emit = defineEmits<{ syntaxRepairHandled: [] }>()
 
 const CODE_EDIT_FILES: CodeEditFileDef[] = [
   { id: DEFAULT_FILE_ID_MAP.protocol, path: "protocol.aimd", type: "aimd" },
@@ -550,6 +553,7 @@ const workspaceAdapter: WorkspaceAdapter = {
   },
 }
 
+let syntaxRepairInProgress = false
 const codeEditClient = {
   async runCodeEdit(request: CodeEditRequest): Promise<CodeEditResponse> {
     if (!props.codeEdit) {
@@ -562,6 +566,7 @@ const codeEditClient = {
     }
     const { data, error } = await props.codeEdit({
       ...payload,
+      syntax_repair: syntaxRepairInProgress,
       model: {
         model_type: modelType,
         enable_thinking: model.enable_thinking,
@@ -644,7 +649,7 @@ function summarizeCodeEditResult(result: CodeEditResponse, applicationStatus: st
   return [result.message.trim(), statusSummary, warningSummary].filter(Boolean).join("\n\n")
 }
 
-async function handleEditorSubmit(instruction: string) {
+async function handleEditorSubmit(instruction: string, syntaxRepair = false) {
   if (!props.codeEdit || codeEditLoading.value) {
     return
   }
@@ -677,6 +682,7 @@ async function handleEditorSubmit(instruction: string) {
   )
 
   startLoading()
+  syntaxRepairInProgress = syntaxRepair
   codeEditOriginalContents.value = Object.fromEntries(files.map(file => [file.path, file.content]))
   diffViewModes.value = {}
 
@@ -713,11 +719,21 @@ async function handleEditorSubmit(instruction: string) {
     })
   }
   finally {
+    syntaxRepairInProgress = false
     endLoading()
     await nextTick()
     handleScrollToBottom(true)
   }
 }
+
+watch(() => props.syntaxRepairRequest, async (request) => {
+  if (!request)
+    return
+  emit("syntaxRepairHandled")
+  if (codeEditLoading.value)
+    return
+  await handleEditorSubmit($t("editor.validation.repairInstruction"), true)
+}, { immediate: true, flush: "post" })
 
 function openLatestChangeDetails() {
   const edit = latestAppliedEdit.value

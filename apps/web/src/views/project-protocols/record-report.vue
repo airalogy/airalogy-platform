@@ -653,7 +653,7 @@ async function fetchRecord() {
     }
 
     protocol.value = protocolData
-    recordData.value = convertedData
+    recordData.value = { ...convertedData, quiz: recordRes.data.quiz || {} } as Partial<IRecordData>
   }
   catch (e) {
     if (e instanceof Error) {

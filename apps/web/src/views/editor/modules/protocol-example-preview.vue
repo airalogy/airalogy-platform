@@ -10,7 +10,7 @@
     </template>
   </div>
   <n-alert v-if="error" type="error">{{ error }}</n-alert>
-  <div v-if="example" data-testid="editor-example-form">
+  <div v-if="example" v-protocol-preview-assets="resolveAsset" data-testid="editor-example-form">
     <p>{{ $t("editor.examplePreview.hint", { count: filledCount }) }}</p>
     <p v-if="skipped.length" class="break-words">{{ $t("editor.examplePreview.skipped", { fields: skipped.join(", ") }) }}</p>
     <p v-if="validation" role="status">{{ validation }}</p>
@@ -20,17 +20,19 @@
       @update:model-value="validation = ''"
     />
   </div>
-  <div v-show="!example"><slot /></div>
+  <aimd-recorder v-else-if="active && content.trim()" v-protocol-preview-assets="resolveAsset" :key="content" :content="content" :locale="locale"
+                 :validation-schema="schema" :show-search="false" :request-collector-permission="denyCollector" />
 </template>
 
 <script setup lang="ts">
 import type { AimdProtocolRecordData, AimdRecordValidationSchema } from "@airalogy/aimd-recorder"
+import { vProtocolPreviewAssets } from "@/utils/protocolPreviewAssets"
 import { AimdRecorder } from "@airalogy/aimd-recorder"
 import { createExampleRecord } from "@airalogy/aimd-recorder/record"
 import { parseAndExtract } from "@airalogy/aimd-renderer"
 import { useI18n } from "vue-i18n"
 
-const props = defineProps<{ active: boolean, content: string, schema?: AimdRecordValidationSchema, assigned: string[], modelSource: string, assignerSource: string }>()
+const props = defineProps<{ resolveAsset: (path: string) => Promise<{ url: string } | null>, active: boolean, content: string, schema?: AimdRecordValidationSchema, assigned: string[], modelSource: string, assignerSource: string }>()
 const { t, locale } = useI18n()
 const recorder = ref<InstanceType<typeof AimdRecorder>>()
 const example = ref<AimdProtocolRecordData>()

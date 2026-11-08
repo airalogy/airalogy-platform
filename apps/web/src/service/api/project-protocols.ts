@@ -482,6 +482,7 @@ export async function postNewResearchRecord(
       Record<string, string | number | boolean | undefined>
     >
   > & {
+    quiz?: Record<string, unknown>
     simulated_fields?: string[]
     report?: string
     revision_reason?: string
@@ -499,6 +500,7 @@ export async function postNewResearchRecord(
       check: research_check || {},
       step: research_step || {},
       var: research_variable || {},
+      quiz: payload.quiz,
       simulated_fields: payload.simulated_fields,
       report: "",
     },
@@ -644,6 +646,7 @@ export async function putUpdateResearchRecord(
       Record<string, string | number | boolean | undefined>
     >
   > & {
+    quiz?: Record<string, unknown>
     simulated_fields?: string[]
     report?: string
     revision_reason?: string
@@ -664,6 +667,7 @@ export async function putUpdateResearchRecord(
       check: research_check || {},
       step: research_step || {},
       var: research_variable || {},
+      quiz: payload.quiz,
       simulated_fields: payload.simulated_fields,
       report: "",
       revision_reason: revision_reason || "",

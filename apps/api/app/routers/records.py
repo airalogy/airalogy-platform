@@ -336,10 +336,23 @@ class RecordCreateParams(BaseModel):
     report: str
     revision_reason: str = ""
     expected_version: int | None = None
+    quiz: dict[str, Any] | None = None
     simulated_fields: list[str] | None = Field(default=None, max_length=1024)
 
-    def record_data(self, previous: dict | None = None) -> dict:
+    def record_data(self, previous: dict | None = None, *, protocol_fields: dict | None = None) -> dict:
         data = {"step": self.step, "var": self.var, "check": self.check}
+        quiz = self.quiz if self.quiz is not None else (previous or {}).get("quiz")
+        if quiz:
+            data["quiz"] = quiz
+            if self.quiz is not None and protocol_fields is not None:
+                from airalogy.record.validator import validate_record_quiz_answers
+
+                valid, errors = validate_record_quiz_answers(
+                    {"data": data}, protocol_fields.get("quizzes") or protocol_fields.get("quiz") or [],
+                    require_complete=False,
+                )
+                if not valid:
+                    raise HTTPException(422, detail={"errors": [{"loc": ["quiz"], "msg": msg} for msg in errors]})
         fields = self.simulated_fields
         if fields is None and previous:
             fields = [
@@ -787,7 +800,7 @@ async def create_protocol_record(
     )
 
     number = last_records[0].number + 1 if len(last_records) > 0 else 1
-    data = params.record_data()
+    data = params.record_data(protocol_fields=protocol_version.fields or {})
     # set ignore str to empty string
     for k, v in protocol_version.json_schema["vars"]["properties"].items():
         if v.get("airalogy_type") == "IgnoreStr":
@@ -890,7 +903,7 @@ async def revise_record_transaction(protocol_id, id, params, current_user, db_se
             detail={"message": "validate error", "errors": data["errors"]},
         )
 
-    data = params.record_data(record.data)
+    data = params.record_data(record.data, protocol_fields=protocol_version.fields or {})
     # set ignore str to empty string
     for k, v in protocol_version.json_schema["vars"]["properties"].items():
         if v.get("airalogy_type") == "IgnoreStr":

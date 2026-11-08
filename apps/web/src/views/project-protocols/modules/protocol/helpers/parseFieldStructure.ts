@@ -850,6 +850,7 @@ function handleTableValue(recordValue: any[], schema?: JSONSchemaType<any>) {
 
 function handleBooleanValue(recordValue: { annotation?: string, checked?: boolean | null }) {
   return {
+    ...recordValue,
     annotation: recordValue.annotation || "",
     checked: recordValue.checked ?? null,
   }

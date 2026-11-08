@@ -5267,7 +5267,24 @@
     }
   },
   "editor": {
+    "validation": {
+      "generating": "Generating and checking…",
+      "generatedValid": "Draft generated and passed static checks. Review it before saving.",
+      "generatedRepaired": "Draft generated, repaired once and passed static checks. Review it before saving.",
+      "generatedUnchecked": "Draft retained, but checks have not passed. Review the diagnostics before saving.",
+      "valid": "Static checks passed",
+      "invalid": "Changes required",
+      "unavailable": "Checker unavailable — draft unchanged",
+      "unchecked": "Not checked",
+      "checking": "Checking…",
+      "check": "Check Protocol",
+      "repair": "Ask Aira to repair",
+      "scope": "Checks AIMD structure, references, calculation dependencies, Python and TOML syntax. Full package validation runs when you save; scientific correctness still needs your review.",
+      "saveBlocked": "Fix the reported issues or retry the check before saving. Your local draft is retained.",
+      "repairInstruction": "Please repair the reported syntax errors with minimal changes. Keep the research meaning and field definitions unchanged; show the proposed changes for my review."
+    },
     "loadFailed": "The Protocol editor could not load. Reopen it to try again.",
+    "visualFenceConflict": "Several annotated code blocks changed together. The previous source is open so you can edit their settings safely.",
     "examplePreview": {
       "start": "Test with example data",
       "title": "Example test",

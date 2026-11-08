@@ -105,6 +105,7 @@
     "html2pdf.js": "catalog:",
     "js-yaml": "catalog:",
     "localforage": "catalog:",
+    "mdast-util-from-markdown": "2.0.1",
     "minisearch": "catalog:",
     "monaco-editor": "catalog:",
     "naive-ui": "catalog:",

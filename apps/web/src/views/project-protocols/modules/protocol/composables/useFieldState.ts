@@ -9,7 +9,7 @@ import { useAuthStore } from "@/store/modules/auth"
 import { useProtocolWorkflowStore } from "@/store/modules/workflow"
 import { useRouteQuery } from "@vueuse/router"
 import Big from "big.js"
-import { cloneDeepWith, merge } from "lodash-es"
+import { cloneDeepWith } from "lodash-es"
 import { nanoid } from "nanoid"
 import { computed, reactive, ref, watch } from "vue"
 import { getFieldStructure } from "../helpers/parseFieldStructure"
@@ -63,7 +63,12 @@ export function useFieldState(
     if (!val?.field)
       return
 
-    merge(fieldModel, cloneDeepWith(val.field, (val) => {
+    // Restoring a draft replaces its rows and fields, including removed rows.
+    for (const scope of Object.keys(fieldModel)) {
+      if (!(scope in val.field))
+        delete fieldModel[scope]
+    }
+    Object.assign(fieldModel, cloneDeepWith(val.field, (val) => {
       if (val instanceof Big) {
         return new Big(val)
       }

@@ -1,18 +1,19 @@
-import ast
+import asyncio
+import logging
 import os
 import tempfile
 from pathlib import Path
 from typing import Annotated, Literal
+from uuid import uuid4
 
-from airalogy.markdown import validate_aimd
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.database import DBSession
 from app.libs.masterbrain import (
-    protocol_code_edit,
     protocol_check,
+    protocol_code_edit,
     protocol_debug,
     protocol_generate_aimd,
     protocol_generate_assigner,
@@ -23,12 +24,22 @@ from app.routers.chats.file_processor import trim_content
 from app.routers.chats.utils import check_model_usage
 from app.routers.depends import CurrentUser
 from app.services.model_usage import create_usage_context
+from app.services.protocol_authoring import (
+    MAX_SOURCE_CHARS,
+    SourceFile,
+    SourceValidation,
+    SourceWorkspace,
+    syntax_repair_prompt,
+    validate_edit_result,
+    validate_sources,
+)
 
 router = APIRouter(
     prefix="/editor",
     tags=["editor"],
     # dependencies=[Depends(get_current_user)],
 )
+logger = logging.getLogger(__name__)
 
 MAX_PROTOCOL_INSTRUCTION_CHARS = 20000
 MAX_PROTOCOL_INSTRUCTION_TOKENS = MAX_PROTOCOL_INSTRUCTION_CHARS // 4
@@ -114,29 +125,145 @@ async def _extract_protocol_instruction_text(
     )
 
 
-def check_python_syntax(code: str) -> dict:
-    try:
-        ast.parse(code)
-        return {"result": True}
-    except SyntaxError as e:
-        return {
-            "result": False,
-            "message": str(e),
-            "lineno": e.lineno,
-            "offset": e.offset,
-        }
-
-
 @router.post("/syntax_check")
 async def syntax_check(
+    _: CurrentUser,
     file_type: Annotated[Literal["python", "aimd"], Body(embed=True)],
-    file_content: Annotated[str, Body(embed=True, max_length=1000, min_length=1)],
+    file_content: Annotated[str, Body(embed=True, max_length=MAX_SOURCE_CHARS)],
 ):
-    if file_type == "python":
-        return check_python_syntax(file_content)
-    elif file_type == "aimd":
-        is_valid, errors = validate_aimd(file_content)
-        return {"result": is_valid, "errors": errors}
+    report = await asyncio.to_thread(
+        validate_sources,
+        [
+            SourceFile(
+                path="source.py" if file_type == "python" else "protocol.aimd",
+                content=file_content,
+            )
+        ],
+    )
+    first = report.diagnostics[0] if report.diagnostics else None
+    return {
+        **report.model_dump(),
+        "result": report.status == "valid",
+        "message": first.message if first else "",
+        "lineno": first.line if first else 0,
+        "offset": first.column if first else 0,
+        "errors": [
+            {"message": d.message, "start_line": d.line, "start_col": d.column}
+            for d in report.diagnostics
+        ],
+    }
+
+
+@router.post("/validate_sources")
+async def check_protocol_sources(
+    _: CurrentUser, params: SourceWorkspace
+) -> SourceValidation:
+    return await asyncio.to_thread(validate_sources, params.files)
+
+
+class GeneratedProtocolDraft(BaseModel):
+    content: str
+    original_content: str
+    validation: SourceValidation
+    repair_status: Literal[
+        "not_needed", "applied", "needs_review", "failed", "unavailable"
+    ]
+
+
+@router.post("/protocol_generate_draft")
+async def generate_protocol_draft(
+    db_session: DBSession,
+    current_user: CurrentUser,
+    instruction: Annotated[
+        str, Body(embed=True, min_length=1, max_length=MAX_PROTOCOL_INSTRUCTION_CHARS)
+    ],
+    model: Annotated[ChatModel, Body(embed=True)],
+) -> GeneratedProtocolDraft:
+    await check_model_usage(db_session, current_user, model)
+    chat = Chat(
+        user_id=current_user.id,
+        context={"instruction": instruction},
+        messages=[],
+        type=ChatType.PROTOCOL_GENERATE,
+        model=model.model_dump(),
+        model_type=model.model_type.value,
+    )
+    usage = create_usage_context(
+        feature="editor.protocol_generate_aimd", user_id=current_user.id
+    )
+    content = ""
+    async for chunk in protocol_generate_aimd(chat, usage_context=usage):
+        content += chunk
+        if len(content) > MAX_SOURCE_CHARS:
+            raise HTTPException(
+                413,
+                "Generated Protocol exceeds the source limit. Please request a smaller Protocol.",
+            )
+    original = content
+    files = [SourceFile(path="protocol.aimd", content=content, type="aimd")]
+    report = await asyncio.to_thread(validate_sources, files)
+    repair_status = "not_needed"
+    if report.status == "invalid":
+        # One repair attempt only; retain the generated source on every failure.
+        repair_status = "failed"
+        try:
+            await check_model_usage(db_session, current_user, model)
+            result = await protocol_code_edit(
+                {
+                    "model": model.model_dump(),
+                    "prompt": syntax_repair_prompt(report),
+                    "workspace_id": f"user:{current_user.id}:generated:{uuid4()}",
+                    "files": [file.model_dump() for file in files],
+                    "active_file_path": "protocol.aimd",
+                },
+                usage_context=create_usage_context(
+                    feature="editor.protocol_syntax_repair", user_id=current_user.id
+                ),
+            )
+            result = validate_edit_result(result, files)
+            changes = result.get("changed_files", [])
+            repair_status = "needs_review"
+            if (
+                len(changes) == 1
+                and changes[0]["path"] == "protocol.aimd"
+                and changes[0]["status"] == "modified"
+                and changes[0]["content"].strip()
+                and not result.get("warnings")
+                and result.get("risk", {}).get("level") == "safe"
+                and result.get("risk", {}).get("recommended_action") == "auto_apply"
+            ):
+                candidate = SourceFile(
+                    path="protocol.aimd", content=changes[0]["content"], type="aimd"
+                )
+                checked = await asyncio.to_thread(validate_sources, [candidate])
+                if checked.status == "valid":
+                    content, report, repair_status = (
+                        candidate.content,
+                        checked,
+                        "applied",
+                    )
+        except Exception:
+            # Quota, model or repair-runtime failures must not discard the draft.
+            logger.exception("Generated Protocol syntax repair failed; original retained")
+            repair_status = "failed"
+    elif report.status == "unavailable":
+        repair_status = "unavailable"
+    chat.messages.append({"role": "assistant", "content": original})
+    if content != original:
+        chat.messages.append({"role": "assistant", "content": content})
+    chat.context = {
+        **chat.context,
+        "validation": report.model_dump(),
+        "repair_status": repair_status,
+    }
+    db_session.add(chat)
+    await db_session.commit()
+    return GeneratedProtocolDraft(
+        content=content,
+        original_content=original,
+        validation=report,
+        repair_status=repair_status,
+    )
 
 
 @router.post("/protocol_instruction_extract")
@@ -174,9 +301,7 @@ async def generate_protocol_aimd(
 
     async def capture_and_forward_stream():
         full_response = ""
-        async for chunk in protocol_generate_aimd(
-            chat, usage_context=usage_context
-        ):
+        async for chunk in protocol_generate_aimd(chat, usage_context=usage_context):
             full_response += chunk
             yield chunk
 
@@ -214,9 +339,7 @@ async def generate_protocol_model(
 
     async def capture_and_forward_stream():
         full_response = ""
-        async for chunk in protocol_generate_model(
-            chat, usage_context=usage_context
-        ):
+        async for chunk in protocol_generate_model(chat, usage_context=usage_context):
             full_response += chunk
             yield chunk
 
@@ -367,12 +490,6 @@ async def debug_protocol_content(
     return response
 
 
-class CodeEditWorkspaceFile(BaseModel):
-    path: str
-    content: str
-    type: Literal["aimd", "py", "toml", "other"] = "other"
-
-
 class CodeEditSelection(BaseModel):
     text: str
     start_offset: int
@@ -387,11 +504,18 @@ class CodeEditHistoryMessage(BaseModel):
 class CodeEditParams(BaseModel):
     prompt: str = Field(min_length=1, max_length=20000)
     workspace_id: str | None = Field(default=None, max_length=240)
-    files: list[CodeEditWorkspaceFile] = Field(default_factory=list)
+    files: list[SourceFile] = Field(default_factory=list, max_length=50)
     active_file_path: str | None = None
     selection: CodeEditSelection | None = None
     chat_history: list[CodeEditHistoryMessage] = Field(default_factory=list)
     model: ChatModel
+    syntax_repair: bool = False
+
+    @model_validator(mode="after")
+    def validate_workspace(self):
+        if self.files:
+            SourceWorkspace(files=self.files)
+        return self
 
 
 @router.post("/code_edit")
@@ -401,8 +525,14 @@ async def code_edit_protocol(
     params: CodeEditParams,
 ):
     await check_model_usage(db_session, current_user, params.model)
-
-    payload = params.model_dump()
+    payload = params.model_dump(exclude={"syntax_repair"})
+    if params.syntax_repair:
+        report = await asyncio.to_thread(validate_sources, params.files)
+        if report.status != "invalid":
+            raise HTTPException(
+                409, "Check the current source before requesting a syntax repair."
+            )
+        payload["prompt"] = syntax_repair_prompt(report)
     workspace_suffix = params.workspace_id or "default"
     payload["workspace_id"] = f"user:{current_user.id}:editor:{workspace_suffix}"
 
@@ -410,4 +540,7 @@ async def code_edit_protocol(
         feature="editor.code_edit",
         user_id=current_user.id,
     )
-    return await protocol_code_edit(payload, usage_context=usage_context)
+    result = await protocol_code_edit(payload, usage_context=usage_context)
+    return await asyncio.to_thread(
+        validate_edit_result, result, params.files, require_review=params.syntax_repair
+    )

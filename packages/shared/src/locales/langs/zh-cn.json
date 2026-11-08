@@ -1506,7 +1506,11 @@
         "adoptedUnchanged": "采用的 AI 方法配置未被修改，但执行仍经过用户确认。",
         "inheritedHint": "本次复用了历史 AI 草稿，不代表模型重新审阅过这些数据。如需针对本次结果的解释，请单独发起报告解释。",
         "invalidRequest": "当前问题或数据范围无法用于该 AI 请求。请缩小范围、补充说明，或继续手工配置。",
-        "states": { "generating": "生成中", "generated": "已生成", "failed": "未生成" },
+        "states": {
+          "generating": "生成中",
+          "generated": "已生成",
+          "failed": "未生成"
+        },
         "errors": {
           "model_timeout": "模型响应超时，没有执行分析。可以主动重新生成建议，或继续手工配置。",
           "invalid_proposal": "模型建议未通过校验，未被采用。请澄清问题，或手工配置分析方法。",
@@ -1534,7 +1538,11 @@
         "groupNumber": "#{number}",
         "groupKey": "分组编号与完整名称",
         "missingMean": "无可计算的均值",
-        "types": { "bar": "柱状图 — 分组均值", "line": "折线图 — 分组均值", "none": "仅统计表" }
+        "types": {
+          "bar": "柱状图 — 分组均值",
+          "line": "折线图 — 分组均值",
+          "none": "仅统计表"
+        }
       },
       "fieldFilters": "附加字段筛选（{count}）",
       "field": "字段",
@@ -5259,7 +5267,24 @@
     }
   },
   "editor": {
+    "validation": {
+      "generating": "正在生成并校验…",
+      "generatedValid": "草稿已生成并通过静态检查，请审阅后保存。",
+      "generatedRepaired": "草稿已生成，完成一次修复并通过静态检查，请审阅后保存。",
+      "generatedUnchecked": "草稿已保留，但尚未通过校验。请查看问题后再保存。",
+      "valid": "静态检查通过",
+      "invalid": "有问题需要修改",
+      "unavailable": "校验暂不可用，草稿保持不变",
+      "unchecked": "尚未校验",
+      "checking": "正在校验…",
+      "check": "检查协议",
+      "repair": "让 Aira 修复",
+      "scope": "检查 AIMD 结构、引用、计算依赖及 Python、TOML 语法。正式保存时仍会校验完整协议包；科研内容需由你审阅。",
+      "saveBlocked": "请修正问题或重新检查后再保存。本地草稿已保留。",
+      "repairInstruction": "请最小化修复当前协议中报告的语法错误，保留科研含义和字段定义，先展示修改供我确认。"
+    },
     "loadFailed": "Protocol 编辑器未能加载，请重新打开。",
+    "visualFenceConflict": "多个带参数的代码块同时发生变化。已打开上一次的源码，请在源码中确认这些改动。",
     "examplePreview": {
       "start": "用示例数据测试",
       "title": "示例测试",

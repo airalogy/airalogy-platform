@@ -157,3 +157,16 @@ def test_record_retains_only_current_simulated_field_origins():
     with pytest.raises(HTTPException) as invalid:
         initial.model_copy(update={"simulated_fields": ["missing"]}).record_data()
     assert invalid.value.status_code == 422
+
+
+def test_native_quiz_answers_survive_revision_by_older_clients():
+    from app.routers.records import RecordCreateParams
+
+    new = RecordCreateParams(step={}, check={}, var={}, report="", quiz={"note": "example"})
+    with pytest.raises(HTTPException) as invalid:
+        new.record_data(protocol_fields={})
+    assert invalid.value.status_code == 422
+    previous = new.record_data()
+    assert previous["quiz"] == {"note": "example"}
+    assert new.model_copy(update={"quiz": None}).record_data(previous)["quiz"] == previous["quiz"]
+    assert "quiz" not in new.model_copy(update={"quiz": {}}).record_data(previous)

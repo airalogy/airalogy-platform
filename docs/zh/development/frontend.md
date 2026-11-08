@@ -63,6 +63,8 @@ platform/
 
 列选择交互由 `@airalogy/aimd-renderer` 提供，包括原生“显示全部列”/“恢复默认列”菜单、默认列策略和中英文文案。Platform 绑定现有字段/metadata 选择事件，按用户与 Protocol 保存偏好，不在页面重复遍历 AIMD 字段。
 
-通过 `pnpm-workspace.yaml` 的默认版本目录使用正式发布的 AIMD 包：Core 2.16.0、Editor 1.12.0、Renderer 2.13.0。所有直接引用处声明 `catalog:`，工作区版本目录是唯一版本来源，锁文件记录解析结果与完整性校验。原 Renderer 2.12.0 补丁已移除，不需要本地源码覆盖、相邻仓库或升级 Python `airalogy`。以后升级时修改版本目录、重新生成锁文件，并针对实际发布包重跑浏览器测试与生产构建。`pnpm aimd:dependencies:test` 验证准确版本、直接依赖统一及不存在 Renderer 补丁，也会随 `pnpm type-check` 执行。
+通过 `pnpm-workspace.yaml` 的默认版本目录使用正式发布的 AIMD 包：Core、Editor、Recorder 和 Renderer。所有直接引用处声明 `catalog:`，工作区版本目录是唯一版本来源，锁文件记录解析结果与完整性校验。原 Renderer 2.12.0 补丁已移除，不需要本地源码覆盖、相邻仓库或升级 Python `airalogy`。以后升级时修改版本目录、重新生成锁文件，并针对实际发布包重跑浏览器测试与生产构建。`pnpm aimd:dependencies:test` 验证准确版本、直接依赖统一及不存在 Renderer 补丁，也会随 `pnpm type-check` 执行。
 
 执行 `pnpm e2e record-export.spec.ts record-columns.spec.ts` 验证中英文响应式导出弹窗、实际导出下载、原生列操作、隐藏提交信息恢复、键盘操作、宽表滚动和刷新后的偏好。升级 Core 或 Editor 时还应加入 `first-record.spec.ts` 和 `schema-governance.spec.ts`，验证 Protocol 创建、Record 提交/修订与历史版本证据。列测试仅把展示用 Protocol 列模型扩展为合成字段，鉴权和 Record 读取仍走真实接口；另用 `AI_ENABLED=false` 重复验证。单次运行截图与日志不提交到 Git。
+
+Recorder 1.27.1 已通过公开样式入口包含编译后的 Vue 组件 CSS。Platform 在 catalog 和锁文件中锁定这个正式版本，不再需要 Recorder 包补丁。应用入口继续统一导入 `@airalogy/aimd-recorder/styles`，不要在 Platform 重写 SDK 工具栏样式。更新 Recorder 后，重跑 `research-documents.spec.ts` 和生产构建，检查正式包在桌面及窄屏下的样式。

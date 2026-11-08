@@ -97,7 +97,7 @@
               <icon-tabler-sparkles />
             </n-icon>
           </template>
-          {{ $t("editor.protocolGenerator.generate") }}
+          {{ isGenerating ? $t("editor.validation.generating") : $t("editor.protocolGenerator.generate") }}
         </n-button>
       </div>
     </div>
@@ -130,7 +130,7 @@ interface IProps {
   generateAimd?: (
     payload: { instruction: string, model: ChatModelConfig },
     requestId?: string,
-  ) => Promise<{ data: string | null, error: any }>
+  ) => Promise<{ data: string | null, error: any, validation?: { status: string }, repairStatus?: string }>
   generateModel?: (
     payload: { protocol_aimd: string, model: ChatModelConfig },
     requestId?: string,
@@ -178,8 +178,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const importedSources = ref<ImportedSource[]>([])
 const placeholderText = computed(() => $t("editor.protocolGenerator.placeholder"))
 
-const generatedAimd = ref<string | null>(null)
-const aimdGenerated = computed(() => generatedAimd.value !== null)
+const aimdGenerated = ref(false)
 const hasExistingAimd = computed(() => Boolean(props.currentAimdContent?.trim()))
 const isBusy = computed(() => isGenerating.value || isExtractingFile.value)
 
@@ -332,7 +331,7 @@ async function handleGenerateProtocol() {
   try {
     isGenerating.value = true
 
-    const { data, error } = await props.generateAimd({
+    const { data, error, validation, repairStatus } = await props.generateAimd({
       instruction: instruction.value,
       model: getChatModelConfig(),
     })
@@ -341,11 +340,16 @@ async function handleGenerateProtocol() {
       throw new Error(error?.message || $t("editor.protocolGenerator.generateFailed"))
     }
 
-    generatedAimd.value = data
+    aimdGenerated.value = validation?.status === "valid"
     if (props.onSaveFile) {
       await props.onSaveFile(data, "protocol.aimd", "aimd")
     }
-    message.success($t("editor.protocolGenerator.generated"))
+    if (validation?.status === "valid") {
+      message.success($t(repairStatus === "applied" ? "editor.validation.generatedRepaired" : "editor.validation.generatedValid"))
+    }
+    else {
+      message.warning($t("editor.validation.generatedUnchecked"))
+    }
   }
   catch (error: any) {
     message.error(error.message || $t("editor.protocolGenerator.generateFailed"))

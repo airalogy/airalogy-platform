@@ -63,10 +63,21 @@
           </div>
         </div>
 
-        <n-collapse
-          v-model:expanded-names="expandedNamesRef" display-directive="show"
-          class="px-4"
-          :class="{ hidden: isCollapsed }"
+        <div v-if="!props.readonly" class="record-fields-form px-4" @input.capture="markInput" @change.capture="markInput">
+          <aimd-recorder v-if="drawerContent" :content="drawerContent" :model-value="nativeRecord"
+                         :current-user-name="authStore.userInfo.name" :locale="locale" :show-search="false"
+                         field-display="compact" :field-meta="nativeMeta" :field-state="nativeState" :validation-schema="nativeSchema"
+                         :resource-resolvers="resourceResolvers" :field-adapters="hostAdapters" :wrap-field="wrapDrawerField"
+                         :upload-file="uploadNativeFile" :resolve-file-info="resolveNativeFile"
+                         @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
+                         @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })" />
+          <n-button v-for="field in outlineFields" :key="field.key" text class="block py-1"
+                    @click="focusNativeField(field.key)">{{ field.label }}</n-button>
+        </div>
+        <n-collapse v-else
+                    v-model:expanded-names="expandedNamesRef" display-directive="show"
+                    class="px-4"
+                    :class="{ hidden: isCollapsed }"
         >
           <n-form
             ref="formRef" class="record-fields-form h-full pb-3" :rules="validationRules" :model="fieldModel"
@@ -175,23 +186,27 @@
         :rules="props.readonly ? undefined : validationRules"
         :model="previewValue"
       >
-        <aimd-markdown-preview
-          ref="previewRef"
-          :content="templateRef"
-          :mode="previewMode"
-          :value="previewValue"
-          class="record-inline-content"
-          :render-options="previewAimdRenderOptions"
-          :readonly-record-data="readonlyRecordData"
-          :mermaid-component="MermaidBlock"
-          :resolve-url="resolvePreviewFile"
-          body-class="markdown-body"
-          @render:result="handlePreviewRendered"
+        <aimd-markdown-preview v-if="props.readonly"
+                               ref="previewRef" :content="templateRef" mode="report" :readonly-record-data="readonlyRecordData"
+                               class="record-inline-content" :mermaid-component="MermaidBlock" :resolve-url="resolvePreviewFile"
+                               body-class="markdown-body" @render:result="handlePreviewRendered"
         />
-        <protocol-bubble-menu
-          v-if="instanceStore.aiEnabled && previewRef?.rootElement"
-          :container-ref="previewRef.rootElement"
-        />
+        <div v-else ref="recorderRoot" v-protocol-preview-assets="resolvePreviewFile" @drop.capture="captureTableDrop">
+          <aimd-recorder
+            ref="nativeRecorder" class="record-inline-content" :content="hostedContent" :model-value="nativeRecord"
+            :locale="locale" :current-user-name="authStore.userInfo.name"
+            :validation-schema="nativeSchema" :field-meta="nativeMeta" :field-state="nativeState"
+            :field-adapters="hostAdapters" :wrap-field="wrapNativeField" :resource-resolvers="resourceResolvers"
+            :upload-file="uploadNativeFile" :resolve-file-info="resolveNativeFile"
+            @fields-change="handleNativeFields" @update:model-value="handleNativeSnapshot"
+            @table-add-row="({ tableName }) => writeNativeTable(tableName)"
+            @table-remove-row="({ tableName }) => writeNativeTable(tableName)"
+            @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
+            @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })"
+          />
+        </div>
+        <protocol-bubble-menu v-if="instanceStore.aiEnabled && (recorderRoot || previewRef?.rootElement)"
+                              :container-ref="(recorderRoot || previewRef?.rootElement)!" />
       </n-form>
     </template>
   </add-record-layout>
@@ -208,7 +223,7 @@
 <script setup lang="ts">
 import type { IEmits as AIMDEmits, IAIMDWrapperProps } from "@/components/custom/aimd/types/aimd-types"
 import type { AimdTemplateEnv, IRecordData, IRecordDataKey, ScopeFieldKey } from "@airalogy/aimd-core/types"
-import type { AimdResourceResolverMap } from "@airalogy/aimd-recorder"
+import type { AimdFieldMeta, AimdFileResolveContext, AimdProtocolRecordData, AimdRecorderFieldAdapters, AimdResourceResolverMap, FieldEventPayload } from "@airalogy/aimd-recorder"
 import type { ContextItemWithId } from "@airalogy/components/chat/providers/types"
 import type { CurrentRecorderRecordFieldSummary } from "@airalogy/components/chat/providers/useChatProvider"
 
@@ -219,15 +234,15 @@ import type { ProtocolModels } from "@airalogy/shared"
 import type { FormValidate } from "naive-ui/es/form/src/interface"
 import type { TagColor } from "naive-ui/es/tag/src/common-props"
 
+import type { VNode } from "vue"
 import type { IFieldChangePayload } from "./types/types"
 import ChatComponent from "@/components/chat/index.vue"
 import AddRecordLayout from "@/components/custom/add-record-layout.vue"
-import { createPlatformAimdFormRenderers } from "@/components/custom/aimd/composables/createPlatformAimdFormRenderers"
+import AIMDItem from "@/components/custom/aimd/components/aimd-item.vue"
 import { useAIMDProvide } from "@/components/custom/aimd/composables/useAIMDHelpers"
 import { platformResourceResolverKey } from "@/components/custom/aimd/resourceResolver"
 import { useNaiveForm } from "@/composables"
-
-import { getCachedAttachment } from "@/service/api/attachments"
+import { getCachedAttachment, postAddAttachments } from "@/service/api/attachments"
 import {
   fetchResource,
   fetchResourceAvailability,
@@ -237,11 +252,18 @@ import {
 } from "@/service/api/resources"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
+
 import { useInstanceStore } from "@/store/modules/instance"
 import { themeSettings } from "@/theme/settings"
 import { protocolFileEventOwnerKey, syncPreviewFileEvent } from "@/utils/aimd-file-events"
+import { vProtocolPreviewAssets } from "@/utils/protocolPreviewAssets"
+import { hostedRecorderContent, recorderVariableList } from "@/utils/recorderMarkdown"
 import { resolveProtocolFile as resolveProtocolFileUtil } from "@/utils/resolveProtocolFile"
 import { bubbleMenuEventKey, fieldEventKey } from "@/utils/template/eventKey"
+import { getAimdFileKindFromType } from "@airalogy/aimd-core"
+import { toTemplateEnv } from "@airalogy/aimd-core/utils"
+import { AimdRecorder } from "@airalogy/aimd-recorder"
+import { parseAndExtract } from "@airalogy/aimd-renderer"
 import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
 import { useChatProvider } from "@airalogy/components/chat/providers/useChatProvider"
 import MermaidBlock from "@airalogy/components/markdown-editor/modules/mermaid/mermaid-block.vue"
@@ -251,10 +273,11 @@ import { $t } from "@airalogy/shared/locales"
 import { scopeKeyRecord } from "@airalogy/shared/utils/schema"
 import { useEventBus } from "@vueuse/core"
 import Big from "big.js"
-import { cloneDeepWith as _cloneDeepWith, get as _get } from "lodash-es"
+import { cloneDeepWith as _cloneDeepWith, get as _get, isEqual } from "lodash-es"
 import { nanoid } from "nanoid"
 import { useI18n } from "vue-i18n"
 import { useProtocolInfoStore } from "../../hooks/useProtocolInfoStore"
+import { processFieldValue } from "../../utils"
 import AssignerProgressModal from "./components/AssignerProgressModal.vue"
 import FieldInputBar from "./components/field-input-bar.vue"
 import RecorderFieldReview from "./components/recorder-field-review.vue"
@@ -307,6 +330,7 @@ function handleToggleDetail() {
 
 interface Emits {
   (e: "setSimulated", field: string, value: boolean): void
+  (e: "quizChange", field: string, value: unknown): void
   (e: "reviewPending", active: boolean): void
   (e: "update:field", payload: { scope: IRecordDataKey, prop: string, value: any, info?: any }): void
   (e: "update:splitSize", payload: string | number): void
@@ -569,10 +593,13 @@ interface AimdMarkdownPreviewExpose {
   rootElement: HTMLElement | null
 }
 
+const nativeRecorder = ref<InstanceType<typeof AimdRecorder>>()
+const recorderRoot = ref<HTMLElement>()
 const previewRef = ref<AimdMarkdownPreviewExpose>()
 const lastParsedAimd = ref("")
 const templateRef = ref<string>(props.protocol?.aimd || "")
-const { formRef, validate } = useNaiveForm()
+const nativeEnv = computed(() => toTemplateEnv(parseAndExtract(templateRef.value)))
+const { formRef } = useNaiveForm()
 
 const role = ref<1 | 2>(1)
 const couldChangeRole = ref<boolean>(false)
@@ -581,25 +608,6 @@ provide("chat-role", { role, couldChangeRole })
 
 // Ref to store AIMD form item refs (will be assigned later after useAIMDProvide)
 let aimdFormItemRefStore: Record<string, { value: any }> = {}
-
-const handleAssignerValidate: FormValidate = async (callback, shouldRuleBeApplied) => {
-  // Validate AIMD form items
-  if (aimdFormItemRefStore && Object.keys(aimdFormItemRefStore).length > 0) {
-    for (const key in aimdFormItemRefStore) {
-      const formItem = aimdFormItemRefStore[key]?.value
-      if (formItem && typeof formItem.validate === "function") {
-        try {
-          await formItem.validate()
-        }
-        catch (e) {
-          // Continue validating other fields
-        }
-      }
-    }
-  }
-
-  return await validate(callback, shouldRuleBeApplied)
-}
 
 function restoreValidation() {
   // Restore validation for AIMD form items
@@ -677,6 +685,21 @@ const {
   locale,
   schema: () => props.protocol?.json_schema as Record<string, unknown> | undefined,
 })
+
+const nativeSections = { var: "research_variable", var_table: "research_variable", step: "research_step", check: "research_check", quiz: "quiz" } as const
+
+// The execution queue asks for validation of specific dependencies. It must
+// finish even on mobile, where the field drawer may never have been mounted.
+async function handleAssignerValidate(...[callback, shouldApply]: Parameters<FormValidate>) {
+  const errors = validateAimdRecord().issues.flatMap((issue) => {
+    const [section, name] = issue.fieldKey.split(":")
+    const field = `${nativeSections[section as keyof typeof nativeSections]}.${name}.value`
+    return !shouldApply || shouldApply({ key: field }) ? [[{ field, message: issue.message }]] : []
+  })
+  const result = { warnings: undefined }
+  callback?.(errors.length ? errors : undefined, result)
+  return result
+}
 
 const requiredCompletion = computed(() => {
   let filled = 0
@@ -1086,7 +1109,7 @@ const { begin: beginRecorderTurn, receipt, showPreviewLink, pending, edits, acce
 })
 watch(() => pending.value.size > 0 || busy.value, value => emit("reviewPending", value), { flush: "sync", immediate: true })
 onScopeDispose(() => emit("reviewPending", false))
-const previewMode = computed(() => props.readonly ? "report" : "edit")
+
 const previewValue = computed(() => props.readonly ? undefined : fieldModel as any)
 const readonlyRecordData = computed(() => {
   if (!props.readonly)
@@ -1165,53 +1188,24 @@ async function wrappedValidate() {
     throw new RecordCalculationError($t("page.protocol.calculationFailed"), failedAssignment[0])
   }
 
-  const aimdValidation = validateAimdRecord()
-  let leftFormError: Error | null = null
-  let rightFormError: Error | null = null
-
-  // Validate form fields on the left side
-  try {
-    await validate()
-  }
-  catch (e) {
-    leftFormError = e as Error
-  }
-
-  // Validate AIMD fields on the right side
-  // aimdFormItemRefStore is a Record<string, { value: FormItemInst | null }>
-  if (aimdFormItemRefStore && Object.keys(aimdFormItemRefStore).length > 0) {
-    const validationPromises: Promise<any>[] = []
-
-    for (const key in aimdFormItemRefStore) {
-      const formItem = aimdFormItemRefStore[key]?.value
-      if (formItem && typeof formItem.validate === "function") {
-        validationPromises.push(
-          formItem.validate().catch((e: Error) => {
-            if (!rightFormError) {
-              rightFormError = e
-            }
-            throw e
-          }),
-        )
-      }
-    }
-
-    try {
-      await Promise.all(validationPromises)
-    }
-    catch (e) {
-      // Errors are already captured in rightFormError
-    }
-  }
-
-  // If there are any validation errors, throw the first error to maintain original behavior
-  if (!aimdValidation.valid || leftFormError || rightFormError) {
-    await focusFirstInvalidField()
-    throw leftFormError || rightFormError || new Error(aimdValidation.issues[0]?.message || "Invalid AIMD record")
+  const result = await nativeRecorder.value?.validate() ?? validateAimdRecord()
+  if (!result.valid) {
+    throw result.issues.map(issue => ({
+      loc: [issue.fieldKey.split(":")[1] || issue.section],
+      msg: issue.message,
+      fieldKey: issue.fieldKey,
+    }))
   }
 }
 
 async function focusFirstInvalidField(field?: string) {
+  if (!props.readonly && nativeRecorder.value) {
+    const key = field && (field.includes(":") ? field : `var:${field}`)
+    if (key && await focusNativeField(key))
+      return
+    if (!key && nativeRecorder.value.focusFirstInvalidField())
+      return
+  }
   selectedTab.value = "form-fields"
   expandedNamesRef.value = [...scopeList.value]
   if (isCollapsed.value) {
@@ -1346,7 +1340,7 @@ const aimdProps = computed((): IAIMDWrapperProps => ({
   record: fieldRecordDefault.value,
   propList: fieldPropList.value,
   scopeList: scopeList.value,
-  typed: previewRef.value?.env?.typed as any,
+  typed: nativeEnv.value.typed as any,
   refRecord: refRecord.value,
   tableRecord: tableRecord.value,
   varScopeRecord: varScopeRecord.value as any,
@@ -1394,45 +1388,164 @@ async function handlePreviewRendered() {
   }
 }
 
-// Create AIMD renderers for unified system
-// Map short scope codes to full scope names
-const scopeMap: Record<string, string> = {
-  rv: "research_variable",
-  rs: "research_step",
-  rc: "research_check",
-  rt: "research_variable", // var_table uses research_variable scope
+const hostedContent = computed(() => hostedRecorderContent(templateRef.value))
+function handleNativeFields() {
+  handleParseField(nativeEnv.value)
+  setDomMounted()
 }
 
-function getNodeProps(node: { id: string, scope: string, type?: string }) {
-  const { id, scope, type } = node
-  // Map short scope to full scope name
-  const fullScope = scopeMap[scope] || scope
-
-  if (scope === "var_table" || scope === "rt") {
-    return variableList.value.find(it => it.scope === "research_variable" && it.prop === id) || null
-  }
-  return variableList.value.find(it => it.scope === fullScope && it.prop === id && (!type || it.type === type)) || null
+function nativeValue(value: any): any {
+  if (Array.isArray(value))
+    return value.map(row => row && typeof row === "object" ? Object.fromEntries(Object.entries(row).map(([key, cell]) => [key, nativeValue(cell)])) : row)
+  if (value && typeof value === "object" && ("displayedValue" in value || "formattedValue" in value))
+    return processFieldValue(value)
+  return value
 }
-
-const aimdRenderers = createPlatformAimdFormRenderers({
-  getTokenProps: getNodeProps,
-  renderFieldHint: (field) => {
-    const suggestion = pending.value.get(field)
-    const change = suggestion || edits.value.get(field)
-    if (!change)
-      return null
-    return h(RecorderFieldReview, {
-      change,
-      pending: Boolean(suggestion),
-      busy: busy.value,
-      onAccept: accept,
-      onDismiss: dismiss,
-      onUndo: undo,
-    })
-  },
+const nativeRecord = computed<AimdProtocolRecordData>(() => ({
+  var: Object.fromEntries(Object.entries(resourceRecord.value.var).map(([id, value]) => [id, nativeValue(value)])),
+  step: { ...props.recordData?.research_step, ...resourceRecord.value.step },
+  check: { ...props.recordData?.research_check, ...resourceRecord.value.check },
+  quiz: props.recordData?.quiz ?? {},
+}))
+const nativeSchema = computed(() => props.protocol?.json_schema ? { ...props.protocol.json_schema } : undefined)
+const tableNames = computed(() => new Set(nativeEnv.value.tables?.map(([id]) => id)))
+const drawerContent = computed(() => recorderVariableList(templateRef.value, Object.keys(fieldRecordDefault.value?.field.research_variable || {})
+  .filter(id => id !== "__SCOPE__" && !tableNames.value.has(id) && !fieldRecordDefault.value?.field.research_variable?.[id]?.originalName)))
+const outlineFields = computed(() => {
+  const fields = nativeEnv.value.fields
+  return [
+    ...(fields?.var_table || []).map(table => ({ key: `var_table:${table.id}`, label: table.id })),
+    ...(["step", "check"] as const).flatMap(section => (fields?.[section] || []).map(id => ({ key: `${section}:${id}`, label: id }))),
+    ...(fields?.quiz || []).map(quiz => ({ key: `quiz:${quiz.id}`, label: quiz.id })),
+  ]
 })
-const aimdEditRenderOptions = { aimdRenderers }
-const previewAimdRenderOptions = computed(() => props.readonly ? undefined : aimdEditRenderOptions)
+async function focusNativeField(key: string) {
+  if (window.matchMedia("(max-width: 767px)").matches)
+    isCollapsed.value = true
+  selectedTab.value = "form-fields"
+  await nextTick()
+  const root = recorderRoot.value
+  const target = root?.querySelector<HTMLElement>(`[data-rec-focus-key="${CSS.escape(key)}"]`)
+    || root?.querySelector<HTMLElement>(`[data-aimd-recorder-field="${CSS.escape(key)}"] input, [data-aimd-recorder-field="${CSS.escape(key)}"] button`)
+  target?.scrollIntoView({ block: "center" })
+  target?.focus({ preventScroll: true })
+  return !!target
+}
+const nativeMeta = computed(() => {
+  const meta: Record<string, AimdFieldMeta> = {}
+  for (const [id, field] of Object.entries(fieldRecordDefault.value?.field.research_variable || {})) {
+    if (id === "__SCOPE__")
+      continue
+    const schema = fieldRecordDefault.value?.rules?.research_variable?.[id]?.ajv?.schema
+    meta[`var:${id}`] = {
+      title: field.title,
+      description: field.description,
+      disabled: field.disabled,
+      assigner: field.assigner,
+      ...(schema?.type === "integer" || schema?.type === "number" ? { inputType: "number" } : {}),
+      ...(schema?.type === "boolean" ? { inputType: "boolean" } : {}),
+      ...(schema?.format && ["date", "date-time", "time"].includes(schema.format) ? { inputType: schema.format.replace("date-time", "datetime") } : {}),
+      ...(Array.isArray(schema?.enum) ? { enumOptions: schema.enum.map(value => ({ label: String(value), value })) } : {}),
+    }
+  }
+  return meta
+})
+function wrapDrawerField(key: string, type: string, vnode: VNode) {
+  const id = key.slice(key.indexOf(":") + 1)
+  return h("div", { "id": `form-${nativeSections[type as keyof typeof nativeSections]}-${id}`, "data-recorder-field": id, "class": "mb-2" }, [
+    h("span", { class: "block text-sm" }, nativeMeta.value[key]?.title || id),
+    vnode,
+  ])
+}
+const nativeState = computed(() => Object.fromEntries(Object.keys(assignerLoadingRecord.value).concat(Object.keys(assignerErrorRecord.value)).map(id =>
+  [`var:${id}`, { loading: !!assignerLoadingRecord.value[id], error: assignerErrorRecord.value[id] ? String(assignerErrorRecord.value[id]) : undefined }])))
+function handleNativeAssigner({ fieldKey, section }: FieldEventPayload) {
+  const scope = nativeSections[section]
+  const field = _get(fieldModel, [scope, fieldKey])
+  if (field?.assigner)
+    localFieldEventBus.emit("assigner-request", { scope, prop: fieldKey, assigner: field.assigner })
+}
+function fieldHint({ field }: { field: string }) {
+  const suggestion = pending.value.get(field)
+  const change = suggestion || edits.value.get(field)
+  return change && h(RecorderFieldReview, { change, pending: !!suggestion, busy: busy.value, onAccept: accept, onDismiss: dismiss, onUndo: undo })
+}
+function wrapNativeField(key: string, type: string, vnode: VNode) {
+  if (type !== "var")
+    return vnode
+  const field = key.slice(4)
+  return h("span", { "data-recorder-field": field }, [vnode, h(fieldHint, { field })])
+}
+
+// Keep the Platform attachment card (authorized download, rename and versioned file IDs).
+const hostAdapters: AimdRecorderFieldAdapters = {
+  var: ({ node }) => {
+    const item = variableList.value.find(it => it.scope === "research_variable" && it.prop === node.id)
+    if (!item || !/^(?:file(?:id.*)?|image|recordid)$/i.test(String(node.definition?.type || item.type)))
+      return null
+    return h(AIMDItem, item)
+  },
+}
+async function uploadNativeFile(file: File) {
+  const { data, error } = await postAddAttachments(file, props.protocolId)
+  if (error || !data?.airalogy_file_id)
+    throw error || new Error($t("page.protocol.addRecord.uploadFailed"))
+  return data.airalogy_file_id
+}
+async function resolveNativeFile(src: string, context: AimdFileResolveContext) {
+  // The SDK can invoke this resolver for any string value. Only declared file
+  // fields may use the attachment API; ordinary observations are not paths.
+  if (!getAimdFileKindFromType(context.type, context.node.definition?.kwargs, context.fieldMeta))
+    return null
+  if (src.startsWith("airalogy.id.file.")) {
+    const file = await getCachedAttachment(src)
+    return file ? { name: file.filename, url: file.url } : null
+  }
+  return resolvePreviewFile(src)
+}
+
+let lastSnapshot: AimdProtocolRecordData | undefined
+let droppingTable: string | undefined
+function captureTableDrop(event: DragEvent) {
+  const field = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-aimd-recorder-field]")?.dataset.aimdRecorderField : undefined
+  if (field?.startsWith("var_table:")) {
+    droppingTable = field.slice("var_table:".length)
+    queueMicrotask(() => {
+      droppingTable = undefined
+    })
+  }
+}
+function handleNativeSnapshot(record: AimdProtocolRecordData) {
+  lastSnapshot = record
+  if (droppingTable)
+    writeNativeTable(droppingTable)
+}
+function writeNativeTable(id: string) {
+  const rows = lastSnapshot?.var[id]
+  if (Array.isArray(rows) && !isEqual(nativeRecord.value.var[id], rows))
+    void handleFieldChange({ prop: id, scope: "research_variable", value: rows })
+}
+function handleNativeField({ section, fieldKey, value, rowIndex, column }: FieldEventPayload) {
+  if (props.readonly)
+    return
+  if (section === "var_table" && rowIndex !== undefined && column) {
+    const group = fieldKey.split(":")[0]
+    void handleFieldChange({ scope: "var_table", prop: column, value: value as any, info: { group, row: rowIndex } })
+    return
+  }
+  const id = fieldKey.split(":")[0]
+  const scope = nativeSections[section]
+  if (section === "quiz") {
+    emit("quizChange", id, value)
+    return
+  }
+  const field = _get(fieldModel, [scope, id])
+  if (section === "step" || section === "check")
+    value = lastSnapshot?.[section][id] ?? value
+  else if (typeof value === "number" && ["number", "float", "integer"].includes(field?.type))
+    value = { type: field.type, value, displayedValue: String(value) }
+  void handleFieldChange({ scope, prop: id, value: value as any })
+}
 
 const authStore = useAuthStore()
 

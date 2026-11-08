@@ -302,7 +302,7 @@ export interface RecordInfo {
   // protocol?: Protocol.ProtocolInfo
 
   airalogy_record_id: string
-  data: Partial<Record<Markdown.FiledName | FieldKey, (string | [string, string[]])[]>> & { simulated_fields?: string[] }
+  data: Partial<Record<Markdown.FiledName | FieldKey, (string | [string, string[]])[]>> & { quiz?: Record<string, unknown>, simulated_fields?: string[] }
   metadata: RecordMetadata
   record_id: string
   record_version: number

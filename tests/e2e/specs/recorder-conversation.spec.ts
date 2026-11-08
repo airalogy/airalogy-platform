@@ -10,6 +10,12 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
   test.skip(process.env.AI_ENABLED === "false", "The AI-disabled case verifies the manual entry.")
   test.setTimeout(120000)
   page.setDefaultTimeout(15000)
+  const fileLookups: string[] = []
+  page.on("request", (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.endsWith("/package_files"))
+      fileLookups.push(url.searchParams.get("filename") || "")
+  })
   let releaseModel: (() => void) | undefined
   const calls: Array<{ references: string[], last_applied: string[], current_message: string, conversation: unknown[] }> = []
   const server = createServer(async (req, res) => {
@@ -60,7 +66,7 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
       const response = await result
       expect(response.status()).toBe(status)
     }
-    const field = (id: string) => page.locator(".record-inline-content").getByRole("textbox", { name: new RegExp(`^${id}$`, "i") })
+    const field = (id: string) => page.locator(`.record-inline-content .aimd-protocol-recorder__content [data-rec-focus-key="var:${id}"]`)
     const inline = (id: string) => page.locator(`.record-inline-content [data-recorder-field="${id}"]`)
     const action = (id: string, name: string) => inline(id).getByRole("button", { name, exact: true })
     const suggestion = (id: string) => inline(id).locator(".recorder-suggestion")
@@ -205,6 +211,8 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     })
     expect(quick.ok(), await quick.text()).toBeTruthy()
     expect((await quick.json()).recorder_proposal).toMatchObject({ intent: "simulate", values: {} })
+    expect(fileLookups).not.toEqual(expect.arrayContaining(["001"]))
+    expect(fileLookups).not.toEqual(expect.arrayContaining(["mixed-note"]))
   }
   finally {
     releaseModel?.()
@@ -232,6 +240,19 @@ test("unpublished Protocol can test examples without AI or writing a Record", as
     if (["POST", "PATCH", "PUT", "DELETE"].includes(req.method()) && /\/api\/(?:protocols|records|chats)(?:[/?]|$)/.test(req.url()))
       writes.push(req.url())
   })
+  const visual = page.getByTestId("protocol-visual-editor")
+  const document = visual.locator(".ProseMirror[contenteditable=true]")
+  await expect(document).toBeVisible()
+  await document.press("End")
+  await document.press("ControlOrMeta+End")
+  await document.press("Enter")
+  await page.keyboard.insertText("Synthetic visual authoring check")
+  await expect(document).toContainText("Synthetic visual authoring check")
+  await visual.getByRole("button", { name: /源码|源代码|Source/i }).click()
+  const sourceEditor = page.getByTestId("protocol-source-editor")
+  await expect(sourceEditor).toBeVisible()
+  await sourceEditor.getByRole("button", { name: /所见即所得|可视化|WYSIWYG/i }).click()
+  await expect(visual.locator(".ProseMirror")).toContainText("Synthetic visual authoring check")
   await page.getByTestId("test-example-data").click()
   const form = page.getByTestId("editor-example-form")
   const count = form.locator('[data-rec-focus-key="var:observation_count"]')
@@ -271,4 +292,71 @@ test("editor previews registered field types without inventing file references",
   await page.getByTestId("exit-example-preview").click()
   const records = await request.get(`${api}/protocols/${(await published.json()).data.id}/records`, { headers })
   expect((await records.json()).total_count).toBe(0)
+})
+
+test("native table cells and quiz answers survive a draft reload and Record submission", async ({ page, request }) => {
+  const fx = await loadFixtures()
+  const api = process.env.E2E_API_URL || "http://127.0.0.1:4100"
+  const login = await request.post(`${api}/signin_by_email`, { data: { email: "dev.owner@airalogy.dev", password: "AiralogyDev123!" } })
+  const headers = { "Auth-Token": (await login.json()).token }
+  const uid = `native_table_${Date.now()}`
+  const aimd = [
+    "# Synthetic readings",
+    "{{var_table|readings, subvars=[var(label: str)]}}",
+    "\n```quiz",
+    "id: note",
+    "type: open",
+    "stem: Describe the synthetic sample.",
+    "```",
+  ].join("\n")
+  const file = zipSync({
+    "protocol.aimd": strToU8(aimd),
+    "protocol.toml": strToU8(`[airalogy_protocol]\nid="${uid}"\nname="Synthetic readings"\nversion="0.1.0"\n`),
+  })
+  const published = await request.post(`${api}/protocols`, { headers, multipart: { project_id: fx.project.id, file: { name: "table.zip", mimeType: "application/zip", buffer: Buffer.from(file) } } })
+  expect(published.ok(), await published.text()).toBeTruthy()
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "en-US", expire: null })))
+  await page.goto(`/labs/${fx.lab.uid}/projects/${fx.project.uid}/protocols/${uid}/add`)
+  const form = page.locator(".record-inline-content.aimd-protocol-recorder")
+  const cell = form.locator('[data-rec-focus-key="var_table:readings:0:label"]')
+  const answer = form.locator('[data-rec-focus-key="quiz:note:open"]')
+  await cell.fill("synthetic-A")
+  await answer.fill("Observed in test fixture")
+  await page.getByTestId("record-save-draft").click()
+  await page.reload()
+  await expect(cell).toHaveValue("synthetic-A")
+  await expect(answer).toHaveValue("Observed in test fixture")
+  await cell.fill("synthetic-B")
+  await page.getByRole("button", { name: "Submit", exact: true }).click()
+  const posted = page.waitForResponse(res => res.request().method() === "POST" && res.url().endsWith("/records"))
+  await page.getByRole("dialog").getByRole("button", { name: "Submit Record", exact: true }).click()
+  const response = await posted
+  expect(response.ok(), await response.text()).toBeTruthy()
+  const saved = await response.json()
+  const stored = await request.get(`${api}/protocols/${(await published.json()).data.id}/records/${saved.id}?version=1`, { headers })
+  expect(stored.ok(), await stored.text()).toBeTruthy()
+  expect((await stored.json()).data).toMatchObject({ var: { readings: [{ label: "synthetic-B" }] }, quiz: { note: "Observed in test fixture" } })
+  await page.getByRole("dialog").getByRole("button", { name: "View saved Record", exact: true }).click()
+  await page.getByRole("button", { name: "Revise", exact: true }).click()
+  await expect(cell).toHaveValue("synthetic-B")
+  await expect(answer).toHaveValue("Observed in test fixture")
+})
+
+test("visual edits preserve executable fence arguments and hosted forms do not schedule them twice", async ({ page }) => {
+  await page.goto("/")
+  const result = await page.evaluate(async () => {
+    const modulePath = "/src/utils/recorderMarkdown.ts"
+    const { preserveVisualFenceMetadata, hostedRecorderContent, recorderVariableList } = await import(/* @vite-ignore */ modulePath)
+    const body = 'assigner({mode:"auto",dependent_fields:["a"],assigned_fields:["b"]},function calculate({a}){return {b:a*2}})'
+    const before = ["Original", "```assigner runtime=client", body, "```"].join("\n")
+    const after = before.replace("Original", "Edited").replace("a*2", "a*3")
+    const example = ["````markdown", before, "````"].join("\n")
+    return {
+      drawer: recorderVariableList("Example: `{{var|n: str}}`\n\nEnter {{var|n: int}}", ["n"]),
+      preserved: preserveVisualFenceMetadata(before, after.replace(" runtime=client", "")) === after,
+      hosted: hostedRecorderContent(before).trim(),
+      example: hostedRecorderContent(example) === example,
+    }
+  })
+  expect(result).toEqual({ preserved: true, hosted: "Original", example: true, drawer: "{{var|n: int}}" })
 })

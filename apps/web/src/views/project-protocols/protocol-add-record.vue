@@ -132,6 +132,7 @@
         :simulated-fields="simulatedFields"
         @set-simulated="setSimulated"
         @review-pending="reviewPending = $event"
+        @quiz-change="(field, value) => { (recordData.quiz ??= {})[field] = value }"
         :record-data="recordData"
         @update:field="handleUpdateField"
         @update:split-size="handleUpdateSize"
@@ -641,7 +642,7 @@ async function showSubmissionErrors(error: unknown) {
       const field = String(item.loc[0] || "")
       const label = schema?.properties?.[field]?.title || field
       const nested = item.loc.slice(1).join(" / ")
-      return { field, message: `${label}${nested ? ` (${nested})` : ""}: ${item.msg}` }
+      return { field: "fieldKey" in item && typeof item.fieldKey === "string" ? item.fieldKey : field, message: `${label}${nested ? ` (${nested})` : ""}: ${item.msg}` }
     })
   }
   else {
@@ -694,6 +695,7 @@ async function handleConfirm() {
 
     const { data, error } = await (record
       ? putUpdateResearchRecord(protocolId.value, record as string, {
+        quiz: recordData.value.quiz,
         simulated_fields: examples,
         research_variable: research_variable as any,
         research_check: research_check as any,
@@ -703,6 +705,7 @@ async function handleConfirm() {
         revision_reason: correctionReason.value.trim(),
       })
       : postNewResearchRecord(protocolId.value, {
+        quiz: recordData.value.quiz,
         simulated_fields: examples,
         research_variable: research_variable as any,
         research_check: research_check as any,
@@ -814,6 +817,8 @@ async function handleConfirm() {
       return
     }
 
+    if (Array.isArray(e) && e.some(issue => Array.isArray(issue?.loc)))
+      return
     const errors = formatValidateErrors(e as ValidateError[])
 
     message.error(errors.join("\n"), {
@@ -1064,6 +1069,8 @@ async function handleRestoreDraft(data: Partial<IRecordData>, sources: string[] 
       error(e.message)
     }
     if (Array.isArray(e)) {
+      if (Array.isArray(e) && e.some(issue => Array.isArray(issue?.loc)))
+        return
       const errors = formatValidateErrors(e as ValidateError[])
 
       message.error(errors.join("\n"))
@@ -1168,7 +1175,7 @@ async function fetchRecord() {
 
     const { check, step, var: varData } = recordRes.data
 
-    const convertedData = { research_check: check, research_step: step, research_variable: varData } as Partial<IRecordData>
+    const convertedData = { quiz: recordRes.data.quiz || {}, research_check: check, research_step: step, research_variable: varData } as Partial<IRecordData>
 
     const schema = protocolData?.json_schema
     if (schema) {

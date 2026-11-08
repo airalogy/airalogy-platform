@@ -11,6 +11,43 @@ export interface ExtractedProtocolInstructionFile {
 
 export interface EditorCodeEditPayload extends Omit<CodeEditRequest, "model"> {
   model: ChatModelConfig
+  syntax_repair?: boolean
+}
+
+export interface ProtocolSourceDiagnostic {
+  path: string
+  message: string
+  line: number
+  column: number
+  code: string
+}
+
+export interface ProtocolSourceValidation {
+  status: "valid" | "invalid" | "unavailable"
+  diagnostics: ProtocolSourceDiagnostic[]
+  source_hash: string
+  level: "static"
+}
+
+export interface ProtocolSourceFile {
+  path: string
+  content: string
+  type: "aimd" | "py" | "toml" | "other"
+}
+
+interface GeneratedProtocolDraft {
+  content: string
+  original_content: string
+  validation: ProtocolSourceValidation
+  repair_status: "not_needed" | "applied" | "needs_review" | "failed" | "unavailable"
+}
+
+export function validateProtocolSources(files: ProtocolSourceFile[]) {
+  return request<ProtocolSourceValidation>({
+    url: "/editor/validate_sources",
+    method: "POST",
+    data: { files },
+  })
 }
 
 export async function extractProtocolInstructionFile(file: File) {
@@ -42,20 +79,17 @@ export async function generateProtocolAimd(payload: {
   instruction: string
   model: ChatModelConfig
 }, requestId?: string) {
-  const { data, error } = await request<string>({
-    url: "/editor/protocol_generate_aimd",
+  const { data, error } = await request<GeneratedProtocolDraft>({
+    url: "/editor/protocol_generate_draft",
     method: "POST",
     data: payload,
-    timeout: 1000 * 60 * 5, // 5 minutes timeout
-    headers: {
-      Accept: "text/plain",
-    },
+    timeout: 1000 * 60 * 10, // Includes at most one repair attempt.
     metadata: {
       requestId,
     },
   })
 
-  return { data, error }
+  return { data: data?.content || null, error, validation: data?.validation, repairStatus: data?.repair_status }
 }
 
 /**

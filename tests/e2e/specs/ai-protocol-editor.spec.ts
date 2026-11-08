@@ -83,14 +83,18 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
     window.localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null }))
   })
 
-  await page.route("**/api/editor/protocol_generate_aimd", async (route) => {
+  await page.route("**/api/editor/protocol_generate_draft", async (route) => {
     const request = route.request()
     const body = request.postDataJSON() as { instruction: string }
     expect(body.instruction).toContain("细胞药物处理")
     await route.fulfill({
       status: 200,
-      contentType: "text/plain; charset=utf-8",
-      body: GENERATED_PROTOCOL,
+      json: {
+        content: GENERATED_PROTOCOL,
+        original_content: GENERATED_PROTOCOL,
+        validation: { status: "valid", diagnostics: [], level: "static", source_hash: "synthetic" },
+        repair_status: "not_needed",
+      },
     })
   })
 
@@ -108,6 +112,8 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
   await expect(aiEditPanel.getByRole("heading", { name: /Aira Protocol 助手|Aira Protocol Assistant/ })).toBeVisible()
   await expect(aiEditPanel).toContainText(/安全修改自动应用|Safe changes apply automatically/)
 
+  await page.getByTestId("protocol-visual-editor").getByRole("button", { name: /源码|源代码|Source/i }).click()
+  await expect(page.getByTestId("protocol-source-editor")).toBeVisible()
   const input = aiEditPanel.getByTestId("chat-input").locator("[contenteditable='true']")
   await page.route("**/api/editor/code_edit", async (route) => {
     const body = route.request().postDataJSON() as { prompt: string }
@@ -138,7 +144,7 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
   await aiEditPanel.getByTestId("chat-submit").click()
   await expect(aiEditPanel.getByText("药物浓度会直接影响细胞响应，记录它有助于复现实验并比较不同处理组。", { exact: true })).toBeVisible()
   await expect(aiEditPanel).not.toContainText(/Aira 没有修改当前 Protocol|Aira did not change the current Protocol/)
-  await expect(page.locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
 
   await page.unroute("**/api/editor/code_edit")
 
@@ -185,7 +191,7 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
   const changeStatus = aiEditPanel.getByTestId("editor-ai-change-status")
   await expect(changeStatus).toBeVisible()
   await expect(changeStatus).toContainText("已自动应用 AI 修改")
-  await expect(page.locator(".monaco-editor .view-lines").first()).toContainText("试剂批号")
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).toContainText("试剂批号")
 
   await expect(changeStatus.getByRole("button", { name: "查看变更", exact: true })).toBeVisible()
 
@@ -207,7 +213,7 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
 
   await changeStatus.getByRole("button", { name: /^撤销$|^Undo$/ }).click()
   await expect(changeStatus).toBeHidden()
-  await expect(page.locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
 
   await page.unroute("**/api/editor/code_edit")
   await page.route("**/api/editor/code_edit", async (route) => {
@@ -244,13 +250,13 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
   await aiEditPanel.getByTestId("chat-submit").click()
   await expect(review).toBeVisible()
   await expect(review.getByTestId("editor-ai-apply-all")).toBeVisible()
-  await expect(page.locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
 
   await review.getByTestId("editor-ai-apply-all").click()
   await expect(review).toBeHidden()
-  await expect(page.locator(".monaco-editor .view-lines").first()).toContainText("试剂批号")
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).toContainText("试剂批号")
   await changeStatus.getByRole("button", { name: /^撤销$|^Undo$/ }).click()
-  await expect(page.locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
 
   await page.unroute("**/api/editor/code_edit")
   await page.route("**/api/editor/code_edit", async (route) => {

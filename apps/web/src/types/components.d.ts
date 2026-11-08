@@ -197,7 +197,6 @@ declare module 'vue' {
     IconTablerDotsVertical: typeof import('~icons/tabler/dots-vertical')['default']
     IconTablerDownload: typeof import('~icons/tabler/download')['default']
     IconTablerEdit: typeof import('~icons/tabler/edit')['default']
-    IconTablerEraser: typeof import('~icons/tabler/eraser')['default']
     IconTablerExternalLink: typeof import('~icons/tabler/external-link')['default']
     IconTablerEye: typeof import('~icons/tabler/eye')['default']
     IconTablerEyeOff: typeof import('~icons/tabler/eye-off')['default']

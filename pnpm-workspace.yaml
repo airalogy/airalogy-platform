@@ -13,7 +13,7 @@ packages:
 catalog:
   '@airalogy/aimd-core': 2.18.0
   '@airalogy/aimd-editor': 1.13.0
-  '@airalogy/aimd-recorder': 1.27.0
+  '@airalogy/aimd-recorder': 1.27.1
   '@airalogy/aimd-renderer': 2.14.0
   '@playwright/test': 1.62.0
   playwright: 1.62.0

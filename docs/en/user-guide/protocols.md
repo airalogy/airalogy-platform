@@ -8,11 +8,17 @@ Open a Project to see Protocols owned by that Project. Depending on your role, y
 
 Use a stable, descriptive Protocol ID where the interface requests one. Display names and descriptions can explain the scientific purpose; identifiers are used in routes and integrations and may not be safely changeable later.
 
+Aira-generated Protocols are checked before being handed over as drafts. If a deterministic check fails, Aira attempts one minimal repair and the result is checked again. A failed or ambiguous repair retains the original draft. The editor also checks current AIMD, Python and TOML sources after edits and before saving, showing file names and line numbers when available. Choose **Ask Aira to repair** to review a proposed diff; it is not applied until you confirm. Changes made while waiting are protected by the existing conflict check.
+
+**Static checks passed** covers AIMD structure, references, assigner dependencies and Python/TOML syntax. It does not certify scientific correctness, external dependencies or client JavaScript execution. Saving still validates the complete package in the isolated Protocol executor. A checker outage is reported separately from invalid syntax. Manual checks remain available with AI disabled; fix reported issues or retry before saving. Failed checks retain the local draft.
+
 ## Practice without AI or equipment
 
 In a Project, choose **New protocol → From template → First Record practice**. Give the draft a recognizable name, open it in the editor, and choose **Save**. Check the destination Lab, Project and version before confirming. You need permission to create Protocols; a recorder can ask the Protocol owner to prepare this once for the team.
 
 The bilingual practice template contains two required fields, example values and instructions for saving, submitting and revising a Record. It creates an ordinary editable, versioned Protocol, not a separate demo mode. Its data is explicitly synthetic: keep it in a practice Project and do not treat it as research evidence. No AI service is needed.
+
+Use **WYSIWYG** to edit the procedure alongside its field controls. Switch to **Source** to edit AIMD directly. A published version opens read-only. Start a draft to change the procedure.
 
 In **Preview**, choose **Test with example data**. Edit the example values and choose **Validate test form** to see which fields need attention. **Exit test** discards the test form. Draft checks use current AIMD declarations. A published version can also use its stored validation schema. Python code runs only in the normal Platform execution workflow.
 

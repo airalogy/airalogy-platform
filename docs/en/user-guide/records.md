@@ -2,6 +2,8 @@
 
 A Record stores one use of a Protocol: the entered values, completed steps and checks, annotations, files, provenance, and revision history supported by that Protocol.
 
+The field panel and the inline Record use the same current values. You can edit a variable in either place, switch to Aira to review proposed replacements, and save a draft before submitting.
+
 ## Create a Record
 
 1. Open the target Protocol and choose the recording action.

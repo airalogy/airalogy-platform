@@ -28,19 +28,25 @@
         >
           {{ sourceProtocolImprovementError }}
         </n-alert>
+        <protocol-validation-panel
+          v-if="!isReadOnly && editorSourceFiles.length" ref="validationPanel"
+          :files="editorSourceFiles" :ai-enabled="instanceStore.aiEnabled" @repair="requestSyntaxRepair"
+        />
         <div class="relative min-h-0 flex-1">
-          <aimd-editor
-            v-show="showAimdEditor"
-            v-model="liveProtocolContent"
-            :readonly="isReadOnly"
-            class="size-full"
-            :min-height="0"
-            :show-top-bar="true"
-            :show-toolbar="true"
-            :show-aimd-toolbar="true"
-            :show-md-toolbar="true"
-            @update:model-value="handleAimdEditorChange"
-          />
+          <template v-if="showAimdEditor">
+            <aimd-editor
+              v-if="authorMode === 'source'" data-testid="protocol-source-editor"
+              :model-value="liveProtocolContent" mode="source" :locale="locale" :readonly="isReadOnly"
+              class="size-full" :min-height="0" :keep-inactive-editors-mounted="false"
+              @update:model-value="handleAuthorChange" @update:mode="authorMode = $event"
+            />
+            <aimd-recorder-wysiwyg-surface
+              v-else :key="visualSourceRevision" data-testid="protocol-visual-editor" :content="liveProtocolContent" :locale="locale" :readonly="isReadOnly"
+              class="h-full overflow-auto" :min-height="0" :show-mode-switch="true"
+              :request-collector-permission="denyCollector"
+              @update:content="handleVisualChange" @switch-mode="authorMode = $event"
+            />
+          </template>
           <split-editor
             v-show="!showAimdEditor"
             :editor-id="0"
@@ -91,34 +97,10 @@
     </template>
     <template #preview>
       <protocol-example-preview
-        :key="route.fullPath" :active="isPreviewMode" :content="liveProtocolContent"
+        :key="route.fullPath" :active="isPreviewMode" :content="liveProtocolContent" :resolve-asset="resolveProtocolFile"
         :schema="exampleValidationSchema" :assigned="exampleAssignedFields"
         :model-source="liveModelContent || protocolModel" :assigner-source="liveAssignerContent || protocolAssigner"
-      >
-        <n-spin v-if="fieldRecordDefault" :show="false" class="size-full" content-class="size-full !p-0">
-          <n-form
-            class="platform-aimd-form-preview"
-            :rules="fieldRecordDefault.rules"
-            :model="previewFieldModel"
-          >
-            <aimd-markdown-preview
-              ref="previewRef"
-              :content="liveProtocolContent"
-              :value="previewFieldModel"
-              :render-options="aimdEditRenderOptions"
-              :mermaid-component="MermaidBlock"
-              :resolve-url="resolveProtocolFile"
-              body-class="markdown-body"
-              mode="edit"
-              @render:result="handleFieldRendered"
-            />
-            <protocol-bubble-menu
-              v-if="instanceStore.aiEnabled && previewRef?.rootElement"
-              :container-ref="previewRef.rootElement"
-            />
-          </n-form>
-        </n-spin>
-      </protocol-example-preview>
+      />
     </template>
   </editor-layout>
 
@@ -173,43 +155,34 @@
       </n-button>
     </template>
   </n-modal>
-
-  <!-- Assigner Progress Modal -->
-  <assigner-progress-modal
-    :state="assignerProgressState"
-    @close="handleAssignerProgressClose"
-  />
 </template>
 
 <script lang="ts" setup>
-import type { IEmits as AIMDEmits, IAIMDWrapperProps } from "@/components/custom/aimd/types/aimd-types"
 import type { BreadcrumbSection } from "@/components/Layout/protocol-title-section.vue"
 import type { ProtocolData } from "@/constants/protocol"
+import type { ProtocolSourceFile } from "@/service/api/protocol-generate"
 import type { ProtocolImprovementProposal } from "@/service/api/research-assets"
-import type { AimdTemplateEnv, BaseNode, RenderMode } from "@airalogy/aimd-core/types"
+import type { AimdTemplateEnv } from "@airalogy/aimd-core/types"
 import type { ExposeState } from "@airalogy/components/monaco-editor/layout.vue"
 import type { DiffModelInfo, ModelInfo } from "@airalogy/components/monaco-editor/store/editorStore"
 import type { ISideMenuItem } from "@airalogy/components/src/monaco-editor/utils/sideMenus"
-import type { IRecordDataKey, ProtocolModels } from "@airalogy/shared"
+import type { ProtocolModels } from "@airalogy/shared"
 import type { ValidateError } from "async-validator"
-import type { FormInst } from "naive-ui"
-import type { FormValidate } from "naive-ui/es/form/src/interface"
 import { useProvideApplyProtocol } from "@/components/apply-steps/composables/useApplyProtocolState"
 import ProtocolSetup from "@/components/apply-steps/protocol-setup.vue"
-import { createPlatformAimdFormRenderers } from "@/components/custom/aimd/composables/createPlatformAimdFormRenderers"
 import ProtocolTitleSection from "@/components/Layout/protocol-title-section.vue"
 import ProtocolInfoCard from "@/components/protocol/protocol-info-card.vue"
-import { useBoolean, useClosableMessage, useLoading, useNaiveForm, useRouterPush, useShowModal } from "@/composables"
+import { useBoolean, useClosableMessage, useLoading, useRouterPush, useShowModal } from "@/composables"
 import { DEFAULT_FILE_ID_MAP } from "@/constants/protocol"
 import { $t } from "@/locales"
 import { getDownloadPackage, getDownloadPackageData } from "@/service/api/project-protocols"
-import { postEditorSyntaxCheck } from "@/service/api/protocol"
 import { extractProtocolInstructionFile, generateProtocolAimd, generateProtocolAssigner, generateProtocolModel, postEditorCodeEdit } from "@/service/api/protocol-generate"
 import { fetchProtocolImprovement } from "@/service/api/research-assets"
-import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
+import { preserveVisualFenceMetadata } from "@/utils/recorderMarkdown"
 import { resolveProtocolFile as resolveProtocolFileUtil } from "@/utils/resolveProtocolFile"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
+import { AimdRecorderWysiwygSurface } from "@airalogy/aimd-recorder"
 import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
 import { useChatProvider } from "@airalogy/components/chat/providers/useChatProvider"
 import MermaidBlock from "@airalogy/components/markdown-editor/modules/mermaid/mermaid-block.vue"
@@ -225,24 +198,17 @@ import { defaultSideMenus } from "@airalogy/components/src/monaco-editor/utils/s
 import { getFileExtensionFromBasename, getMIMEByExtension } from "@airalogy/shared/utils"
 import { formatValidateErrors } from "@airalogy/shared/utils/errorFormatter.js"
 import { useRouteQuery } from "@vueuse/router"
-
 import IconLock from "~icons/tabler/lock"
-import Big from "big.js"
-import { cloneDeepWith as _cloneDeepWith } from "lodash-es"
+
 import { NAlert, NButton, NEllipsis, NIcon, NTag, useDialog } from "naive-ui"
 import { nanoid } from "nanoid"
 import { storeToRefs } from "pinia"
-import { useAIMDProvide } from "../../components/custom/aimd/composables/useAIMDHelpers"
+import { useI18n } from "vue-i18n"
 import { useProvideProtocolInfoStore } from "../project-protocols/hooks/useProtocolInfoStore"
-import AssignerProgressModal from "../project-protocols/modules/protocol/components/AssignerProgressModal.vue"
-import { useAssignerManagement } from "../project-protocols/modules/protocol/composables/useAssignerManagement"
-import { getAssignerProgress } from "../project-protocols/modules/protocol/composables/useAssignerProgress"
-import { useFieldParser } from "../project-protocols/modules/protocol/composables/useFieldParser"
-import { useFieldState } from "../project-protocols/modules/protocol/composables/useFieldState"
-import { useTableManagement } from "../project-protocols/modules/protocol/composables/useTableManagement"
 import { useProvideProtocolEditorContext } from "./composables/useProtocolEditorContext"
 import LandingPage from "./modules/landing.vue"
 import ProtocolExamplePreview from "./modules/protocol-example-preview.vue"
+import ProtocolValidationPanel from "./modules/protocol-validation-panel.vue"
 
 defineOptions({
   name: "EditorView",
@@ -457,6 +423,9 @@ async function resolveProtocolFile(src: string): Promise<{ url: string } | null>
 
 const { protocolId, currentEditorProtocolContext } = useChatProvider()
 const instanceStore = useInstanceStore()
+const validationPanel = ref<InstanceType<typeof ProtocolValidationPanel> | null>(null)
+const syntaxRepairRequest = ref(0)
+
 const editorChatProtocolId = computed(() => protocolInfo.value?.id ? String(protocolInfo.value.id) : null)
 const editorChatAiralogyId = computed(() => {
   if (protocolInfo.value?.airalogy_id) {
@@ -479,17 +448,29 @@ const sideMenus = computed(() => defaultSideMenus
       componentProps.protocolId = editorChatProtocolId.value
       componentProps.airalogyId = editorChatAiralogyId.value
       componentProps.codeEdit = postEditorCodeEdit
+      componentProps.syntaxRepairRequest = syntaxRepairRequest.value
+      result.componentEvents = {
+        ...result.componentEvents,
+        syntaxRepairHandled: () => {
+          syntaxRepairRequest.value = 0
+        },
+      }
     }
     if (it.key === "protocol-documents") {
       componentProps.generateAimd = generateProtocolAimd
       componentProps.generateModel = generateProtocolModel
       componentProps.generateAssigner = generateProtocolAssigner
       componentProps.extractInstructionFile = extractProtocolInstructionFile
-      componentProps.postEditorSyntaxCheck = postEditorSyntaxCheck
     }
 
     return result
   }))
+
+function requestSyntaxRepair() {
+  syntaxRepairRequest.value++
+  const menu = sideMenus.value.find(menu => menu.key === "airalogy")
+  openMenu("airalogy", menu?.panelSize || null)
+}
 
 const message = useClosableMessage()
 
@@ -542,6 +523,11 @@ const { applyProtocol, uploadModel, protocolData, packageContent } = useProvideA
 const protocolSetupRef = ref<{ validate: () => Promise<void> } | null>(null)
 
 async function handleApplyProtocol() {
+  if (!await validationPanel.value?.check()) {
+    hideModal()
+    message.warning($t("editor.validation.saveBlocked"))
+    return
+  }
   try {
     await protocolSetupRef.value?.validate()
   }
@@ -653,6 +639,11 @@ async function handleSaveProtocol() {
   if (packageId.value && fileData) {
     await saveProjectData(packageId.value, fileData, () => Promise.resolve())
     console.log("[handleSaveProtocol] Saved all changes to OPFS")
+  }
+
+  if (!await validationPanel.value?.check()) {
+    message.warning($t("editor.validation.saveBlocked"))
+    return
   }
 
   const data = protocolData.value || Object.fromEntries(Object.keys(DEFAULT_FILE_ID_MAP).map(key => [key, ""]).concat([["metadata", {}] as any])) as unknown as ProtocolData
@@ -999,11 +990,38 @@ const protocolAIMD = computed(() => {
 })
 
 const liveProtocolContent = ref("")
+const visualSourceRevision = ref(0)
+function setExternalProtocolContent(content: string) {
+  if (content !== liveProtocolContent.value) {
+    liveProtocolContent.value = content
+    // A surface still mounting its initial Milkdown document must not flush an
+    // obsolete template over a newer generated/AI-edited source on mode switch.
+    visualSourceRevision.value++
+  }
+}
 const liveModelContent = ref("")
 const liveAssignerContent = ref("")
 const liveTomlContent = ref("")
 const modelsStore = useModelsStore()
 const { modelInfos } = storeToRefs(modelsStore)
+const editorSourceFiles = computed<ProtocolSourceFile[]>(() => {
+  const sources: Array<[string, string, ProtocolSourceFile["type"]]> = [
+    ["protocol.aimd", liveProtocolContent.value, "aimd"],
+    ["model.py", liveModelContent.value, "py"],
+    ["assigner.py", liveAssignerContent.value, "py"],
+    ["protocol.toml", liveTomlContent.value, "toml"],
+  ]
+  return sources.flatMap(([path, liveContent, type]) => {
+    const file = uploadFileDataStore.getFileByFilename(path)
+    if (!file)
+      return []
+    const info = modelInfos.value.find(info => isNormalModelInfo(info) && info.name === path)
+    const content = info && isNormalModelInfo(info) && info.model && !info.model.isDisposed()
+      ? info.model.getValue()
+      : typeof file.content === "string" ? file.content : liveContent
+    return [{ path, content, type }]
+  })
+})
 const visibleEditorId = computed(() => activeEditorId.value >= 0 ? activeEditorId.value : splitState.value.findIndex(Boolean))
 
 function findNormalModelInfo(
@@ -1038,6 +1056,27 @@ const showAimdEditor = computed(() => {
   return activeFileId === DEFAULT_FILE_ID_MAP.protocol || activeFileName === "protocol.aimd"
 })
 
+const { locale } = useI18n()
+const authorMode = ref<"source" | "wysiwyg">("wysiwyg")
+const denyCollector = () => false
+function handleAuthorChange(value: string) {
+  if (isReadOnly.value || value === liveProtocolContent.value)
+    return
+  liveProtocolContent.value = value
+  handleAimdEditorChange(value)
+}
+function handleVisualChange(value: string) {
+  if (isReadOnly.value)
+    return
+  try {
+    handleAuthorChange(preserveVisualFenceMetadata(liveProtocolContent.value, value))
+  }
+  catch {
+    authorMode.value = "source"
+    message.warning($t("editor.visualFenceConflict"))
+  }
+}
+
 // Sync AimdEditor content changes back to Monaco editor store model
 let isSyncingFromAimdEditor = false
 function handleAimdEditorChange(value: string) {
@@ -1059,7 +1098,7 @@ const disposeTomlListener = ref<(() => void) | null>(null)
 
 watch(protocolAIMD, (val) => {
   if (val && !liveProtocolContent.value) {
-    liveProtocolContent.value = val
+    setExternalProtocolContent(val)
   }
 }, { immediate: true })
 
@@ -1075,12 +1114,12 @@ watch(modelInfos, (infos) => {
     // Set initial content
     const initialContent = protocolModelInfo.model.getValue()
     if (initialContent) {
-      liveProtocolContent.value = initialContent
+      setExternalProtocolContent(initialContent)
     }
 
     const disposable = protocolModelInfo.model.onDidChangeContent(() => {
       if (!isSyncingFromAimdEditor) {
-        liveProtocolContent.value = protocolModelInfo.model!.getValue()
+        setExternalProtocolContent(protocolModelInfo.model!.getValue())
       }
     })
     disposeListener.value = () => disposable.dispose()
@@ -1184,8 +1223,6 @@ watch([
   }
 }, { immediate: true })
 
-const draftProtocolInfo = ref<ProtocolModels.ProtocolInfo | null | undefined>(null)
-
 // A draft may already differ from its published Python model. Only reuse an exact published schema.
 const exampleVersion = computed(() => isReadOnly.value && protocolInfo.value?.aimd === liveProtocolContent.value ? protocolInfo.value : undefined)
 const exampleValidationSchema = computed(() => exampleVersion.value?.json_schema ? { ...exampleVersion.value.json_schema } : undefined)
@@ -1199,304 +1236,8 @@ interface AimdMarkdownPreviewExpose {
   rootElement: HTMLElement | null
 }
 
-const previewRef = ref<AimdMarkdownPreviewExpose>()
 const rawRef = ref<AimdMarkdownPreviewExpose>()
-const lastParsedAimd = ref("")
-
-const { formRef, validate } = useNaiveForm()
-const aimdRef = ref<{ formRef: FormInst | null, restoreTableVariableRecord: () => void } | null>(null)
-
-function restoreValidation() {
-  if (aimdRef.value?.formRef) {
-    aimdRef.value.formRef.restoreValidation()
-  }
-
-  formRef.value?.restoreValidation()
-}
-
-const {
-  // Models
-  fieldModel,
-  fieldRecordDefault,
-
-  // Lists
-  fieldPropList,
-  scopeList,
-
-  // Records
-  refRecord,
-  tableRecord,
-  tableEmitterRecord,
-  varScopeRecord,
-
-  // Mounted State
-  domMounted,
-  setDomMounted,
-  setDomUnMounted,
-
-  // Restore Field Record
-  restoreFieldRecord,
-} = useFieldState(computed(() => ({
-  protocol: draftProtocolInfo.value,
-  protocolId: "",
-})), liveProtocolContent)
-
-const previewFieldModel = computed(() => fieldModel as unknown as Record<string, Record<string, unknown>>)
-
-const { handleTableRowUpdate } = useTableManagement()
-
-const { handleParseField } = useFieldParser(
-  fieldModel,
-  draftProtocolInfo,
-  scopeList,
-  fieldPropList,
-  refRecord,
-  tableRecord as any,
-  tableEmitterRecord,
-)
-
-async function handleFieldRendered() {
-  const content = liveProtocolContent.value
-  if (domMounted.value && lastParsedAimd.value === content) {
-    return
-  }
-
-  lastParsedAimd.value = content
-  await nextTick()
-  setDomMounted()
-
-  // const sourceList = Array.from(
-  //   document.querySelectorAll<HTMLSourceElement>(".markdown-body source") || [],
-  // )
-
-  // if (sourceList.length > 0) {
-  //   void handleMedia(sourceList)
-  // }
-
-  // Access template environment data directly
-  if (previewRef.value) {
-    const { env } = previewRef.value
-
-    // Call the field parser with the analysis data
-    handleParseField(env)
-  }
-}
-
-// Update template refs for table row updates
-function handleTableRowActions(type: "add-row" | "remove-row", payload: any) {
-  handleTableRowUpdate(type, payload, tableEmitterRecord, fieldModel)
-}
-
-const handleAssignerValidate: FormValidate = async (callback, shouldRuleBeApplied) => {
-  if (aimdRef.value?.formRef) {
-    try {
-      await aimdRef.value.formRef.validate(() => {}, shouldRuleBeApplied)
-    }
-    catch (e) {
-      // NOPE
-    }
-  }
-
-  return await validate(callback, shouldRuleBeApplied)
-}
-
-// Create a ref to store the updateField function to resolve circular dependency
-const updateFieldRef = ref<((fieldModel: any, payload: any) => Promise<void>) | null>(null)
-
-// Create a wrapper function that calls updateField when available
-async function updateFieldWrapper(fieldModel: any, payload: any) {
-  if (updateFieldRef.value) {
-    await updateFieldRef.value(fieldModel, payload)
-  }
-}
-
-// Assigner progress modal
-const { state: assignerProgressStateRaw, hide: hideAssignerProgress } = getAssignerProgress()
-const assignerProgressState = assignerProgressStateRaw as unknown as InstanceType<typeof AssignerProgressModal>["$props"]["state"]
-function handleAssignerProgressClose() {
-  hideAssignerProgress()
-}
-
-/** Render aimd tokens to component */
-const { handleAssigner, handleDependent, assignerLoadingRecord, assignerErrorRecord, handleAssignerCancel, assignerRequestRecord } = useAssignerManagement({
-  protocolId: "",
-  emit: () => {},
-  varScopeRecord,
-  validate: handleAssignerValidate,
-  restoreValidation,
-  shouldTrigger: true,
-  updateField: updateFieldWrapper,
-})
-
-const aimdProps = computed((): IAIMDWrapperProps => ({
-  protocolId: protocolId.value,
-  record: fieldRecordDefault.value,
-  propList: fieldPropList.value,
-  scopeList: scopeList.value,
-  typed: previewRef.value?.env?.typed as IAIMDWrapperProps["typed"],
-  refRecord: refRecord.value,
-  tableRecord: tableRecord.value,
-  varScopeRecord: varScopeRecord.value,
-  readonly: false,
-  assignerLoadingRecord: assignerLoadingRecord.value,
-  assignerErrorRecord: assignerErrorRecord.value,
-  assignerRequestRecord: assignerRequestRecord.value,
-}))
-
-const aimdEmit: AIMDEmits = (event, ...args) => {
-  if (event === "add-row:table") {
-    handleTableRowActions("add-row", ...args)
-  }
-  if (event === "remove-row:table") {
-    handleTableRowActions("remove-row", ...args)
-  }
-}
-
-const { variableList, fieldEventBus, fieldModel: componentFieldModel } = useAIMDProvide(aimdProps, aimdEmit)
-
 const isPreviewMode = ref(true)
-// TODO: rename it
-const mode = computed<RenderMode>(() => isPreviewMode.value ? "edit" : "preview")
-
-// Map short scope codes to full scope names for unified renderers
-const scopeMap: Record<string, string> = {
-  rv: "research_variable",
-  rs: "research_step",
-  rc: "research_check",
-  rt: "research_variable",
-}
-
-// Platform adapters only replace fields that need interactive form controls.
-function getNodeProps(node: { id: string, scope: string, type?: string }) {
-  const { id, scope, type } = node
-  const fullScope = scopeMap[scope] || scope
-
-  if (scope === "var_table" || scope === "rt") {
-    return variableList.value.find(it => it.scope === "research_variable" && it.prop === id) || null
-  }
-  return variableList.value.find(it => it.scope === fullScope && it.prop === id && (!type || it.type === type)) || null
-}
-
-const aimdRenderersEdit = createPlatformAimdFormRenderers({
-  getTokenProps: getNodeProps,
-})
-const aimdEditRenderOptions = { aimdRenderers: aimdRenderersEdit }
-
-const authStore = useAuthStore()
-
-watchEffect(() => {
-  const { userInfo } = authStore
-  const record = fieldRecordDefault.value
-  const propList = fieldPropList.value
-  if (!record || !record.field || !userInfo || !Array.isArray(propList) || propList.length === 0) {
-    return []
-  }
-  const { field } = record
-
-  scopeList.value.forEach((scopeName, idx) => {
-    const scopePropList = propList[idx] as string[]
-
-    scopePropList.forEach((prop) => {
-      const item = field[scopeName]?.[prop]
-      if (!item) {
-        return
-      }
-
-      let val: any = _cloneDeepWith(toRaw(item.value), (objVal) => {
-        if (objVal instanceof Big) {
-          return new Big(objVal)
-        }
-
-        return undefined
-      })
-
-      if (!val && (scopeName === "research_check" || scopeName === "research_step")) {
-        val = {
-          annotation: "",
-          // For research_step with check=True, initialize checked as false (unchecked)
-          // For research_step without check or research_check, initialize as null
-          checked: (scopeName === "research_step" && item.raw?.check)
-            ? false
-            : (scopeName === "research_check" ? false : null),
-        }
-      }
-      if (componentFieldModel[scopeName]) {
-        componentFieldModel[scopeName][prop] = { value: val }
-      }
-      else {
-        componentFieldModel[scopeName] = { [prop]: { value: val } }
-      }
-    })
-  })
-
-  return () => { }
-})
-
-watch(
-  fieldRecordDefault,
-  (record) => {
-    if (!record) {
-      return
-    }
-
-    const propList = fieldPropList.value
-
-    const { field } = record
-
-    const batchList: { scope: IRecordDataKey, prop: string, value: any, assigner: any, dependent: any, info: any }[] = []
-
-    scopeList.value.forEach((scopeName, idx) => {
-      const scopePropList = propList[idx]
-      scopePropList.forEach((prop) => {
-        if (Array.isArray(prop)) {
-          return
-        }
-
-        const item = field[scopeName]?.[prop]
-        if (!item) {
-          return
-        }
-
-        const { value: val, type, scope, assigner, dependent, info } = item
-
-        if (typeof val !== "undefined" && val !== null) {
-          if (!(
-            ((type === "float" || type === "integer" || type === "number")
-              && (val.value === null || typeof val.value === "undefined"))
-              || (Array.isArray(val) && val.length === 0)
-          )) {
-            batchList.push({
-              scope,
-              prop,
-              value: val,
-              assigner,
-              dependent,
-              info,
-            })
-          }
-        }
-      })
-    })
-
-    void nextTick(() => {
-      const batchId = nanoid()
-      fieldEventBus.emit("preview-field-change-batch", {
-        batchId,
-        list: batchList,
-      })
-    })
-  },
-  { immediate: true },
-)
-
-// Watch protocolInfo and use it as draftProtocolInfo when available
-watch(protocolInfo, (val) => {
-  if (val && !draftProtocolInfo.value) {
-    draftProtocolInfo.value = val as unknown as ProtocolModels.ProtocolInfo
-    // Trigger field record restoration
-    restoreFieldRecord()
-  }
-}, { immediate: true })
 
 watch([protocolModel, liveProtocolContent, liveTomlContent, isPreviewMode], async ([modelCode, aimdContent, tomlContent, isPreviewModeVal], [prevModelCode, prevAIMDContent, prevTomlContent, prevIsPreviewModeVal]) => {
   // Skip if no content at all (initial state before loading)
@@ -1521,11 +1262,6 @@ watch([protocolModel, liveProtocolContent, liveTomlContent, isPreviewMode], asyn
         uploadModel.value.tomlContent = tomlContent
         processUpdatedTomlContent(uploadModel, protocolData)
       }
-
-      // Skip execution, directly update preview
-      restoreFieldRecord()
-      await nextTick()
-      previewRef.value?.reload?.()
     }
     else {
       rawRef.value?.reload?.()
