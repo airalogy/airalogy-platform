@@ -90,7 +90,7 @@ const projectRoute = computed<Record<"lab" | "project" | "members", RouteLocatio
       },
     },
     project: {
-      name: "project-protocols",
+      name: "project-overview",
       params: {
         labUid,
         projectUid: uid,

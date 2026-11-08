@@ -5,7 +5,17 @@
     :class="isContainer ? 'container' : ''"
     :style="containerStyle"
   >
-    <global-logo class="mr-3 shrink-0 text-white lg:mr-5" monochrome :compact="isMobile" />
+    <global-logo class="mr-3 shrink-0 text-white lg:mr-5" monochrome :compact="isMobile || instanceStore.isSingleLab" />
+    <router-link
+      v-if="authStore.isLogin && instanceStore.isSingleLab && instanceStore.lab"
+      :to="{ name: 'home' }"
+      class="mr-2 max-w-24 min-w-0 flex items-center gap-2 text-white sm:max-w-40"
+      :title="workspaceInfo?.name || instanceStore.lab.name"
+      data-testid="single-lab-identity"
+    >
+      <n-avatar v-if="workspaceInfo?.logo_url" :src="workspaceInfo.logo_url" :size="24" class="hidden shrink-0 sm:block" />
+      <span class="truncate text-sm">{{ workspaceInfo?.name || instanceStore.lab.name }}</span>
+    </router-link>
     <template v-if="authStore.isLogin">
       <global-menu />
       <global-add-new />
@@ -97,14 +107,16 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui"
-
 import { useBasicLayout } from "@/composables"
 import { useRouterPush } from "@/composables/useRouterPush"
+
+import { useSingleLabWorkspace } from "@/composables/useSingleLabWorkspace"
 import GlobalAddNew from "@/layouts/modules/global-add-new/index.vue"
 import GlobalMenu from "@/layouts/modules/global-menu/index.vue"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
+import { singleLabManagementEntries, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 import { $t } from "@airalogy/shared/locales"
 import { useMediaQuery } from "@vueuse/core"
 import UserAvatar from "./components/user-avatar.vue"
@@ -136,6 +148,7 @@ const containerStyle = computed(() =>
 
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
+const { info: workspaceInfo, canManageLab } = useSingleLabWorkspace()
 const appStore = useAppStore()
 const { routerPushByKey } = useRouterPush()
 
@@ -144,6 +157,17 @@ async function handleToHelp() {
 }
 const discoveryOptions = computed<DropdownOption[]>(() => [
   ...(!instanceStore.isSingleLab ? [{ label: $t("common.hub"), key: "hub" }] : []),
+  ...(instanceStore.isSingleLab && instanceStore.lab
+    ? [
+        ...singleLabSharedEntries.map(entry => ({ label: $t(entry.label), key: entry.name })),
+        {
+          label: $t(canManageLab.value ? "page.singleLabWorkspace.management" : "page.singleLabWorkspace.membersAccess"),
+          key: "lab-management",
+          children: singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value).map(entry => ({ label: $t(entry.label), key: entry.name })),
+        },
+        { type: "divider" as const, key: "workspace-divider" },
+      ]
+    : []),
   { label: $t("page.help.title"), key: "help" },
 ])
 const menuOptions = computed<DropdownOption[]>(() => {
@@ -169,6 +193,12 @@ const menuOptions = computed<DropdownOption[]>(() => {
 })
 
 async function handleSelect(key: string | number) {
+  const workspaceEntries = [...singleLabSharedEntries, ...singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value)]
+  const entry = workspaceEntries.find(item => item.name === key)
+  if (instanceStore.isSingleLab && instanceStore.lab && entry) {
+    await routerPushByKey(entry.name, { params: { labUid: instanceStore.lab.uid } })
+    return
+  }
   switch (key) {
     case "login":
     case "sign-up":

@@ -228,6 +228,17 @@ async def get_projects(
 ):
     # Start with base conditions
     conditions = [Project.deleted_at.is_(None)]
+    if config.is_single_lab:
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        conditions.extend(
+            [
+                Lab.uid == config.SINGLE_LAB_UID,
+                Project.lab_id.in_(
+                    select(LabUser.lab_id).where(LabUser.user_id == current_user.id)
+                ),
+            ]
+        )
 
     # Handle lab_id directly
     if lab_id is not None:

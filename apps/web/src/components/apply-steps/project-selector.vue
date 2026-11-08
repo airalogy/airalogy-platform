@@ -2,7 +2,7 @@
   <div class="w-full space-y-4">
     <n-cascader
       v-model:value="combinedId"
-      :options="options"
+      :options="visibleOptions"
       placeholder="Choose target project"
       check-strategy="child"
       :on-load="handleLoad"
@@ -88,6 +88,7 @@ import { fetchProjectList } from "@/service/api/projects"
 import { getProtocolHistory } from "@/service/api/protocol"
 import { fetchUserLabs } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useClosableMessage, usePagination } from "@airalogy/composables"
 import { formatDate } from "@airalogy/shared/utils"
 import { createReusableTemplate } from "@vueuse/core"
@@ -159,6 +160,7 @@ const [DefineVersionList, ReuseVersionList] = createReusableTemplate<VersionList
 
 const message = useClosableMessage()
 const authStore = useAuthStore()
+const instanceStore = useInstanceStore()
 
 function createDefaultLabOption() {
   if (!props.defaultLab || !props.defaultProject) {
@@ -217,7 +219,14 @@ function mergeWithDefaultLabOption(nextOptions: Option[]) {
 
 const options = ref<Option[]>(mergeWithDefaultLabOption([]))
 
+const visibleOptions = computed(() => instanceStore.isSingleLab
+  ? options.value.filter(option => option.uid === instanceStore.lab?.uid || option.value === instanceStore.lab?.uid).flatMap(option => option.children || [])
+  : options.value)
 const hasFetched = ref(false)
+onMounted(() => {
+  if (instanceStore.isSingleLab)
+    void fetchLabs(true)
+})
 const checkedRowKeys = ref<string[]>([])
 const nodeListData = ref<ProtocolModels.ProjectProtocolInfo[]>([])
 const total = ref(0)
@@ -333,6 +342,15 @@ async function fetchLabs(show: boolean) {
     message.error((e as Error).message)
   }
   finally {
+    if (instanceStore.isSingleLab) {
+      if (props.target !== "project") {
+        const lab = options.value.find(option => option.uid === instanceStore.lab?.uid || option.value === instanceStore.lab?.uid)
+        if (lab)
+          await handleLoad(lab)
+      }
+      if (!combinedId.value && visibleOptions.value.length === 1)
+        combinedId.value = String(visibleOptions.value[0].value)
+    }
     hasFetched.value = true
   }
 }

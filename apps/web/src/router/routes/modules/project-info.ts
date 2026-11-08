@@ -16,9 +16,27 @@ function createProjectMeta(title: string, i18nKey: I18n.I18nKey = "page.project.
 export const projectInfoRoute: CustomRoute<ProjectInfoNameKey> = {
   path: PROJECT_PATH,
   meta: { ...createProjectMeta("Project Info", "page.labs.projects"), allowGuest: true },
-  redirect: { name: "project-protocols" },
+  redirect: { name: "project-overview" },
   component: () => import("@/views/project/layout.vue"),
   children: [
+    {
+      path: "overview",
+      name: "project-overview",
+      meta: { ...createProjectMeta("Project Overview", "page.researchDocuments.overview"), allowGuest: true },
+      component: () => import("@/views/research-documents/project-workspace.vue"),
+    },
+    {
+      path: "documents",
+      name: "project-documents",
+      meta: { ...createProjectMeta("Research Documents", "page.researchDocuments.title"), allowGuest: false },
+      component: () => import("@/views/research-documents/project-workspace.vue"),
+    },
+    {
+      path: "materials",
+      name: "project-materials",
+      meta: { ...createProjectMeta("Research Materials", "page.researchDocuments.materials"), allowGuest: false },
+      component: () => import("@/views/research-documents/project-workspace.vue"),
+    },
     {
       path: "scenarios",
       name: "project-scenarios",

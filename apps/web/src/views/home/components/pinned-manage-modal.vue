@@ -16,8 +16,13 @@
     :mask-closable="true"
     @update:show="setModalStatus"
   >
+    <div v-if="instanceStore.isSingleLab" class="mb-2 flex flex-wrap gap-2">
+      <n-tag v-for="pin in [...props.pinnedMap.values()].filter(item => item.resource_type === PinnedResourceType.Lab)" :key="pin.id" closable @close="handleToggle(PinnedResourceType.Lab, pin.resource_id, false)">
+        {{ instanceStore.lab?.name }}
+      </n-tag>
+    </div>
     <n-tabs v-model:value="activeTab" type="segment">
-      <n-tab-pane name="labs" :tab="$t('page.home.pinnedTabLabs')">
+      <n-tab-pane v-if="!instanceStore.isSingleLab" name="labs" :tab="$t('page.home.pinnedTabLabs')">
         <div class="mb-4 flex items-center gap-3">
           <n-input
             v-model:value="searchQuery"
@@ -31,7 +36,7 @@
         <n-spin :show="loading.labs" class="min-h-40">
           <n-list v-if="filteredLabs.length > 0" class="pinned-manage-list" hoverable>
             <n-list-item v-for="lab in filteredLabs" :key="lab.id">
-              <div class="flex w-full items-center gap-3">
+              <div class="w-full flex items-center gap-3">
                 <n-tooltip
                   :disabled="!isLimitDisabled(PinnedResourceType.Lab, lab.id)"
                   placement="top"
@@ -78,7 +83,7 @@
         <n-spin :show="loading.projects" class="min-h-40">
           <n-list v-if="filteredProjects.length > 0" class="pinned-manage-list" hoverable>
             <n-list-item v-for="project in filteredProjects" :key="project.id">
-              <div class="flex w-full items-center gap-3">
+              <div class="w-full flex items-center gap-3">
                 <n-tooltip
                   :disabled="!isLimitDisabled(PinnedResourceType.Project, project.id)"
                   placement="top"
@@ -124,7 +129,7 @@
         <n-spin :show="loading.protocols" class="min-h-40">
           <n-list v-if="filteredProtocols.length > 0" class="pinned-manage-list" hoverable>
             <n-list-item v-for="protocol in filteredProtocols" :key="protocol.id">
-              <div class="flex w-full items-center gap-3">
+              <div class="w-full flex items-center gap-3">
                 <n-tooltip
                   :disabled="!isLimitDisabled(PinnedResourceType.Protocol, protocol.id)"
                   placement="top"
@@ -167,6 +172,7 @@ import { useClosableMessage, useShowModal } from "@/composables"
 import { type PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
 import { fetchUserLabs, fetchUserProjects, fetchUserProtocols } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { formatNumber } from "@airalogy/shared"
 import { $t } from "@airalogy/shared/locales"
 import PinnedIcon from "~icons/tabler/pinned"
@@ -191,7 +197,8 @@ const { userInfo } = useAuthStore()
 const message = useClosableMessage()
 const { isShown, showModal, setModalStatus } = useShowModal()
 
-const activeTab = ref<"labs" | "projects" | "protocols">("labs")
+const instanceStore = useInstanceStore()
+const activeTab = ref<"labs" | "projects" | "protocols">(instanceStore.isSingleLab ? "protocols" : "labs")
 const searchQuery = ref("")
 const labs = ref<Api.Lab.LabInfo[]>([])
 const projects = ref<Api.Project.MyProjectInfo[]>([])

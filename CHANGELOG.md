@@ -14,7 +14,25 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Prioritize Protocols immediately after Home in the main navigation, followed by Projects and Documents, consistently across desktop and compact menus. Constrain long compact-menu labels so they cannot overlap adjacent header controls.
+
+- Single-Lab deployments now keep the project-led home, inherit the fixed Lab during creation, and omit redundant Lab selection and breadcrumbs. Shared knowledge, resources and Lab logs remain directly accessible; Lab management is grouped separately, while member/delegated access and personal-document privacy retain API enforcement. Add isolated single-Lab browser coverage with AI disabled.
+
+- Add a project-led home workspace with per-user visit history, direct document/Protocol/Record continuation, compatible device draft recovery, shared project pins, and a separate personal writing entry. Consolidate duplicate resource lists, lower activity priority, and retain compact real work/review actions. Recheck Project and Protocol permissions on history and pin reads; include migration `0081_project_visits`.
+
+- Place Protocols immediately after Overview in Project navigation, followed by Documents, Materials and Knowledge. Retain the Overview landing page and existing access controls.
+
+- Consolidate document lists into a compact creation toolbar with grouped template/import actions and a single search/sort/filter row. Remove the repeated Project Documents heading and distinguish a new workspace from empty search results, including a reset action.
+
+- Simplified document writing around autosave, optional result submission and grouped actions; added a stable Documents navigation entry, compact filters, common and permission-checked recent templates, and expandable document details. Connect recent writing to the home continuation flow and remove duplicate Project navigation.
+
+- Add explicit document audience notices, editable occurrence dates, timezone-aware date filters and calendar counts, day-grouped browsing and continuous read-only navigation across pages. Preserve filters when entering and leaving the editor; documents and Research Log retain the same occurrence time and permissions.
+
+- Unify document creation around built-in and user-defined AIMD templates. Add reviewed Personal/Project/Lab sharing, independent template revisions, archive/restore, and source-version checks; exclude measured values and attachments when saving templates. Include migration `0080_document_templates` and member-permission/browser regression coverage.
+
 - Upgrade to the official AIMD Recorder 1.27.1 package and remove the temporary styles patch. Its public styles entry includes the matching compiled Vue component CSS, restoring toolbar and dialog layouts; cover desktop and narrow-screen input controls in browser tests.
+
+- Add AIMD research notes and a Project overview with recent work, author-controlled revisions, guarded definition changes and immutable one-off result snapshots. Archive original material without a Protocol/Task, attach it to notes, and export/restore current content with verified original bytes. Add Knowledge/method draft derivation, bilingual UI and migration `0079_research_documents`; existing strict Record imports remain unchanged. See [the guide](docs/en/user-guide/research-documents.md).
 
 - Aira Protocol creation now checks generated AIMD and attempts at most one syntax repair before handing over a draft. Editor checks report file/line diagnostics; manual repairs require diff approval, invalid AI edits are blocked, and failed checks retain local drafts. Authoring checks support full Protocol source files and do not execute user code.
 

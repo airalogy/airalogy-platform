@@ -14,7 +14,7 @@
     :title=" props.title"
     :bordered="false"
     size="huge"
-    class="min-w-160 w-70vw"
+    class="max-w-240 min-w-0 w-[calc(100vw-2rem)]"
     :mask-closable="false"
     @update:show="handleSetShow"
     @after-leave="restoreForm"
@@ -26,8 +26,17 @@
       size="large"
       class="max-h-70vh overflow-y-auto"
     >
-      <n-form-item label="Select lab and project" path="combinedId" required>
+      <n-form-item :label="instanceStore.isSingleLab ? $t('page.singleLabWorkspace.chooseProject') : 'Select lab and project'" path="combinedId" required>
+        <n-select
+          v-if="instanceStore.isSingleLab"
+          v-model:value="model.combinedId"
+          :options="fixedProjectOptions"
+          :placeholder="$t('page.singleLabWorkspace.chooseProject')"
+          filterable
+          @update:show="fetchLabs"
+        />
         <n-cascader
+          v-else
           ref="cascadeRef"
           v-model:value="model.combinedId"
           :options="options"
@@ -46,12 +55,13 @@
       </n-form-item>
 
       <!-- Protocol Selection Table -->
-      <n-form-item label="Select protocol" path="protocolId" required>
+      <n-form-item :label="$t('page.singleLabWorkspace.chooseProtocol')" path="protocolId" required>
         <n-data-table
           v-if="model.combinedId"
           v-model:checked-row-keys="checkedRowKeys"
           class="mt-2 h-fit w-full"
           :columns="columns"
+          :scroll-x="700"
           :data="protocolsData"
           :loading="protocolsLoading"
           :pagination="pagination"
@@ -65,7 +75,7 @@
     </n-form>
     <div class="mt-3 flex items-center justify-end">
       <n-button size="medium" class="mr-4" :disabled="loading" @click="handleCancel">
-        Cancel
+        {{ $t("common.cancel") }}
       </n-button>
       <n-button
         size="medium"
@@ -74,7 +84,7 @@
         :loading="loading"
         @click="handleConfirm"
       >
-        Confirm
+        {{ $t("common.confirm") }}
       </n-button>
     </div>
   </n-modal>
@@ -89,7 +99,9 @@ import { fetchProtocols as getProtocols } from "@/service/api/project-protocols"
 import { fetchProjectList } from "@/service/api/projects"
 import { fetchUserLabs } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useClosableMessage } from "@airalogy/composables"
+import { $t } from "@airalogy/shared/locales"
 import { formatDate } from "@airalogy/shared/utils"
 import AddCircleOutline from "~icons/ion/add-circle-outline"
 import { type CascaderOption, type DataTableColumns, NText } from "naive-ui"
@@ -144,6 +156,8 @@ const { isShown, showModal, hideModal, setModalStatus } = useShowModal()
 
 const cascadeRef = ref<CascaderInst | null>(null)
 const authStore = useAuthStore()
+const instanceStore = useInstanceStore()
+const route = useRoute()
 
 const initModel: FormModel = {
   combinedId: null,
@@ -153,6 +167,9 @@ const initModel: FormModel = {
 const model = ref<FormModel>({ ...initModel })
 const defaultOptions = ref<CascaderOption[] | null>(null)
 const options = ref<CascaderOption[]>([])
+const fixedProjectOptions = computed(() => options.value
+  .filter(option => option.value === instanceStore.lab?.uid)
+  .flatMap(option => option.children || []))
 const unitOptions = ref<{ label: string, value: string, id: string }[]>([])
 const protocolsData = ref<ProtocolModels.ProjectProtocolInfo[]>([])
 const checkedRowKeys = ref<(string | number)[]>([])
@@ -204,24 +221,25 @@ const columns = computed((): DataTableColumns<ProtocolModels.ProjectProtocolInfo
     multiple: false,
   },
   {
-    title: "Name",
+    title: $t("common.name"),
     key: "name",
-    minWidth: 150,
-    render: row => h(NText, null, { default: () => row.name }),
+    width: 200,
+    ellipsis: { tooltip: true },
   },
   {
     title: "ID",
-    key: "id",
-    render: row => h(NText, null, { default: () => row.airalogy_id }),
+    key: "uid",
+    width: 180,
+    ellipsis: { tooltip: true },
   },
   {
-    title: "Records",
+    title: $t("common.records"),
     key: "records_count",
     width: 100,
     render: row => h(NText, null, { default: () => row.records_count || 0 }),
   },
   {
-    title: "Created",
+    title: $t("common.created"),
     key: "createdAt",
     width: 150,
     render: (row) => {
@@ -366,8 +384,6 @@ async function fetchProtocols() {
       pageSize: pagination.pageSize,
     })
 
-    console.log("Protocols data:", response?.data)
-
     if (response?.data) {
       protocolsData.value = response.data.protocols
       pagination.itemCount = response.data.total_count
@@ -419,9 +435,15 @@ async function fetchLabs(show: boolean) {
       }
     }
 
-    await nextTick(() => {
-      hasFetched.value = true
-    })
+    if (instanceStore.isSingleLab) {
+      const lab = options.value.find(option => option.value === instanceStore.lab?.uid)
+      if (lab)
+        await handleLoad(lab)
+      const preferred = fixedProjectOptions.value.find(option => option.uid === (props.project?.uid || route.params.projectUid))
+      if (preferred || fixedProjectOptions.value.length === 1)
+        model.value.combinedId = String((preferred || fixedProjectOptions.value[0]).value)
+    }
+    hasFetched.value = true
   }
   catch (e) {
     message.error((e as Error).message)
@@ -437,6 +459,8 @@ watch(
   (shown) => {
     if (shown) {
       setDefaultValue(props.project)
+      if (instanceStore.isSingleLab)
+        void fetchLabs(true)
       emits("modal:open")
     }
     else {

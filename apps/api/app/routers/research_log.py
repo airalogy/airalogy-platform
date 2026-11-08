@@ -26,6 +26,7 @@ from app.models.research_log import (
     ResearchLogRevision,
     ResearchLogScope,
 )
+from app.models.research_document import ResearchDocument
 from app.models.user import User
 from app.routers.depends import CurrentUser
 from app.services.access_control import resolve_structured_access
@@ -218,6 +219,7 @@ async def _entry_payload(
     current_user: User,
 ) -> dict[str, Any]:
     author = await db_session.get(User, entry.created_by_user_id)
+    document = await db_session.get(ResearchDocument, entry.id)
     return {
         **entry.as_dict(),
         "entry_type": "manual",
@@ -225,6 +227,7 @@ async def _entry_payload(
         "immutable": False,
         "author": _user_payload(author),
         "can_edit": entry.created_by_user_id == current_user.id,
+        "document": {"id": str(entry.id), "state": document.state, "format": document.format_version} if document else None,
     }
 
 
@@ -280,6 +283,8 @@ async def _entry_context(
     entry = await db_session.get(ResearchLogEntry, entry_id)
     if entry is None or entry.archived_at is not None:
         raise HTTPException(status_code=404, detail="Research Log entry not found")
+    if entry.scope_type == ResearchLogScope.PERSONAL.value and entry.owner_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Research Log entry not found")
     await _scope_context(
         db_session,
         current_user,
@@ -309,6 +314,8 @@ async def update_research_log_entry(
     db_session: DBSession,
 ):
     entry = await _entry_context(db_session, current_user, entry_id, "log.write")
+    if await db_session.get(ResearchDocument, entry_id):
+        raise HTTPException(409, "Use the research document editor to preserve fields and revision history")
     if entry.created_by_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the author can revise this Log")
     if entry.revision != params.expected_revision:

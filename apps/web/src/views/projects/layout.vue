@@ -45,7 +45,7 @@ async function handleAddProject(val: Api.Project.MyProjectInfo) {
     return
   }
 
-  await routerPushByKey("project-protocols", { params: { labUid: lab_uid, projectUid: uid } })
+  await routerPushByKey("project-overview", { params: { labUid: lab_uid, projectUid: uid } })
 }
 </script>
 

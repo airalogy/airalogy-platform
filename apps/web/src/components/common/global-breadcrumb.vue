@@ -33,12 +33,15 @@
 <script setup lang="ts">
 import type { RouteNameKey } from "@/types/page-route"
 import { useRouterPush } from "@/composables/useRouterPush"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useRouteStore } from "@/store/modules/route"
+import { $t } from "@airalogy/shared/locales"
 import { createReusableTemplate } from "@vueuse/core"
 
 defineOptions({ name: "GlobalBreadcrumb" })
 
 const routeStore = useRouteStore()
+const instance = useInstanceStore()
 const route = useRoute()
 const { routerPushByKey } = useRouterPush()
 
@@ -67,11 +70,16 @@ async function handleClickMenu(key: RouteNameKey) {
 const currentBreadcrumb = computed((): App.Global.Breadcrumb[] => {
   const { breadcrumbs, dynamicBreadcrumbs } = routeStore
 
-  if (dynamicBreadcrumbs.length > 0) {
-    return [...breadcrumbs, ...dynamicBreadcrumbs]
-  }
-
-  return breadcrumbs
+  const items = [...breadcrumbs, ...dynamicBreadcrumbs]
+  if (!instance.isSingleLab)
+    return items
+  return items.flatMap((item) => {
+    if (String(item.routeKey) !== "lab" && item.routeKey !== "lab-projects")
+      return [item]
+    if (!route.params.projectUid)
+      return []
+    return [{ ...item, key: "workspace-projects", label: $t("common.projectsLabel"), breadcrumbLabel: $t("common.projectsLabel"), routeKey: "project-dashboard" as const, to: { name: "project-dashboard" } }]
+  })
 })
 </script>
 

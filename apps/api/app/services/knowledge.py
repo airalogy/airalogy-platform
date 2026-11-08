@@ -511,6 +511,8 @@ async def authorize_research_file(
     user: User,
     file: ResearchFile,
 ) -> ScopeContext:
+    if file.scope_type == OwnerScope.PERSONAL.value and file.owner_user_id != user.id:
+        raise HTTPException(status_code=404, detail="File not found")
     scope = await resolve_scope(
         db_session,
         user,

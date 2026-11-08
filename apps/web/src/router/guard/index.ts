@@ -9,6 +9,7 @@ import { createScrollToTopGuard } from "./scrollToTop"
 import { createSpinWrapperGuard } from "./spinWrapper"
 import { createDocumentTitleGuard } from "./title"
 import { createUnsavedChangesGuard } from "./unsavedChanges"
+import { createWorkspaceHistoryGuard } from "./workspace"
 
 /**
  * Router guard
@@ -29,4 +30,5 @@ export function createRouterGuard(router: Router) {
   createDocumentTitleGuard(router)
   createScrollToTopGuard(router)
   createSpinWrapperGuard(router)
+  createWorkspaceHistoryGuard(router)
 }

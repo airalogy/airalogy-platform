@@ -61,9 +61,10 @@ import GlobalLayout from "@/layouts/global-layout/index.vue"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-
 import { useRouteStore } from "@/store/modules/route"
+
 import { convertDisplayname } from "@/utils/convertDisplayname"
+import { singleLabManagementEntries, singleLabManagementRoutes, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 
 import CreateProjectModal from "@/views/projects/modules/create-project-modal.vue"
 import { $t } from "@airalogy/shared/locales"
@@ -107,6 +108,12 @@ provide("lab-project-list", projectList)
 
 const tabs = computed((): TabPaneProps[] => {
   const { name } = route
+  if (instanceStore.isSingleLab) {
+    const entries = singleLabManagementRoutes.has(String(name))
+      ? singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value)
+      : singleLabSharedEntries
+    return entries.map(entry => ({ name: entry.name, tab: $t(entry.label) }))
+  }
   if (name === "labs-my" || name === "labs-public") {
     return [
       { name: "labs-my", tab: $t("page.labs.my") },
@@ -174,6 +181,11 @@ const tabs = computed((): TabPaneProps[] => {
 
 const title = computed(() => {
   const { name } = route
+  if (instanceStore.isSingleLab) {
+    return $t(singleLabManagementRoutes.has(String(name))
+      ? (canManageLab.value ? "page.singleLabWorkspace.management" : "page.singleLabWorkspace.membersAccess")
+      : "page.singleLabWorkspace.shared")
+  }
 
   if (name === "labs-my" || name === "labs-public") {
     return "Labs"
@@ -189,7 +201,7 @@ const title = computed(() => {
 })
 
 const description = computed(() => {
-  return labInfo.value?.description ?? ""
+  return instanceStore.isSingleLab ? "" : labInfo.value?.description ?? ""
 })
 
 const { reloadPage } = useAppStore()
@@ -209,7 +221,7 @@ async function handleCreateProject(val: Api.Project.MyProjectInfo) {
     return
   }
 
-  await routerPushByKey("project-protocols", { params: { labUid, projectUid: uid } })
+  await routerPushByKey("project-overview", { params: { labUid, projectUid: uid } })
 }
 
 async function handleCreateGroup(val: Api.Groups.MyGroupsInfo) {

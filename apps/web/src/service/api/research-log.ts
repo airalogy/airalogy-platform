@@ -31,6 +31,7 @@ export interface ResearchLogAssetLink {
 }
 
 export interface ResearchLogManualEntry {
+  document?: { id: string, state: "draft" | "submitted", format: string } | null
   id: string
   entry_type: "manual"
   event_type: string

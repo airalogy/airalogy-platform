@@ -9,12 +9,12 @@
             :pinned-map="pinnedMap"
             :pinning-keys="props.pinningKeys"
             :max-count="props.maxCount"
-            @togglePin="payload => emits('togglePin', payload)"
+            @toggle-pin="payload => emits('togglePin', payload)"
           />
         </div>
       </div>
     </template>
-    <n-spin :show="props.loading"  :class="{ 'min-h-20': props.loading }">
+    <n-spin :show="props.loading" :class="{ 'min-h-20': props.loading }">
       <div v-if="displayItems.length > 0" ref="listRef" class="pinned-list">
         <div
           v-for="{ item, meta } in displayItems"
@@ -114,7 +114,7 @@
           {{ $t("page.home.pinnedEmptyTitle") }}
         </div>
         <div class="aira-type-caption">
-          {{ $t("page.home.pinnedEmptyDesc") }}
+          {{ $t(props.hideProjects ? "page.home.workspace.pinnedHint" : "page.home.pinnedEmptyDesc") }}
         </div>
       </div>
     </n-spin>
@@ -129,6 +129,7 @@ import ProjectIcon from "@/components/icon/project-icon.vue"
 import ResearchIcon from "@/components/icon/protocol-icon.vue"
 import { ProjectType } from "@/enum"
 import { type PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
+import { useInstanceStore } from "@/store/modules/instance"
 import { formatNumber } from "@airalogy/shared"
 import { $t } from "@airalogy/shared/locales"
 import GripIcon from "~icons/tabler/grip-vertical"
@@ -141,6 +142,7 @@ interface Props {
   loading?: boolean
   pinningKeys?: Set<string>
   maxCount?: number
+  hideProjects?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -153,6 +155,7 @@ const emits = defineEmits<{
   (ev: "reorderPinned", pinnedItemIds: number[]): void
 }>()
 
+const instanceStore = useInstanceStore()
 const pinnedMap = computed(() => {
   const map = new Map<string, PinnedItem>()
   props.items.forEach((item) => {
@@ -208,7 +211,7 @@ function resolveItemMeta(item: PinnedItem): PinnedItemMeta {
 
   if (item.resource_type === PinnedResourceType.Project) {
     const resource = item.resource as Api.Project.MyProjectInfo
-    const labLabel = resource.lab_name || resource.lab_uid || ""
+    const labLabel = instanceStore.isSingleLab ? "" : resource.lab_name || resource.lab_uid || ""
     const visibility = resolveProjectVisibility(resource.type)
     return {
       title: resource.name || resource.uid || "Untitled project",
@@ -231,7 +234,7 @@ function resolveItemMeta(item: PinnedItem): PinnedItemMeta {
       route:
         resource.lab_uid && resource.uid
           ? {
-              name: "project-protocols",
+              name: "project-overview",
               params: { labUid: resource.lab_uid, projectUid: resource.uid },
             }
           : null,
@@ -244,7 +247,7 @@ function resolveItemMeta(item: PinnedItem): PinnedItemMeta {
   >
   const labUid = resource.lab?.uid || resource.lab_uid
   const projectUid = resource.project?.uid || resource.project_uid
-  const labLabel = resource.lab?.name || resource.lab_name || resource.lab_uid || ""
+  const labLabel = instanceStore.isSingleLab ? "" : resource.lab?.name || resource.lab_name || resource.lab_uid || ""
   const projectLabel = resource.project?.name || resource.project_name || resource.project_uid || ""
   const subtitle = [labLabel, projectLabel].filter(Boolean).join(" / ")
   const subtitleParts = [
@@ -259,7 +262,7 @@ function resolveItemMeta(item: PinnedItem): PinnedItemMeta {
           label: projectLabel,
           route:
             labUid && projectUid
-              ? { name: "project-protocols", params: { labUid, projectUid } }
+              ? { name: "project-overview", params: { labUid, projectUid } }
               : null,
         }
       : null,
@@ -278,7 +281,7 @@ function resolveItemMeta(item: PinnedItem): PinnedItemMeta {
 }
 
 const displayItems = computed(() =>
-  props.items.map(item => ({ item, meta: resolveItemMeta(item) })),
+  props.items.filter(item => (!props.hideProjects || item.resource_type !== PinnedResourceType.Project) && (!instanceStore.isSingleLab || item.resource_type !== PinnedResourceType.Lab)).map(item => ({ item, meta: resolveItemMeta(item) })),
 )
 
 const listRef = ref<HTMLElement | null>(null)

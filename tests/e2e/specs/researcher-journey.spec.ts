@@ -170,7 +170,7 @@ test("My Log is reachable and a progress entry survives reloading", async ({ pag
 test("tablet workbench leads and Record draft has one reliable save entry", async ({ page }) => {
   await page.setViewportSize({ width: 850, height: 1000 })
   await page.goto("/home")
-  await expect(page.getByText("Quick actions for your role", { exact: true })).toBeVisible()
+  await expect(page.getByText("Quick links", { exact: true })).toBeVisible()
   await expect(page.getByTestId("workbench-loading")).toHaveCount(0)
   const work = await page.getByTestId("home-work").boundingBox()
   const resources = await page.getByTestId("home-resources").boundingBox()
@@ -191,8 +191,9 @@ test("opening an empty Record form does not invent outstanding work", async ({ p
   await page.goto("/labs/dev_lab/projects/quickstart/protocols/schema_governance_e2e/add")
   await expect(page.getByTestId("record-save-draft")).toBeVisible()
   await page.getByRole("banner").getByRole("link").first().click()
-  await expect(page.getByText("Quick actions for your role", { exact: true })).toBeVisible()
-  await expect(page.getByText(/0 local Record drafts|No assigned research work, approval, result review, or local Record draft is waiting\./)).toBeVisible()
+  await expect(page.getByText("Quick links", { exact: true })).toBeVisible()
+  await expect(page.getByTestId("workbench-clear")).toBeVisible()
+  await expect(page.getByTestId("home-project-card").getByText("Unfinished Record", { exact: false })).toHaveCount(0)
 })
 
 test("storage quota failure cannot claim a Record draft was saved", async ({ page }) => {

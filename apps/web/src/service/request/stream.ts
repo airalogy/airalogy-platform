@@ -3,7 +3,7 @@ import { handleUnauthorized } from "@/utils/auth/unauthorized"
 import { createStreamRequest } from "@/utils/axios"
 import { localStg } from "@/utils/storage"
 import { renderMessageContent } from "@airalogy/composables/useClosableMessage"
-import { baseURL } from "."
+import { baseURL } from "./config"
 
 const decoder = new TextDecoder("utf-8")
 /**

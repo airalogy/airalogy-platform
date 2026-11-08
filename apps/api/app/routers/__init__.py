@@ -56,10 +56,14 @@ from .instrument_packages import router as instrument_packages_router
 from .instrument_pairings import router as instrument_pairings_router
 from .instrument_qualifications import router as instrument_qualifications_router
 from .knowledge import router as knowledge_router
+from .research_documents import router as research_documents_router
+from .document_templates import router as document_templates_router
+from .research_materials import router as research_materials_router
 from .labs import router as labs_router
 from .login import router as login_router
 from .oauth import router as oauth_router
 from .pinned_items import router as pinned_items_router
+from .workspace import router as workspace_router
 from .project_groups import router as project_groups_router
 from .projects import router as projects_router
 from .protocol_folders import router as protocol_folders_router
@@ -369,6 +373,10 @@ app.include_router(research_resources_router)
 app.include_router(research_services_router)
 app.include_router(research_service_jobs_router)
 app.include_router(knowledge_router)
+app.include_router(research_documents_router)
+app.include_router(workspace_router)
+app.include_router(document_templates_router)
+app.include_router(research_materials_router)
 app.include_router(resources_router)
 app.include_router(scenario_kits_router)
 app.include_router(airalogy_files_router)

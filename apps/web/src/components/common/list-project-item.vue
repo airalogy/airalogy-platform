@@ -1,11 +1,11 @@
 <template>
   <div class="flex items-center">
-    <template v-if="display && labName">
+    <template v-if="display && (instanceStore.isSingleLab || labName)">
       <div v-if="props.isCompact" class="ml-2 min-w-0 flex flex-1 flex-col gap-1">
         <div class="min-w-0 flex items-center gap-2">
           <router-link
             :to="{
-              name: 'project-protocols',
+              name: 'project-overview',
               params: { projectUid: display.project.uid, labUid: display.lab.uid },
             }"
             class="aira-type-item-title min-w-0 truncate hover:router-link"
@@ -21,9 +21,9 @@
             {{ visibilityLabel }}
           </span>
         </div>
-        <div class="aira-type-meta min-w-0">
+        <div v-if="!instanceStore.isSingleLab" class="aira-type-meta min-w-0">
           <router-link
-            v-if="display.lab.uid"
+            v-if="display.lab.uid && !instanceStore.isSingleLab"
             :to="{ name: 'lab-projects', params: { labUid: display.lab.uid } }"
             class="block truncate hover:router-link"
             @click.stop
@@ -38,20 +38,20 @@
       <div v-else class="lab-project-line ml-2 min-w-0 flex flex-wrap items-start gap-x-2 gap-y-1">
         <div class="lab-project-text min-w-0 flex flex-1 flex-wrap items-baseline gap-x-1">
           <router-link
-            v-if="display.lab.uid"
+            v-if="display.lab.uid && !instanceStore.isSingleLab"
             :to="{ name: 'lab-projects', params: { labUid: display.lab.uid } }"
             class="aira-type-meta break-words hover:router-link"
             @click.stop
           >
             {{ labName }}
           </router-link>
-          <span v-else class="aira-type-meta break-words">
+          <span v-else-if="!instanceStore.isSingleLab" class="aira-type-meta break-words">
             {{ labName }}
           </span>
-          <span class="aira-type-meta aira-text-subtle select-none">/</span>
+          <span v-if="!instanceStore.isSingleLab" class="aira-type-meta aira-text-subtle select-none">/</span>
           <router-link
             :to="{
-              name: 'project-protocols',
+              name: 'project-overview',
               params: { projectUid: display.project.uid, labUid: display.lab.uid },
             }"
             class="aira-type-item-title break-words hover:router-link"
@@ -80,6 +80,7 @@
 import { useLoading } from "@/composables"
 import { useProjectVisibility } from "@/composables/useProjectVisibility"
 import { memoizedGetLabInfo } from "@/service/api/labs"
+import { useInstanceStore } from "@/store/modules/instance"
 
 defineOptions({ name: "ListProjectItem" })
 
@@ -87,6 +88,7 @@ const props = withDefaults(defineProps<IProps>(), {
   isCompact: true,
 })
 
+const instanceStore = useInstanceStore()
 export interface IProps {
   item: Api.Project.MyProjectInfo
   isCompact?: boolean
@@ -123,6 +125,8 @@ const { startLoading, endLoading } = useLoading()
 const { visibilityLabel, visibilityClass } = useProjectVisibility(() => props.item.type)
 
 onMounted(async () => {
+  if (instanceStore.isSingleLab)
+    return
   startLoading()
   const labId = props.item.lab_id
   if (!labId) {

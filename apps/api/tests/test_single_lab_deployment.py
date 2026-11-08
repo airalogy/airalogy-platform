@@ -272,6 +272,15 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     external_revision = import_module("migrations.versions.0078_external_agent_access")
     assert external_revision.down_revision == "0077_record_resource_reservation"
     later_tables.update(external_revision.TABLE_NAMES)
+    document_revision = import_module("migrations.versions.0079_research_documents")
+    assert document_revision.down_revision == external_revision.revision
+    later_tables.update(document_revision.TABLE_NAMES)
+    template_revision = import_module("migrations.versions.0080_document_templates")
+    assert template_revision.down_revision == document_revision.revision
+    later_tables.update({"document_templates", "document_template_revisions"})
+    visit_revision = import_module("migrations.versions.0081_project_visits")
+    assert visit_revision.down_revision == template_revision.revision
+    later_tables.add("project_visits")
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

@@ -32,7 +32,13 @@
           </div>
         </header>
 
-        <template v-if="item.entry_type === 'manual'">
+        <template v-if="item.entry_type === 'manual' && item.document">
+          <p class="aira-type-body aira-text-secondary mb-3 mt-3 line-clamp-3 whitespace-pre-wrap">{{ item.body }}</p>
+          <router-link :to="{ name: 'research-document-detail', params: { documentId: item.document.id } }">
+            <n-button type="primary" quaternary>{{ $t('page.researchDocuments.open') }}</n-button>
+          </router-link>
+        </template>
+        <template v-else-if="item.entry_type === 'manual'">
           <p v-if="item.body" class="aira-type-body aira-text-secondary mb-0 mt-3 whitespace-pre-wrap">
             {{ item.body }}
           </p>
@@ -92,6 +98,8 @@ const emit = defineEmits<{ edit: [entry: ResearchLogManualEntry] }>()
 
 function eventLabel(item: ResearchLogTimelineItem) {
   if (item.entry_type === "manual") {
+    if (item.document)
+      return $t(`page.researchDocuments.${item.kind}` as I18n.I18nKey)
     const suffix = item.kind.charAt(0).toUpperCase() + item.kind.slice(1)
     return $t(`page.recordDiary.kind${suffix}` as I18n.I18nKey)
   }

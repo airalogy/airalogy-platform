@@ -14,7 +14,7 @@
     :title="modalTitle"
     :bordered="false"
     size="huge"
-    class="min-w-160 w-70vw"
+    class="max-w-240 min-w-0 w-[calc(100vw-2rem)]"
     content-class="max-h-80vh overflow-y-auto"
     :mask-closable="false"
     @update:show="handleSetShow"

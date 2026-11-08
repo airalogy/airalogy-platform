@@ -3,7 +3,7 @@ import { useInstanceStore } from "@/store/modules/instance"
 import { localStg } from "@/utils/storage"
 
 const SINGLE_LAB_REDIRECT_ROUTES = new Set([
-  "home",
+  "lab-projects",
   "labs",
   "labs-my",
   "labs-public",
@@ -73,8 +73,7 @@ export function createInstanceGuard(router: Router) {
       && (SINGLE_LAB_REDIRECT_ROUTES.has(routeName) || isUnavailableSurface || targetsAnotherLab)
     ) {
       next({
-        name: "lab-projects",
-        params: { labUid: instanceStore.lab.uid },
+        name: "project-dashboard",
         replace: true,
       })
       return

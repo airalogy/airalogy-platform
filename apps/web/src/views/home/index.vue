@@ -1,128 +1,38 @@
 <template>
-  <n-layout data-testid="home-workspace" has-sider class="my-6 overflow-visible lg:my-10" :content-class="isCompact ? '!flex-col' : ''">
-    <n-layout-sider
-      data-testid="home-resources"
-      :class="{ 'order-2 mt-6': isCompact }"
-      :content-class="['!overflow-visible', isCompact ? 'items-center' : ''].join(' ')"
-      :width="isCompact ? '100%' : 300"
-    >
-      <div class="n-card n-card--bordered rounded-2 pt-6">
-        <sider-list
-          :title="$t('page.home.labs')"
-          type="lab"
-          :width="isCompact ? width - 120 : 210"
-          :pinned-map="pinnedMap"
-          :pinning-keys="pinningKeys"
-          @toggle-pin="handleTogglePin"
-        />
-        <n-divider style="margin: 1rem 0 !important" />
-        <sider-list
-          :title="$t('page.home.projects')"
-          type="project"
-          :width="isCompact ? width - 120 : 210"
-          :pinned-map="pinnedMap"
-          :pinning-keys="pinningKeys"
-          @toggle-pin="handleTogglePin"
-        />
-        <n-divider style="margin: 1rem 0 !important" />
-        <sider-list
-          :title="$t('page.home.recentProtocols')"
-          type="protocol"
-          :width="isCompact ? width - 120 : 210"
-          :pinned-map="pinnedMap"
-          :pinning-keys="pinningKeys"
-          @toggle-pin="handleTogglePin"
-        />
-      </div>
-    </n-layout-sider>
-    <n-layout data-testid="home-work" :class="{ 'order-1': isCompact }">
-      <n-layout-content class="!overflow-visible" :content-class="isCompact ? '' : 'ml-6'">
-        <task-workbench class="mb-6" />
-        <pinned-items
-          class="mb-6"
-          :items="pinnedItems"
-          :loading="pinnedLoading"
-          :pinning-keys="pinningKeys"
-          :max-count="maxPinnedCount"
-          @toggle-pin="handleTogglePin"
-          @reorder-pinned="handleReorderPinned"
-        />
-      </n-layout-content>
-      <n-layout-header v-if="totalCount > 0 || !loading">
-        <h3 class="aira-type-section-title px-6 pb-3 pt-6">
-          {{ $t("page.home.activities") }}
-        </h3>
-      </n-layout-header>
-      <n-layout-content
-        :content-class="
-          loading || totalCount > 0 ? '!pb-10 !overflow-visible' : '!overflow-visible'
-        "
-        class="!overflow-visible"
-      >
-        <n-spin :show="loading" class="min-h-40" :content-class="isCompact ? '' : 'ml-6'">
-          <template v-if="loading || totalCount > 0">
-            <activity-card
-              v-for="item in activityList"
-              :key="item.id"
-              v-bind="item"
-              :loading="loading && totalCount === 0"
-            />
-            <n-button
-              v-if="hasMore"
-              :loading="loading"
-              type="default"
-              size="large"
-              class="mt-4 w-full"
-              @click="handleLoadMore"
-            >
-              {{ $t("page.home.loadMore") }}
-            </n-button>
-          </template>
-          <n-card
-            v-else
-            bordered
-            class="flex items-center justify-center px-20 py-24.5"
-            header-class="aira-type-page-title text-center"
-            content-class="aira-type-body"
-          >
-            <template #header>
-              {{
-                $t("page.home.empty.title", {
-                  name: authStore.userInfo.name || authStore.userInfo.username,
-                })
-              }}
-            </template>
-            <p class="mb-4">
-              {{ $t("page.home.empty.description") }}
-            </p>
-            <div class="flex flex-wrap items-center justify-center gap-2">
-              <create-lab-modal
-                v-if="!instanceStore.isSingleLab"
-                :button-props="{ type: 'primary', ghost: false, text: false }"
-                :trigger="$t('page.home.empty.createLabAction')"
-                @modal:new-lab="handleCreateLab"
-              />
-              <n-button v-if="!instanceStore.isSingleLab" secondary @click="handleOpenHub">
-                {{ $t("page.home.empty.hubAction") }}
-              </n-button>
-            </div>
-          </n-card>
-        </n-spin>
-      </n-layout-content>
-    </n-layout>
-
-    <!-- Testing Notification Dialog for New Users -->
-    <testing-notification-dialog
-      v-if="!instanceStore.isSingleLab"
-      v-model:show="showTestingDialog"
-      @get-started="handleGetStarted"
-      @dismiss="handleDismissDialog"
-    />
-  </n-layout>
+  <div data-testid="home-workspace" class="my-6 min-w-0 lg:my-8 space-y-6">
+    <main data-testid="home-work" class="min-w-0">
+      <task-workbench :pins="pinnedItems" :pinning-keys="pinningKeys" @toggle-pin="handleTogglePin" />
+    </main>
+    <section data-testid="home-resources" class="border border-gray-200 rounded-xl bg-gray-50 p-4">
+      <nav class="flex flex-wrap items-center gap-x-6 gap-y-3" :aria-label="$t('page.home.workspace.resources')">
+        <span class="aira-type-label">{{ $t('page.home.workspace.resources') }}</span>
+        <router-link v-for="entry in resourceEntries" :key="entry.name" :to="{ name: entry.name, params: entry.params }" class="text-primary hover:underline">
+          {{ $t(entry.label) }}
+        </router-link>
+      </nav>
+      <details class="mt-4">
+        <summary class="cursor-pointer text-gray-600">
+          {{ $t('page.home.workspace.pinnedResources') }}
+        </summary>
+        <pinned-items class="mt-3" :items="pinnedItems" :loading="pinnedLoading" :pinning-keys="pinningKeys" :max-count="maxPinnedCount" :hide-projects="true" @toggle-pin="handleTogglePin" @reorder-pinned="handleReorderPinned" />
+      </details>
+    </section>
+    <details v-if="loading || totalCount > 0" class="min-w-0" data-testid="home-activity">
+      <summary class="aira-type-card-title mb-3 cursor-pointer">
+        {{ $t('page.home.activities') }}
+      </summary>
+      <n-spin :show="loading" class="min-h-20">
+        <activity-card v-for="item in activityList" :key="item.id" v-bind="item" :loading="loading && totalCount === 0" />
+        <n-button v-if="hasMore" :loading="loading" class="mt-4 w-full" @click="handleLoadMore">
+          {{ $t('page.home.loadMore') }}
+        </n-button>
+      </n-spin>
+    </details>
+    <testing-notification-dialog v-if="!instanceStore.isSingleLab" v-model:show="showTestingDialog" @get-started="handleGetStarted" @dismiss="handleDismissDialog" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { useRouterPush } from "@/composables/useRouterPush"
 import { getActivities } from "@/service/api/activities"
 import {
   createPinnedItem,
@@ -133,24 +43,30 @@ import {
   reorderPinnedItems,
 } from "@/service/api/pinned-items"
 import { getProtocolInfo } from "@/service/api/protocol"
-
-import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
+
 import { useInstanceStore } from "@/store/modules/instance"
+import { singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 import TestingNotificationDialog from "@/views/auth/components/testing-notification-dialog.vue"
-import CreateLabModal from "@/views/labs/modules/lab/create-lab-modal.vue"
 
 import { useClosableMessage, useLoading } from "@airalogy/composables"
-import { useBasicLayout } from "@airalogy/composables/useBasicLayout"
 import { $t } from "@airalogy/shared/locales"
-import { useWindowSize } from "@vueuse/core"
 import ActivityCard, { type IProps as ICardItem } from "./components/activity-card.vue"
 import PinnedItems from "./components/pinned-items.vue"
-import SiderList from "./components/sider-list.vue"
 import TaskWorkbench from "./components/task-workbench.vue"
 
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
+
+const resourceEntries = computed(() => [
+  ...(instanceStore.isSingleLab && instanceStore.lab
+    ? singleLabSharedEntries.map(entry => ({ ...entry, params: { labUid: instanceStore.lab!.uid } }))
+    : [{ name: "labs-my", label: "common.labs" }]),
+  { name: "protocols-my", label: "page.home.workspace.section.protocols" },
+  { name: "knowledge-home", label: instanceStore.isSingleLab ? "page.knowledge.myKnowledge" : "page.home.workspace.section.knowledge" },
+  { name: "research-tasks", label: "page.research.title" },
+] as { name: App.Global.RouteNameKey, label: I18n.I18nKey, params?: { labUid: string } }[])
+
 const { loading, startLoading, endLoading } = useLoading()
 const {
   loading: pinnedLoading,
@@ -174,9 +90,6 @@ const totalCount = computed(() =>
 const currentPage = ref(1)
 const pageSize = ref(5)
 const hasMore = ref(true)
-const { breakpoints } = useBasicLayout()
-const isCompact = breakpoints.smaller("lg")
-const { width } = useWindowSize()
 
 const maxPinnedCount = 10
 const pinnedItems = ref<PinnedItem[]>([])
@@ -398,6 +311,9 @@ async function handleReorderPinned(pinnedItemIds: number[]) {
     return
   }
 
+  // The compact list excludes project pins; keep them and their ordering intact.
+  const ordered = [...pinnedItemIds]
+  pinnedItemIds = pinnedItems.value.map(item => (item.resource_type === PinnedResourceType.Project || (instanceStore.isSingleLab && item.resource_type === PinnedResourceType.Lab)) ? item.id : ordered.shift()!).filter(id => id !== undefined)
   const itemMap = new Map(pinnedItems.value.map(item => [item.id, item]))
   const nextItems = pinnedItemIds.map(id => itemMap.get(id)).filter(Boolean) as PinnedItem[]
   if (nextItems.length > 0) {
@@ -413,22 +329,9 @@ async function handleReorderPinned(pinnedItemIds: number[]) {
   }
 }
 
-const appStore = useAppStore()
-const { routerPushByKey } = useRouterPush()
-
 // Testing notification dialog state
 const showTestingDialog = ref(false)
 const hasShownTestingDialog = ref(false)
-
-async function handleCreateLab(item: Api.Lab.LabInfo) {
-  const { uid } = item
-
-  await routerPushByKey("lab-projects", { params: { labUid: uid } })
-}
-
-function handleOpenHub() {
-  void routerPushByKey("hub")
-}
 
 // Handle testing dialog actions
 function handleGetStarted() {
@@ -462,8 +365,3 @@ watch(
   { immediate: true },
 )
 </script>
-
-<style scoped lang="sass">
-:deep(.n-layout-scroll-container)
-  overflow-x: visible!important
-</style>

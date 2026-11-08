@@ -6,6 +6,16 @@ The profile creates one configured Lab, a default private Project, an initial ow
 
 Commercial and long-running installations should use the complete package from a GitHub Release rather than a Git worktree on the server. See [Release and Deployment Identity](./release-and-deployment-identity.md) for product versions, image digests, database revisions, opaque deployment IDs, and the boundary around private customer records.
 
+## Daily workspace navigation
+
+After signing in, Home shows recent Projects, resumable work, pending actions and personal documents. It no longer redirects to a Lab project list. The configured Lab name and logo identify the workspace; Project and Protocol pages omit the redundant Lab breadcrumb. Existing URLs and asset identifiers remain valid.
+
+- **Projects** is the daily project entry. Creating a Project or choosing a Protocol inherits the configured Lab; users select a Project when several are available.
+- Home shortcuts and **More** open shared Knowledge (including the Paper Library), resources/inventory/equipment and the Lab Log.
+- **More → Lab management** groups members, organization, access and settings for Lab Owners/Managers. Other members use **Members and access**; existing delegated administration remains limited to its authorized scope. All writes still enforce API permissions.
+- **Documents** opens personal writing by default. Personal documents remain private; Project and Lab documents use their respective audiences. A single-Lab deployment does not make every document visible to every member.
+- Lab selection, creation and public discovery are omitted. Shared capabilities remain available, including when AI is disabled.
+
 ## Intended Scope
 
 This profile is suitable for a laboratory that can operate one Linux server and accepts short maintenance windows. A practical runtime starting point is 4 CPU cores and 8 GB RAM. A host that builds the web image from source should have 16 GB RAM, with at least 8 GB available to Docker. Size SSD storage for the laboratory's records, file payloads, images, build cache, and backups. Keep backups on a different host or storage system.

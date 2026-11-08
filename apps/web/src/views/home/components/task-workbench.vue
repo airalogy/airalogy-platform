@@ -1,335 +1,6 @@
-<template>
-  <section data-testid="task-workbench" class="border border-gray-200 rounded-3 bg-white p-5 shadow-sm">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div>
-        <div class="aira-type-eyebrow">
-          {{ $t("page.home.workbench.eyebrow") }}
-        </div>
-        <h1 class="aira-type-page-title mb-0 mt-1">
-          {{ $t("page.home.workbench.title", { name: displayName }) }}
-        </h1>
-        <p class="aira-type-body aira-text-muted mb-0 mt-2">
-          {{ $t("page.home.workbench.description") }}
-        </p>
-      </div>
-      <n-tag v-if="instanceStore.aiEnabled" type="info" round>
-        {{ $t("page.home.workbench.aiAvailable") }}
-      </n-tag>
-    </div>
-
-    <n-alert
-      v-if="loadError"
-      type="error"
-      class="mt-4"
-      :title="$t('page.home.workbench.loadError')"
-    >
-      <n-button class="mt-2" size="small" @click="loadWorkbench">
-        {{ $t("common.retry") }}
-      </n-button>
-    </n-alert>
-
-    <div v-else-if="loading" class="mt-5 space-y-4" role="status" :aria-label="$t('common.loading')" data-testid="workbench-loading">
-      <n-skeleton height="180px" :sharp="false" />
-      <n-skeleton text :repeat="2" />
-    </div>
-    <div v-else class="mt-5 min-h-44">
-      <div class="grid grid-cols-1 gap-4" :class="{ 'xl:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]': attentionCount > 0 }">
-        <div
-          class="border border-primary/25 rounded-3 from-primary/8 to-sky-50 bg-gradient-to-br p-5"
-        >
-          <template v-if="assignedWorkItem">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.continueLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ assignedWorkItem.action.title }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ assignedWorkItem.lab.name }} / {{ assignedWorkItem.project.name }} /
-              {{ assignedWorkItem.task.title }}
-            </p>
-            <p class="aira-type-meta line-clamp-2 mb-0 mt-2">
-              {{ assignedWorkItem.instructions || assignedWorkItem.task.goal }}
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-              <n-button type="primary" @click="executeResearchWork(assignedWorkItem)">
-                {{ assignedWorkItem.action.kind === "protocol_run" ? $t("page.research.executeProtocol") : $t("page.research.completeHumanWork") }}
-              </n-button>
-              <n-button secondary @click="openResearchTask(assignedWorkItem.task.id)">
-                {{ $t("page.research.viewTask") }}
-              </n-button>
-            </div>
-          </template>
-
-          <template v-else-if="pendingApproval">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.research.approvalRequired") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ pendingApproval.action.title }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ pendingApproval.lab.name }} / {{ pendingApproval.project.name }} /
-              {{ pendingApproval.task.title }}
-            </p>
-            <p class="aira-type-meta line-clamp-2 mb-0 mt-2">
-              {{ pendingApproval.action.description || pendingApproval.reason }}
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-              <research-approval-actions
-                :approval="pendingApproval"
-                :action-revision="pendingApproval.action.revision"
-                @decided="loadWorkbench"
-              />
-              <n-button secondary @click="openResearchTask(pendingApproval.task.id)">
-                {{ $t("page.research.viewTask") }}
-              </n-button>
-            </div>
-          </template>
-
-          <template v-else-if="attentionTask">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.continueLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ attentionTask.title }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ attentionTask.lab.name }} / {{ attentionTask.project.name }}
-            </p>
-            <p class="aira-type-meta line-clamp-2 mb-0 mt-2">
-              {{ attentionTask.goal }}
-            </p>
-            <n-button class="mt-5" type="primary" @click="openResearchTask(attentionTask.id)">
-              {{ attentionTask.status === "review_required" ? $t("page.research.reviewResult") : $t("page.research.viewTask") }}
-            </n-button>
-          </template>
-
-          <template v-else-if="latestDraft?.protocol">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.continueLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ $t("page.home.workbench.continueDraftTitle") }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ latestDraft.protocol.lab.name }} / {{ latestDraft.protocol.project.name }} /
-              {{ latestDraft.protocol.name }}
-            </p>
-            <p class="aira-type-meta mb-0 mt-2">
-              {{ $t("page.home.workbench.savedOnDevice") }} ·
-              <n-time :time="latestDraft.timestamp" type="relative" />
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-              <n-button type="primary" @click="continueDraft(latestDraft)">
-                {{ $t("page.home.workbench.continueAction") }}
-              </n-button>
-              <n-button secondary @click="openProtocol(latestDraft.protocol)">
-                {{ $t("page.home.workbench.viewProtocolAction") }}
-              </n-button>
-            </div>
-          </template>
-
-          <template v-else-if="recentProtocol">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.nextTaskLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ $t("page.home.workbench.startRecordTitle") }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ recentProtocol.lab.name }} / {{ recentProtocol.project.name }} /
-              {{ recentProtocol.name }}
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-              <n-button type="primary" @click="startRecord(recentProtocol)">
-                {{ $t("page.home.workbench.startRecordAction") }}
-              </n-button>
-              <n-button secondary @click="openProtocol(recentProtocol)">
-                {{ $t("page.home.workbench.viewProtocolAction") }}
-              </n-button>
-            </div>
-          </template>
-
-          <template v-else-if="protocolCreationProject">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.nextTaskLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ $t("page.home.workbench.createProtocolTitle") }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ protocolCreationProject.lab_name }} / {{ protocolCreationProject.name }}
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-              <n-button type="primary" @click="createProtocol('template')">
-                {{ $t("page.home.workbench.fromTemplateAction") }}
-              </n-button>
-              <n-button v-if="instanceStore.aiEnabled" secondary @click="createProtocol('ai')">
-                {{ $t("page.home.workbench.askAiraAction") }}
-              </n-button>
-            </div>
-          </template>
-
-          <template v-else-if="recentProject">
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.nextTaskLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ $t("page.home.workbench.openProjectTitle") }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ $t("page.home.workbench.openProjectDescription", { name: recentProject.name }) }}
-            </p>
-            <n-button class="mt-5" type="primary" @click="openProject(recentProject)">
-              {{ $t("page.home.workbench.openProjectAction") }}
-            </n-button>
-          </template>
-
-          <template v-else>
-            <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-              {{ $t("page.home.workbench.nextTaskLabel") }}
-            </div>
-            <h2 class="aira-type-section-title mb-0 mt-2">
-              {{ $t("page.home.workbench.createProjectTitle") }}
-            </h2>
-            <p class="aira-type-body aira-text-secondary mb-0 mt-2">
-              {{ $t("page.home.workbench.createProjectDescription") }}
-            </p>
-            <create-project-modal
-              class="mt-5"
-              :button-props="{ type: 'primary' }"
-              :show-icon="false"
-              :trigger="$t('page.home.workbench.createProjectAction')"
-              @modal:new-project="handleProjectCreated"
-            />
-          </template>
-        </div>
-
-        <div v-if="attentionCount > 0" class="border border-gray-200 rounded-3 bg-gray-50 p-5" data-testid="workbench-attention">
-          <div class="aira-type-eyebrow">
-            {{ $t("page.home.workbench.attentionLabel") }}
-          </div>
-          <div class="mt-3 flex items-baseline gap-2">
-            <span class="aira-type-display aira-numeric">{{ attentionCount }}</span>
-            <span class="aira-type-body aira-text-secondary">
-              {{ $t("page.home.workbench.attentionCount", { count: attentionCount }) }}
-            </span>
-          </div>
-          <p class="aira-type-body aira-text-muted mb-0 mt-2">
-            {{ attentionSummary }}
-          </p>
-        </div>
-      </div>
-
-      <p v-if="attentionCount === 0" class="aira-type-meta mb-0 mt-3" data-testid="workbench-clear">{{ attentionSummary }}</p>
-      <div class="mt-5">
-        <h2 class="aira-type-card-title mb-3">
-          {{ $t("page.home.workbench.quickActions") }}
-        </h2>
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <button
-            type="button"
-            class="task-action task-action--ai"
-            @click="openResearchTasks"
-          >
-            <span class="aira-type-label task-action__title">{{ $t("page.research.title") }}</span>
-            <span class="aira-type-meta task-action__description">{{ $t("page.home.workbench.researchDescription") }}</span>
-          </button>
-          <button
-            v-if="recentProtocol && !primaryIsRecord"
-            type="button"
-            class="task-action"
-            @click="startRecord(recentProtocol)"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.startRecordAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{ recentProtocol.name }}</span>
-          </button>
-          <button
-            v-if="protocolCreationProject"
-            type="button"
-            class="task-action"
-            @click="createProtocol('template')"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.fromTemplateAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{
-              protocolCreationProject.name
-            }}</span>
-          </button>
-          <button
-            v-if="instanceStore.aiEnabled && protocolCreationProject"
-            type="button"
-            class="task-action task-action--ai"
-            @click="createProtocol('ai')"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.askAiraAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{
-              $t("page.home.workbench.askAiraDescription")
-            }}</span>
-          </button>
-          <button
-            v-if="managedProject"
-            type="button"
-            class="task-action"
-            @click="manageProjectMembers(managedProject)"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.manageProjectAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{ managedProject.name }}</span>
-          </button>
-          <button
-            v-if="ownedProtocol"
-            type="button"
-            class="task-action"
-            @click="openProtocol(ownedProtocol)"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.reviewProtocolAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{ ownedProtocol.name }}</span>
-          </button>
-          <button
-            v-if="managedLab"
-            type="button"
-            class="task-action"
-            @click="manageLabMembers(managedLab)"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.manageLabAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{ managedLab.name }}</span>
-          </button>
-          <button
-            v-if="isGlobalAdministrator"
-            type="button"
-            class="task-action"
-            @click="openOperationsHelp"
-          >
-            <span class="aira-type-label task-action__title">{{
-              $t("page.home.workbench.operationsAction")
-            }}</span>
-            <span class="aira-type-meta task-action__description">{{
-              $t("page.home.workbench.operationsDescription")
-            }}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-</template>
-
 <script setup lang="ts">
-import type { ProtocolModels } from "@airalogy/shared/types"
-import { checkProjectActionPermission, ProjectAction } from "@/composables/useProjectPermissions"
-import { LabRole, ProjectRole } from "@/enum"
-import { getProtocolInfo } from "@/service/api/protocol"
+import type { PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
+import { recentResearchDocuments } from "@/service/api/research-documents"
 import {
   fetchResearchApprovals,
   fetchResearchTasks,
@@ -339,217 +10,64 @@ import {
   type ResearchWorkItemDetail,
   startResearchWorkItem,
 } from "@/service/api/research-tasks"
-import { fetchUserLabs, fetchUserProjects, fetchUserProtocols } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { listRecordDrafts, type RecordDraft } from "@/utils/recordDrafts"
-import CreateProjectModal from "@/views/projects/modules/create-project-modal.vue"
 import ResearchApprovalActions from "@/views/research/components/research-approval-actions.vue"
-import { useLoading } from "@airalogy/composables"
-import { $t } from "@airalogy/shared/locales"
-import { nanoid } from "nanoid"
+import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
+import ProjectWorkspaces from "./project-workspaces.vue"
 
-interface ResolvedDraft extends RecordDraft {
-  protocol: ProtocolModels.ProjectProtocolInfo
-}
-
+defineProps<{ pins: PinnedItem[], pinningKeys: Set<string> }>()
+const emit = defineEmits<{ togglePin: [payload: { resourceType: PinnedResourceType, resourceId: string }] }>()
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 const router = useRouter()
-const { loading, startLoading, endLoading } = useLoading(true)
-
-const projects = ref<Api.Project.MyProjectInfo[]>([])
-const labs = ref<Api.Lab.UsersLabInfo[]>([])
-const protocols = ref<ProtocolModels.ProjectProtocolInfo[]>([])
-const validDrafts = ref<ResolvedDraft[]>([])
+const { t } = useI18n()
+const displayName = computed(() => authStore.userInfo.name || authStore.userInfo.username)
+const loading = ref(true)
+const loadError = ref(false)
+const documentError = ref(false)
+const recentDocuments = ref<Awaited<ReturnType<typeof recentResearchDocuments>>["items"]>([])
 const researchTasks = ref<ResearchTaskSummary[]>([])
 const researchWorkItems = ref<ResearchWorkItemDetail[]>([])
 const researchApprovals = ref<ResearchApprovalDetail[]>([])
-const loadError = ref(false)
-
-const displayName = computed(() => authStore.userInfo.name || authStore.userInfo.username)
-const recentProject = computed(() => projects.value[0] || null)
-const protocolCreationProject = computed(
-  () =>
-    projects.value.find(project =>
-      checkProjectActionPermission(project.user_role, project.type, ProjectAction.CREATE_PROTOCOL),
-    ) || null,
-)
-const recentProtocol = computed(() => protocols.value.find(canSubmitRecordForProtocol) || null)
-const latestDraft = computed(() => validDrafts.value[0] || null)
-const assignedWorkItem = computed(() => researchWorkItems.value[0] || null)
-const pendingApproval = computed(() => researchApprovals.value[0] || null)
-const attentionTask = computed(() =>
-  researchTasks.value.find(task => task.status === "review_required")
-  || researchTasks.value.find(task => ["active", "paused", "failed"].includes(task.status))
-  || null,
-)
-const primaryIsRecord = computed(() => !assignedWorkItem.value && !pendingApproval.value && !attentionTask.value && !latestDraft.value && Boolean(recentProtocol.value))
-const attentionCount = computed(() =>
-  validDrafts.value.length
-  + researchWorkItems.value.length
-  + researchApprovals.value.length
-  + researchTasks.value.filter(task => task.status === "review_required").length,
-)
-const attentionSummary = computed(() => attentionCount.value
-  ? $t("page.home.workbench.attentionSummary", {
-    work: researchWorkItems.value.length,
-    approvals: researchApprovals.value.length,
-    review: researchTasks.value.filter(task => task.status === "review_required").length,
-    drafts: validDrafts.value.length,
-  })
-  : $t("page.home.workbench.noAttentionHint"))
-const managedProject = computed(
-  () =>
-    projects.value.find(
-      project =>
-        project.user_role === ProjectRole.OWNER || project.user_role === ProjectRole.MANAGER,
-    ) || null,
-)
-const managedLab = computed(
-  () =>
-    labs.value.find(lab => lab.user_role === LabRole.OWNER || lab.user_role === LabRole.MANAGER)
-    || null,
-)
-const ownedProtocol = computed(
-  () =>
-    protocols.value.find(protocol => String(protocol.user_id) === String(authStore.userInfo.id))
-    || null,
-)
-const isGlobalAdministrator = computed(
-  () => authStore.userInfo.roles?.some(role => role === "R_ADMIN" || role === "R_SUPER") ?? false,
-)
-
-function canSubmitRecordForProtocol(protocol: ProtocolModels.ProjectProtocolInfo) {
-  const project = projects.value.find(
-    item => String(item.id) === String(protocol.project.id) || item.uid === protocol.project.uid,
-  )
-  return Boolean(
-    project
-    && checkProjectActionPermission(
-      project.user_role,
-      project.type,
-      ProjectAction.SUBMIT_DATA_TO_OTHERS,
-    ),
-  )
-}
+const attentionCount = ref(0)
+let sequence = 0
 
 async function loadWorkbench() {
-  if (!authStore.userInfo.id) {
+  const current = ++sequence
+  const userId = authStore.userInfo.id
+  if (!userId)
     return
-  }
-  startLoading()
+  loading.value = true
   loadError.value = false
-  try {
-    const userId = authStore.userInfo.id
-    const [projectResult, labResult, protocolResult, taskResult, workItemResult, approvalResult] = await Promise.all([
-      fetchUserProjects(userId, { page: 1, pageSize: 10, sortedBy: "updated_at" }),
-      fetchUserLabs(userId, { page: 1, pageSize: 10, sortedBy: "updated_at" }),
-      fetchUserProtocols(userId, { page: 1, pageSize: 10, sortedBy: "updated_at" }),
-      fetchResearchTasks({ page: 1, pageSize: 10 }),
-      fetchResearchWorkItems({ page: 1, pageSize: 10 }),
-      fetchResearchApprovals({ page: 1, pageSize: 10 }),
-    ])
-    projects.value = projectResult?.projects || []
-    labs.value = labResult?.labs || []
-    protocols.value = protocolResult?.protocols || []
-    researchTasks.value = taskResult.tasks
-    researchWorkItems.value = workItemResult.work_items
-    researchApprovals.value = approvalResult.approvals
-
-    const localDrafts = listRecordDrafts(userId).slice(0, 10)
-    const draftResults = await Promise.allSettled(
-      localDrafts.map(async (draft) => {
-        const result = await getProtocolInfo(draft.protocolId, undefined, false)
-        return result.data ? { ...draft, protocol: result.data } : null
-      }),
-    )
-    validDrafts.value = draftResults
-      .filter(
-        (result): result is PromiseFulfilledResult<ResolvedDraft | null> =>
-          result.status === "fulfilled",
-      )
-      .map(result => result.value)
-      .filter((draft): draft is ResolvedDraft => Boolean(draft))
-      .filter(draft => canSubmitRecordForProtocol(draft.protocol))
-      .sort((a, b) => b.timestamp - a.timestamp)
+  documentError.value = false
+  recentDocuments.value = []
+  researchTasks.value = []
+  researchWorkItems.value = []
+  researchApprovals.value = []
+  const [tasks, work, approvals, documents] = await Promise.allSettled([
+    fetchResearchTasks({ page: 1, pageSize: 3, status: ["review_required"] }),
+    fetchResearchWorkItems({ page: 1, pageSize: 3 }),
+    fetchResearchApprovals({ page: 1, pageSize: 3 }),
+    recentResearchDocuments("personal"),
+  ])
+  if (current !== sequence || userId !== authStore.userInfo.id)
+    return
+  if (tasks.status === "fulfilled" && work.status === "fulfilled" && approvals.status === "fulfilled") {
+    researchTasks.value = tasks.value.tasks
+    researchWorkItems.value = work.value.work_items
+    researchApprovals.value = approvals.value.approvals
+    attentionCount.value = tasks.value.total_count + work.value.total_count + approvals.value.total_count
   }
-  catch {
+  else {
     loadError.value = true
   }
-  finally {
-    endLoading()
-  }
-}
-
-function protocolRouteParams(protocol: ProtocolModels.ProjectProtocolInfo) {
-  return {
-    labUid: protocol.lab.uid,
-    projectUid: protocol.project.uid,
-    protocolUid: protocol.uid,
-  }
-}
-
-function startRecord(protocol: ProtocolModels.ProjectProtocolInfo) {
-  void router.push({ name: "add-protocol-record", params: protocolRouteParams(protocol), query: { newRecord: "true" } })
-}
-
-function continueDraft(draft: ResolvedDraft) {
-  void router.push({
-    name: "add-protocol-record",
-    params: protocolRouteParams(draft.protocol),
-    query: { ...draft.scope?.query, draft: draft.draftId, resumeDraft: "true" },
-  })
-}
-
-function openProtocol(protocol: ProtocolModels.ProjectProtocolInfo) {
-  void router.push({ name: "protocol-detail", params: protocolRouteParams(protocol) })
-}
-
-function createProtocol(mode: "template" | "ai") {
-  if (!protocolCreationProject.value || (mode === "ai" && !instanceStore.aiEnabled)) {
-    return
-  }
-  void router.push({
-    name: "protocol-editor",
-    params: {
-      labUid: protocolCreationProject.value.lab_uid,
-      projectUid: protocolCreationProject.value.uid,
-      protocolUid: `protocol-${nanoid()}`,
-    },
-    query: mode === "ai" ? { show_ai_create: "true" } : { show_template: "true" },
-  })
-}
-
-function openProject(project: Api.Project.MyProjectInfo) {
-  void router.push({
-    name: "project-protocols",
-    params: { labUid: project.lab_uid, projectUid: project.uid },
-  })
-}
-
-function manageProjectMembers(project: Api.Project.MyProjectInfo) {
-  void router.push({
-    name: "project-members",
-    params: { labUid: project.lab_uid, projectUid: project.uid },
-  })
-}
-
-function manageLabMembers(lab: Api.Lab.UsersLabInfo) {
-  void router.push({ name: "lab-members", params: { labUid: lab.uid } })
-}
-
-function openOperationsHelp() {
-  void router.push({ name: "help-center" })
-}
-
-function openResearchTasks() {
-  void router.push({ name: "research-tasks" })
-}
-
-function openResearchTask(taskId: string) {
-  void router.push({ name: "research-task-detail", params: { taskId } })
+  if (documents.status === "fulfilled")
+    recentDocuments.value = documents.value.items
+  else
+    documentError.value = true
+  loading.value = false
 }
 
 async function executeResearchWork(item: ResearchWorkItemDetail) {
@@ -559,63 +77,131 @@ async function executeResearchWork(item: ResearchWorkItemDetail) {
   }
   const protocol = item.action.protocol
   if (!protocol) {
-    openResearchTask(item.task.id)
+    await router.push({ name: "research-task-detail", params: { taskId: item.task.id } })
     return
   }
   if (["open", "changes_requested"].includes(item.status))
     await startResearchWorkItem(item.id, item.revision)
   await router.push({
     name: "add-protocol-record",
-    params: {
-      labUid: protocol.lab_uid || item.lab.uid,
-      projectUid: protocol.project_uid || item.project.uid,
-      protocolUid: protocol.uid,
-    },
+    params: { labUid: protocol.lab_uid || item.lab.uid, projectUid: protocol.project_uid || item.project.uid, protocolUid: protocol.uid },
     query: { researchWorkItem: item.id },
   })
 }
-
-function handleProjectCreated(project: Api.Project.MyProjectInfo) {
-  void router.push({
-    name: "project-protocols",
-    params: { labUid: project.lab_uid, projectUid: project.uid },
-  })
-}
-
-onMounted(loadWorkbench)
+watch(() => authStore.userInfo.id, loadWorkbench, { immediate: true })
+onBeforeUnmount(() => sequence++)
 </script>
 
+<template>
+  <section data-testid="task-workbench" class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="aira-type-page-title m-0 break-words">
+          {{ t('page.home.workbench.title', { name: displayName }) }}
+        </h1>
+        <p class="aira-type-body aira-text-muted mb-0 mt-2">
+          {{ t('page.home.workspace.description') }}
+        </p>
+      </div>
+      <n-button v-if="instanceStore.aiEnabled" secondary type="primary" data-testid="home-aira" @click="router.push({ name: 'global-chat' })">
+        {{ t('page.home.workspace.askAira') }}
+      </n-button>
+    </div>
+    <project-workspaces :pins="pins" :pinning-keys="pinningKeys" @toggle-pin="emit('togglePin', $event)" />
+    <div class="grid min-w-0 gap-4 lg:grid-cols-2">
+      <section class="min-w-0 border border-gray-200 rounded-xl p-4" data-testid="home-attention-panel">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="aira-type-card-title m-0">
+            {{ t('page.home.workbench.attentionLabel') }}<span v-if="!loadError && !loading && attentionCount" class="ml-2 text-primary">{{ attentionCount }}</span>
+          </h2>
+          <router-link :to="{ name: 'research-tasks' }" class="text-primary hover:underline">
+            {{ t('page.research.title') }} →
+          </router-link>
+        </div>
+        <n-skeleton v-if="loading" text :repeat="2" />
+        <n-alert v-else-if="loadError" type="error" :title="t('page.home.workbench.loadError')">
+          <n-button size="small" @click="loadWorkbench">
+            {{ t('common.retry') }}
+          </n-button>
+        </n-alert>
+        <div v-else-if="attentionCount" class="space-y-3" data-testid="workbench-attention">
+          <div v-for="item in researchWorkItems" :key="item.id" class="workbench-task">
+            <div class="min-w-0 flex-1">
+              <p class="aira-type-label m-0 break-words">
+                {{ item.action.title }}
+              </p>
+              <p class="aira-type-meta mb-0 mt-1 break-words">
+                {{ item.project.name }} · {{ item.task.title }}
+              </p>
+            </div>
+            <n-button size="small" secondary @click="executeResearchWork(item)">
+              {{ t('page.home.workspace.handle') }}
+            </n-button>
+          </div>
+          <div v-for="item in researchApprovals" :key="item.id" class="workbench-task">
+            <div class="min-w-0 flex-1">
+              <router-link :to="{ name: 'research-task-detail', params: { taskId: item.task.id } }" class="aira-type-label break-words hover:text-primary">
+                {{ item.action.title }}
+              </router-link>
+              <p class="aira-type-meta mb-0 mt-1">
+                {{ t('page.research.approvalRequired') }} · {{ item.project.name }}
+              </p>
+            </div>
+            <research-approval-actions :approval="item" :action-revision="item.action.revision" @decided="loadWorkbench" />
+          </div>
+          <div v-for="item in researchTasks" :key="item.id" class="workbench-task">
+            <div class="min-w-0 flex-1">
+              <p class="aira-type-label m-0 break-words">
+                {{ item.title }}
+              </p>
+              <p class="aira-type-meta mb-0 mt-1">
+                {{ t('page.research.reviewResult') }} · {{ item.project.name }}
+              </p>
+            </div>
+            <n-button size="small" secondary @click="router.push({ name: 'research-task-detail', params: { taskId: item.id } })">
+              {{ t('page.home.workspace.handle') }}
+            </n-button>
+          </div>
+        </div>
+        <p v-else class="aira-type-meta mb-0" data-testid="workbench-clear">
+          {{ t('page.home.workspace.noAttention') }}
+        </p>
+      </section>
+      <section class="min-w-0 border border-gray-200 rounded-xl p-4" data-testid="home-recent-documents">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="aira-type-card-title m-0">
+            {{ t('page.home.workspace.personalDocuments') }}
+          </h2>
+          <router-link :to="{ name: 'research-documents' }" class="text-primary hover:underline">
+            {{ t('page.home.workspace.openPersonal') }} →
+          </router-link>
+        </div>
+        <p class="aira-type-meta mb-3 mt-0">
+          {{ t('page.home.workspace.personalHint') }}
+        </p>
+        <n-skeleton v-if="loading" text :repeat="2" />
+        <n-alert v-else-if="documentError" type="error" :title="t('page.home.workspace.documentsError')">
+          <n-button size="small" @click="loadWorkbench">
+            {{ t('common.retry') }}
+          </n-button>
+        </n-alert>
+        <div v-else-if="recentDocuments.length" class="space-y-2">
+          <div v-for="item in recentDocuments.slice(0, 3)" :key="item.id" class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <router-link :to="{ name: 'research-document-detail', params: { documentId: item.id } }" class="min-w-0 break-words text-primary hover:underline">
+              {{ item.title }}
+            </router-link>
+            <span class="aira-type-meta"><n-time :time="new Date(item.updated_at)" type="relative" /></span>
+          </div>
+        </div>
+        <p v-else class="aira-type-body m-0">
+          {{ t('page.home.workspace.personalEmpty') }}
+        </p>
+      </section>
+    </div>
+  </section>
+</template>
+
 <style scoped>
-.task-action {
-  display: flex;
-  min-height: 5.25rem;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  border: 1px solid rgb(229 231 235);
-  border-radius: 0.75rem;
-  background: white;
-  padding: 0.875rem 1rem;
-  text-align: left;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
-}
-
-.task-action:hover,
-.task-action:focus-visible {
-  border-color: rgb(var(--primary-color) / 45%);
-  box-shadow: 0 8px 22px rgb(15 23 42 / 8%);
-  outline: none;
-  transform: translateY(-1px);
-}
-
-.task-action--ai {
-  background: linear-gradient(135deg, rgb(var(--primary-color) / 8%), rgb(14 165 233 / 5%));
-}
-
-.task-action__description {
-  margin-top: 0.25rem;
-}
+.workbench-task { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; border-top: 1px solid #edf0f4; padding-top: 0.75rem; }
+.workbench-task:first-child { border-top: 0; padding-top: 0; }
 </style>

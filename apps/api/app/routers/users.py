@@ -360,6 +360,15 @@ async def get_user_projects(
         params.model_dump(exclude_none=True, exclude={"lab_uid"})
     )
     project_filter_conditions.append(Project.deleted_at.is_(None))
+    if config.is_single_lab:
+        project_filter_conditions.append(
+            Project.lab_id.in_(select(Lab.id).where(Lab.uid == config.SINGLE_LAB_UID))
+        )
+        project_filter_conditions.append(
+            Project.lab_id.in_(
+                select(LabUser.lab_id).where(LabUser.user_id == current_user.id)
+            )
+        )
     if params.lab_uid:
         project_filter_conditions.append(
             Project.lab_id.in_(select(Lab.id).where(Lab.uid == params.lab_uid))

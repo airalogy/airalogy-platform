@@ -5,7 +5,7 @@
         :list="data"
         :pinned-map="pinnedMap"
         :pinning-keys="pinningKeys"
-        @togglePin="handleTogglePin"
+        @toggle-pin="handleTogglePin"
       />
     </template>
     <template #empty>
@@ -21,8 +21,10 @@ import type { FetchData, FetchPayload } from "@/components/common/loading-list-w
 import LoadingListWrapper from "@/components/common/loading-list-wrapper.vue"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { createPinnedItem, deletePinnedItem, getPinnedItems, type PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
+import { fetchProjectList } from "@/service/api/projects"
 import { fetchUserProjects } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useClosableMessage } from "@airalogy/composables"
 import CreateProjectModal from "./modules/create-project-modal.vue"
 import ProjectList from "./modules/project-list.vue"
@@ -34,6 +36,7 @@ defineOptions({
 const wrapperRef = ref<{ reload: () => void }>()
 const message = useClosableMessage()
 const authStore = useAuthStore()
+const instanceStore = useInstanceStore()
 const pinnedItems = ref<PinnedItem[]>([])
 const pinnedRequest = ref<Promise<void> | null>(null)
 const pinningKeys = ref(new Set<string>())
@@ -98,10 +101,10 @@ async function fetcher(params: FetchPayload): Promise<FetchData> {
   const { currentPage, currentPageSize, requestId } = params
   try {
     await ensurePinnedItems()
-    const data = await fetchUserProjects(authStore.userInfo.id, {
-      page: currentPage,
-      pageSize: currentPageSize,
-    }, requestId)
+    const pagination = { page: currentPage, pageSize: currentPageSize }
+    const data = instanceStore.isSingleLab && instanceStore.lab
+      ? await fetchProjectList({ ...pagination, labUid: instanceStore.lab.uid }, requestId)
+      : await fetchUserProjects(authStore.userInfo.id, pagination, requestId)
     if (data) {
       const { projects, total_count } = data
       const pinnedProjects = getPinnedProjects()
@@ -132,7 +135,7 @@ async function handleAddProject(val: Api.Project.MyProjectInfo) {
     return
   }
 
-  await routerPushByKey("project-protocols", { params: { labUid: lab_uid, projectUid: uid } })
+  await routerPushByKey("project-overview", { params: { labUid: lab_uid, projectUid: uid } })
 }
 </script>
 

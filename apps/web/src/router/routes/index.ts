@@ -16,6 +16,7 @@ import { projectsRoute } from "./modules/projects"
 import { protocolEditorRoute, protocolInfoRoute } from "./modules/protocol-info"
 import { protocolRecordRoute } from "./modules/protocol-record"
 import { researchRoute } from "./modules/research"
+import { researchDocumentsRoute } from "./modules/research-documents"
 // import { searchRoute } from "./modules/search"
 import { protocolRoute } from "./modules/unit-to-protocol"
 import { ROOT_ROUTE } from "./root"
@@ -31,6 +32,7 @@ export const customRoutes: CustomRoute[] = [
   projectInfoRoute,
   knowledgeRoute,
   researchRoute,
+  researchDocumentsRoute,
   protocolRoute,
   protocolInfoRoute,
   protocolEditorRoute,

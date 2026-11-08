@@ -25,7 +25,10 @@
         {{ $t("page.project.createProjectModal.title") }}
       </template>
       <n-form ref="formRef" :model="model" :rules="rules" size="large" label-placement="top">
-        <n-form-item :label="$t('page.project.createProjectModal.labLabel')" path="labId">
+        <p v-if="instanceStore.isSingleLab" class="mb-4 text-sm text-gray-500">
+          {{ $t('page.singleLabWorkspace.saveLocation', { name: instanceStore.lab?.name || '' }) }}
+        </p>
+        <n-form-item v-else :label="$t('page.project.createProjectModal.labLabel')" path="labId">
           <n-select
             v-model:value="model.labId"
             :options="options"
@@ -83,7 +86,7 @@
             v-model="model.uid"
             type="project"
             :lab-uid="selectedLabUid"
-            :show-prefix="true"
+            :show-prefix="!instanceStore.isSingleLab"
             :check-loading="checkLoading"
             :disabled="!selectedLabUid"
             @update:value="handleUpdateName"

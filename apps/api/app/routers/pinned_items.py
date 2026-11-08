@@ -96,7 +96,9 @@ async def get_pinned_items(
             child_counts_result = await db_session.execute(
                 select(Project.parent_project_id, func.count(Project.id))
                 .where(
-                    Project.parent_project_id.in_([project.id for project in valid_projects]),
+                    Project.parent_project_id.in_(
+                        [project.id for project in valid_projects]
+                    ),
                     Project.deleted_at.is_(None),
                 )
                 .group_by(Project.parent_project_id)
@@ -123,13 +125,22 @@ async def get_pinned_items(
                 )
             )
             parent_projects_map = {
-                project.id: project for project in parent_projects_result.scalars().all()
+                project.id: project
+                for project in parent_projects_result.scalars().all()
             }
 
         for project in projects:
             if project.deleted_at is not None:
                 continue
 
+            try:
+                await check_user_permission(
+                    db_session, project, current_user, action="read_project"
+                )
+            except HTTPException as exc:
+                if exc.status_code not in {400, 403, 404}:
+                    raise
+                continue
             parent_project = (
                 parent_projects_map.get(project.parent_project_id)
                 if project.parent_project_id is not None
@@ -157,7 +168,22 @@ async def get_pinned_items(
         result = await db_session.execute(stmt)
         protocols = result.scalars().all()
         for protocol in protocols:
-            if protocol.deleted_at is not None:
+            if (
+                protocol.deleted_at is not None
+                or protocol.project.deleted_at is not None
+            ):
+                continue
+            try:
+                await check_user_permission(
+                    db_session,
+                    protocol.project,
+                    current_user,
+                    action="read_protocol",
+                    protocol=protocol,
+                )
+            except HTTPException as exc:
+                if exc.status_code not in {400, 403, 404}:
+                    raise
                 continue
 
             protocol.lab_uid = protocol.project.lab.uid

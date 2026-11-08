@@ -3,14 +3,9 @@ import { handleUnauthorized } from "@/utils/auth/unauthorized"
 import { createFlatRequest } from "@/utils/axios"
 import { localStg } from "@/utils/storage"
 import { renderMessageContent } from "@airalogy/composables"
-// @ts-expect-error - env.config is built separately in tsconfig.node.json
-import { createProxyPattern, createServiceConfig } from "../../../env.config"
+import { baseURL } from "./config"
 
-const { baseURL: rawBaseURL } = createServiceConfig(import.meta.env as Env.ImportMeta)
-
-const isHttpProxy = import.meta.env.VITE_HTTP_PROXY === "Y"
-
-export const baseURL = isHttpProxy ? createProxyPattern() : rawBaseURL
+export { baseURL } from "./config"
 
 export const request = createFlatRequest<App.Service.Response>(
   {

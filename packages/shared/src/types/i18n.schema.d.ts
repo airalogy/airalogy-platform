@@ -446,6 +446,169 @@ declare namespace I18n {
       "profile": string
     }
     page: {
+      documentTemplates: {
+        copyToScope: string
+        library: string
+        libraryHint: string
+        create: string
+        edit: string
+        view: string
+        name: string
+        description: string
+        body: string
+        shareScope: string
+        personal: string
+        lab: string
+        project: string
+        builtin: string
+        version: string
+        safetyHint: string
+        sharingHint: string
+        confirmHint: string
+        previewSave: string
+        confirmSave: string
+        saved: string
+        saveAs: string
+        empty: string
+        archived: string
+        archive: string
+        restore: string
+        archiveHint: string
+        restoreHint: string
+        unsaved: string
+        discardHint: string
+        source: string
+        choose: string
+        chooseHint: string
+        preview: string
+        blankHint: string
+        createDocument: string
+      }
+      researchDocuments: {
+        submittedHistory: string
+        noSubmissions: string
+        fromProtocol: string
+        protocolCopyHint: string
+        occurredAt: string
+        reviewValues: string
+        reviewValuesHint: string
+        removeValue: string
+        close: string
+        importArchive: string
+        importHint: string
+        plan: string
+        actual: string
+        deviations: string
+        overview: string
+        title: string
+        materials: string
+        new: string
+        newExperiment: string
+        untitled: string
+        startHint: string
+        recent: string
+        empty: string
+        newMeeting: string
+        document: string
+        experiment: string
+        progress: string
+        meeting: string
+        reflection: string
+        blocker: string
+        milestone: string
+        allKinds: string
+        scope: string
+        privateHint: string
+        draft: string
+        submitted: string
+        edit: string
+        fill: string
+        source: string
+        visual: string
+        saved: string
+        saving: string
+        unsaved: string
+        failed: string
+        retry: string
+        titleLabel: string
+        bodyLabel: string
+        tags: string
+        collection: string
+        save: string
+        validate: string
+        valid: string
+        submit: string
+        submitHint: string
+        confirm: string
+        cancel: string
+        history: string
+        restore: string
+        restoreHint: string
+        copy: string
+        copyHint: string
+        export: string
+        addField: string
+        fieldId: string
+        fieldTitle: string
+        fieldType: string
+        fieldUnit: string
+        fieldHint: string
+        insert: string
+        string: string
+        number: string
+        integer: string
+        boolean: string
+        date: string
+        definitionImpact: string
+        definitionImpactHint: string
+        removedValues: string
+        reviewChanges: string
+        attachments: string
+        attach: string
+        removeAttachment: string
+        upload: string
+        materialHint: string
+        materialEmpty: string
+        sourceNote: string
+        uploadedAt: string
+        download: string
+        preview: string
+        noPreview: string
+        unavailable: string
+        extract: string
+        extractionHint: string
+        extractionEmpty: string
+        truncated: string
+        useText: string
+        derive: string
+        deriveProtocol: string
+        deriveKnowledge: string
+        deriveHint: string
+        derived: string
+        openKnowledge: string
+        downloadMethod: string
+        sourceInfo: string
+        readOnly: string
+        back: string
+        leaveUnsaved: string
+        newFieldInvalid: string
+        viewTimeline: string
+        viewDocuments: string
+        viewProtocols: string
+        automation: string
+        manage: string
+        scopePersonal: string
+        scopeProject: string
+        scopeLab: string
+        workbench: string
+        noPermission: string
+        reload: string
+        open: string
+        revision: string
+        submissionSuccess: string
+        checkErrors: string
+        changedElsewhere: string
+      }
       recorderAira: {
         finishReview: string
         noChanges: string
@@ -831,6 +994,49 @@ declare namespace I18n {
           record: string
           protocol: string
           group: string
+        }
+        workspace: {
+          projects: string
+          allProjects: string
+          description: string
+          askAira: string
+          historyHint: string
+          firstVisitHint: string
+          empty: string
+          loadError: string
+          documentsError: string
+          noTarget: string
+          resume: string
+          resumeDraft: string
+          draft: string
+          recordTitle: string
+          showMore: string
+          showLess: string
+          personalDocuments: string
+          openPersonal: string
+          personalHint: string
+          personalEmpty: string
+          pinnedResources: string
+          noAttention: string
+          handle: string
+          target: {
+            project: string
+            protocol: string
+            recording: string
+            record: string
+            document: string
+            editor: string
+          }
+          section: {
+            overview: string
+            protocols: string
+            documents: string
+            materials: string
+            knowledge: string
+          }
+          resources: string
+          pinnedHint: string
+          availableProject: string
         }
       }
       workflowAssets: {
@@ -4923,6 +5129,75 @@ declare namespace I18n {
           disable: string
           deactivate: string
         }
+      }
+      documentBrowse: {
+        audiencepersonal: string
+        audienceproject: string
+        audiencelab: string
+        draftAudience: string
+        recordedDate: string
+        updated: string
+        recentlyUpdated: string
+        byDate: string
+        sort: string
+        from: string
+        to: string
+        clearDates: string
+        dateHint: string
+        invalidDate: string
+        invalidRange: string
+        calendar: string
+        calendarHint: string
+        month: string
+        previousMonth: string
+        nextMonth: string
+        dayCount: string
+        reading: string
+        previous: string
+        next: string
+        backList: string
+        edit: string
+        details: string
+        notInResults: string
+      }
+      documentUx: {
+        documents: string
+        details: string
+        historyGroup: string
+        reuseGroup: string
+        fileGroup: string
+        results: string
+        resultsHint: string
+        saveFailed: string
+        commonTemplates: string
+        browseTemplates: string
+        recentTemplates: string
+        creationDetails: string
+        filters: string
+        filtersActive: string
+        clearFilters: string
+        importArchive: string
+        documentCount: string
+        continueWriting: string
+        matchingCount: string
+        moreActions: string
+        searchDocuments: string
+        emptyTitle: string
+        emptyHint: string
+        emptyReadOnlyHint: string
+        noMatches: string
+        noMatchesHint: string
+        resetSearch: string
+      }
+      singleLabWorkspace: {
+        knowledge: string
+        log: string
+        management: string
+        membersAccess: string
+        shared: string
+        saveLocation: string
+        chooseProject: string
+        chooseProtocol: string
       }
     }
     form: {

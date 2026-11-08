@@ -1,8 +1,11 @@
 <template>
   <global-layout>
     <content-layout :title="projectTitle" :tabs="tabs">
-      <template v-if="canCreateProtocol || canShowSettings" #suffix>
-        <div class="w-40 text-right">
+      <template v-if="authStore.isLogin" #suffix>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
+            <n-button>{{ $t('common.more') }}</n-button>
+          </n-dropdown>
           <add-protocol-modal
             v-if="route.name === 'project-protocols' && canCreateProtocol"
             :compact="false"
@@ -28,17 +31,17 @@
           <project-icon />
           <template v-if="projectInfo">
             <router-link
-              v-if="authStore.isLogin"
+              v-if="authStore.isLogin && !instanceStore.isSingleLab"
               :to="{ name: 'lab-projects', params: { labUid: projectInfo?.lab_uid } }"
               class="ml-5 text-6 color-text-secondary"
             >
               {{ projectInfo?.lab_name || projectInfo?.lab_uid }}
             </router-link>
-            <span v-else class="ml-5 text-6 color-text-secondary">
+            <span v-else-if="!instanceStore.isSingleLab" class="ml-5 text-6 color-text-secondary">
               {{ projectInfo?.lab_name || projectInfo?.lab_uid }}
             </span>
-            <span class="mx-3 select-none text-5 color-text-secondary">/</span>
-            <h2 class="!text-6">
+            <span v-if="!instanceStore.isSingleLab" class="mx-3 select-none text-5 color-text-secondary">/</span>
+            <h2 class="min-w-0 break-words !text-6" :class="{ 'ml-4': instanceStore.isSingleLab }">
               {{ projectTitle }}
             </h2>
             <span
@@ -63,6 +66,7 @@
 </template>
 
 <script setup lang="ts">
+import type { ProjectInfoNameKey } from "#/page-route"
 import type { TabPaneProps } from "naive-ui/es/tabs"
 import { useProjectPermissions } from "@/composables"
 import { useProjectVisibility } from "@/composables/useProjectVisibility"
@@ -70,9 +74,10 @@ import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
 import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
-
 import { useAppStore } from "@/store/modules/app"
+
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useRouteStore } from "@/store/modules/route"
 import { buildPublicProjectPath, buildSeoUrl } from "@/utils/seo"
 import { $t } from "@airalogy/shared/locales"
@@ -98,12 +103,16 @@ interface Props {
 }
 
 const route = useRoute()
+const instanceStore = useInstanceStore()
 const authStore = useAuthStore()
 const showIcon = computed(
   () =>
     route.name === "lab-projects"
     || route.name === "lab-members"
     || route.name === "project-protocols"
+    || route.name === "project-overview"
+    || route.name === "project-documents"
+    || route.name === "project-materials"
     || route.name === "project-knowledge"
     || route.name === "project-research"
     || route.name === "project-workflows"
@@ -132,19 +141,48 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
   ]
 
   if (authStore.isLogin) {
-    tabs.unshift({ name: "project-scenarios", tab: $t("page.scenarioKits.workbench") })
-    tabs.push({ name: "project-knowledge", tab: $t("page.knowledge.title") })
-    tabs.push({ name: "project-research", tab: $t("page.research.title") })
-    tabs.push({ name: "project-workflows", tab: $t("page.workflowDefinitions.title") })
-    tabs.push({ name: "project-analysis", tab: $t("page.analysis.title") })
-    tabs.push({ name: "project-records", tab: $t("page.recordDiary.tab") })
-    tabs.push({ name: "project-members", tab: hintTab($t("page.project.tab.members"), membersHint.value) })
+    tabs.unshift({ name: "project-overview", tab: $t("page.researchDocuments.overview") })
+    tabs.push(
+      { name: "project-documents", tab: $t("page.documentUx.documents") },
+      { name: "project-materials", tab: $t("page.researchDocuments.materials") },
+      { name: "project-knowledge", tab: $t("page.knowledge.title") },
+    )
+    const additional = [
+      { name: "project-research", tab: $t("page.research.title") },
+      { name: "project-workflows", tab: $t("page.workflowDefinitions.title") },
+      { name: "project-analysis", tab: $t("page.analysis.title") },
+      { name: "project-scenarios", tab: $t("page.scenarioKits.workbench") },
+      { name: "project-records", tab: $t("page.recordDiary.tab") },
+      { name: "project-members", tab: hintTab($t("page.project.tab.members"), membersHint.value) },
+      ...(canShowSettings.value ? [{ name: "project-settings", tab: $t("page.project.tab.settings") }] : []),
+    ]
+    const selected = additional.find(item => item.name === route.name)
+    if (selected)
+      tabs.push(selected as TabPaneProps & { name: App.Global.TabKey })
   }
 
   return tabs
 })
 
-const tabs = computed(() => canShowSettings.value ? [...baseTabs.value, { name: "project-settings", tab: $t("page.project.tab.settings") }] : baseTabs.value)
+const tabs = baseTabs
+const workspaceNavigation = computed(() => [
+  { key: "activity", type: "group", label: $t("page.researchDocuments.title"), children: [
+    { key: "project-records", label: $t("page.recordDiary.tab") },
+    { key: "project-scenarios", label: $t("page.scenarioKits.workbench") },
+  ] },
+  { key: "automation", type: "group", label: $t("page.researchDocuments.automation"), children: [
+    { key: "project-research", label: $t("page.research.title") },
+    { key: "project-workflows", label: $t("page.workflowDefinitions.title") },
+    { key: "project-analysis", label: $t("page.analysis.title") },
+  ] },
+  { key: "management", type: "group", label: $t("page.researchDocuments.manage"), children: [
+    { key: "project-members", label: $t("page.project.members") },
+    ...(canShowSettings.value ? [{ key: "project-settings", label: $t("page.project.tab.settings") }] : []),
+  ] },
+])
+function navigateWorkspace(name: string) {
+  void routerPushByKey(name as ProjectInfoNameKey, { params: { labUid: route.params.labUid as string, projectUid: route.params.projectUid as string } })
+}
 
 const projectTitle = computed(() => {
   const { name, uid } = projectInfo.value || {}

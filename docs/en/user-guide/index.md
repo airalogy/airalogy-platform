@@ -23,6 +23,18 @@ Platform uses four connected resource types:
 
 A deployment may present one fixed Lab or allow users to join several Labs. Projects and Protocols can have additional access rules, so seeing a Lab does not automatically mean that every resource inside it is visible.
 
+## Continue from Home
+
+The signed-in home page leads with **Your projects**: pinned projects first, followed by your own recent visits. Without visit history, it offers available projects and explains how to start. Another member updating a project does not change your personal recency order.
+
+- Select a project name to open Overview. Project navigation is Overview, Protocols, Documents, Materials, then Knowledge.
+- **Continue** opens the last document, Protocol page or Record report. The Protocols and Documents shortcuts retain the project context.
+- A compatible Record draft on this browser offers **Continue Record**, labeled **Saved on this device**. Visit history never uploads draft values. Another device can reopen a recent page, but cannot restore unsynchronized values from the original browser.
+- **My documents** remains separate: personal writing is visible only to you and does not require a Project.
+- The attention area shows real assigned work, approvals and result reviews. Other pinned resources and activity appear below.
+
+History is private to the account and retains up to 50 projects; project pins reuse existing resource pins. Every history read rechecks permissions, so deleted or inaccessible assets no longer expose their titles or links. Migration `0081_project_visits` adds navigation history without changing research data.
+
 ## A practical first workflow
 
 1. Open the relevant Lab and Project.

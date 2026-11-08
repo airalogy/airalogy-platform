@@ -2395,6 +2395,7 @@ async def access_research_file(
         "inline"
         if token_row.mode == ResearchFileAccessMode.PREVIEW.value
         and instrument_output is None
+        and blob.content_type in {"application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp"}
         else "attachment"
     )
     filename = safe_download_filename(research_file.filename)
@@ -2408,6 +2409,8 @@ async def access_research_file(
         else blob.content_type,
         headers={
             "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+            "Cache-Control": "private, no-store",
             "Content-Disposition": (
                 f'{disposition}; filename="{ascii_filename}"; '
                 f"filename*=UTF-8''{quote(filename)}"

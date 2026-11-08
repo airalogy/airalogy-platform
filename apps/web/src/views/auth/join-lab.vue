@@ -78,8 +78,7 @@ async function acceptCurrentInvitation() {
     await instanceStore.load()
     window.$message?.success($t("page.instance.joinSuccess"))
     await router.replace({
-      name: "lab-projects",
-      params: { labUid: data.lab.uid },
+      name: "home",
     })
   }
   finally {

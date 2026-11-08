@@ -36,6 +36,14 @@ test("core navigation is discoverable, keyboard operable and bounded at every br
       })
     })
     expect(overflow, `header overflow at ${width}px`).toBe(false)
+    const overlap = await header.evaluate((el) => {
+      const boxes = Array.from(el.querySelectorAll("button, a"))
+        .map(item => item.getBoundingClientRect())
+        .filter(box => box.width > 0 && box.height > 0)
+        .sort((a, b) => a.left - b.left)
+      return boxes.some((box, index) => index > 0 && box.left < boxes[index - 1].right - 1)
+    })
+    expect(overlap, `header controls overlap at ${width}px`).toBe(false)
     if (width < 640)
       await expect(page.getByTestId("app-shell-content")).toHaveCSS("padding-left", "16px")
     if (width < 1280) {
@@ -137,7 +145,7 @@ test("manual Task errors preserve the form and narrow-screen footer remains visi
   await page.screenshot({ path: testInfo.outputPath("research-task-phone.png"), fullPage: true })
 })
 
-test("home uses a compact truthful empty state and a single primary Record action", async ({ page }) => {
+test("home uses a compact truthful empty state and project-led continuation", async ({ page }) => {
   // Pin a genuinely empty response shape so this visual contract is independent of other journeys.
   for (const [endpoint, key] of [["research-tasks", "tasks"], ["research-work-items", "work_items"], ["research-approvals", "approvals"]]) {
     await page.route(`**/api/${endpoint}?*`, route => route.fulfill({
@@ -149,7 +157,8 @@ test("home uses a compact truthful empty state and a single primary Record actio
   await expect(page.getByTestId("workbench-loading")).toHaveCount(0)
   await expect(page.getByTestId("workbench-clear")).toBeVisible()
   await expect(page.getByTestId("workbench-attention")).toHaveCount(0)
-  await expect(page.getByTestId("task-workbench").getByRole("button", { name: "Start a Record", exact: true })).toHaveCount(1)
+  await expect(page.getByTestId("home-project-workspaces")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Start a Record", exact: true })).toHaveCount(0)
 })
 
 test("Chinese navigation and paper dialogs remain readable on small screens", async ({ page }, testInfo) => {

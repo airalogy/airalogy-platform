@@ -12,11 +12,14 @@
     <n-popover v-else v-model:show="expanded" trigger="click" placement="bottom-start" :show-arrow="false">
       <template #trigger>
         <n-button
-          :theme-overrides="props.buttonThemeOverrides ?? buttonThemeOverrides" class="h-9 rounded-2 px-3"
+          :theme-overrides="props.buttonThemeOverrides ?? buttonThemeOverrides" class="workspace-nav__trigger h-9 max-w-full w-full rounded-2 px-3"
           :aria-expanded="expanded" :aria-label="$t('common.workspaceNavigation')" data-testid="workspace-menu-trigger"
+          :title="props.label || activeLabel"
         >
-          {{ props.label || activeLabel }}
-          <template #icon><dropdown-icon filled :expended="expanded" /></template>
+          <span class="min-w-0 truncate">{{ props.label || activeLabel }}</span>
+          <template #icon>
+            <dropdown-icon filled :expended="expanded" />
+          </template>
         </n-button>
       </template>
       <div class="workspace-nav__menu">
@@ -36,6 +39,7 @@
 import type { ButtonProps } from "naive-ui"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
+import { workspaceDestination } from "@/utils/workspaceNavigation"
 import { $t } from "@airalogy/shared/locales"
 import { useMediaQuery } from "@vueuse/core"
 import { buttonThemeOverrides } from "../global-header/constants"
@@ -49,31 +53,15 @@ const wide = computed(() => desktop.value && !props.compact)
 const expanded = ref(false)
 const items = computed<Array<{ name: App.Global.RouteNameKey, label: string }>>(() => [
   { name: "home", label: $t("route.home") },
-  { name: "project-dashboard", label: $t("common.projectsLabel") },
   { name: "protocols-my", label: $t("common.protocolsLabel") },
+  { name: "project-dashboard", label: $t("common.projectsLabel") },
+  { name: "research-documents", label: $t("page.documentUx.documents") },
   { name: "knowledge-home", label: $t("page.knowledge.title") },
   { name: "research-tasks", label: $t("page.research.title") },
   { name: "profile-records", label: $t("page.recordDiary.tab") },
   ...(!instance.isSingleLab ? [{ name: "labs-my" as const, label: $t("common.labsLabel") }] : []),
 ])
-const activeName = computed(() => {
-  const name = String(route.name || "")
-  if (name.includes("knowledge"))
-    return "knowledge-home"
-  if (name.includes("research"))
-    return "research-tasks"
-  if (["profile-records", "project-records", "lab-records"].includes(name))
-    return "profile-records"
-  if (name.includes("protocol"))
-    return "protocols-my"
-  if (name.startsWith("project"))
-    return "project-dashboard"
-  if (name.startsWith("lab"))
-    return "labs-my"
-  if (name === "home" || name === "root")
-    return "home"
-  return null
-})
+const activeName = computed(() => workspaceDestination(String(route.name || "")))
 const activeLabel = computed(() => items.value.find(item => item.name === activeName.value)?.label || $t("common.workspace"))
 
 function destination(name: App.Global.RouteNameKey) {
@@ -88,6 +76,7 @@ watch(() => route.fullPath, () => {
 
 <style scoped>
 .workspace-nav { min-width: 0; }
+.workspace-nav__trigger :deep(.n-button__content) { min-width: 0; overflow: hidden; }
 .workspace-nav__links { display: flex; align-items: center; gap: 0.125rem; }
 .workspace-nav__link {
   border-radius: 0.5rem;

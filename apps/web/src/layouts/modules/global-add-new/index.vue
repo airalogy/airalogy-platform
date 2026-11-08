@@ -1,6 +1,6 @@
 <template>
   <n-dropdown
-    :show="isShow" :options="addOptions" placement="bottom-start" :render-label="renderLabel"
+    :show="isShow && !isModalOpen" display-directive="show" :options="addOptions" placement="bottom-start" :render-label="renderLabel"
     @clickoutside="handleClickOutside"
   >
     <n-button
@@ -124,7 +124,7 @@ function renderLabel(option: DropdownOption) {
       "onModal:new-project": async (project: Api.Project.MyProjectInfo) => {
         const { lab_uid: labUid, uid: projectUid } = project
 
-        await routerPushByKey("project-protocols", {
+        await routerPushByKey("project-overview", {
           params: { labUid, projectUid },
         })
       },

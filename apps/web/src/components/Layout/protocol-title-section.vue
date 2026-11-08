@@ -59,6 +59,7 @@
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { Component } from "vue"
 import type { RouteLocationRaw } from "vue-router"
+import { useInstanceStore } from "@/store/modules/instance"
 import { CopyToClip } from "@airalogy/components"
 import { getAiralogyIds } from "@airalogy/shared/utils"
 import { NPopover, NSkeleton, NTooltip } from "naive-ui"
@@ -80,6 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
   showVersion: true,
 })
 
+const instanceStore = useInstanceStore()
 interface Props {
   /** Protocol information object */
   protocolInfo?: ProtocolModels.ProjectProtocolInfo | null
@@ -174,7 +176,7 @@ const breadcrumbSections = computed<BreadcrumbSection[]>(() => {
       id: "lab",
       text: lab.name || "",
       link: { name: "lab-projects", params: { labUid: lab.uid } },
-      visible: showLabInfo && !!lab.name,
+      visible: showLabInfo && !instanceStore.isSingleLab && !!lab.name,
       tooltip: labId ? () => h(CopyToClip, { text: labId, showSuccess: true, color: "#ffffff" }) : undefined,
     },
     {
