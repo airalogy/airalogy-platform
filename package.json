@@ -75,6 +75,8 @@
     "agent:preview:build": "pnpm --filter @airalogy/web exec vite build --mode agent-preview",
     "agent:preview": "python3 tools/airalogy_agent.py preview",
     "agent:client:test": "python3 -m unittest discover -s tests/agent-client",
+    "agent:codex:test": "node tests/agent-client/codex-live.mjs",
+    "agent:codex:guards": "node --test tests/agent-client/codex-live.test.mjs",
     "agent:preview:test": "playwright test -c tests/agent-client/preview.config.ts"
   },
   "dependencies": {

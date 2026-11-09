@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Add an opt-in local acceptance test using the real Codex MCP client: synthetic data analysis, browser-confirmed report persistence and Protocol publication, unchanged historical Records, and test-token revocation. The test refuses non-loopback targets and does not change global Codex configuration.
+
 - Add the external research workflow (Issue #22): separately authorized immutable Record snapshots, private external analysis reports/files and versioned methods, reviewed Protocol candidates with exact source export, bounded context/file reads, PKCE browser authorization, and a local Python client plus official AIMD editor/Recorder preview. Preserve existing token scopes and Record versions; enforce source permissions and atomic confirmation receipts. Requires migration `0082_external_research`.
 
 - Prioritize Protocols immediately after Home in the main navigation, followed by Projects and Documents, consistently across desktop and compact menus. Constrain long compact-menu labels so they cannot overlap adjacent header controls.

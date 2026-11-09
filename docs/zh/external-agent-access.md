@@ -139,3 +139,26 @@ python3 tools/airalogy_agent.py --instance https://your-platform.example login -
 默认 CLI 回调须注册 `http://127.0.0.1:8765/callback`。网页展示客户端、实例、操作范围、Project、1–7 天有效期并要求显式确认。采用 S256 PKCE、state 校验、准确回调/资源绑定、5 分钟单次授权码和资源限定令牌。凭据文件以仅本人可读写权限独占创建；拒绝过期、其他用户拥有或权限过宽的文件。撤销客户端同时撤销其关联令牌和待执行操作。不提供自动刷新或动态注册；不支持预注册的客户端可用限权 Bearer 令牌接入。
 
 发现接口位于 `/.well-known/oauth-authorization-server` 和 `/.well-known/oauth-protected-resource/api/mcp`。除 `/api/*` 外，反向代理还须将这两条路径转发 API；随附 Caddy 配置和开发代理已包含。`SITE_URL` 须与实例公开 origin 一致。为 `/api/mcp` 签发的令牌不能调用 `/api/external-access`，反之亦然。HTTP 与 MCP 共用校验、权限、确认、审计和幂等规则；特定桌面客户端能否直接使用 OAuth，取决于其预注册客户端支持。
+
+## 真实 Codex 验收（手动启用）
+
+`pnpm agent:codex:test` 使用本机已安装并登录的 Codex CLI，通过真实 MCP 连接独立的本地 Platform。这项验收与单元测试分开，不自动加入提交、推送或 CI 检查。模型调用会消耗当前账号用量，账号、网络或模型服务不可用时也可能失败。
+
+前提：安装锁定的工作区依赖、Playwright Chromium 和 `apps/api/.venv` 中的 API Python 环境；Codex CLI 支持 `exec --ignore-user-config --ephemeral`；独立开发实例已准备标准 `dev_owner` / `dev_lab` / `quickstart` 虚构夹具。只在该**测试实验室**启用外部访问，并保持屏蔽字段为空。脚本拒绝非本机回环地址和未启用开发夹具的实例，不自行修改实验室策略；网页地址必须与实例的 `SITE_URL` 一致。Platform 的 AI 可保持关闭，以验证外部工具路径能够独立工作。
+
+```sh
+pnpm agent:codex:guards
+AIRALOGY_CODEX_LIVE=1 \
+E2E_API_URL=http://127.0.0.1:4108 \
+E2E_WEB_URL=http://127.0.0.1:3108 \
+pnpm agent:codex:test
+```
+
+测试新建私有的虚构项目，验证以下流程：
+
+1. 真实 Codex 发现已授权的 Protocol，建立不可变数据快照，并用 Python 对返回值实际计算。
+2. 未确认的写入被拒绝；独立浏览器会话代表测试用户查看并确认报告，然后由 Codex 保存、读回报告与代码附件。
+3. Codex 下载指定 Protocol 版本，在本地修改并运行官方语法检查，提交候选版本；浏览器确认后通过 MCP 发布。重复执行得到相同回执，原有 Records 仍绑定原版本。
+4. 撤销令牌后 MCP 拒绝访问。成功或普通失败结束时，脚本都会撤销本次创建的授权。
+
+只有夹具准备和独立断言使用直接 HTTP，Codex 对 Platform 的访问必须经过 MCP。测试用户的自动点击仅用于这组虚构夹具，不代表允许外部 Agent 替真实用户确认写入。脚本不修改 Codex 全局配置，不把 Platform 令牌放入模型提示或 Shell 子进程；保留虚构资产供检查，并输出私有临时证据目录，含回执、脱敏客户端事件和浏览器截图。不要将该目录提交到仓库。如果进程被强制终止，请先在测试账号设置中撤销残留的 `Synthetic Codex` 授权，再重试。

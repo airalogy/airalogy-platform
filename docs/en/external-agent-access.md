@@ -139,3 +139,26 @@ python3 tools/airalogy_agent.py --instance https://your-platform.example login -
 Register `http://127.0.0.1:8765/callback` for this default CLI callback. The browser shows the client, instance, requested actions, Project, 1–7 day expiry and explicit consent. S256 PKCE, state validation, exact callback/resource binding, five-minute single-use authorization codes and audience-bound tokens are enforced. Credential files are created exclusively with owner-only permissions; expired, foreign-owned or broadly readable files are refused. Revoking a client revokes its associated grants and outstanding operations. No automatic refresh or dynamic registration is offered; clients without pre-registration support should use scoped bearer credentials.
 
 Discovery lives at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource/api/mcp`. Proxies must forward these paths to the API in addition to `/api/*`; the supplied Caddy configuration and development proxy do so. `SITE_URL` must match the public instance origin. Tokens minted for `/api/mcp` cannot be used at `/api/external-access`, and vice versa. The HTTP and MCP workflows share validation, authorization, confirmation, audit and idempotency logic; actual compatibility with a particular desktop application's OAuth onboarding depends on that client's pre-registration support.
+
+## Real Codex acceptance (opt-in)
+
+`pnpm agent:codex:test` runs the installed Codex CLI against a running, isolated local Platform, using its actual MCP transport and your Codex login. It is separate from mock/unit tests and is not run automatically on commit, push or CI. Model calls consume your account's usage and can fail because of authentication, network or provider availability.
+
+Prerequisites: locked workspace dependencies, Playwright Chromium, the API Python environment at `apps/api/.venv`, a logged-in Codex CLI supporting `exec --ignore-user-config --ephemeral`, and a disposable development instance with the standard `dev_owner` / `dev_lab` / `quickstart` fixtures. Enable external access on that **test** Lab with no blocked fields. The script refuses non-loopback endpoints and instances without development fixtures; it never enables a Lab policy itself. The web origin must match the instance's `SITE_URL`. Keep Platform AI disabled to check the independent external-tool path.
+
+```sh
+pnpm agent:codex:guards
+AIRALOGY_CODEX_LIVE=1 \
+E2E_API_URL=http://127.0.0.1:4108 \
+E2E_WEB_URL=http://127.0.0.1:3108 \
+pnpm agent:codex:test
+```
+
+The test creates its own private synthetic Project and verifies:
+
+1. Real Codex discovers the authorized Protocol, captures an immutable snapshot and executes a Python calculation against the returned values.
+2. An unapproved write is refused. A separate browser session acts as the test owner, reviews the proposal and confirms it. Codex then saves and retrieves the report and code attachment.
+3. Codex downloads an exact Protocol version, edits it locally, runs the official syntax checker and submits a candidate. Browser confirmation precedes MCP publication; retrying returns the same receipt and existing Records retain their original versions.
+4. Revoked credentials cannot call MCP. Created grants are revoked on both success and ordinary failure.
+
+Only fixture setup and independent assertions use direct HTTP; Codex must use MCP for Platform access. Test-owner approvals are automation for this synthetic fixture, not permission for an external agent to approve real users' writes. The script does not edit global Codex configuration or pass the Platform token into model prompts or shell subprocesses. It keeps synthetic assets available for inspection and prints a private temporary evidence directory containing receipts, redacted client events and browser screenshots. Do not commit that directory. If the process is forcibly terminated, revoke any remaining `Synthetic Codex` grants from the test account before retrying.
