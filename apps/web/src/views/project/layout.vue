@@ -123,7 +123,7 @@ const showIcon = computed(
     || route.name === "project-settings",
 )
 
-const { routerPushByKey } = useRouterPush()
+const { routerPushByKey, routerPush } = useRouterPush()
 const { refetchProjectInfo, projectInfo } = useProvideProjectInfoStore(null)
 
 const { canShowSettings: canShowProjectSettings, canCreateProtocol } = useProjectPermissions(projectInfo)
@@ -174,6 +174,7 @@ const workspaceNavigation = computed(() => [
     { key: "project-research", label: $t("page.research.title") },
     { key: "project-workflows", label: $t("page.workflowDefinitions.title") },
     { key: "project-analysis", label: $t("page.analysis.title") },
+    { key: "external-access", label: $t("externalResearch.connectProject") },
   ] },
   { key: "management", type: "group", label: $t("page.researchDocuments.manage"), children: [
     { key: "project-members", label: $t("page.project.members") },
@@ -181,6 +182,10 @@ const workspaceNavigation = computed(() => [
   ] },
 ])
 function navigateWorkspace(name: string) {
+  if (name === "external-access") {
+    void routerPush({ name: "profile-settings", params: { username: authStore.userInfo.username }, query: { project_id: projectInfo.value?.id }, hash: "#external-access" })
+    return
+  }
   void routerPushByKey(name as ProjectInfoNameKey, { params: { labUid: route.params.labUid as string, projectUid: route.params.projectUid as string } })
 }
 

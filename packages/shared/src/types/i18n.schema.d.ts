@@ -5935,5 +5935,45 @@ declare namespace I18n {
       }
       characters: string
     }
+    externalResearch: {
+      connectProject: string
+      exportRecords: string
+      readAnalysis: string
+      writeAnalysis: string
+      readSource: string
+      candidate: string
+      publish: string
+      protocolReview: string
+      protocolHint: string
+      compatibility: string
+      diff: string
+      exportedRows: string
+      testConnection: string
+      taskExample: string
+      copyTask: string
+      analyses: string
+      privateResults: string
+      openResult: string
+      externalExecution: string
+      snapshot: string
+      incomplete: string
+      method: string
+      rerunTask: string
+      rerun: string
+      complex: string
+      knowledge: string
+      documents: string
+      materials: string
+      files: string
+      methodVersion: string
+      oauthConsent: string
+      oauthWarning: string
+      oauthDays: string
+      oauthClients: string
+      oauthRegistration: string
+      redirectUri: string
+      registerClient: string
+      removeClientHint: string
+    }
   }
 }

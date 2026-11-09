@@ -17,6 +17,11 @@ import httpx
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from fastapi import FastAPI
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
+from sqlalchemy import delete, func, inspect, select, update
+
 from app.build_info import resolve_build_info
 from app.config import config
 from app.database import get_db_session
@@ -36,11 +41,6 @@ from app.routers import external_access as api
 from app.routers.depends import create_access_token
 from app.services import external_access as service
 from app.services.account_security import bump_auth_version
-from fastapi import FastAPI
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
-from sqlalchemy import delete, func, inspect, select, update
-
 from tests.test_record_analysis_postgres import add_record, database, seed_analysis
 
 pytestmark = pytest.mark.skipif(
@@ -96,6 +96,11 @@ async def client(sessions):
     app = FastAPI()
     app.include_router(api.router)
     app.include_router(api.mcp_router)
+    from app.routers.external_oauth import discovery
+    from app.routers.external_oauth import router as oauth_router
+
+    app.include_router(oauth_router)
+    app.include_router(discovery)
     app.add_middleware(ExternalRequestBoundary)
 
     async def db_dependency():
@@ -503,7 +508,16 @@ def test_independent_mcp_client_and_transport_rejections():
                 initialized = await session.initialize()
                 assert initialized.serverInfo.name == "airalogy-platform"
                 assert initialized.serverInfo.version == resolve_build_info().version
-                assert len((await session.list_tools()).tools) == 8
+                assert {
+                    "access_context",
+                    "list_protocols",
+                    "get_protocol",
+                    "list_records",
+                    "preview_import",
+                    "preview_revision",
+                    "operation_status",
+                    "execute_operation",
+                } <= {tool.name for tool in (await session.list_tools()).tools}
                 context = await session.call_tool("access_context", {})
                 assert not context.isError and context.structuredContent["project"][
                     "id"
@@ -528,6 +542,35 @@ def test_independent_mcp_client_and_transport_rejections():
                 )
                 assert (
                     not done.isError and done.structuredContent["state"] == "succeeded"
+                )
+                from tests.test_external_research_postgres import (
+                    request_snapshot,
+                    submission,
+                )
+
+                frozen = await session.call_tool(
+                    "create_snapshot", request_snapshot(scope)
+                )
+                assert not frozen.isError, frozen
+                assert frozen.structuredContent["total_count"] == 2
+                proposed = await session.call_tool(
+                    "preview_analysis", submission(frozen.structuredContent)
+                )
+                assert not proposed.isError, proposed
+                report_op = proposed.structuredContent
+                await approve(http, scope, report_op)
+                persisted = await session.call_tool(
+                    "execute_operation", {"operation_id": report_op["id"]}
+                )
+                assert not persisted.isError, persisted
+                report = await session.call_tool(
+                    "get_external_analysis",
+                    {"run_id": persisted.structuredContent["result"]["run_id"]},
+                )
+                assert (
+                    not report.isError
+                    and report.structuredContent["result"]["verified_by_platform"]
+                    is False
                 )
             headers = {"Accept": "application/json, text/event-stream"}
             assert (
@@ -574,7 +617,15 @@ def test_migration_roundtrip_preserves_existing_records():
                     migration = import_module(
                         "migrations.versions.0078_external_agent_access"
                     )
+                    # Test this historical migration in its own schema; later
+                    # migrations may correctly reference its tables.
+                    schema = "external_legacy_" + uuid4().hex
+                    connection.exec_driver_sql(f'CREATE SCHEMA "{schema}"')
+                    connection.exec_driver_sql(
+                        f'SET LOCAL search_path TO "{schema}", public'
+                    )
                     with Operations.context(MigrationContext.configure(connection)):
+                        migration.upgrade()
                         migration.downgrade()
                         migration.upgrade()
                     for model in (
@@ -584,9 +635,10 @@ def test_migration_roundtrip_preserves_existing_records():
                         ExternalAudit,
                     ):
                         columns = inspect(connection).get_columns(model.__tablename__)
-                        assert {c["name"] for c in columns} == set(
-                            model.__table__.c.keys()
-                        )
+                        expected = set(model.__table__.c.keys())
+                        if model is ExternalGrant:
+                            expected -= {"audience", "oauth_client_id"}
+                        assert {c["name"] for c in columns} == expected
 
                 await connection.run_sync(roundtrip)
                 assert (
@@ -757,8 +809,13 @@ def test_self_only_record_permissions_and_deleted_records_stay_private():
             ).status_code == 404
             # A retained earlier revision must not resurrect a deleted latest Record.
             await add_record(
-                sessions, scope, 3, author=scope.recorder,
-                record_id=own.id, revision=2, number=own.number,
+                sessions,
+                scope,
+                3,
+                author=scope.recorder,
+                record_id=own.id,
+                revision=2,
+                number=own.number,
             )
             async with sessions() as db:
                 await db.execute(

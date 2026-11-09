@@ -10,6 +10,8 @@ SENSITIVE_KEYS = {
     "auth_token",
     "authorization",
     "code",
+    "code_verifier",
+    "code_challenge",
     "confirm_password",
     "confirmpassword",
     "current_password",

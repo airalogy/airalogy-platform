@@ -48,6 +48,7 @@ export function createViteProxy(env: Env.ImportMeta) {
   }
 
   const proxy: Record<string, ProxyOptions> = {
+    "^/\\.well-known/oauth-": { target: baseURL, changeOrigin: true, agent: createProxyAgent(baseURL) },
     [defaultProxyPattern]: {
       target: baseURL,
       changeOrigin: true,

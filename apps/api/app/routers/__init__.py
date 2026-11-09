@@ -12,8 +12,8 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import config
-from app.libs.protocol_agent import close_protocol_engine_pool
 from app.libs.external_request_boundary import ExternalRequestBoundary, is_external_path
+from app.libs.protocol_agent import close_protocol_engine_pool
 from app.libs.request_context import request_id_var
 from app.libs.safe_logging import (
     safe_json_body,
@@ -34,13 +34,17 @@ from .airalogy_files import router as airalogy_files_router
 from .analyses import router as analyses_router
 from .analysis_ai import router as analysis_ai_router
 from .analysis_compute import router as analysis_compute_router
-from .analysis_publications import router as analysis_publications_router
 from .analysis_protocol_drafts import router as analysis_protocol_drafts_router
+from .analysis_publications import router as analysis_publications_router
 from .answers import router as answers_router
 from .attachments import router as attachments_router
 from .chats import router as chats_router
+from .document_templates import router as document_templates_router
 from .editor import router as editor_router
-from .external_access import router as external_access_router, mcp_router
+from .external_access import mcp_router
+from .external_access import router as external_access_router
+from .external_oauth import discovery as external_oauth_discovery
+from .external_oauth import router as external_oauth_router
 from .groups import router as groups_router
 from .health import router as health_router
 from .hub import router as hub_router
@@ -48,22 +52,19 @@ from .instance import router as instance_router
 from .instrument_activations import router as instrument_activations_router
 from .instrument_authoring import router as instrument_authoring_router
 from .instrument_exploration import router as instrument_exploration_router
-from .instrument_surveys import router as instrument_surveys_router
 from .instrument_installations import router as instrument_installations_router
 from .instrument_integrations import router as instrument_integrations_router
 from .instrument_outputs import router as instrument_outputs_router
 from .instrument_packages import router as instrument_packages_router
 from .instrument_pairings import router as instrument_pairings_router
 from .instrument_qualifications import router as instrument_qualifications_router
+from .instrument_surveys import router as instrument_surveys_router
 from .knowledge import router as knowledge_router
-from .research_documents import router as research_documents_router
-from .document_templates import router as document_templates_router
-from .research_materials import router as research_materials_router
 from .labs import router as labs_router
 from .login import router as login_router
 from .oauth import router as oauth_router
 from .pinned_items import router as pinned_items_router
-from .workspace import router as workspace_router
+from .project_analyses import router as project_analyses_router
 from .project_groups import router as project_groups_router
 from .projects import router as projects_router
 from .protocol_folders import router as protocol_folders_router
@@ -85,6 +86,7 @@ from .research_compute_jobs import (
 )
 from .research_compute_runners import router as research_compute_runners_router
 from .research_compute_runners import runtime_router as research_compute_runtime_router
+from .research_documents import router as research_documents_router
 from .research_executor_bindings import router as research_executor_bindings_router
 from .research_human_executors import router as research_human_executors_router
 from .research_instrument_gateways import router as research_instrument_gateways_router
@@ -93,6 +95,7 @@ from .research_instrument_jobs import (
 )
 from .research_instrument_jobs import router as research_instrument_jobs_router
 from .research_log import router as research_log_router
+from .research_materials import router as research_materials_router
 from .research_notifications import router as research_notifications_router
 from .research_resources import router as research_resources_router
 from .research_result_packages import router as research_result_packages_router
@@ -117,11 +120,11 @@ from .system import router as system_router
 from .user_aliases import router as user_aliases_router
 from .users import router as users_router
 from .workflow import router as workflow_router
+from .workflow_analysis_methods import router as workflow_analysis_methods_router
 from .workflow_conversions import router as workflow_conversions_router
 from .workflow_definitions import router as workflow_definitions_router
-from .workflow_analysis_methods import router as workflow_analysis_methods_router
 from .workflow_files import router as workflow_files_router
-from .project_analyses import router as project_analyses_router
+from .workspace import router as workspace_router
 
 if config.APP_ENV != "production":
     from .dev_fixtures import router as dev_fixtures_router
@@ -322,6 +325,8 @@ app.include_router(health_router)
 app.include_router(system_router)
 app.include_router(oauth_router)
 app.include_router(external_access_router)
+app.include_router(external_oauth_router)
+app.include_router(external_oauth_discovery)
 app.include_router(mcp_router)
 app.add_middleware(ExternalRequestBoundary)
 app.include_router(attachments_router)

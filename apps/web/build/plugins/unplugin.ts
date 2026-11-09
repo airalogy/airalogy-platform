@@ -14,7 +14,7 @@ const ICON_LOCAL_PREFIX = "icon-local"
 /** Shared icon prefix */
 const ICON_SHARED_PREFIX = "icon-shared"
 
-export function setupUnplugin(_viteEnv: Env.ImportMeta) {
+export function setupUnplugin(_viteEnv: Env.ImportMeta, generateTypes = true) {
   const localIconPath = pathResolve("../../src/assets/svg-icon", import.meta.url)
   const sharedIconPath = pathResolve("../../../../packages/shared/src/assets/icons", import.meta.url)
   console.log(localIconPath, sharedIconPath)
@@ -30,7 +30,7 @@ export function setupUnplugin(_viteEnv: Env.ImportMeta) {
         /\.vue$/,
         /\.vue\?vue/, // .vue
       ],
-      dts: "src/types/auto-imports.d.ts",
+      dts: generateTypes ? "src/types/auto-imports.d.ts" : false,
       imports: ["vue", "vue-router", "vuex", "@vueuse/core"],
     }),
     Icons({
@@ -45,7 +45,7 @@ export function setupUnplugin(_viteEnv: Env.ImportMeta) {
       // defaultClass: "inline-block",
     }),
     Components({
-      dts: "src/types/components.d.ts",
+      dts: generateTypes ? "src/types/components.d.ts" : false,
       resolvers: [
         NaiveUiResolver(),
         IconsResolver({ customCollections: [collectionName, sharedCollectionName], componentPrefix: ICON_PREFIX }),

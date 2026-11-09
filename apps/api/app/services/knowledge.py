@@ -21,6 +21,8 @@ from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
+from app.models.analysis import AnalysisRun
+from app.models.external_research import ExternalAnalysisFile
 from app.models.knowledge import (
     KnowledgeAccessGrant,
     KnowledgeItem,
@@ -65,6 +67,11 @@ async def assert_research_file_upload_quota(
     # jobs' retained uploads, so deduplication and private scope cannot bypass
     # the same storage quota used by every other research-file writer.
     logical_files = union_all(
+        select(ResearchFileBlob.size_bytes.label("size_bytes"))
+        .select_from(ExternalAnalysisFile)
+        .join(AnalysisRun, AnalysisRun.id == ExternalAnalysisFile.run_id)
+        .join(ResearchFileBlob, ResearchFileBlob.id == ExternalAnalysisFile.blob_id)
+        .where(AnalysisRun.created_by_user_id == user_id),
         select(ResearchFileBlob.size_bytes.label("size_bytes"))
         .select_from(WorkflowFileBinding)
         .join(ResearchFileBlob, ResearchFileBlob.id == WorkflowFileBinding.blob_id)

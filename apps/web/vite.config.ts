@@ -92,8 +92,11 @@ export default defineConfig((configEnv) => {
 
   return {
     worker: { format: "es" },
+    publicDir: configEnv.mode === "agent-preview" ? false : "public",
     build: {
+      outDir: configEnv.mode === "agent-preview" ? "dist-agent-preview" : "dist",
       rollupOptions: {
+        ...(configEnv.mode === "agent-preview" ? { input: resolve("agent-preview.html") } : {}),
         external: [/^vscode-jsonrpc/, "langium"],
       },
     },
@@ -109,7 +112,7 @@ export default defineConfig((configEnv) => {
     //     "@fonts": pathResolve("./src/assets/fonts"),
     //   },
     // },
-    plugins: [setupEmbeddedDocumentation(), ...setupVitePlugins(viteEnv)],
+    plugins: [setupEmbeddedDocumentation(), ...setupVitePlugins(viteEnv, configEnv.mode !== "agent-preview")],
     define: { BUILD_TIME: JSON.stringify(BUILD_TIME, null, 0) },
     server: {
       host: "0.0.0.0",

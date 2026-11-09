@@ -5,6 +5,9 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+from fastapi import FastAPI, HTTPException
+from jsonschema import Draft202012Validator
+
 from app.libs.external_request_boundary import (
     MAX_EXTERNAL_BODY,
     ExternalRequestBoundary,
@@ -16,8 +19,6 @@ from app.services.external_access import (
     scalar_field,
     validation_errors,
 )
-from fastapi import FastAPI, HTTPException
-from jsonschema import Draft202012Validator
 
 
 @pytest.mark.parametrize(

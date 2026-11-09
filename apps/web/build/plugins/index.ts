@@ -12,7 +12,7 @@ import { setupUnocss } from "./unocss"
 import { setupUnplugin } from "./unplugin"
 import { pathResolve } from "./utils"
 
-export function setupVitePlugins(viteEnv: Env.ImportMeta) {
+export function setupVitePlugins(viteEnv: Env.ImportMeta, generateTypes = true) {
   const enableWorkspaceWatch = process.env.VITE_WATCH_WORKSPACE !== "N"
   const enableDevtools = process.env.VITE_DEVTOOLS !== "N"
   const enableMkcert = process.env.VITE_MKCERT === "Y"
@@ -47,7 +47,7 @@ export function setupVitePlugins(viteEnv: Env.ImportMeta) {
           autoUpgrade: false,
         })]
       : []),
-    ...setupUnplugin(viteEnv),
+    ...setupUnplugin(viteEnv, generateTypes),
     progress(),
     // VitePWA(),
   ]

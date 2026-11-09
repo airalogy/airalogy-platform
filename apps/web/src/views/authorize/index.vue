@@ -1,31 +1,32 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-#f5f7fb px-4 py-8">
-    <n-card class="w-full max-w-560px rounded-6" :bordered="false" size="large">
+  <external-consent v-if="route.query.external === '1'" />
+  <div v-else class="min-h-screen flex items-center justify-center bg-#f5f7fb px-4 py-8">
+    <n-card class="max-w-560px w-full rounded-6" :bordered="false" size="large">
       <div class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
           <div class="text-3xl text-#111827 font-600">
             OAuth Authorization
           </div>
-          <div class="text-sm line-height-6 text-#6b7280">
+          <div class="text-sm text-#6b7280 line-height-6">
             Confirm that you want to authorize this website to access your Airalogy account.
           </div>
         </div>
 
         <div class="rounded-4 bg-white p-4 shadow-sm ring-1 ring-#e5e7eb">
-          <div class="text-xs text-#9ca3af uppercase tracking-0.08em">
+          <div class="text-xs text-#9ca3af tracking-0.08em uppercase">
             Target Site
           </div>
-          <div class="mt-2 text-lg text-#111827 font-600 break-all">
+          <div class="mt-2 break-all text-lg text-#111827 font-600">
             {{ siteHost }}
           </div>
-          <div class="mt-1 text-sm text-#6b7280 break-all">
+          <div class="mt-1 break-all text-sm text-#6b7280">
             {{ requestParams.redirectUri || "Invalid redirect URI" }}
           </div>
         </div>
 
         <div class="grid gap-3 rounded-4 bg-#f9fafb p-4 text-sm text-#374151 md:grid-cols-2">
           <div>
-            <div class="text-xs text-#9ca3af uppercase tracking-0.08em">
+            <div class="text-xs text-#9ca3af tracking-0.08em uppercase">
               Account
             </div>
             <div class="mt-1 break-all">
@@ -33,7 +34,7 @@
             </div>
           </div>
           <div>
-            <div class="text-xs text-#9ca3af uppercase tracking-0.08em">
+            <div class="text-xs text-#9ca3af tracking-0.08em uppercase">
               Scope
             </div>
             <div class="mt-1 break-all">
@@ -41,7 +42,7 @@
             </div>
           </div>
           <div>
-            <div class="text-xs text-#9ca3af uppercase tracking-0.08em">
+            <div class="text-xs text-#9ca3af tracking-0.08em uppercase">
               Client ID
             </div>
             <div class="mt-1 break-all">
@@ -49,7 +50,7 @@
             </div>
           </div>
           <div>
-            <div class="text-xs text-#9ca3af uppercase tracking-0.08em">
+            <div class="text-xs text-#9ca3af tracking-0.08em uppercase">
               Response Type
             </div>
             <div class="mt-1">
@@ -87,6 +88,7 @@ import { fetchOAuthAuthorize } from "@/service/api/oauth"
 import { useAuthStore } from "@/store/modules/auth"
 import { useClosableMessage } from "@airalogy/composables"
 import { computed, ref } from "vue"
+import ExternalConsent from "./external-consent.vue"
 
 interface OAuthRequestParams {
   responseType: string
@@ -149,6 +151,8 @@ const siteHost = computed(() => {
 })
 
 onMounted(() => {
+  if (route.query.external === "1")
+    return
   if (!authStore.token) {
     void routerPushByKey("login", { query: { redirect: route.fullPath } })
     return

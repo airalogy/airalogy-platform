@@ -15,6 +15,11 @@
 		X-Frame-Options "DENY"
 	}
 
+	@externalDiscovery path /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/api/mcp
+	handle @externalDiscovery {
+		reverse_proxy api-server:4000
+	}
+
 	handle_path /api/* {
 		reverse_proxy api-server:4000
 	}

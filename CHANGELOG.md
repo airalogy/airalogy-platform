@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Add the external research workflow (Issue #22): separately authorized immutable Record snapshots, private external analysis reports/files and versioned methods, reviewed Protocol candidates with exact source export, bounded context/file reads, PKCE browser authorization, and a local Python client plus official AIMD editor/Recorder preview. Preserve existing token scopes and Record versions; enforce source permissions and atomic confirmation receipts. Requires migration `0082_external_research`.
+
 - Prioritize Protocols immediately after Home in the main navigation, followed by Projects and Documents, consistently across desktop and compact menus. Constrain long compact-menu labels so they cannot overlap adjacent header controls.
 
 - Single-Lab deployments now keep the project-led home, inherit the fixed Lab during creation, and omit redundant Lab selection and breadcrumbs. Shared knowledge, resources and Lab logs remain directly accessible; Lab management is grouped separately, while member/delegated access and personal-document privacy retain API enforcement. Add isolated single-Lab browser coverage with AI disabled.

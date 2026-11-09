@@ -10,10 +10,10 @@ from typing import Annotated, Literal
 from dotenv import dotenv_values
 from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from starlette.background import BackgroundTask
-from starlette.concurrency import run_in_threadpool
 from pydantic_core import ValidationError
 from sqlalchemy import select
+from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 
 from app.config import config
 from app.database import DBSession
@@ -274,13 +274,13 @@ async def upload_package(
     db_session: DBSession,
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    project_id: UUID = Body(embed=True),
-    env_vars: str = Body(default="", embed=True),
-    protocol_id: UUID | None = Body(None, embed=True),
-    source_knowledge_item_id: UUID | None = Body(None, embed=True),
-    source_knowledge_revision: int | None = Body(None, embed=True),
-    source_protocol_improvement_id: UUID | None = Body(None, embed=True),
-    source_protocol_improvement_revision: int | None = Body(None, embed=True),
+    project_id: Annotated[UUID, Body(embed=True)],
+    env_vars: Annotated[str, Body(embed=True)] = "",
+    protocol_id: Annotated[UUID | None, Body(embed=True)] = None,
+    source_knowledge_item_id: Annotated[UUID | None, Body(embed=True)] = None,
+    source_knowledge_revision: Annotated[int | None, Body(embed=True)] = None,
+    source_protocol_improvement_id: Annotated[UUID | None, Body(embed=True)] = None,
+    source_protocol_improvement_revision: Annotated[int | None, Body(embed=True)] = None,
     source_analysis_protocol_draft_id: Annotated[UUID | None, Body(embed=True)] = None,
     source_analysis_protocol_revision: Annotated[
         int | None, Body(embed=True, ge=1)
@@ -295,6 +295,32 @@ async def upload_package(
         str | None, Body(embed=True, min_length=1, max_length=8000)
     ] = None,
 ):
+    return await save_protocol_package(**locals())
+
+
+async def save_protocol_package(
+    current_user,
+    db_session,
+    file,
+    background_tasks,
+    project_id,
+    env_vars="",
+    protocol_id=None,
+    source_knowledge_item_id=None,
+    source_knowledge_revision=None,
+    source_protocol_improvement_id=None,
+    source_protocol_improvement_revision=None,
+    source_analysis_protocol_draft_id=None,
+    source_analysis_protocol_revision=None,
+    source_analysis_protocol_digest=None,
+    source_analysis_protocol_preview_digest=None,
+    source_analysis_protocol_preview_token=None,
+    *,
+    commit=True,
+    delegated_review=None,
+    delegated_source=None,
+):
+    """Shared publisher. Delegated review is an internal callback, never an API input."""
     analysis_source_fields = (
         source_analysis_protocol_draft_id,
         source_analysis_protocol_revision,
@@ -335,6 +361,8 @@ async def upload_package(
             lock=True,
         )
     project: Project = await Project.find(db_session, id=project_id)
+    if project is None or project.deleted_at is not None:
+        raise HTTPException(404, "Project not found")
     lab: Lab = await Lab.find(db_session, id=project.lab_id)
     if protocol_id is not None:
         protocol: Protocol = await Protocol.find(
@@ -480,6 +508,10 @@ async def upload_package(
     tmp_protocol_name = f"upload_{uuid.uuid4()}"
     protocol_dir = config.PROTOCOL_DIR
     tmp_protocol_path = f"{protocol_dir}/{tmp_protocol_name}"
+    if delegated_review is not None:
+        db_session.info.setdefault("external_temporary_paths", []).append(
+            tmp_protocol_path
+        )
     unzip_file(file.file, tmp_protocol_path)
     remove_exclude_files(tmp_protocol_path)
     background_tasks.add_task(clear_protocol, tmp_protocol_name)
@@ -487,7 +519,7 @@ async def upload_package(
     env_vars_dict.update(
         {
             "AIRALOGY_ENDPOINT": config.AIRALOGY_ENDPOINT,
-            "AIRALOGY_API_KEY": current_user.api_key,
+            "AIRALOGY_API_KEY": "" if delegated_review else current_user.api_key,
         }
     )
     if protocol is not None:
@@ -510,6 +542,8 @@ async def upload_package(
             detail=f"Invalid protocol.toml, error: {e.errors()}",
         )
     _validate_resource_definition(info, meta_data.kind)
+    if delegated_review is not None:
+        await delegated_review(info, Path(tmp_protocol_path))
     if analysis_draft is not None:
         # The real parser must not rewrite files after they were reviewed.
         if any(
@@ -745,8 +779,21 @@ async def upload_package(
     if not os.path.exists(f"{protocol_dir}/tmp"):
         os.makedirs(f"{protocol_dir}/tmp")
     package_zip_file = f"{protocol_dir}/tmp/{protocol_version.package_name}.zip"
+    if delegated_review is not None:
+        db_session.info.setdefault("external_temporary_files", []).append(
+            package_zip_file
+        )
     remove_exclude_files(protocol_path)
-    if analysis_package is not None:
+    if delegated_review is not None:
+        db_session.info.setdefault("external_protocol_artifacts", []).append(
+            (protocol_version.id, protocol_version.package_object_key, protocol_path)
+        )
+    if delegated_source is not None:
+        # Publish the exact reviewed archive, not executor-generated cache files.
+        await protocol_version.upload_package(
+            BytesIO(delegated_source), length=len(delegated_source)
+        )
+    elif analysis_package is not None:
         from app.services.analysis_protocol_packages import (
             analysis_protocol_package_zip_bytes,
         )
@@ -760,7 +807,8 @@ async def upload_package(
     else:
         zip_dir(protocol_path, package_zip_file)
         await protocol_version.upload_package(package_file=package_zip_file)
-        background_tasks.add_task(os.remove, package_zip_file)
+        if delegated_review is None:
+            background_tasks.add_task(os.remove, package_zip_file)
 
     # Replace the derived index atomically, independently of model availability.
     background_tasks.add_task(
@@ -789,7 +837,8 @@ async def upload_package(
         if knowledge_source_payload is not None
         else [],
     )
-    await db_session.commit()
+    if commit:
+        await db_session.commit()
     return {"data": response_data}
 
 
@@ -841,27 +890,46 @@ async def export_protocol_package(
     project = await Project.find(db_session, id=protocol.project_id)
     if project is None:
         raise HTTPException(404, "Project not found")
-    await check_user_permission(db_session, project=project, user=current_user,
-                                action="read_protocol", protocol=protocol)
-    package = await ProtocolVersion.find_by(db_session, [
-        ProtocolVersion.protocol_id == id, ProtocolVersion.version == version,
-    ])
+    await check_user_permission(
+        db_session,
+        project=project,
+        user=current_user,
+        action="read_protocol",
+        protocol=protocol,
+    )
+    package = await ProtocolVersion.find_by(
+        db_session,
+        [
+            ProtocolVersion.protocol_id == id,
+            ProtocolVersion.version == version,
+        ],
+    )
     if package is None:
         raise HTTPException(404, "Protocol version not found")
     workspace = tempfile.TemporaryDirectory(prefix="protocol_export_")
     try:
         source = Path(workspace.name) / "source.zip"
         await package.download_package(str(source))
-        output = await run_in_threadpool(build_protocol_export, source, Path(workspace.name), format)
+        output = await run_in_threadpool(
+            build_protocol_export, source, Path(workspace.name), format
+        )
         safe_uid = re.sub(r"[^A-Za-z0-9_-]", "_", protocol.uid)
         safe_version = re.sub(r"[^A-Za-z0-9_.-]", "_", package.version)
-        return FileResponse(output, media_type="application/zip" if format == "zip" else "application/octet-stream",
-                            filename=f"{safe_uid}-v{safe_version}.{format}",
-                            headers={"Cache-Control": "private, no-store"},
-                            background=BackgroundTask(workspace.cleanup))
-    except Exception:
+        return FileResponse(
+            output,
+            media_type="application/zip"
+            if format == "zip"
+            else "application/octet-stream",
+            filename=f"{safe_uid}-v{safe_version}.{format}",
+            headers={"Cache-Control": "private, no-store"},
+            background=BackgroundTask(workspace.cleanup),
+        )
+    except Exception:  # noqa: BLE001 -- remove temporary exports and hide storage exception details
         workspace.cleanup()
-        raise HTTPException(400, "Unable to export this Protocol package; check its source and format compatibility.") from None
+        raise HTTPException(
+            400,
+            "Unable to export this Protocol package; check its source and format compatibility.",
+        ) from None
 
 
 @router.get("/{id}/package_files")
@@ -911,7 +979,7 @@ async def get_package_files(
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="static file not found")
 
-    content_type, type = AiralogyFile.guess_type(filename)
+    content_type, _encoding = AiralogyFile.guess_type(filename)
     await upload_file(object_key, file=file_path, content_type=content_type)
     url = await file_local_url(object_key)
     return {"url": url, "filename": filename}

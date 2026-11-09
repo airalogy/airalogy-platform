@@ -2,7 +2,7 @@
 
 用户可以让 Codex 或其他 MCP 客户端访问自己获授权的一个 Project。Platform 统一执行权限、严格数据校验和 Record 修订留痕。这些确定性操作不依赖 Aira、Masterbrain 或模型服务是否开启。
 
-本期对应 [Issue #11](https://github.com/airalogy/platform/issues/11)，提供限权令牌、HTTP/MCP 读取、CSV 导入和本人 Record 修订。不授予管理权限、文件下载权限或仪器控制权限。
+本功能覆盖 [Issue #11](https://github.com/airalogy/platform/issues/11) 和 [Issue #22](https://github.com/airalogy/platform/issues/22) 的科研闭环：限权读取、导入和修订、不可变分析快照、私有外部分析成果与经确认的 Protocol 发布。不授予管理权限或仪器控制权限；文件下载需单独授权。
 
 ## 开启与连接
 
@@ -38,12 +38,12 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 
 用户在网页核对修改前后值并确认，执行后生成修订版本，保留原版本和原因。如果期间产生了新修订，执行会失败，需读取最新状态重新预览。外部通道没有删除操作。
 
-## 首期范围与限制
+## 范围与限制
 
-- 每个令牌只绑定一个 Project，必须包含 `protocols:read`；可选 `records:read`、`records:import`、`records:revise`。修订同时要求读取权限。
+- 每个令牌只绑定一个 Project，必须包含 `protocols:read`；新增能力须明确勾选，旧令牌不自动扩权。修订同时要求读取权限。完整权限见下表。
 - API 同时检查 Lab 字段限制及现有 Protocol/Record 权限。公共可见性不能绕过 Lab 成员资格或外部访问策略。
 - Protocol 读取只提供字段 ID、标题、必填状态、基本类型和支持的校验限制。不返回 AIMD、执行代码、环境变量、模型提示、默认值或示例值。CSV 模板仅含表头。
-- Record 只开放基本类型变量及支持的日期时间字符串；不开放附件、签名下载地址、报告、对象或数组。含文件地址的字符串被省略，并在 `withheld_fields` 标明，不会改写成科学意义上的空值。工具不得推测被省略内容。
+- Record 默认开放基本类型变量及支持的日期时间字符串。明确授权 `records:complex` 后，可读取具有明确结构的数组和对象，最多四层；不支持的引用、资源、文件类型和值仍不返回。附件走独立文件接口，不返回长期下载地址。含文件地址的字符串被省略，并在 `withheld_fields` 标明，不会改写成科学意义上的空值。工具不得推测被省略内容。
 - Protocol 含受限或不支持的复杂变量时，必须回到正常网页导入或修订，首期不对这类 Protocol 做部分写入。外部导入不会向校验器注入用户的完整旧 API Key 或 Protocol 环境机密；依赖这些凭据的校验需使用正常网页路径。
 - CSV 最大 1 MiB，完整请求体最大 2 MiB，流式上传同样受限。保留现有行数限制。列表每页 50 条，通过 `next_offset` 翻页。每个令牌最多 10 个待确认/已确认请求，每个用户最多 50 个有效授权；已认证工具调用按用户限制为每分钟 120 次已记录活动。
 - 外部 API 日志不记录令牌或 CSV/Record 请求正文。审计记录包含用户、授权、操作及结果引用，不包含输入值。校验错误只公开有限的行/字段位置和类别，不透传自定义校验器可能包含机密的文本。
@@ -72,8 +72,70 @@ MCP 使用 JSON 响应，客户端需接受 `application/json, text/event-stream
 
 ## 部署与后续
 
-上线需执行 `0078_external_agent_access` 迁移，并部署匹配的前后端构建，遵循现有发布、备份和验证流程。本文不代表已授权或已完成线上升级。既有 Lab 默认仍关闭外部访问。独立 `mcp` 客户端仅是开发/测试依赖，生产传输使用现有 FastAPI。
+完整功能上线需执行至 `0082_external_research` 迁移，并部署匹配的前后端构建，遵循现有发布、备份和验证流程。本文不代表已授权或已完成线上升级。既有 Lab 默认仍关闭外部访问。独立 `mcp` 客户端仅是开发/测试依赖，生产传输使用现有 FastAPI。
 
 集成测试覆盖真实迁移往返、CSV 校验、失败回滚、并发重试、修订历史、权限变化、过期、数据限制及独立 MCP SDK。浏览器测试覆盖中英文、手机/桌面下创建授权、确认和撤销；无需生产或客户数据。
 
-OAuth/PKCE、专用 CLI/SDK、Webhooks、更广的 Knowledge/Protocol 编辑及附件访问属于后续独立范围，需继续复用统一授权和写入边界。
+变更通知采用 `snapshot_changes` 主动查询，不自动启动重跑。推送 Webhooks、动态 OAuth 客户端注册、刷新令牌、远程任务执行和自动公开到共享 Knowledge 不在当前范围；它们是独立扩展，不影响下述分析和 Protocol 闭环。
+
+## 外部分析与成果回存
+
+从**项目 → 更多 → 连接外部 AI**进入，也可在账号设置进入。创建凭据前可确认目标项目及操作范围；令牌显示期间可点击测试连接。
+
+| 新增权限 | 能力及实际权限要求 |
+| --- | --- |
+| `records:export` | 创建数据快照，同时要求 `records:read` 及已有导出权限（Lab Owner 或 Project Owner/Manager）。能读取不代表能导出。 |
+| `analysis:write` / `analysis:read` | 提议保存/读取本人的外部成果，仍需数据导出权限及当前来源读取权限。 |
+| `protocols:source` | 下载准确版本的源码，与字段结构读取独立。源码本身可能包含保密研究文本。 |
+| `protocols:candidate` / `protocols:publish` | 校验候选/确认后发布；须有源码权限及常规创建、修改协议权限。 |
+| `records:complex` | 有明确结构和深度上限的数组、对象；不隐含附件内容读取。 |
+| `knowledge:read`、`documents:read`、`materials:read` | 当前 Project 的知识、文档或资料。个人、其他项目和 Restricted 内容保持原有权限。 |
+| `files:read` | 显式选择并按校验和读取附件，还须有父对象能力与读取权限；Record 附件另需导出权限。 |
+
+1. 检查上下文和字段字典。以新 `request_key` 和 `sources: [{protocol_id, fields, records?}]` 调用 `create_snapshot`。`records` 可明确选择 `{id, version}`；省略时取创建瞬间的可读最新修订。最多 16 个 Protocol，每个选择 100 个字段，共 2,000 条 Record、16 MiB。每页 50 行，始终来自同一快照，带准确 Record/Protocol 版本、字段字典、缺失/不支持/受限状态及摘要。未确认快照 24 小时到期，每人最多 20 个有效快照。
+2. 由外部工具实际计算。不同 Protocol 默认分开，合并分析须明确连接键、单位和一对一/一对多关系。`list_context_assets` / `read_context_asset` 读取另行授权的上下文，后续文本页须携带原摘要。`list_record_files` 和 `read_research_file` 先取元数据，再以 `expected_sha256` 分块下载：单文件最多 16 MiB，每块 256 KiB。不提供任意 URL 抓取和带机密的执行环境。
+3. 调用 `preview_analysis`，传入快照 ID/摘要、标题、问题、报告、方法、参数、环境、执行工具、限制、`execution: computed | interpretation_only`、新请求键和可选文件 `{filename, kind, content_base64, sha256}`。最多 20 个文件、总计 1 MiB，支持 `.py`、`.json`、`.csv`、`.txt`、`.md`、`.png`、`.jpg/.jpeg`。代码仅保存，不在此接口执行。重跑时用 `rerun_of_id` 关联原成果。
+4. 用户在 Platform 阅读完整报告、来源、限制和可下载文件，并确认准确版本。随后 `execute_operation` 在同一事务保存普通私有 `AnalysisRun`、版本化 `AnalysisPipeline` 方法和文件引用。重跑生成新成果，保留旧成果；相同方法复用版本，方法改变生成下一版。网络中断后可安全重试，不重复创建。
+5. 通过返回链接查看成果。保留来源摘要、文件校验和、环境和重跑关系。明确标记**外部计算，平台尚未复现验证**；缺少代码或环境时显示复现信息不完整。公共项目中的成果同样默认仅提交者可见；来源权限撤销后，报告和下载都不可继续读取。单独读取的上下文不会自动纳入 Record 快照，应在回存方法/报告中保留相关来源标识与摘要。暂不允许通过现有发布接口自动扩散到共享 Knowledge，待有明确的来源感知发布流程后再扩展。
+
+已确认快照与成果一同保留，到期不会删除正式科研资产。撤销令牌阻止进一步委托调用，不删除用户本人已接受的成果。Lab 策略改变后，继续外部分析需新建快照。`snapshot_changes` 查询后续修订/新增，不改变旧快照、不自动启动工作；已删除或不可访问的来源会拒绝读取。
+
+## 本地编写 Protocol
+
+以 `{protocol_id, version, format: "aira" | "zip"}` 调用 `download_protocol_source`。归档来自不可变的已发布版本，不读取执行器工作目录。源码读取不等于有权发布。
+
+使用官方 Airalogy Python 语法/Assigner 检查及下述本地预览，然后调用 `preview_protocol_candidate`。输入新请求键、`files`（相对路径的 UTF-8 文本）和可选 `binary_files`（base64 图片/PDF），或用 `archive_base64` 提交 `.aira`/ZIP。最多 50 个文件、解压后 1 MB；拒绝隐藏路径、符号链接、重复/危险路径和伪装图片。修改已有 Protocol 必须带 `protocol_id` 和准确 `base_version_id`，新建时两者都省略。
+
+平台执行官方静态检查和隔离执行器校验，不注入委托用户的旧 API Key 或 Protocol 环境机密。网页展示源码差异、二进制附件摘要与下载、保存位置、目标版本和结构兼容报告。确认和执行再次核对来源摘要、权限和基础版本；并发发布产生冲突时须重新预览。发布生成普通 Protocol 新版本，已有 Records 保持原协议版本。外部工具无法自行确认或发布未经审阅的输入。
+
+## 本地客户端与预览
+
+Platform 源码中的标准库 Python 客户端既可 `from tools.airalogy_agent import Client` 导入，也可直接运行。要求 Python 3.11+；`check`、`candidate` 另需官方 `airalogy` 包。为保持一致，可使用 API 环境（在 `apps/api` 下用 `uv run`）。本地静态检查不会导入执行用户的 Protocol Python。
+
+```sh
+python3 tools/airalogy_agent.py --instance https://your-platform.example context
+python3 tools/airalogy_agent.py --instance https://your-platform.example snapshot selection.json snapshot.json
+python3 tools/airalogy_agent.py check ./my-protocol
+python3 tools/airalogy_agent.py --instance https://your-platform.example candidate ./my-protocol --protocol-id UUID --base-version-id UUID
+python3 tools/airalogy_agent.py --instance https://your-platform.example status OPERATION_UUID
+# 用户已在网页确认后：
+python3 tools/airalogy_agent.py --instance https://your-platform.example execute OPERATION_UUID
+pnpm agent:preview:build
+pnpm agent:preview
+```
+
+具体参数见 `--help`。`call TOOL request.json` 调用与 MCP 相同的类型化 HTTP 工具。凭据来自 `AIRALOGY_PLATFORM_TOKEN` 或私有 `AIRALOGY_PLATFORM_TOKEN_FILE`，不接受命令行明文令牌。除本机回环开发地址外要求 HTTPS，拒绝重定向，下载校验摘要且不覆盖已有文件。
+
+预览地址为 `http://127.0.0.1:3109/agent-preview.html`，复用官方 `AimdEditor`、`AimdRecorder` 和示例数据生成，支持打开、编辑、下载 AIMD 与测试内联字段，不上传、不创建 Record。Python 模型和服务端 Assigner 仍需平台校验。服务器仅监听回环地址，禁用目录浏览和外部连接，不应对公网开放。
+
+## 浏览器授权（OAuth + PKCE）
+
+在账号设置注册公共客户端名称和准确回调地址。回调要求 HTTPS 或字面量本机回环 HTTP 地址，不允许用户名密码、查询参数、片段。返回客户端 ID，不生成客户端机密。在受控本地终端执行：
+
+```sh
+python3 tools/airalogy_agent.py --instance https://your-platform.example login --client-id CLIENT_UUID --scopes 'protocols:read records:read records:export analysis:read analysis:write' --token-file /private/path/platform-token.json
+```
+
+默认 CLI 回调须注册 `http://127.0.0.1:8765/callback`。网页展示客户端、实例、操作范围、Project、1–7 天有效期并要求显式确认。采用 S256 PKCE、state 校验、准确回调/资源绑定、5 分钟单次授权码和资源限定令牌。凭据文件以仅本人可读写权限独占创建；拒绝过期、其他用户拥有或权限过宽的文件。撤销客户端同时撤销其关联令牌和待执行操作。不提供自动刷新或动态注册；不支持预注册的客户端可用限权 Bearer 令牌接入。
+
+发现接口位于 `/.well-known/oauth-authorization-server` 和 `/.well-known/oauth-protected-resource/api/mcp`。除 `/api/*` 外，反向代理还须将这两条路径转发 API；随附 Caddy 配置和开发代理已包含。`SITE_URL` 须与实例公开 origin 一致。为 `/api/mcp` 签发的令牌不能调用 `/api/external-access`，反之亦然。HTTP 与 MCP 共用校验、权限、确认、审计和幂等规则；特定桌面客户端能否直接使用 OAuth，取决于其预注册客户端支持。

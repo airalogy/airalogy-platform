@@ -214,7 +214,7 @@ async def download_record_analysis(
     if run.status != "succeeded":
         raise HTTPException(409, "Analysis has not succeeded")
     payload = run_payload(run)
-    if getattr(run, "source_scope", "protocol") == "project":
+    if getattr(run, "source_scope", "protocol") == "project" and run.engine_version != "external-research-v1":
         from app.services.project_analyses import project_interpretations
 
         # Narrative revisions have their own seals; never rewrite the immutable
@@ -273,6 +273,7 @@ async def list_record_analyses(
                 .where(
                     AnalysisRun.project_id == project_id,
                     AnalysisRun.source_scope == source_scope,
+                    AnalysisRun.engine_version != "external-research-v1",
                     AnalysisRun.created_by_user_id == current_user.id,
                 )
                 .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
@@ -298,6 +299,8 @@ async def create_analysis_pipeline(
     params: PipelineCreateRequest, db_session: DBSession, current_user: CurrentUser
 ):
     run = await owned_run(db_session, params.run_id, current_user)
+    if run.engine_version == "external-research-v1":
+        raise HTTPException(409, "External results already include a versioned method; use the external analysis workspace")
     if run.status != "succeeded":
         raise HTTPException(409, "Save a method from a successfully computed analysis")
     if not params.title.strip():
@@ -395,6 +398,10 @@ async def list_analysis_pipelines(
                     AnalysisPipeline.project_id == project_id,
                     AnalysisPipeline.source_scope == source_scope,
                     AnalysisPipeline.created_by_user_id == current_user.id,
+                    ~select(AnalysisPipelineRevision.id).where(
+                        AnalysisPipelineRevision.pipeline_id == AnalysisPipeline.id,
+                        AnalysisPipelineRevision.recipe["kind"].as_string() == "external",
+                    ).exists(),
                 )
                 .order_by(
                     AnalysisPipeline.updated_at.desc(), AnalysisPipeline.id.desc()

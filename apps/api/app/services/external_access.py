@@ -37,7 +37,23 @@ from app.routers.permission import check_user_permission as platform_permission
 from app.services.account_security import get_auth_version
 from app.services.record_imports import import_fields, template_csv
 
-SCOPES = {"protocols:read", "records:read", "records:import", "records:revise"}
+SCOPES = {
+    "protocols:read",
+    "records:read",
+    "records:import",
+    "records:revise",
+    "records:export",
+    "analysis:read",
+    "analysis:write",
+    "protocols:source",
+    "protocols:candidate",
+    "protocols:publish",
+    "records:complex",
+    "knowledge:read",
+    "documents:read",
+    "materials:read",
+    "files:read",
+}
 MAX_CSV_BYTES = 1024 * 1024
 OPERATION_TTL = timedelta(minutes=15)
 
@@ -74,7 +90,7 @@ class StrictModel(BaseModel):
 class GrantInput(StrictModel):
     project_id: UUID
     name: str = Field(min_length=1, max_length=100)
-    scopes: list[str] = Field(min_length=1, max_length=4)
+    scopes: list[str] = Field(min_length=1, max_length=32)
     expires_in_days: int = Field(default=7, ge=1, le=90)
 
 
@@ -249,7 +265,7 @@ async def create_grant(db, user, params):
     return {"grant": grant.as_dict(), "token": token}
 
 
-async def authorize(db, token=None, *, grant_id=None, owner_id=None):
+async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=None):
     query = select(ExternalGrant)
     if token is not None:
         if not token.startswith("apl_") or len(token) > 100:
@@ -262,7 +278,9 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None):
             ExternalGrant.id == grant_id, ExternalGrant.user_id == owner_id
         )
     grant = await db.scalar(query)
-    if not grant:
+    if not grant or (
+        token is not None and grant.audience is not None and grant.audience != audience
+    ):
         fail("invalid_external_token", 401)
     project = await db.scalar(
         select(Project).where(
@@ -388,13 +406,64 @@ def scalar_field(schema):
     )
 
 
+def structured_field(spec, depth=0):
+    if depth > 4 or not isinstance(spec, dict):
+        return False
+    if scalar_field(spec):
+        return True
+    if any(key in spec for key in ("$ref", "airalogy_type", "contentMediaType")):
+        return False
+    if spec.get("type") == "array":
+        return structured_field(spec.get("items"), depth + 1)
+    if spec.get("type") == "object":
+        props = spec.get("properties")
+        return (
+            isinstance(props, dict)
+            and len(props) <= 100
+            and all(structured_field(v, depth + 1) for v in props.values())
+            and not spec.get("additionalProperties")
+        )
+    return False
+
+
+def safe_field_value(access, value, spec, depth=0):
+    if depth > 4:
+        return None
+    if scalar_field(spec):
+        return safe_value(value)
+    if "records:complex" not in access.grant.scopes:
+        return None
+    if spec.get("type") == "array" and isinstance(value, list) and len(value) <= 256:
+        checked = [
+            safe_field_value(access, item, spec["items"], depth + 1) for item in value
+        ]
+        return checked if checked == value else None
+    if spec.get("type") == "object" and isinstance(value, dict) and len(value) <= 100:
+        props = spec.get("properties", {})
+        if set(value) - props.keys():
+            return None
+        checked = {
+            k: safe_field_value(access, v, props[k], depth + 1)
+            for k, v in value.items()
+        }
+        return checked if checked == value else None
+    return None
+
+
 def external_fields(access, version):
     return {
         key: primitive_schema(spec)
         for key, spec in version.json_schema.get("vars", {})
         .get("properties", {})
         .items()
-        if key not in access.policy.blocked_fields and scalar_field(spec)
+        if not any(
+            key == blocked or blocked.startswith(key + ".")
+            for blocked in access.policy.blocked_fields
+        )
+        and (
+            scalar_field(spec)
+            or ("records:complex" in access.grant.scopes and structured_field(spec))
+        )
     }
 
 
@@ -403,15 +472,19 @@ def safe_value(value):
         return None
     if value is None or isinstance(value, (bool, int, float)):
         return value
-    if isinstance(value, str) and not any(
-        marker in value.lower()
-        for marker in (
-            "http://",
-            "https://",
-            "airalogy.id.file.",
-            "/attachments/",
-            "/download/",
-            "/airalogy_files/",
+    if (
+        isinstance(value, str)
+        and len(value) <= 20000
+        and not any(
+            marker in value.lower()
+            for marker in (
+                "http://",
+                "https://",
+                "airalogy.id.file.",
+                "/attachments/",
+                "/download/",
+                "/airalogy_files/",
+            )
         )
     ):
         return value
@@ -428,12 +501,12 @@ def record_view(access, version, record):
         "var": {
             key: value
             for key, value in variables.items()
-            if key in fields and safe_value(value) == value
+            if key in fields and safe_field_value(access, value, fields[key]) == value
         },
         "withheld_fields": [
             key
             for key, value in variables.items()
-            if key in fields and safe_value(value) != value
+            if key in fields and safe_field_value(access, value, fields[key]) != value
         ],
     }
 
@@ -523,7 +596,7 @@ def operation_view(op):
     return {
         "id": str(op.id),
         "kind": op.kind,
-        "protocol_id": str(op.protocol_id),
+        "protocol_id": str(op.protocol_id) if op.protocol_id else None,
         "digest": op.digest,
         "state": state,
         "summary": op.summary,
@@ -696,6 +769,10 @@ async def validate_revision(version, values):
 
 
 async def execute_operation(db, access, op):
+    if op.kind not in ("import", "revision"):
+        from app.services.external_research import execute_analysis
+
+        return await execute_analysis(db, access, op)
     required = "records:import" if op.kind == "import" else "records:revise"
     scope(access, required)
     if op.state == "succeeded":
@@ -760,13 +837,33 @@ async def execute_operation(db, access, op):
 async def tool_call(db, access, name, args):
     scope(access, "protocols:read")
     await expire_operations(db, access.grant.id)
+    from app.services.external_research_contracts import RESEARCH_TOOLS
+
+    if name in RESEARCH_TOOLS:
+        from app.services.external_research import call
+
+        return await call(db, access, name, args)
     if name == "access_context":
+        from app.build_info import resolve_build_info
+
         return {
+            "contract_version": 1,
+            "instance": {
+                "site_url": config.SITE_URL,
+                "version": resolve_build_info().version,
+            },
+            "user": {"id": str(access.user.id), "username": access.user.username},
+            "snapshot_limits": {"max_records": 2000, "page_size": 50, "ttl_hours": 24},
+            "result_limit_bytes": 1024 * 1024,
             "project": {"id": str(access.project.id), "name": access.project.name},
             "scopes": access.grant.scopes,
             "expires_at": access.grant.expires_at.isoformat(),
             "blocked_fields": access.policy.blocked_fields,
-            "attachments": "not_available",
+            "attachments": "explicit_scope_and_parent_authorization"
+            if "files:read" in access.grant.scopes
+            else "not_authorized",
+            "file_limits": {"max_bytes": 16 * 1024 * 1024, "chunk_bytes": 256 * 1024},
+            "candidate_limits": {"max_files": 50, "max_uncompressed_bytes": 1_000_000},
         }
     if name == "list_protocols":
         protocols = (
@@ -810,29 +907,12 @@ async def tool_call(db, access, name, args):
                 for field in import_fields(version.json_schema)
                 if field["id"] in fields
             ]
+            from app.services.external_research import dictionary_schema
+
             schema = {
                 "vars": {
                     "properties": {
-                        key: {
-                            k: v
-                            for k, v in value.items()
-                            if k
-                            in (
-                                "type",
-                                "format",
-                                "minimum",
-                                "maximum",
-                                "exclusiveMinimum",
-                                "exclusiveMaximum",
-                                "multipleOf",
-                                "enum",
-                                "const",
-                                "pattern",
-                                "minLength",
-                                "maxLength",
-                            )
-                        }
-                        for key, value in fields.items()
+                        key: dictionary_schema(value) for key, value in fields.items()
                     },
                     "required": [
                         key
@@ -910,6 +990,15 @@ async def tool_call(db, access, name, args):
         )
         if not op:
             fail("operation_not_found", 404)
+        if op.kind not in ("import", "revision"):
+            from app.services.external_research import authorize_operation
+
+            await authorize_operation(db, access, op)
+            return (
+                await execute_operation(db, access, op)
+                if name == "execute_operation"
+                else operation_view(op)
+            )
         await protocol_context(db, access, op.protocol_id)
         if op.kind == "revision":
             scope(access, "records:read")

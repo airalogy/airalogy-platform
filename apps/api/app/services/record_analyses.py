@@ -275,6 +275,11 @@ async def capture_sources(
 
 
 async def authorize_snapshot(db: AsyncSession, run: AnalysisRun, user: User) -> None:
+    if run.engine_version == "external-research-v1":
+        from app.services.external_research import get_run
+
+        await get_run(db, user, run.id)
+        return
     if run.created_by_user_id != user.id:
         raise HTTPException(404, "Analysis not found")
     if getattr(run, "source_scope", "protocol") == "project":
@@ -297,6 +302,12 @@ async def authorize_analysis_sources(
     This does not grant access to a private AnalysisRun or its AI history. The
     private report wrapper above always retains its independent owner check.
     """
+    if run.engine_version == "external-research-v1":
+        # External evidence needs its own publication contract; never reinterpret
+        # a client report as a verified built-in analysis result.
+        raise HTTPException(
+            409, "External results require explicit source-aware publication"
+        )
     if getattr(run, "source_scope", "protocol") == "project":
         from app.services.project_analyses import authorize_project_sources
 
@@ -441,6 +452,12 @@ async def owned_pipeline(
     pipeline = await db.scalar(stmt)
     if pipeline is None or pipeline.created_by_user_id != user.id:
         raise HTTPException(404, "Analysis method not found")
+    external = await db.scalar(select(AnalysisPipelineRevision).where(
+        AnalysisPipelineRevision.pipeline_id == pipeline.id,
+        AnalysisPipelineRevision.recipe["kind"].as_string() == "external",
+    ).limit(1))
+    if external is not None:
+        raise HTTPException(409, "Use the external analysis workspace for external methods")
     if getattr(pipeline, "source_scope", "protocol") == "project":
         from app.services.project_analyses import authorize_project_pipeline
 

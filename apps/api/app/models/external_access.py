@@ -29,6 +29,10 @@ class ExternalGrant(Base):
     project_id: Mapped[UUID] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
+    oauth_client_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("external_oauth_clients.id", ondelete="SET NULL"), nullable=True
+    )
+    audience: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     name: Mapped[str] = mapped_column(String(100))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     token_prefix: Mapped[str] = mapped_column(String(20))
@@ -54,11 +58,11 @@ class ExternalOperation(Base):
         ForeignKey("external_grants.id", ondelete="CASCADE"), index=True
     )
     request_key: Mapped[str] = mapped_column(String(100))
-    kind: Mapped[str] = mapped_column(String(20))
-    protocol_id: Mapped[UUID] = mapped_column(
-        ForeignKey("protocols.id", ondelete="CASCADE")
+    kind: Mapped[str] = mapped_column(String(32))
+    protocol_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("protocols.id", ondelete="CASCADE"), nullable=True
     )
-    protocol_version_id: Mapped[UUID] = mapped_column()
+    protocol_version_id: Mapped[UUID | None] = mapped_column(nullable=True)
     policy_revision: Mapped[int] = mapped_column()
     digest: Mapped[str] = mapped_column(String(64))
     payload: Mapped[dict] = mapped_column(JSON)

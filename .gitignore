@@ -105,3 +105,6 @@ out.txt
 aimd-syntax/
 
 masterbrain
+
+# Standalone official AIMD preview build
+apps/web/dist-agent-preview/
