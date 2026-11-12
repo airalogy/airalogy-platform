@@ -319,6 +319,12 @@
     "changeRole": "Change role",
     "footer": {
       "copyright": "Hangzhou Airalogy Technology Co., Ltd. All rights reserved.",
+      "versionDetails": "Version information",
+      "versionLoading": "Loading version",
+      "versionUnavailable": "Version unavailable",
+      "localDevelopment": "Local development",
+      "developmentBuild": "Development build",
+      "copyVersionFailed": "Could not copy. Please try again.",
       "partners": "Partners"
     },
     "my": "My",

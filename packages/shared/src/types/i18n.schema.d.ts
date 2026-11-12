@@ -323,6 +323,12 @@ declare namespace I18n {
       changeRole: string
       footer: {
         copyright: string
+        versionDetails: string
+        versionLoading: string
+        versionUnavailable: string
+        localDevelopment: string
+        developmentBuild: string
+        copyVersionFailed: string
         partners: string
       }
       my: string

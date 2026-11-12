@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Show runtime Platform version in the main and sign-in footers, label local development builds, and provide copyable version diagnostics. Reuse the public version endpoint without hardcoded release numbers; failures leave the page usable.
+
 - Add an opt-in local acceptance test using the real Codex MCP client: synthetic data analysis, browser-confirmed report persistence and Protocol publication, unchanged historical Records, and test-token revocation. The test refuses non-loopback targets and does not change global Codex configuration.
 
 - Add the external research workflow (Issue #22): separately authorized immutable Record snapshots, private external analysis reports/files and versioned methods, reviewed Protocol candidates with exact source export, bounded context/file reads, PKCE browser authorization, and a local Python client plus official AIMD editor/Recorder preview. Preserve existing token scopes and Record versions; enforce source permissions and atomic confirmation receipts. Requires migration `0082_external_research`.

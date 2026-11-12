@@ -6,11 +6,14 @@
         <footer-link v-for="item in columns" :key="item.title" :title="item.title" :list="item.list" />
       </template>
     </div>
-    <div class="flex flex-wrap items-center justify-center border-t border-white/30 pt-4 sm:justify-between md:pt-6">
-      <div class="order-last mr-auto h-fit w-full text-center text-gray-400 md:order-first md:mt-0 sm:w-fit space-x-3 md:text-left">
+    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-white/30 pt-4 sm:justify-between md:pt-6">
+      <div class="h-fit w-full text-center text-gray-400 sm:w-fit space-x-3 md:text-left">
         <span>&copy; {{ currYear }}</span>
         <span>{{ footerText.copyright }}</span>
         <china-compliance-footer />
+      </div>
+      <div class="text-gray-400">
+        <platform-version />
       </div>
       <template v-if="props.showIcon">
         <footer-icon v-for="item in sns" :key="item.name" :name="item.name" :to="item.to" />
@@ -23,6 +26,7 @@
 import type { RouteLocationRaw } from "vue-router"
 import IconAiraXiv from "@/assets/link-icon/airaxiv.svg"
 import ChinaComplianceFooter from "@/components/common/china-compliance-footer.vue"
+import PlatformVersion from "@/components/common/platform-version.vue"
 import { $t } from "@/locales"
 
 defineOptions({ name: "GlobalFooter" })

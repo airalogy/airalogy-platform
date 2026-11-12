@@ -12,10 +12,15 @@
     </n-layout-sider>
     <n-layout content-class="form__container">
       <router-view />
-      <div class="mt-6 h-fit w-full text-center text-gray-400 md:mt-0 sm:w-fit space-x-3">
-        <span>&copy; {{ currYear }}</span>
-        <span>{{ footerText.copyright }}</span>
-        <china-compliance-footer />
+      <div class="mt-6 h-fit w-full text-center text-gray-400 md:mt-0">
+        <div class="space-x-3">
+          <span>&copy; {{ currYear }}</span>
+          <span>{{ footerText.copyright }}</span>
+          <china-compliance-footer />
+        </div>
+        <div class="mt-1 text-white lg:text-gray-600">
+          <platform-version />
+        </div>
       </div>
     </n-layout>
   </n-layout>
@@ -23,6 +28,7 @@
 
 <script setup lang="ts">
 import ChinaComplianceFooter from "@/components/common/china-compliance-footer.vue"
+import PlatformVersion from "@/components/common/platform-version.vue"
 import { $t } from "@/locales"
 import { useWindowSize } from "@vueuse/core"
 

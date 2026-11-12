@@ -14,6 +14,8 @@ English changelog: [CHANGELOG.md](./CHANGELOG.md)。
 
 ## [未发布]
 
+- 主站与登录页页脚显示当前运行版本，标注本地开发版，支持查看和复制版本信息。复用公开版本接口，不写死版本号；读取失败不影响正常使用。
+
 - 新增可选的本地真实 Codex MCP 验收：用虚构数据完成分析、网页确认回存和 Protocol 发布，检查历史 Record 不变及令牌撤销；拒绝远程目标，不修改 Codex 全局配置。
 
 - 新增外部科研工具闭环（Issue #22）：独立授权的不可变 Record 快照、私有外部分析报告与附件、版本化方法、Protocol 源码导出和候选版本确认发布、限权上下文与文件读取、PKCE 浏览器授权，以及本地 Python 客户端和官方 AIMD 编辑器/Recorder 预览。旧令牌不自动扩权，旧 Record 版本保留，来源权限和确认结果由 API 统一执行。需要迁移 `0082_external_research`。

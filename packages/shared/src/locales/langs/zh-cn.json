@@ -319,6 +319,12 @@
     "changeRole": "变更角色",
     "footer": {
       "copyright": "杭州渊楠科技有限公司 版权所有",
+      "versionDetails": "版本信息",
+      "versionLoading": "正在读取版本",
+      "versionUnavailable": "版本暂不可用",
+      "localDevelopment": "本地开发版",
+      "developmentBuild": "开发构建",
+      "copyVersionFailed": "复制失败，请重试。",
       "partners": "合作伙伴"
     },
     "my": "我的",
