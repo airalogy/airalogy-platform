@@ -123,6 +123,9 @@
         <n-tab-pane name="fields" :tab="$t('common.fields')">
           <protocol-fields v-if="protocolInfo" :item="protocolInfo" />
         </n-tab-pane>
+        <n-tab-pane name="ratings" :tab="$t('page.protocol.rating.title')">
+          <protocol-rating-panel v-if="protocolInfo" :protocol-id="String(protocolInfo.id)" :version="protocolInfo.metadata?.version || protocolInfo.latest_version" initial-scope="public" />
+        </n-tab-pane>
         <n-tab-pane name="history" :tab="$t('common.history')">
           <protocol-history v-if="protocolInfo" :item="protocolInfo" />
         </n-tab-pane>
@@ -143,6 +146,7 @@ import StickyFillWrapper from "@/components/common/sticky-fill-wrapper.vue"
 import AddRecordLayout from "@/components/custom/add-record-layout.vue"
 import HubProtocolMenuIcon from "@/components/icon/hub-protocol-menu-icon.vue"
 import ProtocolDownload from "@/components/protocol/protocol-download.vue"
+import ProtocolRatingPanel from "@/components/protocol/protocol-rating-panel.vue"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { getCachedAttachment } from "@/service/api/attachments"
 import { useAuthStore } from "@/store/modules/auth"

@@ -13,6 +13,9 @@
       <n-tab-pane name="fields" :tab="$t('common.fields')">
         <protocol-fields v-if="protocolInfo" :item="protocolInfo" />
       </n-tab-pane>
+      <n-tab-pane name="ratings" :tab="$t('page.protocol.rating.title')">
+        <protocol-rating-panel v-if="protocolInfo" :protocol-id="String(protocolInfo.id)" :version="protocolInfo.metadata?.version || protocolInfo.latest_version" />
+      </n-tab-pane>
       <n-tab-pane name="history" :tab="$t('common.history')">
         <protocol-history v-if="protocolInfo" :item="protocolInfo" />
       </n-tab-pane>
@@ -26,6 +29,7 @@
 <script setup lang="ts">
 import type { IRecordDataKey } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared/types"
+import ProtocolRatingPanel from "@/components/protocol/protocol-rating-panel.vue"
 import { useBoolean } from "@/composables"
 import { bubbleMenuEventKey } from "@/utils/template/eventKey"
 

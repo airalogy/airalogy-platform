@@ -102,6 +102,7 @@
         </n-icon>
       </n-button>
     </div>
+    <protocol-rating-entry :protocol-id="protocol.id" :version="protocol.latest_version" compact public-only class="my-2" />
     <div v-if="protocol.disciplines?.length" class="my-1 flex flex-wrap gap-1">
       <n-tag v-for="(discipline, idx) in protocol.disciplines" :key="idx" :bordered="false" size="small" :color="{ color: '#E8F3FF', textColor: '#1A79FF' }">
         {{ discipline }}
@@ -192,6 +193,7 @@
 
 <script setup lang="ts">
 import ProtocolPathTooltip from "@/components/protocol/protocol-path-tooltip.vue"
+import ProtocolRatingEntry from "@/components/protocol/protocol-rating-entry.vue"
 import { useRouterPush } from "@/composables/useRouterPush"
 import ApplyProtocolModal from "@/views/hub/components/apply-protocol-modal.vue"
 import CopyToClip from "@airalogy/components/src/copy-to-clip.vue"

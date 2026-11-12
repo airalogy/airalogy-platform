@@ -9,7 +9,7 @@
       <div
         v-if="props.showContext && researchRoute"
         data-testid="protocol-ownership-path"
-        class="aira-type-meta mt-1 flex min-w-0 flex-wrap items-center gap-x-1"
+        class="aira-type-meta mt-1 min-w-0 flex flex-wrap items-center gap-x-1"
       >
         <span class="shrink-0">{{ $t("common.from") }}</span>
         <router-link :to="researchRoute.lab" class="break-all !hover:router-link">
@@ -20,7 +20,8 @@
           {{ display.project }}
         </router-link>
       </div>
-      <div class="aira-type-meta -mb-1 mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2">
+      <protocol-rating-entry :protocol-id="props.item.id" :version="props.item.latest_version" compact class="my-2" />
+      <div class="aira-type-meta mt-0.5 min-w-0 flex flex-wrap items-baseline gap-x-2 -mb-1">
         <router-link
           v-if="props.item.user"
           class="align-top no-underline hover:router-link"
@@ -37,6 +38,7 @@
 <script setup lang="ts">
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { RouteLocationRaw } from "vue-router"
+import ProtocolRatingEntry from "@/components/protocol/protocol-rating-entry.vue"
 import { formatDate } from "@airalogy/shared/utils"
 import { useI18n } from "vue-i18n"
 

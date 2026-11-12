@@ -64,16 +64,16 @@
           <div class="mt-2 text-gray-500">
             {{ $t("page.project.protocolsEmpty.description") }}
           </div>
-          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div class="grid grid-cols-1 mt-4 gap-3 md:grid-cols-3">
             <div
               v-for="item in onboardingTerms"
               :key="item.key"
-              class="rounded border border-gray-200 bg-gray-50 px-4 py-3"
+              class="border border-gray-200 rounded bg-gray-50 px-4 py-3"
             >
               <div class="text-sm font-semibold">
                 {{ item.title }}
               </div>
-              <div class="mt-1 text-sm leading-6 text-gray-500">
+              <div class="mt-1 text-sm text-gray-500 leading-6">
                 {{ item.description }}
               </div>
             </div>
@@ -230,11 +230,13 @@ const filterOptions = computed<SelectOption[]>(() => ([
 
 const filterOption = ref<"id" | "name">("name")
 const sortOptions = computed<SelectOption[]>(() => ([
+  { label: $t("page.protocol.rating.uses"), value: "confirmed_uses" },
+  { label: $t("page.protocol.rating.reuse"), value: "effective_reuse" },
   { label: $t("page.project.protocolsSort.stars"), value: "stars_count" },
   { label: $t("page.project.protocolsSort.popular"), value: "forks_count" },
   { label: $t("page.project.protocolsSort.updated"), value: "updated_at" },
 ]))
-const sortOption = ref<"stars_count" | "forks_count" | "updated_at">("updated_at")
+const sortOption = ref<"stars_count" | "forks_count" | "updated_at" | "confirmed_uses" | "effective_reuse">("updated_at")
 
 const route = useRoute()
 const { projectInfo } = useOrProvideProjectInfoStore(null)

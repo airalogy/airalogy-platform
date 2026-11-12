@@ -122,6 +122,7 @@
         @migrated="handleSchemaMigrated"
       />
     </div>
+    <protocol-rating-entry v-if="record && protocolInfo" :protocol-id="protocolInfo.id" :version="record.metadata.protocol_version" :record-id="String(record.record_id)" class="mb-3 px-8" />
     <n-divider class="!mt-0" />
     <n-spin
       :show="loading" class="h-[calc(100vh-165px)] w-full pl-8"
@@ -233,6 +234,7 @@
 import type { IRecordData, IRecordDataKey } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { ITimelineItem } from "./types"
+import ProtocolRatingEntry from "@/components/protocol/protocol-rating-entry.vue"
 import { useBoolean, useLoading, useProjectPermissions } from "@/composables"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"

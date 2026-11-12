@@ -3947,6 +3947,87 @@ declare namespace I18n {
           deleteBlockedLoading: string
           deleteAdminWarning: string
         }
+        rating: {
+          title: string
+          version: string
+          scope: string
+          accessible: string
+          publicOnly: string
+          recommendation: string
+          userScore: string
+          insufficient: string
+          reviewers: string
+          uses: string
+          reuse: string
+          copies: string
+          labs: string
+          unknownUses: string
+          disclaimer: string
+          calculation: string
+          formula: string
+          points: string
+          distribution: string
+          coverage: string
+          notAssessed: string
+          download: string
+          write: string
+          confirmUse: string
+          login: string
+          evidence: string
+          readingOnly: string
+          evidenceHint: string
+          conditions: string
+          comment: string
+          shareReview: string
+          shareUse: string
+          shareHint: string
+          save: string
+          saveUse: string
+          withdraw: string
+          records: string
+          groupHint: string
+          loadMore: string
+          result: string
+          realConfirmation: string
+          myUses: string
+          history: string
+          active: string
+          withdrawn: string
+          reviews: string
+          noReviews: string
+          feedback: string
+          linked: string
+          excluded: string
+          saved: string
+          error: string
+          reload: string
+          open: string
+          optionalFeedback: string
+          outcome: {
+            as_planned: string
+            adjusted: string
+            stopped: string
+            unknown: string
+          }
+          kind: {
+            use: string
+            author: string
+            reading: string
+          }
+          errors: {
+            stale_revision: string
+            record_already_linked: string
+            evidence_unavailable: string
+            public_source_required: string
+            version_mismatch: string
+            request_conflict: string
+            duplicate_record: string
+            different_runs: string
+            run_not_completed: string
+          }
+          source: string
+          linkedRecords: string
+        }
       }
       labs: {
         tab: {

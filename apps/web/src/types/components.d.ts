@@ -359,6 +359,8 @@ declare module 'vue' {
     ProtocolInfoCard: typeof import('./../components/protocol/protocol-info-card.vue')['default']
     ProtocolMetadataDisplay: typeof import('./../components/protocol/protocol-metadata-display.vue')['default']
     ProtocolPathTooltip: typeof import('./../components/protocol/protocol-path-tooltip.vue')['default']
+    ProtocolRatingEntry: typeof import('./../components/protocol/protocol-rating-entry.vue')['default']
+    ProtocolRatingPanel: typeof import('./../components/protocol/protocol-rating-panel.vue')['default']
     ProtocolScratchForm: typeof import('./../components/apply-steps/protocol-scratch-form.vue')['default']
     ProtocolSetup: typeof import('./../components/apply-steps/protocol-setup.vue')['default']
     ProtocolSteps: typeof import('./../components/apply-steps/protocol-steps.vue')['default']

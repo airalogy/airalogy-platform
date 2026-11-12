@@ -212,6 +212,9 @@ async def _delete_lab_from_database(
         raise ValueError("Lab deletion manifest does not match the confirmed Lab")
     # This is deliberately in the same transaction as the existing Lab delete.
     # A later protected research FK failure rolls back these lineage deletions.
+    from app.services.protocol_rating import delete_lab_rating_data
+
+    await delete_lab_rating_data(db_session, lab.id)
     await _delete_lab_analysis_publications(db_session, lab.id)
     await _delete_lab_analysis_input_file_references(db_session, lab.id)
     await _delete_lab_workflow_file_references(db_session, lab.id)

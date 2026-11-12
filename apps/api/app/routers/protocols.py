@@ -44,7 +44,7 @@ async def get_protocols(
     uid: UidStr | None = None,
     search_by: Literal["uid", "name", "name_or_uid"] | None = "name",
     search_str: str | None = None,
-    sorted_by: Literal["stars_count", "forks_count", "updated_at"] | None = None,
+    sorted_by: Literal["stars_count", "forks_count", "updated_at", "confirmed_uses", "effective_reuse"] | None = None,
     folder_id: int | None = None,
     folder_empty: bool | None = None,
     kind: Literal["experiment", "resource_definition", "all"] = "experiment",
@@ -236,12 +236,23 @@ async def get_protocols(
     count_query = select(func.count()).select_from(query.subquery())
     total_count = await db_session.scalar(count_query)
 
-    # Add pagination
-    query = query.order_by(*query_order).limit(page_size).offset((page - 1) * page_size)
+    if sorted_by in {"confirmed_uses", "effective_reuse"}:
+        # Rank the entire authorized Project selection BEFORE pagination. Scores
+        # are deliberately not a global cross-discipline popularity ranking.
+        from app.services.protocol_rating import RatingContext, summary
 
-    # Execute query
-    result = await db_session.execute(query)
-    rows = result.all()
+        ctx = RatingContext(db_session)
+        candidates = (await db_session.execute(query)).all()
+        ranked = []
+        metric = "use_count" if sorted_by == "confirmed_uses" else "effective_reuse_count"
+        for row in candidates:
+            facts = await summary(ctx, row.Protocol.id, row.Protocol.latest_version, current_user)
+            ranked.append((facts[metric], row))
+        ranked.sort(key=lambda item: (item[0], item[1].Protocol.updated_at, str(item[1].Protocol.id)), reverse=True)
+        rows = [row for _, row in ranked[(page - 1) * page_size:page * page_size]]
+    else:
+        query = query.order_by(*query_order).limit(page_size).offset((page - 1) * page_size)
+        rows = (await db_session.execute(query)).all()
 
     folder_map: dict[UUID, list[int]] = {}
     protocol_ids = [row.Protocol.id for row in rows]

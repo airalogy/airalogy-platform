@@ -35,6 +35,7 @@ MODEL_MODULES = [
     "app.models.project_visit",
     "app.models.project_group",
     "app.models.protocol",
+    "app.models.protocol_rating",
     "app.models.protocol_folder",
     "app.models.protocol_version",
     "app.models.question",
