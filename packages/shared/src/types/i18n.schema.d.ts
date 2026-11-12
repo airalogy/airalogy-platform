@@ -6062,5 +6062,47 @@ declare namespace I18n {
       registerClient: string
       removeClientHint: string
     }
+    airaMemory: {
+      "title": string
+      "open": string
+      "description": string
+      "enabled": string
+      "disabled": string
+      "language": string
+      "detail": string
+      "format": string
+      "explanation": string
+      "zh-CN": string
+      "en-US": string
+      "concise": string
+      "detailed": string
+      "paragraphs": string
+      "steps": string
+      "accessible": string
+      "technical": string
+      "notSet": string
+      "fromChat": string
+      "fromSettings": string
+      "save": string
+      "undo": string
+      "export": string
+      "clear": string
+      "clearConfirm": string
+      "saved": string
+      "examples": string
+      "activity": string
+      "activityHint": string
+      "cleared": string
+      "updated": string
+      "conflict": string
+      "failed": string
+      "reload": string
+      "temporary": string
+      "temporaryHint": string
+      "used": string
+      "notUsed": string
+      "unavailable": string
+      "close": string
+    }
   }
 }

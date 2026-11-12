@@ -71,6 +71,8 @@ export function useChatHandlers({ state, mutations, stream, scrollToBottom, navi
     const otherSources = context.value?.some(item => item.type !== "protocol" || item.id !== toValue(protocolId))
     const turn = params.recorderAllowed && !attachments?.length && !otherSources ? recorder?.begin(params.chatId || existingServerId || undefined) : undefined
     return applyRecorderResponse(postStartChat({
+      memoryDisabled: state.memoryDisabled.value,
+      memoryRequestId: crypto.randomUUID(),
       recorderTarget: turn?.target,
       chatId: params.chatId || existingServerId,
       protocolId: toValue(protocolId),

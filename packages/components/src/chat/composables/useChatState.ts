@@ -33,6 +33,16 @@ export function useChatState(
   const prompt = ref<string>("")
   const emptyDraftId = ref<string | null>(nanoid())
   const session = computed(() => chatStore.findSessionByUUID())
+  const draftMemoryDisabled = ref(false)
+  const memoryDisabled = computed({
+    get: () => session.value?.memoryDisabled ?? draftMemoryDisabled.value,
+    set: (value: boolean) => {
+      draftMemoryDisabled.value = value
+      if (session.value)
+        chatStore.updateSession(session.value, { memoryDisabled: value })
+    },
+  })
+
   const messageList = ref<Chat.ChatMessage[]>([])
   const messageCount = ref<number>(0)
 
@@ -172,6 +182,7 @@ export function useChatState(
     enableThinking,
     enableSearch,
     enableHubSearch,
+    memoryDisabled,
 
     // UI state
     inputMethod,

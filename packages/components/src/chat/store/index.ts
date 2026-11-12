@@ -417,6 +417,8 @@ export const useChatStore = defineStore("chat-store", () => {
       if (!data?.messages)
         return
 
+      chat.memoryDisabled = Boolean(data.context?.memory_disabled)
+
       // Convert server history format to local chat messages
       const messages = data.messages
         .filter(({ role, content }) => (role === "user" || role === "assistant") && !!content)

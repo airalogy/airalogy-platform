@@ -16,6 +16,7 @@ from masterbrain.usage import UsageContext
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.libs.masterbrain import aira_structured_proposal
+from app.services.aira_memory import context_for_usage
 from app.services.analysis_engine import (
     ENGINE_VERSION,
     MAX_GROUPS,
@@ -433,8 +434,13 @@ async def generate_analysis_interpretation(
     model_name: str,
     usage_context: UsageContext | None = None,
 ) -> AnalysisInterpretationOutput:
+    personal_context = await context_for_usage(usage_context)
     raw = await aira_structured_proposal(
-        analysis_interpretation_prompt(question=question, locale=locale, result=result),
+        personal_context
+        + "\n\n"
+        + analysis_interpretation_prompt(
+            question=question, locale=locale, result=result
+        ),
         model_name,
         usage_context=usage_context,
         max_response_bytes=MAX_RESPONSE_BYTES,

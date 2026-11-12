@@ -58,6 +58,7 @@ export interface ChatState {
   enableThinking: Ref<boolean>
   enableSearch: Ref<boolean>
   enableHubSearch: Ref<boolean>
+  memoryDisabled: Ref<boolean>
   inputMethod: Ref<InputMethod>
   controller: Ref<ChatController | null>
   audioBase64: Ref<string | null>

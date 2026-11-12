@@ -29,6 +29,7 @@ from app.services.resource_job_worker import run_persistent_job_worker
 
 from .access import router as access_router
 from .aira_imports import router as aira_imports_router
+from .aira_memory import router as aira_memory_router
 from .airalogy_api import router as airalogy_router
 from .airalogy_files import router as airalogy_files_router
 from .analyses import router as analyses_router
@@ -411,3 +412,5 @@ app.include_router(workflow_files_router)
 
 if config.APP_ENV != "production":
     app.include_router(dev_fixtures_router)
+
+app.include_router(aira_memory_router)

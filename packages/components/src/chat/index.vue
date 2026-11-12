@@ -48,6 +48,15 @@
           </n-icon>
         </template>
       </tooltip-button>
+      <memory-controls
+        v-if="baseUrl && token"
+        v-model:disabled="memoryDisabled"
+        :endpoint="baseUrl.replace(/\/chats\/?$/, '/aira-memory')"
+        :token="token"
+        :locked="!!session?.serverId && !!session?.memoryDisabled"
+        :busy="loading"
+        :status="session?.memoryStatus"
+      />
       <slot name="input-prefix" />
       <chat-input :placeholder="inputPlaceholder" :source="props.source" :submit-handler="props.submitHandler" />
       <p class="py-2 text-center text-xs text-gray-500">
@@ -64,6 +73,7 @@ import { useI18n } from "vue-i18n"
 import { type IProps, useOrProvideChatInfoStore } from "./composables/useChatInfoStore"
 import ChatInput from "./modules/chat-input.vue"
 import ChatPlaceholder from "./modules/chat-placeholder.vue"
+import MemoryControls from "./modules/memory-controls.vue"
 import MessageBox from "./modules/Message/index.vue"
 import { recorderTurnKey } from "./providers/recorderTurn"
 
@@ -100,6 +110,10 @@ interface IEmits {
 const { locale } = useI18n()
 
 const {
+  baseUrl,
+  token,
+  loading,
+  memoryDisabled,
   emptyDraftId,
   session,
   handleRegenerate,

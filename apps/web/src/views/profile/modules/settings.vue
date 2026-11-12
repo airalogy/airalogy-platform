@@ -2,6 +2,7 @@
   <div class="profile-settings size-full min-w-0 space-y-3">
     <edit-profile />
     <change-settings />
+    <aira-memory-settings />
     <api-key-settings />
     <external-access-settings />
     <system-info-settings />
@@ -9,6 +10,7 @@
 </template>
 
 <script lang="ts" setup>
+import AiraMemorySettings from "./aira-memory-settings.vue"
 import ApiKeySettings from "./api-key-settings.vue"
 import ChangeSettings from "./change-settings.vue"
 import EditProfile from "./edit-profile.vue"

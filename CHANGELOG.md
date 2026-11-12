@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Add account-private Aira communication preferences (Issue #24 P0): explicit save/forget commands, bilingual management, opt-out conversations, export, revision conflicts and content-free audit. Apply defaults to ordinary chat, Protocol prose and analysis explanations; keep Recorder values isolated. Requires migration `0084_aira_memory`. Automatic habit inference is not included.
+
 - Add version-specific Protocol ratings, optional audited use feedback, permission-aware adoption metrics and an explainable trial recommendation (Issue #23). Keep author/reading opinions separate, preserve revisions, and support bilingual detail/list/Record entry points without AI or automatic private-data sharing.
 
 - Show runtime Platform version in the main and sign-in footers, label local development builds, and provide copyable version diagnostics. Reuse the public version endpoint without hardcoded release numbers; failures leave the page usable.

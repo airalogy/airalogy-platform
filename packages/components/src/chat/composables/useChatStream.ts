@@ -14,6 +14,13 @@ export function useChatStream(state: ChatState, scrollToBottom: () => Promise<vo
   ) {
     const { data } = event
 
+    if (typeof data.memory_disabled === "boolean")
+      chat.memoryDisabled = data.memory_disabled
+    if (data.memory)
+      chat.memoryStatus = data.memory
+    if (data.memory_changed)
+      chat.memoryChangedAt = Date.now()
+
     if (data.chat_id) {
       responseData.chatId = data.chat_id
       responseData.id = data.chat_id

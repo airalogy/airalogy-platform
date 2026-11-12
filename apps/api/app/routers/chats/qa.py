@@ -21,6 +21,14 @@ from app.models.project import Project
 from app.models.protocol import Protocol
 from app.routers.depends import CurrentUser, get_current_user
 from app.routers.permission import check_user_permission
+from app.services.aira_memory import (
+    MemoryUpdate,
+    load_for_inference,
+    parse_command,
+    preference_prompt,
+    read_memory,
+    update_memory,
+)
 from app.services.model_usage import create_usage_context
 from app.services.recorder_turns import (
     RecorderTarget,
@@ -58,6 +66,8 @@ class QAChatMessageParams(BaseModel):
     model: ChatModel
     hub_search: bool = False
     recorder_target: RecorderTarget | None = None
+    memory_disabled: bool = False
+    memory_request_id: uuid.UUID | None = None
 
 
 # protocol record qa chat
@@ -92,8 +102,6 @@ async def send_qa_chat_message(
             protocol=protocol,
         )
 
-    await check_model_usage(db_session, current_user, params.model)
-
     if params.chat_id is not None:
         chat = await Chat.find(db_session, id=params.chat_id)
         if chat.user_id != current_user.id:
@@ -116,12 +124,135 @@ async def send_qa_chat_message(
         chat_protocol = await Protocol.find(db_session, id=chat.protocol_id)
         project = await Project.find(db_session, id=chat_protocol.project_id)
 
+    # Opting out is sticky for this conversation, including calls from old clients.
+    memory_disabled = bool(
+        params.memory_disabled or (chat.context or {}).get("memory_disabled")
+    )
+    chat.context = {**(chat.context or {}), "memory_disabled": memory_disabled}
+    command = (
+        parse_command(params.message.content) if not params.message.files else None
+    )
+    if command is not None:
+        chinese = any("\u4e00" <= char <= "\u9fff" for char in params.message.content)
+        if memory_disabled:
+            reply = (
+                "这次对话不读取或保存个人记忆，已有偏好保持不变。"
+                if chinese
+                else "This conversation does not read or save personal memory. Your preferences are unchanged."
+            )
+        elif command.get("unsupported"):
+            reply = (
+                "暂未保存。当前支持回答语言、详细程度、表达格式和解释方式，例如：记住：用中文回答，简洁回答。科研事实和实验值请保存在文档或 Record 中。也可以打开‘个人记忆’管理。"
+                if chinese
+                else "Nothing saved. Supported preferences are language, detail, format and explanation style, for example: Remember: reply in English, be concise. Keep scientific facts and measurements in documents or Records. You can also open Personal memory."
+            )
+        elif params.memory_request_id is None:
+            raise HTTPException(
+                422, "Memory commands require a unique memory_request_id"
+            )
+        else:
+            state = await read_memory(db_session, current_user.id)
+            if not state["enabled"]:
+                reply = (
+                    "个人记忆已关闭，未保存。可在个人记忆设置中重新开启。"
+                    if chinese
+                    else "Personal memory is disabled. Nothing saved. You can enable it in memory settings."
+                )
+            else:
+                result = await update_memory(
+                    db_session,
+                    current_user.id,
+                    MemoryUpdate(
+                        expected_revision=state["revision"],
+                        request_id=params.memory_request_id,
+                        **command,
+                    ),
+                    source="chat",
+                    chat_id=chat.id,
+                )
+                if result.get("replayed"):
+                    reply = (
+                        "这条记忆指令已处理，未重复修改。"
+                        if chinese
+                        else "This memory command was already processed; no changes repeated."
+                    )
+                elif command.get("clear"):
+                    reply = (
+                        "已清除所有个人偏好。后续请求不再使用它们；已发送的回答和对话历史不会被删除。"
+                        if chinese
+                        else "All personal preferences cleared. Future requests will not use them; existing answers and chat history are not deleted."
+                    )
+                elif any(
+                    value is None for value in command.get("changes", {}).values()
+                ):
+                    reply = (
+                        "已忘记指定偏好。其他偏好保持不变。"
+                        if chinese
+                        else "The specified preference was forgotten. Other preferences are unchanged."
+                    )
+                else:
+                    reply = (
+                        "已记住你的表达偏好，新对话也会使用。你这次明确提出的要求优先；可在‘个人记忆’中查看、修改或忘记。"
+                        if chinese
+                        else "Your communication preferences are saved for future conversations. Explicit requests take priority. View, edit or forget them in Personal memory."
+                    )
+        # Do not retain commands as instructions in model history after forgetting.
+        # The visible response may be descriptive; the stored history is neutral.
+        chat.messages.extend(
+            [
+                {"role": "user", "content": "[Personal memory management request]"},
+                {
+                    "role": "assistant",
+                    "content": "[Memory management handled by Platform; no research data changed.]",
+                },
+            ]
+        )
+        await db_session.commit()
+
+        async def memory_response():
+            events = [
+                {
+                    "type": "meta",
+                    "data": {
+                        "chat_id": str(chat.id),
+                        "memory_disabled": memory_disabled,
+                        "memory_changed": True,
+                    },
+                },
+                {
+                    "type": "message",
+                    "data": {
+                        "index": len(chat.messages) - 1,
+                        "message": {"role": "assistant", "content": reply},
+                    },
+                },
+            ]
+            for event in events:
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            memory_response(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
+
+    await check_model_usage(db_session, current_user, params.model)
+    memory_state = await load_for_inference(current_user.id, disabled=memory_disabled)
+    memory_meta = {
+        "status": memory_state["status"],
+        "keys": list(memory_state["preferences"])
+        if memory_state["status"] == "used"
+        else [],
+        "revision": memory_state["revision"],
+    }
     usage_context = create_usage_context(
         feature="chat.qa",
         user_id=current_user.id,
         lab_id=project.lab_id if project is not None else None,
         project_id=project.id if project is not None else None,
         chat_id=chat.id,
+        attributes={"memory_disabled": memory_disabled},
     )
 
     if target := params.recorder_target:
@@ -134,6 +265,9 @@ async def send_qa_chat_message(
             or chat.type != ChatType.QA
         ):
             raise HTTPException(409, "Conversation does not match the Recorder")
+        # Recorder extraction must never see remembered values or inferred facts.
+        # Its current SDK contract follows the latest message language directly.
+        memory_meta = {**memory_meta, "status": "not_used", "keys": []}
         version = await recorder_scope(
             db_session, current_user, project, protocol, target
         )
@@ -162,7 +296,12 @@ async def send_qa_chat_message(
             events = [
                 {
                     "type": "meta",
-                    "data": {"chat_id": str(chat.id), "model": chat.model["name"]},
+                    "data": {
+                        "chat_id": str(chat.id),
+                        "model": chat.model["name"],
+                        "memory_disabled": memory_disabled,
+                        "memory": memory_meta,
+                    },
                 },
                 {
                     "type": "message",
@@ -337,7 +476,7 @@ async def send_qa_chat_message(
             )
         )
 
-    chat.context = context
+    chat.context = {**context, "memory_disabled": memory_disabled}
 
     # 创建一个新的流式响应，同时捕获内容
     async def capture_and_forward_stream():
@@ -347,6 +486,8 @@ async def send_qa_chat_message(
             "data": {
                 "chat_id": str(chat.id),
                 "model": chat.model.get("name"),
+                "memory_disabled": memory_disabled,
+                "memory": memory_meta,
             },
         }
         yield f"data: {json.dumps(meta_data, ensure_ascii=False)}\n\n"
@@ -370,7 +511,11 @@ async def send_qa_chat_message(
         yield f"data: {json.dumps(response_message, ensure_ascii=False)}\n\n"
 
         # 获取原始的流式响应
-        original_stream = chat_qa_language(chat=chat, usage_context=usage_context)
+        original_stream = chat_qa_language(
+            chat=chat,
+            usage_context=usage_context,
+            personal_context=preference_prompt(memory_state),
+        )
 
         full_response = ""
         try:

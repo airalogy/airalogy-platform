@@ -172,6 +172,9 @@ declare global {
     export type ChatContext = ChatRecordContext | ChatProtocolContext | ChatDocumentContext
 
     export interface ChatSession {
+      memoryDisabled?: boolean
+      memoryStatus?: { status: string, keys: string[], revision: number }
+      memoryChangedAt?: number
       uuid: string
       data: ChatMessage[]
       context?: ChatContext[]

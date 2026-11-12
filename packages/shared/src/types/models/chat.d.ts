@@ -12,6 +12,7 @@ export interface ChatResponse {
   user_id: string
   type: number
   context?: {
+    memory_disabled?: boolean
     inject_airalogy_protocols?: {
       airalogy_protocol_ids: string[]
     }

@@ -511,6 +511,8 @@ export async function* createChatStream(url: string, body: Record<string, any>, 
  * @returns An async generator that yields ChatEvent objects
  */
 export async function* postStartChat(payload: {
+  memoryDisabled?: boolean
+  memoryRequestId?: string
   recorderTarget?: RecorderTarget
   protocolId?: string | null
   content: string
@@ -536,6 +538,8 @@ export async function* postStartChat(payload: {
     message: createChatUserMessage(content, payload.attachments),
     context,
     recorder_target: payload.recorderTarget,
+    memory_disabled: payload.memoryDisabled ?? false,
+    memory_request_id: payload.memoryRequestId,
     chat_id: chatId,
     model: chatModelToConfig(model, {
       enableThinking: payload.enableThinking,
