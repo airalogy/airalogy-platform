@@ -191,6 +191,7 @@ import type {
 } from "@/service/api/access"
 import type { DataTableColumns, FormInst, FormRules, SelectOption } from "naive-ui"
 import { useClosableMessage } from "@/composables"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { LabRole } from "@/enum"
 import {
   fetchAccessAudit,
@@ -209,11 +210,12 @@ import { fetchLabMemberList } from "@/service/api/labs"
 import { fetchProjectList } from "@/service/api/projects"
 import { getProtocols } from "@/service/api/protocol"
 import { fetchResourceLocations, fetchResources, fetchResourceTypes } from "@/service/api/resources"
-import { $t } from "@airalogy/shared/locales"
 import { NButton, NPopconfirm, NTag, NTooltip } from "naive-ui"
 import { useLabInfoStore } from "./hooks/useLabsInfoStore"
 
 defineOptions({ name: "LabAccess" })
+
+const { t: $t } = useOrganizationTranslation()
 
 interface ResourceItem { id: string, name: string, uid?: string, project_id?: string, inherit_permissions?: boolean }
 
@@ -285,13 +287,13 @@ const grantForm = reactive({
 const resourceScope = computed(() => ["resource_type", "resource", "location"].includes(grantForm.scopeType))
 const roleOptions = computed<SelectOption[]>(() => roles.value
   .filter(role => role.grantable && (resourceScope.value ? role.key.startsWith("resource_") : !role.key.startsWith("resource_")))
-  .map(role => ({ label: role.label, value: role.key })))
+  .map(role => ({ label: roleLabel(role.key), value: role.key })))
 const subjectTypeOptions = computed(() => [
   { label: $t("page.labs.access.user"), value: "user" },
   { label: $t("page.labs.access.orgUnit"), value: "org_unit" },
 ])
 const scopeTypeOptions = computed(() => [
-  manageableScopes.value.lab ? { label: "Lab", value: "lab" } : null,
+  manageableScopes.value.lab ? { label: $t("page.organization.scope"), value: "lab" } : null,
   grantProjectOptions.value.length ? { label: $t("page.labs.access.project"), value: "project" } : null,
   manageableScopes.value.protocol_ids.length ? { label: $t("page.labs.access.protocol"), value: "protocol" } : null,
   manageableScopes.value.resource_type_ids.length ? { label: $t("page.resourceLibrary.resourceType"), value: "resource_type" } : null,
@@ -351,7 +353,7 @@ const subjectFilterOptions = computed<SelectOption[]>(() => [
   ...orgUnitOptions.value.map(option => ({ ...option, value: `org_unit:${option.value}` })),
 ])
 const resourceFilterOptions = computed<SelectOption[]>(() => [
-  { label: labInfo.value?.name || "Lab", value: `lab:${labInfo.value?.id}` },
+  { label: labInfo.value?.name || $t("page.organization.scope"), value: `lab:${labInfo.value?.id}` },
   ...projectOptions.value.map(option => ({ ...option, value: `project:${option.value}` })),
   ...allProtocolOptions.value.map(option => ({ ...option, value: `protocol:${option.value}` })),
   ...resourceTypeOptions.value.map(option => ({ ...option, value: `resource_type:${option.value}` })),
@@ -366,6 +368,13 @@ const filteredGrants = computed(() => grants.value.filter((grant) => {
 }))
 
 function roleLabel(key: string) {
+  const organizationRoles: Record<string, I18n.I18nKey> = {
+    lab_owner: "page.organization.owner",
+    lab_admin: "page.organization.administrator",
+    lab_log_publisher: "page.organization.logPublisher",
+  }
+  if (organizationRoles[key])
+    return $t(organizationRoles[key])
   return roles.value.find(role => role.key === key)?.label || key
 }
 function memberLabel(id: string | null) {
@@ -380,7 +389,7 @@ function subjectLabel(grant: AccessGrant) {
 }
 function resourceLabel(scopeType: AccessScopeType, scopeId: string | number | null) {
   if (scopeType === "lab")
-    return labInfo.value?.name || "Lab"
+    return labInfo.value?.name || $t("page.organization.scope")
   if (scopeType === "project")
     return projects.value.find(item => item.id === scopeId)?.name || String(scopeId || "-")
   if (scopeType === "protocol")

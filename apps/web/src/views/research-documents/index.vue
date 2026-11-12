@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TemplateScope } from "@/service/api/document-templates"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { scopeKey, templateScopes } from "@/service/api/document-templates"
-import { useI18n } from "vue-i18n"
 import DocumentList from "./document-list.vue"
 import DocumentSelect from "./document-select.vue"
 import MaterialLibrary from "./material-library.vue"
@@ -10,7 +10,7 @@ import TemplateLibrary from "./template-library.vue"
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const tabs = ["documents", "materials", "templates"] as const
 const tab = computed(() => tabs.includes(String(route.query.tab) as typeof tabs[number]) ? String(route.query.tab) : "documents")
 const scopes = ref<TemplateScope[]>([])
@@ -51,7 +51,7 @@ onMounted(loadScopes)
   <main class="mx-auto max-w-7xl w-full !px-0 !py-4 sm:!p-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="aira-type-page-title">
-        {{ t(`page.researchDocuments.scope${scope.scope_type[0].toUpperCase()}${scope.scope_type.slice(1)}`) }}
+        {{ t(`page.researchDocuments.scope${scope.scope_type[0].toUpperCase()}${scope.scope_type.slice(1)}` as I18n.I18nKey) }}
       </h1>
       <document-select :value="scopeKey(scope)" class="w-full sm:max-w-96" :options="scopeOptions" :label="t('page.documentTemplates.shareScope')" data-testid="documents-scope" @update:value="selectScope" />
     </div>

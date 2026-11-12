@@ -8,6 +8,7 @@ import type {
   ResearchDocument,
 } from "@/service/api/research-documents"
 import type { AimdProtocolRecordData } from "@airalogy/aimd-recorder"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { fetchResearchFile } from "@/service/api/knowledge"
 import {
   createResearchDocument,
@@ -35,7 +36,8 @@ import MaterialLibrary from "./material-library.vue"
 import SnapshotPreview from "./snapshot-preview.vue"
 import TemplateEditorDialog from "./template-editor-dialog.vue"
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
+const { t } = useOrganizationTranslation()
 const route = useRoute()
 const router = useRouter()
 const dialog = useDialog()
@@ -104,13 +106,13 @@ function changeDate(day: string) {
   form.value.occurred_at = instant
 }
 const fieldTypes = computed(() =>
-  [
+  ([
     ["str", "string"],
     ["float", "number"],
     ["int", "integer"],
     ["bool", "boolean"],
     ["date", "date"],
-  ].map(([value, key]) => ({ value, label: t(`page.researchDocuments.${key}`) })),
+  ] as const).map(([value, key]) => ({ value, label: t(`page.researchDocuments.${key}`) })),
 )
 
 function contentOf(value: ResearchDocument): DocumentContent {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ResearchDocument } from "@/service/api/research-documents"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { fetchResearchFile } from "@/service/api/knowledge"
 import { getResearchDocument } from "@/service/api/research-documents"
 import { documentBrowseQuery, localDocumentDate } from "@/utils/documentBrowse"
@@ -9,7 +10,8 @@ import DocumentAudience from "./document-audience.vue"
 
 const props = defineProps<{ id: string, previous: boolean, next: boolean, pending?: boolean }>()
 const emit = defineEmits<{ previous: [], next: [], close: [] }>()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
+const { t } = useOrganizationTranslation()
 const route = useRoute()
 const doc = ref<ResearchDocument>()
 const loading = ref(false)

@@ -32,12 +32,14 @@ class Settings(BaseSettings):
 
     # Deployment profile. `single_lab` keeps the shared domain model while
     # changing instance bootstrap, account admission, and navigation defaults.
-    DEPLOYMENT_MODE: Literal["community", "single_lab"] = "community"
+    DEPLOYMENT_MODE: Literal["community", "single_lab", "single_organization"] = (
+        "community"
+    )
     LAB_STRUCTURE_MODE: Literal["flat", "structured"] | None = None
     SIGNUP_MODE: Literal["open", "invite_only", "disabled"] | None = None
-    DOCUMENTATION_PROFILE: Literal[
-        "community", "customer_managed", "vendor_managed"
-    ] | None = None
+    DOCUMENTATION_PROFILE: (
+        Literal["community", "customer_managed", "vendor_managed"] | None
+    ) = None
     DOCUMENTATION_URL: str = ""
     SUPPORT_URL: str = ""
     SITE_URL: str = "http://localhost"
@@ -48,6 +50,16 @@ class Settings(BaseSettings):
     SINGLE_LAB_DESCRIPTION: str = ""
     SINGLE_LAB_DEFAULT_PROJECT_UID: str = "lab_protocols"
     SINGLE_LAB_DEFAULT_PROJECT_NAME: str = "Lab Protocols"
+    # Canonical configuration. Legacy SINGLE_LAB_* remains an explicit alias.
+    SINGLE_ORGANIZATION_UID: str | None = None
+    SINGLE_ORGANIZATION_NAME: str | None = None
+    SINGLE_ORGANIZATION_DESCRIPTION: str | None = None
+    SINGLE_ORGANIZATION_DEFAULT_PROJECT_UID: str | None = None
+    SINGLE_ORGANIZATION_DEFAULT_PROJECT_NAME: str | None = None
+    ORGANIZATION_STRUCTURE_MODE: Literal["flat", "structured"] | None = None
+    SINGLE_ORGANIZATION_TYPE: (
+        Literal["laboratory", "company", "institution", "other"] | None
+    ) = None
     INITIAL_ADMIN_TOKEN: str = ""
     INVITATION_TTL_HOURS: int = 168
     PASSWORD_RESET_TTL_MINUTES: int = 60
@@ -56,9 +68,7 @@ class Settings(BaseSettings):
     # Keep body logging disabled even in development unless debugging locally.
     LOG_REQUEST_BODIES: bool = False
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    SQL_LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = (
-        "WARNING"
-    )
+    SQL_LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "WARNING"
     LOG_FILE: str = "log/app.log"
     LOG_MAX_BYTES: int = 10 * 1024 * 1024
     LOG_BACKUP_COUNT: int = 5
@@ -213,8 +223,25 @@ class Settings(BaseSettings):
     INNER_API_KEY: str = ""
 
     @property
+    def is_single_organization(self) -> bool:
+        return self.DEPLOYMENT_MODE in {"single_lab", "single_organization"}
+
+    @property
     def is_single_lab(self) -> bool:
-        return self.DEPLOYMENT_MODE == "single_lab"
+        """Compatibility capability; true for either single-organization profile."""
+        return self.is_single_organization
+
+    @property
+    def effective_organization_type(self) -> str:
+        return self.SINGLE_ORGANIZATION_TYPE or (
+            "company" if self.DEPLOYMENT_MODE == "single_organization" else "laboratory"
+        )
+
+    @property
+    def default_invitation_project_role(self) -> int:
+        # New company workspaces default to contributor. Existing lab invitations
+        # keep Recorder; no existing membership is changed by this default.
+        return 30 if self.DEPLOYMENT_MODE == "single_organization" else 40
 
     @property
     def effective_lab_structure_mode(self) -> Literal["flat", "structured"]:
@@ -244,9 +271,8 @@ class Settings(BaseSettings):
 
     @property
     def external_chat_configured(self) -> bool:
-        return (
-            self.MASTERBRAIN_CALL_MODE.strip().lower() == "external"
-            and bool(self.CHAT_API_ENDPOINT.strip())
+        return self.MASTERBRAIN_CALL_MODE.strip().lower() == "external" and bool(
+            self.CHAT_API_ENDPOINT.strip()
         )
 
     @property
@@ -271,6 +297,49 @@ class Settings(BaseSettings):
         # switching vector spaces; keyword search remains available instead.
         return self.effective_ai_enabled and self.qwen_chat_configured
 
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_organization_settings(cls, values):
+        values = dict(values)
+        defaults = {
+            "UID": "main",
+            "NAME": "Airalogy Organization",
+            "DESCRIPTION": "",
+            "DEFAULT_PROJECT_UID": "workspace",
+            "DEFAULT_PROJECT_NAME": "Team Workspace",
+        }
+        for suffix, default in defaults.items():
+            current, legacy = f"SINGLE_ORGANIZATION_{suffix}", f"SINGLE_LAB_{suffix}"
+            new_value, old_value = values.get(current), values.get(legacy)
+            if (
+                new_value is not None
+                and old_value is not None
+                and new_value != old_value
+            ):
+                raise ValueError(
+                    f"{current} conflicts with {legacy}; configure only one name or identical values"
+                )
+            resolved = new_value if new_value is not None else old_value
+            if resolved is None:
+                resolved = (
+                    default
+                    if values.get("DEPLOYMENT_MODE") == "single_organization"
+                    else cls.model_fields[legacy].default
+                )
+            values[current] = values[legacy] = resolved
+        current, legacy = (
+            values.get("ORGANIZATION_STRUCTURE_MODE"),
+            values.get("LAB_STRUCTURE_MODE"),
+        )
+        if current is not None and legacy is not None and current != legacy:
+            raise ValueError(
+                "ORGANIZATION_STRUCTURE_MODE conflicts with LAB_STRUCTURE_MODE"
+            )
+        values["ORGANIZATION_STRUCTURE_MODE"] = values["LAB_STRUCTURE_MODE"] = (
+            current or legacy
+        )
+        return values
+
     @model_validator(mode="after")
     def validate_deployment_settings(self) -> "Settings":
         uid_pattern = re.compile(r"^[a-z][a-z0-9_]{2,31}$")
@@ -291,9 +360,7 @@ class Settings(BaseSettings):
         if self.AIRALOGY_DEPLOYMENT_ID and not re.fullmatch(
             r"dep_[0-9a-f]{32}", self.AIRALOGY_DEPLOYMENT_ID
         ):
-            raise ValueError(
-                "AIRALOGY_DEPLOYMENT_ID must be an opaque dep_ identifier"
-            )
+            raise ValueError("AIRALOGY_DEPLOYMENT_ID must be an opaque dep_ identifier")
 
         if self.INVITATION_TTL_HOURS <= 0:
             raise ValueError("INVITATION_TTL_HOURS must be positive")
@@ -325,14 +392,12 @@ class Settings(BaseSettings):
         if self.SMS_LOGIN_ENABLED is True and not self.sms_provider_configured:
             raise ValueError(
                 "SMS_LOGIN_ENABLED=true requires complete SMS provider "
-                "configuration; missing: "
-                + ", ".join(self.sms_provider_missing_fields)
+                "configuration; missing: " + ", ".join(self.sms_provider_missing_fields)
             )
         if self.SMS_SIGNUP_REQUIRED is True and not self.sms_provider_configured:
             raise ValueError(
                 "SMS_SIGNUP_REQUIRED=true requires complete SMS provider "
-                "configuration; missing: "
-                + ", ".join(self.sms_provider_missing_fields)
+                "configuration; missing: " + ", ".join(self.sms_provider_missing_fields)
             )
         if (
             self.RESEARCH_EMAIL_NOTIFICATIONS_ENABLED
@@ -345,7 +410,10 @@ class Settings(BaseSettings):
             )
 
         parsed_site_url = urlparse(self.SITE_URL)
-        if parsed_site_url.scheme not in {"http", "https"} or not parsed_site_url.netloc:
+        if (
+            parsed_site_url.scheme not in {"http", "https"}
+            or not parsed_site_url.netloc
+        ):
             raise ValueError("SITE_URL must be an absolute HTTP(S) origin")
 
         if self.APP_ENV == "production":
@@ -360,7 +428,9 @@ class Settings(BaseSettings):
                     "SECRET_KEY must be a non-default value with at least 32 characters"
                 )
             if not re.fullmatch(r"[0-9a-fA-F]{64}", self.AES_KEY):
-                raise ValueError("AES_KEY must be a 64-character hexadecimal AES-256 key")
+                raise ValueError(
+                    "AES_KEY must be a 64-character hexadecimal AES-256 key"
+                )
             if set(self.AES_KEY) == {"0"}:
                 raise ValueError("AES_KEY must not use the example all-zero value")
             if len(self.INNER_API_KEY) < 32 or self.INNER_API_KEY in insecure_values:
@@ -368,12 +438,16 @@ class Settings(BaseSettings):
                     "INNER_API_KEY must be a non-default value with at least 32 characters"
                 )
             if "airalogy:airalogy@" in self.DATABASE_URL:
-                raise ValueError("DATABASE_URL must not use the example database password")
+                raise ValueError(
+                    "DATABASE_URL must not use the example database password"
+                )
             if self.STORAGE_BACKEND == "minio":
                 if not self.MINIO_ENDPOINT or not self.MINIO_BUCKET:
                     raise ValueError("MinIO endpoint and bucket are required")
                 if len(self.MINIO_ACCESS_KEY) < 8:
-                    raise ValueError("MINIO_ACCESS_KEY must contain at least 8 characters")
+                    raise ValueError(
+                        "MINIO_ACCESS_KEY must contain at least 8 characters"
+                    )
                 if (
                     len(self.MINIO_SECRET_KEY) < 16
                     or self.MINIO_SECRET_KEY in insecure_values
@@ -399,11 +473,14 @@ class Settings(BaseSettings):
                     "INITIAL_ADMIN_TOKEN must be a non-default value with at least "
                     "32 characters in production single-Lab deployments"
                 )
-            if (
-                parsed_site_url.scheme != "https"
-                and parsed_site_url.hostname not in {"localhost", "127.0.0.1", "::1"}
-            ):
-                raise ValueError("SITE_URL must use HTTPS for non-local production hosts")
+            if parsed_site_url.scheme != "https" and parsed_site_url.hostname not in {
+                "localhost",
+                "127.0.0.1",
+                "::1",
+            }:
+                raise ValueError(
+                    "SITE_URL must use HTTPS for non-local production hosts"
+                )
             if (
                 self.RESEARCH_EMAIL_NOTIFICATIONS_ENABLED
                 and self.SMTP_SECURITY == "none"

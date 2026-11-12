@@ -3,9 +3,10 @@ import { fetchInstanceStatus, type InstanceStatus } from "@/service/api/instance
 import { defineStore } from "pinia"
 
 function fallbackStatus(): InstanceStatus {
-  const singleLab = import.meta.env.VITE_DEPLOYMENT_MODE === "single_lab"
+  const mode = import.meta.env.VITE_DEPLOYMENT_MODE ?? "community"
+  const singleLab = mode === "single_lab" || mode === "single_organization"
   return {
-    deployment_mode: singleLab ? "single_lab" : "community",
+    deployment_mode: mode,
     single_lab: singleLab,
     initialized: !singleLab,
     signup_mode: singleLab ? "invite_only" : "open",
@@ -28,10 +29,15 @@ export const useInstanceStore = defineStore(SetupStoreId.INSTANCE, () => {
   const loaded = ref(false)
   const loadError = ref<unknown>(null)
 
-  const isSingleLab = computed(() => status.value.single_lab)
+  const isSingleOrganization = computed(() => status.value.single_organization ?? status.value.single_lab)
+  const isSingleLab = isSingleOrganization // Legacy consumers share the capability.
+  const organization = computed(() => status.value.organization ?? status.value.lab)
+  const usesOrganizationVocabulary = computed(() => isSingleOrganization.value
+    && (organization.value?.organization_type ?? status.value.default_organization_type
+      ?? (status.value.deployment_mode === "single_organization" ? "company" : "laboratory")) !== "laboratory")
   const initialized = computed(() => status.value.initialized)
   const signupMode = computed(() => status.value.signup_mode)
-  const lab = computed(() => status.value.lab)
+  const lab = organization
   const isStructuredLab = computed(() => status.value.lab_structure_mode === "structured")
   const documentationProfile = computed(() => status.value.documentation_profile)
   const documentationUrl = computed(() => status.value.documentation_url)
@@ -72,6 +78,9 @@ export const useInstanceStore = defineStore(SetupStoreId.INSTANCE, () => {
     loaded,
     loadError,
     isSingleLab,
+    isSingleOrganization,
+    organization,
+    usesOrganizationVocabulary,
     initialized,
     signupMode,
     lab,

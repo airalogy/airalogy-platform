@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useAuthStore } from "@/store/modules/auth"
-import { useI18n } from "vue-i18n"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import DocumentList from "./document-list.vue"
 import MaterialLibrary from "./material-library.vue"
@@ -8,7 +8,7 @@ import MaterialLibrary from "./material-library.vue"
 const { projectInfo } = useProjectInfoStore()
 const auth = useAuthStore()
 const route = useRoute()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const scope = computed(() =>
   projectInfo.value
     ? {

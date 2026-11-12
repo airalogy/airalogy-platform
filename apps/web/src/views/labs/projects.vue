@@ -53,12 +53,12 @@
 import type { FetchData, FetchPayload } from "@/components/common/loading-list-wrapper.vue"
 import type { SelectOption } from "naive-ui"
 import LoadingListWrapper from "@/components/common/loading-list-wrapper.vue"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { LabRole } from "@/enum"
 import { fetchProjectList } from "@/service/api/projects"
 import { useAppStore } from "@/store/modules/app"
 import CreateProjectModal from "@/views/projects/modules/create-project-modal.vue"
-import { $t } from "@airalogy/shared/locales"
 import { useLabInfoStore } from "./hooks/useLabsInfoStore"
 import LabProjectList from "./modules/project/lab-project-list.vue"
 
@@ -67,6 +67,8 @@ defineOptions({
 })
 
 const emit = defineEmits<IEmits>()
+
+const { t: $t } = useOrganizationTranslation()
 
 interface IEmits {
   (e: "modal:show"): void

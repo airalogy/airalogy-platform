@@ -21,7 +21,7 @@ for (const account of accounts) {
     await page.getByTestId("login-password").locator("input").fill(account.password)
     await page.getByTestId("login-submit").click()
     await expect(page).not.toHaveURL(/\/login(?:\?|$)/)
-    if (process.env.E2E_DEPLOYMENT_MODE === "single_lab")
+    if (["single_lab", "single_organization"].includes(process.env.E2E_DEPLOYMENT_MODE ?? ""))
       await expect(page).toHaveURL(/\/home$/)
     await mkdir("tests/e2e/.auth", { recursive: true })
     await page.context().storageState({

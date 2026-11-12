@@ -10,6 +10,9 @@ ENV_FILE="${AIRALOGY_ENV_FILE:-$DEPLOY_DIR/.env}"
 site_url="http://localhost:8080"
 lab_name="Airalogy Lab"
 lab_uid="main"
+organization_type=""
+organization_name=""
+organization_uid=""
 tls_email=""
 force=false
 docker_subnet="192.168.248.0/24"
@@ -24,6 +27,9 @@ Options:
   --site-url URL    Public URL, for example https://lab.example.org
   --lab-name NAME   Display name of the single laboratory
   --lab-uid UID     Stable lowercase route identifier (default: main)
+  --organization-name NAME  Single-organization profile and display name
+  --organization-uid UID    Stable organization route identifier (default: main)
+  --organization-type TYPE  company, institution, laboratory or other
   --tls-email EMAIL ACME account email for automatic TLS
   --force           Replace an existing .env file
   --docker-subnet CIDR       Candidate Docker subnet (default: 192.168.248.0/24)
@@ -40,6 +46,15 @@ while [[ $# -gt 0 ]]; do
         --docker-subnet) docker_subnet="$2" ;;
         --network-cloud) network_cloud="$2" ;;
         --protected-cidrs) protected_cidrs="$2" ;;
+      esac
+      shift 2
+      ;;
+    --organization-name|--organization-uid|--organization-type)
+      [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+      case "$1" in
+        --organization-name) organization_name="$2" ;;
+        --organization-uid) organization_uid="$2" ;;
+        --organization-type) organization_type="$2" ;;
       esac
       shift 2
       ;;
@@ -77,6 +92,22 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+deployment_mode=single_lab
+config_prefix=SINGLE_LAB
+project_uid=lab_protocols
+project_name="Lab Protocols"
+if [[ -n "$organization_name$organization_uid$organization_type" ]]; then
+  [[ "$lab_name" == "Airalogy Lab" && "$lab_uid" == main ]] || { echo "Do not mix --lab-* and --organization-* options" >&2; exit 2; }
+  deployment_mode=single_organization
+  config_prefix=SINGLE_ORGANIZATION
+  lab_name="${organization_name:-Airalogy Organization}"
+  lab_uid="${organization_uid:-main}"
+  organization_type="${organization_type:-company}"
+  case "$organization_type" in company|institution|laboratory|other) ;; *) echo "invalid --organization-type" >&2; exit 2 ;; esac
+  project_uid=workspace
+  project_name="Team Workspace"
+fi
 
 command -v openssl >/dev/null 2>&1 || { echo "openssl is required" >&2; exit 1; }
 [[ "$network_cloud" == none || "$network_cloud" == aliyun ]] || { echo "invalid --network-cloud" >&2; exit 1; }
@@ -165,18 +196,19 @@ HTTPS_PORT=$https_port
 TLS_EMAIL=$tls_email
 
 APP_ENV=production
-DEPLOYMENT_MODE=single_lab
+DEPLOYMENT_MODE=$deployment_mode
 LAB_STRUCTURE_MODE=structured
 API_ROOT_PATH=
 SIGNUP_MODE=invite_only
 DOCUMENTATION_PROFILE=customer_managed
 DOCUMENTATION_URL=/docs/
 SUPPORT_URL=
-SINGLE_LAB_UID=$lab_uid
-SINGLE_LAB_NAME=$lab_name
-SINGLE_LAB_DESCRIPTION=
-SINGLE_LAB_DEFAULT_PROJECT_UID=lab_protocols
-SINGLE_LAB_DEFAULT_PROJECT_NAME=Lab Protocols
+${config_prefix}_UID=$lab_uid
+${config_prefix}_NAME=$lab_name
+${config_prefix}_DESCRIPTION=
+${config_prefix}_DEFAULT_PROJECT_UID=$project_uid
+${config_prefix}_DEFAULT_PROJECT_NAME=$project_name
+SINGLE_ORGANIZATION_TYPE=$organization_type
 INVITATION_TTL_HOURS=168
 PASSWORD_RESET_TTL_MINUTES=60
 

@@ -1,13 +1,20 @@
 from datetime import datetime
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import CheckConstraint, ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from app.models.attachment import Attachment
 
 from .base import Base
+
+
+class OrganizationType(StrEnum):
+    LABORATORY = "laboratory"
+    COMPANY = "company"
+    INSTITUTION = "institution"
+    OTHER = "other"
 
 
 class LabRole(IntEnum):
@@ -18,6 +25,17 @@ class LabRole(IntEnum):
 
 class Lab(Base):
     __tablename__ = "labs"
+    __table_args__ = (
+        CheckConstraint(
+            "organization_type IN ('laboratory', 'company', 'institution', 'other')",
+            name="ck_labs_organization_type",
+        ),
+    )
+    organization_type: Mapped[str] = mapped_column(
+        nullable=False,
+        default=OrganizationType.LABORATORY.value,
+        server_default="laboratory",
+    )
 
     id: Mapped[UUID] = mapped_column(
         nullable=False,
@@ -71,6 +89,8 @@ class LabUser(Base):
     lab_id: Mapped[UUID] = mapped_column(
         ForeignKey("labs.id"), nullable=False, index=True
     )
+    organization_id = synonym("lab_id")
+    json_include_fields = ["organization_id"]
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     role: Mapped[int] = mapped_column(nullable=False)
     alias: Mapped[str] = mapped_column(nullable=True)

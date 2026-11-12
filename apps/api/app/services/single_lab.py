@@ -76,7 +76,9 @@ async def ensure_default_project(
             lab_id=lab.id,
             uid=config.SINGLE_LAB_DEFAULT_PROJECT_UID,
             name=config.SINGLE_LAB_DEFAULT_PROJECT_NAME,
-            description="Default private project for laboratory protocols and records.",
+            description="Private workspace for projects, documents, protocols and research."
+            if config.DEPLOYMENT_MODE == "single_organization"
+            else "Default private project for laboratory protocols and records.",
             type=ProjectType.PRIVATE,
             create_user_id=owner.id,
         )

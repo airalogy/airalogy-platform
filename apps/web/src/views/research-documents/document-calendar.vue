@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { researchDocumentCalendar } from "@/service/api/research-documents"
 import { documentTimeZone, localDocumentDate } from "@/utils/documentBrowse"
 import { useI18n } from "vue-i18n"
 
 const props = defineProps<{ scope: ResearchLogScopeParams, q: string, kind: string, selected?: string }>()
 const emit = defineEmits<{ select: [string] }>()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
+const { t } = useOrganizationTranslation()
 const month = ref((props.selected || localDocumentDate()).slice(0, 7))
 const counts = ref<Record<string, number>>({})
 const loading = ref(false)

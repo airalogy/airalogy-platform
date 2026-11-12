@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, func, true
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from .base import Base
 
@@ -48,6 +48,8 @@ class Project(Base):
     )
     name: Mapped[str] = mapped_column(nullable=False)
     lab_id: Mapped[UUID] = mapped_column(ForeignKey("labs.id"), nullable=False)
+    organization_id = synonym("lab_id")
+    json_include_fields = ["organization_id"]
     parent_project_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("projects.id"), nullable=True, index=True
     )

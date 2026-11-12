@@ -127,23 +127,15 @@ import type { RouteLocationRaw } from "vue-router"
 import LabIcon from "@/components/icon/lab-icon.vue"
 import ProjectIcon from "@/components/icon/project-icon.vue"
 import ResearchIcon from "@/components/icon/protocol-icon.vue"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { ProjectType } from "@/enum"
 import { type PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
 import { useInstanceStore } from "@/store/modules/instance"
 import { formatNumber } from "@airalogy/shared"
-import { $t } from "@airalogy/shared/locales"
 import GripIcon from "~icons/tabler/grip-vertical"
 import PinnedIcon from "~icons/tabler/pinned"
 import Sortable from "sortablejs"
 import PinnedManageModal from "./pinned-manage-modal.vue"
-
-interface Props {
-  items: PinnedItem[]
-  loading?: boolean
-  pinningKeys?: Set<string>
-  maxCount?: number
-  hideProjects?: boolean
-}
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
@@ -154,6 +146,16 @@ const emits = defineEmits<{
   (ev: "togglePin", payload: { resourceType: PinnedResourceType, resourceId: string }): void
   (ev: "reorderPinned", pinnedItemIds: number[]): void
 }>()
+
+const { t: $t } = useOrganizationTranslation()
+
+interface Props {
+  items: PinnedItem[]
+  loading?: boolean
+  pinningKeys?: Set<string>
+  maxCount?: number
+  hideProjects?: boolean
+}
 
 const instanceStore = useInstanceStore()
 const pinnedMap = computed(() => {

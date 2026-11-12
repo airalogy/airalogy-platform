@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
-import { useI18n } from "vue-i18n"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 
 defineProps<{ scope: ResearchLogScopeParams, name?: string, compact?: boolean }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 </script>
 
 <template>

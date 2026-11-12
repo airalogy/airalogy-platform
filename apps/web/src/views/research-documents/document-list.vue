@@ -4,6 +4,7 @@ import type {
   DocumentSummary,
 } from "@/service/api/research-documents"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import {
   importResearchDocument,
   listResearchDocuments,
@@ -13,7 +14,6 @@ import { createResearchDocumentId } from "@/utils/research-document-id"
 import FileTextIcon from "~icons/tabler/file-text"
 import FilterIcon from "~icons/tabler/filter"
 import PlusIcon from "~icons/tabler/plus"
-import { useI18n } from "vue-i18n"
 import DocumentAudience from "./document-audience.vue"
 import DocumentCalendar from "./document-calendar.vue"
 import DocumentReader from "./document-reader.vue"
@@ -22,7 +22,7 @@ import NewDocumentDialog from "./new-document-dialog.vue"
 import SnapshotPreview from "./snapshot-preview.vue"
 
 const props = defineProps<{ scope: ResearchLogScopeParams, compact?: boolean, scopeName?: string }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const router = useRouter()
 const route = useRoute()
 const items = ref<DocumentSummary[]>([])
@@ -107,7 +107,7 @@ async function importArchive(confirm = false) {
 let sequence = 0
 const options = computed(() => [
   { value: "", label: t("page.researchDocuments.allKinds") },
-  ...["document", "experiment", "progress", "meeting", "reflection", "blocker", "milestone"].map(
+  ...(["document", "experiment", "progress", "meeting", "reflection", "blocker", "milestone"] as const).map(
     value => ({ value, label: t(`page.researchDocuments.${value}`) }),
   ),
 ])
@@ -297,7 +297,7 @@ watch([reading, items], async () => {
                   {{ item.title }}
                 </h3>
                 <p class="aira-type-meta my-1">
-                  {{ t(`page.researchDocuments.${item.kind}`) }} · {{ t('page.documentBrowse.recordedDate') }} {{ localDocumentDate(item.occurred_at) }}
+                  {{ options.find(option => option.value === item.kind)?.label || item.kind }} · {{ t('page.documentBrowse.recordedDate') }} {{ localDocumentDate(item.occurred_at) }}
                 </p>
                 <p class="aira-type-meta my-1">
                   {{ t('page.documentBrowse.updated') }} {{ new Date(item.updated_at).toLocaleString() }}

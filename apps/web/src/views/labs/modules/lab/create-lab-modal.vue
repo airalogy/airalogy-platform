@@ -142,29 +142,23 @@ import type {
   SelectRenderTag,
 } from "naive-ui/es/select"
 import { createDisplayNameValidator, createUidValidator, useBoolean, useFormRules, useLoading, useNaiveForm, useShowModal } from "@/composables"
-import { checkLabUid, postNewLab } from "@/service/api/labs"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 
+import { checkLabUid, postNewLab } from "@/service/api/labs"
 import { postNewProject } from "@/service/api/projects"
 import { fetchUserList } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
 import { snakeCase } from "@/utils/changeCase"
-import { convertDisplayname } from "@/utils/convertDisplayname"
 
+import { convertDisplayname } from "@/utils/convertDisplayname"
 import CommonIdInput from "@airalogy/components/common/common-id-input.vue"
 import { useClosableMessage } from "@airalogy/composables"
-import { $t } from "@airalogy/shared/locales"
 import { useDebounceFn } from "@vueuse/core"
 import AddCircleOutline from "~icons/ion/add-circle-outline"
 import { NAvatar, NSelect, NText, type UploadFileInfo, type UploadInst, useDialog } from "naive-ui"
 import { type ButtonProps, NButton } from "naive-ui/es/button"
 import LabMemberTag from "../lab-member-tag.vue"
 
-interface IProps {
-  buttonType?: "text" | "ghost"
-  showIcon?: boolean
-  trigger?: string
-  buttonProps?: ButtonProps & { class?: string }
-}
 const props = withDefaults(defineProps<IProps>(), {
   buttonType: "ghost",
   showIcon: true,
@@ -174,6 +168,14 @@ const props = withDefaults(defineProps<IProps>(), {
 
 const emits = defineEmits<IEmits>()
 
+const { t: $t } = useOrganizationTranslation()
+
+interface IProps {
+  buttonType?: "text" | "ghost"
+  showIcon?: boolean
+  trigger?: string
+  buttonProps?: ButtonProps & { class?: string }
+}
 interface FormModel {
   logo?: string
   uid?: string

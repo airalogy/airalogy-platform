@@ -34,7 +34,7 @@ for key in SECRET_KEY AES_KEY INNER_API_KEY INITIAL_ADMIN_TOKEN POSTGRES_PASSWOR
   [[ "$value" != *replace-with* && "$value" != change-me-* ]] || die "$key still uses a placeholder"
 done
 
-[[ "$(env_value DEPLOYMENT_MODE)" == "single_lab" ]] || die "DEPLOYMENT_MODE must be single_lab"
+[[ "$(env_value DEPLOYMENT_MODE)" == "single_lab" || "$(env_value DEPLOYMENT_MODE)" == "single_organization" ]] || die "DEPLOYMENT_MODE must be single_lab or single_organization"
 repository_version="$(tr -d '\r\n' <"$REPO_ROOT/VERSION")"
 [[ "$(env_value PLATFORM_VERSION)" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || die "PLATFORM_VERSION must be a semantic version"
 if ! release_metadata_required; then
@@ -42,7 +42,10 @@ if ! release_metadata_required; then
 fi
 [[ "$(env_value AIRALOGY_DEPLOYMENT_ID)" =~ ^dep_[0-9a-f]{32}$ ]] || die "AIRALOGY_DEPLOYMENT_ID must be an opaque dep_ identifier"
 [[ "$(env_value AIRALOGY_DEPLOYMENT_ID)" != "dep_00000000000000000000000000000000" ]] || die "AIRALOGY_DEPLOYMENT_ID still uses the example placeholder"
-[[ "$(env_value LAB_STRUCTURE_MODE)" == "structured" ]] || die "LAB_STRUCTURE_MODE must be structured"
+structure_mode="$(env_value ORGANIZATION_STRUCTURE_MODE)"
+legacy_structure_mode="$(env_value LAB_STRUCTURE_MODE)"
+[[ -z "$structure_mode" || -z "$legacy_structure_mode" || "$structure_mode" == "$legacy_structure_mode" ]] || die "ORGANIZATION_STRUCTURE_MODE conflicts with LAB_STRUCTURE_MODE"
+[[ "${structure_mode:-$legacy_structure_mode}" == "structured" ]] || die "ORGANIZATION_STRUCTURE_MODE (or LAB_STRUCTURE_MODE) must be structured"
 [[ "$(env_value APP_ENV)" == "production" ]] || die "APP_ENV must be production"
 [[ "$(env_value SECRET_KEY)" =~ ^.{32,}$ ]] || die "SECRET_KEY must contain at least 32 characters"
 [[ "$(env_value INNER_API_KEY)" =~ ^.{32,}$ ]] || die "INNER_API_KEY must contain at least 32 characters"

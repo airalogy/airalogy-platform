@@ -18,7 +18,7 @@ from app.libs.lab_force_delete import (
 )
 from app.models.access_control import AccessAuditAction, AccessGrant, AccessGrantAudit
 from app.models.group import Group, GroupProject, GroupUser
-from app.models.lab import Lab, LabRole, LabUser
+from app.models.lab import Lab, LabRole, LabUser, OrganizationType
 from app.models.lab_force_delete_job import LabForceDeleteJob
 from app.models.pinned_item import PinnedItem, PinnedResourceType
 from app.models.project import Project, ProjectUser
@@ -327,6 +327,7 @@ class LabAddUserParams(BaseModel):
 
 
 class LabCreateParams(BaseModel):
+    organization_type: OrganizationType = OrganizationType.LABORATORY
     name: Annotated[
         str, StringConstraints(max_length=64, min_length=3, strip_whitespace=True)
     ]
@@ -392,6 +393,7 @@ async def create_lab(
 
 
 class LabUpdateParams(BaseModel):
+    organization_type: OrganizationType | None = None
     description: Annotated[
         str, StringConstraints(max_length=128, strip_whitespace=True)
     ]

@@ -2,6 +2,7 @@
 import type { DocumentTemplate, TemplateContent, TemplateScope } from "@/service/api/document-templates"
 import type { DocumentPreview, ResearchDocument } from "@/service/api/research-documents"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { createDocumentTemplate, scopeKey, scopeParams, templateError, templateHistory, templateScopes, updateDocumentTemplate } from "@/service/api/document-templates"
 import { createResearchDocumentId } from "@/utils/research-document-id"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
@@ -12,7 +13,8 @@ import SnapshotPreview from "./snapshot-preview.vue"
 
 const props = defineProps<{ scope: ResearchLogScopeParams, template?: DocumentTemplate, copyTemplate?: DocumentTemplate, sourceDocument?: ResearchDocument }>()
 const emit = defineEmits<{ close: [], saved: [DocumentTemplate] }>()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
+const { t } = useOrganizationTranslation()
 const dialog = useDialog()
 const original = props.template || props.copyTemplate || props.sourceDocument
 const form = reactive<TemplateContent>({ title: original?.title || "", description: props.template?.description || props.copyTemplate?.description || "", kind: original?.kind || "document", body: original?.body || "" })

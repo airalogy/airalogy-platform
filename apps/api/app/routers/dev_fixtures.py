@@ -1284,6 +1284,11 @@ async def ensure_quickstart_fixtures(db_session: DBSession):
         lab.create_user_id = owner.id
         lab.description = "Development-only lab for quick local testing."
 
+    if config.DEPLOYMENT_MODE == "single_organization":
+        lab.name = config.SINGLE_ORGANIZATION_NAME
+        lab.organization_type = config.effective_organization_type
+    else:
+        lab.organization_type = "laboratory"
     await ensure_lab_members(db_session, lab, owner, users)
 
     project = await Project.find_by(

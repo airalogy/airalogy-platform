@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useI18n } from "vue-i18n"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 
 const props = defineProps<{ snapshot?: Record<string, unknown> }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const content = computed(
   () => (props.snapshot?.content || props.snapshot || {}) as Record<string, unknown>,
 )

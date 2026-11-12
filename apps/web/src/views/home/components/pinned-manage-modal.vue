@@ -169,19 +169,13 @@
 <script setup lang="ts">
 import type { ProtocolModels } from "@airalogy/shared/types"
 import { useClosableMessage, useShowModal } from "@/composables"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { type PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
 import { fetchUserLabs, fetchUserProjects, fetchUserProtocols } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { formatNumber } from "@airalogy/shared"
-import { $t } from "@airalogy/shared/locales"
 import PinnedIcon from "~icons/tabler/pinned"
-
-interface Props {
-  pinnedMap?: Map<string, PinnedItem>
-  pinningKeys?: Set<string>
-  maxCount?: number
-}
 
 const props = withDefaults(defineProps<Props>(), {
   pinnedMap: () => new Map<string, PinnedItem>(),
@@ -192,6 +186,14 @@ const props = withDefaults(defineProps<Props>(), {
 const emits = defineEmits<{
   (ev: "togglePin", payload: { resourceType: PinnedResourceType, resourceId: string }): void
 }>()
+
+const { t: $t } = useOrganizationTranslation()
+
+interface Props {
+  pinnedMap?: Map<string, PinnedItem>
+  pinningKeys?: Set<string>
+  maxCount?: number
+}
 
 const { userInfo } = useAuthStore()
 const message = useClosableMessage()

@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Separate organization information from the administrator's personal account during initial setup. Show the deployment-defined organization UID, distinguish it from the editable name and internal UUID, validate the personal username separately, and reject stale UID confirmations before creating any account or organization. Keep existing bootstrap clients and read-only organization identifiers compatible.
+
+- Add the compatible Organization foundation (Issue #25 P0): company/institution/laboratory types, single-organization setup, generic workspace terminology and contributor invitation defaults. Preserve Lab UUIDs, ownership, authorization, old routes/configuration and Protocol IDs; add organization APIs and migration `0085_organization_foundation`. Reuse the existing single-instance deployment scripts; no SDK or public-ID format change.
+
 - Add account-private Aira communication preferences (Issue #24 P0): explicit save/forget commands, bilingual management, opt-out conversations, export, revision conflicts and content-free audit. Apply defaults to ordinary chat, Protocol prose and analysis explanations; keep Recorder values isolated. Requires migration `0084_aira_memory`. Automatic habit inference is not included.
 
 - Add version-specific Protocol ratings, optional audited use feedback, permission-aware adoption metrics and an explainable trial recommendation (Issue #23). Keep author/reading opinions separate, preserve revisions, and support bilingual detail/list/Record entry points without AI or automatic private-data sharing.

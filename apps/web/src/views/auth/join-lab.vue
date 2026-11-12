@@ -15,10 +15,12 @@
 </template>
 
 <script setup lang="ts">
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { acceptInvitation, fetchInvitation, type InvitationInfo } from "@/service/api/instance"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { $t } from "@airalogy/shared/locales"
+
+const { t: $t } = useOrganizationTranslation()
 
 const route = useRoute()
 const router = useRouter()

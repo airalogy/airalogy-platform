@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { getActivities } from "@/service/api/activities"
 import {
   createPinnedItem,
@@ -43,17 +44,18 @@ import {
   reorderPinnedItems,
 } from "@/service/api/pinned-items"
 import { getProtocolInfo } from "@/service/api/protocol"
-import { useAuthStore } from "@/store/modules/auth"
 
+import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { singleLabSharedEntries } from "@/utils/singleLabWorkspace"
-import TestingNotificationDialog from "@/views/auth/components/testing-notification-dialog.vue"
 
+import TestingNotificationDialog from "@/views/auth/components/testing-notification-dialog.vue"
 import { useClosableMessage, useLoading } from "@airalogy/composables"
-import { $t } from "@airalogy/shared/locales"
 import ActivityCard, { type IProps as ICardItem } from "./components/activity-card.vue"
 import PinnedItems from "./components/pinned-items.vue"
 import TaskWorkbench from "./components/task-workbench.vue"
+
+const { t: $t } = useOrganizationTranslation()
 
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()

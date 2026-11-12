@@ -108,8 +108,9 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui"
 import { useBasicLayout } from "@/composables"
-import { useRouterPush } from "@/composables/useRouterPush"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 
+import { useRouterPush } from "@/composables/useRouterPush"
 import { useSingleLabWorkspace } from "@/composables/useSingleLabWorkspace"
 import GlobalAddNew from "@/layouts/modules/global-add-new/index.vue"
 import GlobalMenu from "@/layouts/modules/global-menu/index.vue"
@@ -117,7 +118,6 @@ import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { singleLabManagementEntries, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
-import { $t } from "@airalogy/shared/locales"
 import { useMediaQuery } from "@vueuse/core"
 import UserAvatar from "./components/user-avatar.vue"
 import { buttonThemeOverrides } from "./constants"
@@ -129,6 +129,8 @@ const props = withDefaults(defineProps<IProps>(), {
   showMenu: false,
   showMenuToggler: false,
 })
+
+const { t: $t } = useOrganizationTranslation()
 
 const { isMobile } = useBasicLayout()
 const compactHeader = useMediaQuery("(max-width: 1535px)")

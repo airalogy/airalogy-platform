@@ -1,17 +1,27 @@
 import type { ChatModel } from "@airalogy/shared/enum/chat"
 import { request } from "../request"
 
-export type DeploymentMode = "community" | "single_lab"
+export type DeploymentMode = "community" | "single_lab" | "single_organization"
 export type SignupMode = "open" | "invite_only" | "disabled"
 export type LabStructureMode = "flat" | "structured"
 export type DocumentationProfile = "community" | "customer_managed" | "vendor_managed"
 
+export type OrganizationType = "laboratory" | "company" | "institution" | "other"
+
 export interface InstanceLabInfo {
+  organization_type?: OrganizationType
   id: string
   uid: string
   name: string
 }
 export interface InstanceStatus {
+  single_organization?: boolean
+  organization?: InstanceLabInfo | null
+  organization_structure_mode?: LabStructureMode
+  default_organization_uid?: string
+  default_organization_name?: string
+  default_organization_type?: OrganizationType
+  default_invitation_project_role?: Api.Project.ProjectRole
   deployment_mode: DeploymentMode
   single_lab: boolean
   initialized: boolean
@@ -48,6 +58,9 @@ export async function fetchSystemVersion() {
 }
 
 export interface BootstrapPayload {
+  organizationUid?: string
+  organizationName?: string
+  organizationType?: OrganizationType
   setupToken: string
   username: string
   email: string
@@ -68,6 +81,9 @@ export async function postInstanceBootstrap(payload: BootstrapPayload) {
     url: "/instance/bootstrap",
     method: "POST",
     data: {
+      organization_uid: payload.organizationUid,
+      organization_name: payload.organizationName,
+      organization_type: payload.organizationType,
       username: payload.username,
       setup_token: payload.setupToken,
       email: payload.email,

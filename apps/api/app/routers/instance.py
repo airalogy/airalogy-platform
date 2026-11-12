@@ -5,14 +5,14 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr, StringConstraints, model_validator
+from pydantic import BaseModel, EmailStr, Field, StringConstraints, model_validator
 from sqlalchemy import func, select, text
 
 from app.config import config
 from app.database import DBSession
 from app.models.account_token import AccountTokenType
 from app.models.chat import ChatModelType
-from app.models.lab import Lab, LabRole, LabUser
+from app.models.lab import Lab, LabRole, LabUser, OrganizationType
 from app.models.project import ProjectRole
 from app.models.user import User
 from app.services.account_security import bump_auth_version
@@ -42,6 +42,7 @@ def ensure_single_lab_mode() -> None:
 
 
 class InstanceLabInfo(BaseModel):
+    organization_type: OrganizationType = OrganizationType.LABORATORY
     id: UUID
     uid: str
     name: str
@@ -55,9 +56,7 @@ class InstanceStatus(BaseModel):
     bootstrap_token_required: bool
     site_url: str
     lab_structure_mode: str
-    documentation_profile: Literal[
-        "community", "customer_managed", "vendor_managed"
-    ]
+    documentation_profile: Literal["community", "customer_managed", "vendor_managed"]
     documentation_url: str
     support_url: str
     ai_enabled: bool
@@ -65,12 +64,33 @@ class InstanceStatus(BaseModel):
     sms_signup_required: bool
     enabled_chat_models: list[ChatModelType]
     lab: InstanceLabInfo | None = None
+    single_organization: bool = False
+    organization: InstanceLabInfo | None = None
+    organization_structure_mode: str = "flat"
+    default_organization_uid: str = ""
+    default_organization_name: str = ""
+    default_organization_type: str = "laboratory"
+    default_invitation_project_role: ProjectRole = ProjectRole.RECORDER
 
 
 @router.get("", response_model=InstanceStatus)
 async def get_instance_status(db_session: DBSession):
     lab = await get_single_lab(db_session)
     return InstanceStatus(
+        single_organization=config.is_single_organization,
+        organization=InstanceLabInfo(
+            id=lab.id,
+            uid=lab.uid,
+            name=lab.name,
+            organization_type=lab.organization_type,
+        )
+        if lab
+        else None,
+        organization_structure_mode=config.effective_lab_structure_mode,
+        default_organization_uid=config.SINGLE_LAB_UID if config.is_single_lab else "",
+        default_organization_name=config.SINGLE_ORGANIZATION_NAME,
+        default_organization_type=config.effective_organization_type,
+        default_invitation_project_role=config.default_invitation_project_role,
         deployment_mode=config.DEPLOYMENT_MODE,
         single_lab=config.is_single_lab,
         initialized=not config.is_single_lab or lab is not None,
@@ -86,7 +106,12 @@ async def get_instance_status(db_session: DBSession):
         sms_signup_required=config.effective_sms_signup_required,
         enabled_chat_models=list(enabled_chat_model_types()),
         lab=(
-            InstanceLabInfo(id=lab.id, uid=lab.uid, name=lab.name)
+            InstanceLabInfo(
+                id=lab.id,
+                uid=lab.uid,
+                name=lab.name,
+                organization_type=lab.organization_type,
+            )
             if lab is not None
             else None
         ),
@@ -94,6 +119,18 @@ async def get_instance_status(db_session: DBSession):
 
 
 class BootstrapParams(BaseModel):
+    # Echo the deployment identity the administrator reviewed, not a rename request.
+    # Optional for compatibility with existing single-lab bootstrap clients.
+    organization_uid: (
+        Annotated[str, StringConstraints(min_length=3, max_length=32)] | None
+    ) = None
+    organization_name: (
+        Annotated[
+            str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)
+        ]
+        | None
+    ) = None
+    organization_type: OrganizationType | None = None
     setup_token: str = ""
     username: UidStr
     email: EmailStr
@@ -126,6 +163,14 @@ async def bootstrap_single_lab(params: BootstrapParams, db_session: DBSession):
     labs_count = await db_session.scalar(select(func.count()).select_from(Lab))
     if users_count or labs_count:
         raise HTTPException(status_code=409, detail="Instance is already initialized")
+    if (
+        params.organization_uid is not None
+        and params.organization_uid != config.SINGLE_LAB_UID
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="The configured organization identifier has changed. Reload setup and confirm it before continuing.",
+        )
     if params.username == config.SINGLE_LAB_UID:
         raise HTTPException(
             status_code=400,
@@ -146,8 +191,10 @@ async def bootstrap_single_lab(params: BootstrapParams, db_session: DBSession):
 
     lab = Lab(
         uid=config.SINGLE_LAB_UID,
-        name=config.SINGLE_LAB_NAME,
-        description=config.SINGLE_LAB_DESCRIPTION,
+        name=params.organization_name or config.SINGLE_ORGANIZATION_NAME,
+        organization_type=params.organization_type
+        or config.effective_organization_type,
+        description=config.SINGLE_ORGANIZATION_DESCRIPTION,
         create_user_id=user.id,
         users_count=1,
     )
@@ -165,16 +212,29 @@ async def bootstrap_single_lab(params: BootstrapParams, db_session: DBSession):
     await db_session.commit()
 
     return {
+        "organization": InstanceLabInfo(
+            id=lab.id,
+            uid=lab.uid,
+            name=lab.name,
+            organization_type=lab.organization_type,
+        ),
         "token": create_access_token(user),
         "user": user,
-        "lab": InstanceLabInfo(id=lab.id, uid=lab.uid, name=lab.name),
+        "lab": InstanceLabInfo(
+            id=lab.id,
+            uid=lab.uid,
+            name=lab.name,
+            organization_type=lab.organization_type,
+        ),
     }
 
 
 class CreateInvitationParams(BaseModel):
     email: EmailStr
     lab_role: LabRole = LabRole.MEMBER
-    project_role: ProjectRole = ProjectRole.RECORDER
+    project_role: ProjectRole = Field(
+        default_factory=lambda: ProjectRole(config.default_invitation_project_role)
+    )
 
 
 async def require_single_lab_manager(
@@ -256,7 +316,12 @@ async def get_invitation(raw_token: str, db_session: DBSession):
     return {
         "email": token.email,
         "expires_at": token.expires_at,
-        "lab": InstanceLabInfo(id=lab.id, uid=lab.uid, name=lab.name),
+        "lab": InstanceLabInfo(
+            id=lab.id,
+            uid=lab.uid,
+            name=lab.name,
+            organization_type=lab.organization_type,
+        ),
         "existing_account": token.user_id is not None,
     }
 
@@ -293,7 +358,15 @@ async def accept_invitation(
     token.user_id = current_user.id
     token.consumed_at = utcnow()
     await db_session.commit()
-    return {"success": True, "lab": InstanceLabInfo(id=lab.id, uid=lab.uid, name=lab.name)}
+    return {
+        "success": True,
+        "lab": InstanceLabInfo(
+            id=lab.id,
+            uid=lab.uid,
+            name=lab.name,
+            organization_type=lab.organization_type,
+        ),
+    }
 
 
 class CreatePasswordResetParams(BaseModel):
@@ -345,7 +418,9 @@ async def get_password_reset(raw_token: str, db_session: DBSession):
         AccountTokenType.PASSWORD_RESET,
     )
     if token is None:
-        raise HTTPException(status_code=404, detail="Password reset is invalid or expired")
+        raise HTTPException(
+            status_code=404, detail="Password reset is invalid or expired"
+        )
     return {"email": token.email, "expires_at": token.expires_at}
 
 
@@ -374,7 +449,9 @@ async def reset_password(
         for_update=True,
     )
     if token is None or token.user_id is None:
-        raise HTTPException(status_code=404, detail="Password reset is invalid or expired")
+        raise HTTPException(
+            status_code=404, detail="Password reset is invalid or expired"
+        )
     user = await User.find(db_session, token.user_id, with_for_update=True)
     user.password = params.password
     await bump_auth_version(db_session, user.id)

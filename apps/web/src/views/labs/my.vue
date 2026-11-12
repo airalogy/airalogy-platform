@@ -34,7 +34,7 @@
         :list="data"
         :pinned-map="pinnedMap"
         :pinning-keys="pinningKeys"
-        @togglePin="handleTogglePin"
+        @toggle-pin="handleTogglePin"
       />
     </template>
     <template #empty>
@@ -53,11 +53,11 @@
 import type { FetchData, FetchPayload } from "@/components/common/loading-list-wrapper.vue"
 import type { SelectOption } from "naive-ui"
 import LoadingListWrapper from "@/components/common/loading-list-wrapper.vue"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { createPinnedItem, deletePinnedItem, getPinnedItems, type PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
 import { fetchUserLabs } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
-import { $t } from "@airalogy/shared/locales"
 import { useRouteQuery } from "@vueuse/router"
 import SearchInput from "../../components/common/search-input.vue"
 import CreateLabModal from "./modules/lab/create-lab-modal.vue"
@@ -66,6 +66,8 @@ import LabList from "./modules/lab/lab-list.vue"
 defineOptions({
   name: "LabsMyDashboard",
 })
+
+const { t: $t } = useOrganizationTranslation()
 
 const wrapperRef = ref<{ reload: () => void }>()
 const { userInfo } = useAuthStore()

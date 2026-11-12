@@ -363,7 +363,8 @@
     </n-drawer>
 
     <n-modal
-      style="--aira-dialog-width: 32rem" v-model:show="collectionModalVisible" preset="card" class="aira-dialog small-modal" :title="$t('page.knowledge.newCollection')">
+      v-model:show="collectionModalVisible" style="--aira-dialog-width: 32rem" preset="card" class="aira-dialog small-modal" :title="$t('page.knowledge.newCollection')"
+    >
       <n-form label-placement="top">
         <n-form-item :label="$t('page.knowledge.collectionName')" required>
           <n-input v-model:value="collectionForm.name" />
@@ -385,7 +386,8 @@
     </n-modal>
 
     <n-modal
-      style="--aira-dialog-width: 42rem" v-model:show="publishModalVisible" preset="card" class="aira-dialog knowledge-modal" :title="$t('page.knowledge.publish')">
+      v-model:show="publishModalVisible" style="--aira-dialog-width: 42rem" preset="card" class="aira-dialog knowledge-modal" :title="$t('page.knowledge.publish')"
+    >
       <template v-if="publishingItem">
         <n-alert type="info" class="mb-4">
           {{ $t("page.knowledge.publishImpact") }}
@@ -423,8 +425,8 @@
     </n-modal>
 
     <n-modal
-      style="--aira-dialog-width: 42rem"
       v-model:show="protocolDraftModalVisible"
+      style="--aira-dialog-width: 42rem"
       preset="card"
       class="aira-dialog knowledge-modal"
       :title="$t('page.knowledge.createProtocolDraft')"
@@ -488,6 +490,7 @@ import type {
 } from "@/service/api/knowledge"
 import type { TagProps } from "naive-ui"
 import { useRouterPush } from "@/composables"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import {
   addPaperToCollection,
   confirmKnowledgePublish,
@@ -510,10 +513,11 @@ import { fetchUserProjects } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { knowledgeViewFromQuery, researchArtifactTypeKey, researchArtifactVersionLabel } from "@/utils/knowledge-presentation"
-import { $t } from "@airalogy/shared/locales"
 import { useRoute } from "vue-router"
 import ImportPaperModal from "./components/import-paper-modal.vue"
 import KnowledgeEditorModal from "./components/knowledge-editor-modal.vue"
+
+const { t: $t } = useOrganizationTranslation()
 
 interface KnowledgeEditorHandle {
   open: (options?: {

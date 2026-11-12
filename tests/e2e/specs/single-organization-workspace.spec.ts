@@ -1,0 +1,71 @@
+import { randomUUID } from "node:crypto"
+import { expect, test } from "@playwright/test"
+import { loadFixtures } from "./fixtures"
+
+test.skip(process.env.E2E_DEPLOYMENT_MODE !== "single_organization", "Uses the isolated company workspace profile")
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+})
+
+test("company home, navigation and management remain usable at mobile and desktop widths", async ({ page }, testInfo) => {
+  const status = await (await page.request.get("/api/instance")).json()
+  expect(status.organization).toEqual(status.lab)
+  expect(status.organization.organization_type).toBe("company")
+  expect(status.single_organization).toBe(true)
+  expect(status.ai_enabled).toBe(false)
+  await page.goto("/home")
+  await expect(page.getByTestId("single-lab-identity")).toHaveText("Dev R&D Company")
+  await expect(page.getByTestId("home-project-card").first()).toBeVisible()
+  await expect(page.getByTestId("home-resources")).toContainText("组织日志")
+  await expect(page.getByTestId("home-resources")).not.toContainText("实验室")
+  for (const width of [1440, 820, 390]) {
+    await page.setViewportSize({ width, height: 980 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`company-home-${width}.png`), fullPage: true, animations: "disabled" })
+  }
+  await page.setViewportSize({ width: 1440, height: 980 })
+  await page.getByTestId("app-shell-header").getByRole("button", { name: "更多", exact: true }).click()
+  await expect(page.getByText("组织管理", { exact: true })).toBeVisible()
+  await page.getByText("组织管理", { exact: true }).hover()
+  await page.getByText("设置", { exact: true }).last().click()
+  await expect(page.getByRole("heading", { name: "组织管理", exact: true })).toBeVisible()
+  await expect(page.getByText("组织类型", { exact: true })).toBeVisible()
+  await expect(page.getByText("组织名称", { exact: true })).toBeVisible()
+  await page.goto("/labs/dev_lab/members")
+  await page.getByRole("button", { name: "邀请成员", exact: true }).click()
+  await expect(page.getByRole("dialog")).toContainText("组织角色")
+  await expect(page.getByRole("dialog")).toContainText("协作者")
+  await expect(page.getByRole("dialog")).not.toContainText("实验室")
+})
+
+test("a company member writes a private document and resumes the same project from a legacy link", async ({ page }) => {
+  const f = await loadFixtures()
+  await page.goto(`/labs/${f.lab.uid}/projects/${f.project.uid}/protocols`)
+  await expect(page.locator(".global-breadcrumb")).not.toContainText("dev_lab")
+  await expect(page.getByRole("heading", { name: "Quickstart Protocol Testing", exact: true })).toBeVisible()
+  await page.goto(`/labs/${f.lab.uid}/projects/${f.project.uid}/documents`)
+  await expect(page.getByTestId("document-audience").first()).toContainText("组织所有者")
+  await expect(page.getByTestId("document-audience").first()).not.toContainText("实验室")
+  await page.goto("/home")
+  await page.getByTestId("home-project-card").filter({ hasText: "Quickstart Protocol Testing" }).getByTestId("home-resume-project").click()
+  await expect(page).toHaveURL(/quickstart\/documents$/)
+  await page.goto("/home")
+  await page.getByTestId("global-create-trigger").click()
+  await page.getByRole("button", { name: "新建文档", exact: true }).click()
+  const dialog = page.getByTestId("new-document-dialog")
+  await expect(dialog.getByTestId("document-audience")).toContainText("仅自己可见")
+  await dialog.getByTestId("new-document-title").locator("input").fill(`合成眼镜研发想法 ${randomUUID()}`)
+  const response = page.waitForResponse(r => r.url().endsWith("/api/research-documents") && r.request().method() === "POST")
+  await dialog.getByTestId("create-document-confirm").click()
+  const created = await response
+  expect(created.ok(), await created.text()).toBeTruthy()
+  const document = await created.json()
+  expect(document.scope_type).toBe("personal")
+  await expect(page.getByTestId("research-document-editor")).toBeVisible()
+  const viewer = await page.request.post("/api/signin_by_email", { data: { email: "dev.viewer@airalogy.dev", password: "AiralogyDev123!" } })
+  const headers = { "Auth-Token": (await viewer.json()).token }
+  const denied = await page.request.get(`/api/research-documents/${document.id}`, { headers })
+  expect([403, 404]).toContain(denied.status())
+  const update = await page.request.put(`/api/organizations/${f.lab.id}`, { headers, data: { description: "Denied", organization_type: "institution" } })
+  expect(update.status()).toBe(403)
+})

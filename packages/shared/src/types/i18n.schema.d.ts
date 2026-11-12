@@ -853,6 +853,16 @@ declare namespace I18n {
         newPassword: string
         linkExpiresAt: string
         resetLinkFor: string
+        administratorAccount: string
+        administratorAccountHint: string
+        administratorName: string
+        administratorNamePlaceholder: string
+        personalUsername: string
+        personalUsernamePlaceholder: string
+        personalUsernameHint: string
+        personalUsernameDistinct: string
+        loginEmail: string
+        loginPassword: string
       }
       about: {
         title: string
@@ -5285,6 +5295,140 @@ declare namespace I18n {
         saveLocation: string
         chooseProject: string
         chooseProtocol: string
+      }
+      organization: {
+        setupSection: string
+        name: string
+        uid: string
+        setupUidHint: string
+        type: string
+        nameRequired: string
+        typeHint: string
+        types: {
+          company: string
+          institution: string
+          laboratory: string
+          other: string
+        }
+        labels: {
+          page_instance_setupTitle: string
+          page_instance_setupDescription: string
+          page_instance_invitedTo: string
+          page_instance_joining: string
+          page_instance_joinSuccess: string
+          page_instance_joinFailed: string
+          page_instance_invitationRequired: string
+          page_instance_resetDescription: string
+          page_instance_inviteDescription: string
+          page_instance_labRole: string
+          page_singleLabWorkspace_log: string
+          page_singleLabWorkspace_management: string
+          page_singleLabWorkspace_shared: string
+          page_labs_tab_my: string
+          page_labs_tab_public: string
+          page_labs_tab_membersHint: string
+          page_labs_my: string
+          page_labs_public: string
+          page_labs_info: string
+          page_labs_searchProjectsPlaceholder: string
+          page_labs_settingsPage_generalDescription: string
+          page_labs_settingsPage_logoLabel: string
+          page_labs_settingsPage_logoHint: string
+          page_labs_settingsPage_labIdLabel: string
+          page_labs_settingsPage_labIdHint: string
+          page_labs_settingsPage_nameLabel: string
+          page_labs_settingsPage_namePlaceholder: string
+          page_labs_settingsPage_descriptionPlaceholder: string
+          page_labs_settingsPage_deleteTitle: string
+          page_labs_settingsPage_deleteDescription: string
+          page_labs_settingsPage_deleteBlockedHint: string
+          page_labs_settingsPage_deleteReadyHint: string
+          page_labs_settingsPage_deleteReadyWithDefaultProjectsHint: string
+          page_labs_settingsPage_deleteBlockedUsers: string
+          page_labs_settingsPage_deleteModalWarning: string
+          page_labs_settingsPage_deleteErrorHasProjects: string
+          page_labs_settingsPage_deleteErrorHasUsers: string
+          page_labs_settingsPage_deleteErrorDefaultProjectsHaveProtocols: string
+          page_labs_settingsPage_deleteErrorForbidden: string
+          page_labs_settingsPage_deleteError: string
+          page_labs_settingsPage_forceDeleteTitle: string
+          page_labs_settingsPage_forceDeleteDescription: string
+          page_labs_settingsPage_forceDeleteOwnerHint: string
+          page_labs_settingsPage_forceDeletePreviewTitle: string
+          page_labs_settingsPage_forceDeleteUidLabel: string
+          page_labs_settingsPage_forceDeleteUidPlaceholder: string
+          page_labs_settingsPage_forceDeleteCheckbox: string
+          page_labs_settingsPage_forceDeleteSuccess: string
+          page_labs_settingsPage_forceDeleteFailed: string
+          page_labs_settingsPage_forceDeleteFailedWithReason: string
+          page_labs_settingsPage_forceDeleteErrorForbidden: string
+          page_labs_settingsPage_forceDeleteErrorUidMismatch: string
+          page_labs_settingsPage_forceDeleteErrorAlreadyInProgress: string
+          page_labs_settingsPage_forceDeleteError: string
+          page_labs_settingsPage_deleteEntityName: string
+          page_labs_settingsPage_infoName: string
+          page_labs_settingsPage_noChangesDescription: string
+          page_labs_settingsPage_updateError: string
+          page_labs_settingsPage_updateSuccess: string
+          page_labs_createLabModal_title: string
+          page_labs_createLabModal_displayNameLabel: string
+          page_labs_createLabModal_displayNamePlaceholder: string
+          page_labs_createLabModal_displayNameTip: string
+          page_labs_createLabModal_labIdLabel: string
+          page_labs_createLabModal_descriptionPlaceholder: string
+          page_labs_createLabModal_defaultProjectsIntro: string
+          page_labs_createLabModal_defaultProjectsPublic: string
+          page_labs_createLabModal_defaultProjectsPrivate: string
+          page_labs_createLabModal_snakeCaseWarning: string
+          page_labs_createLabModal_createSuccessWithDefaults: string
+          page_labs_createLabModal_defaultProjectsWarning: string
+          page_labs_createLabModal_labIdAvailable: string
+          page_labs_searchMyLabsPlaceholder: string
+          page_labs_searchLabIdLabel: string
+          page_labs_searchLabNameLabel: string
+          page_labs_searchEmptyById: string
+          page_labs_searchEmptyByName: string
+          page_resourceLibrary_labWorkspace: string
+          page_resourceLibrary_title: string
+          page_resourceLibrary_adapterPackagesTitle: string
+          page_resourceLibrary_adapterMatchHint: string
+          page_resourceLibrary_adapterMatchEmpty: string
+          page_resourceLibrary_adapterPackagesHint: string
+          page_resourceLibrary_adapterImportImpact: string
+          page_resourceLibrary_adapterApproveImpact: string
+          page_resourceLibrary_installInvalidRequest: string
+          page_resourceLibrary_installFingerprintConfirm: string
+          page_resourceLibrary_pairingSecretHint: string
+          page_resourceLibrary_pairingMatch: string
+          page_resourceLibrary_serviceAccessDeniedHint: string
+          page_resourceLibrary_computeAccessDeniedHint: string
+          page_resourceLibrary_computeRunnerCreateImpact: string
+          page_resourceLibrary_serviceProviderImpact: string
+          page_resourceLibrary_instrumentGatewaysHint: string
+          page_resourceLibrary_gatewayAccessDeniedHint: string
+          page_resourceLibrary_labVisible: string
+          page_resourceLibrary_registerTypeHint: string
+          page_knowledge_labKnowledge: string
+          page_knowledge_privateHint: string
+          page_knowledge_visibilityLab: string
+          page_knowledge_reviewHint: string
+          page_knowledge_personalDraftHint: string
+          page_knowledge_publishToLab: string
+          page_knowledge_scopeLab: string
+          page_labs_settingsPage_deleteBlockedDefaultProjectProtocols: string
+          page_labs_settingsPage_deleteAction: string
+          page_labs_settingsPage_forceDeletePreviewDescription: string
+          page_researchDocuments_scopeLab: string
+          page_documentTemplates_lab: string
+          page_documentTemplates_sharingHint: string
+          page_home_workspace_pinnedHint: string
+          page_documentBrowse_audienceproject: string
+          page_documentBrowse_audiencelab: string
+        }
+        scope: string
+        owner: string
+        administrator: string
+        logPublisher: string
       }
     }
     form: {

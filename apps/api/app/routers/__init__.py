@@ -62,6 +62,7 @@ from .instrument_qualifications import router as instrument_qualifications_route
 from .instrument_surveys import router as instrument_surveys_router
 from .knowledge import router as knowledge_router
 from .labs import router as labs_router
+from .organizations import router as organizations_router
 from .login import router as login_router
 from .oauth import router as oauth_router
 from .pinned_items import router as pinned_items_router
@@ -334,6 +335,7 @@ app.add_middleware(ExternalRequestBoundary)
 app.include_router(attachments_router)
 app.include_router(users_router)
 app.include_router(labs_router)
+app.include_router(organizations_router)
 app.include_router(projects_router)
 app.include_router(groups_router)
 app.include_router(protocols_router)

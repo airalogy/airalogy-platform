@@ -7,8 +7,8 @@
   </n-button>
 
   <n-modal
-    style="--aira-dialog-width: 50rem"
     v-model:show="visible"
+    style="--aira-dialog-width: 50rem"
     preset="card"
     class="aira-dialog knowledge-modal"
     :closable="!submitting"
@@ -72,13 +72,14 @@
 
         <details class="aira-disclosure" :open="metadataExpanded || sourceType === 'manual' || sourceType === 'url' || sourceType === 'pdf'" data-testid="paper-metadata">
           <summary>{{ $t("page.knowledge.editMetadata") }}</summary>
-          <p class="aira-type-meta mb-4">{{ $t("page.knowledge.metadataHint") }}</p>
+          <p class="aira-type-meta mb-4">
+            {{ $t("page.knowledge.metadataHint") }}
+          </p>
           <n-form-item
             :label="$t('page.knowledge.paperTitle')"
             :required="sourceType === 'manual' || sourceType === 'pdf' || sourceType === 'url'"
           >
             <n-input v-model:value="metadata.title" :placeholder="$t('page.knowledge.paperTitlePlaceholder')" />
-
           </n-form-item>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -138,8 +139,12 @@
         </section>
         <details class="aira-disclosure">
           <summary>{{ $t("page.knowledge.metadata") }}</summary>
-          <p class="aira-type-body">{{ preview.paper.authors.join("; ") }}</p>
-          <p class="aira-type-body whitespace-pre-wrap">{{ preview.paper.abstract || "—" }}</p>
+          <p class="aira-type-body">
+            {{ preview.paper.authors.join("; ") }}
+          </p>
+          <p class="aira-type-body whitespace-pre-wrap">
+            {{ preview.paper.abstract || "—" }}
+          </p>
         </details>
         <n-alert
           :type="preview.duplicate.kind === 'none' ? 'success' : 'warning'"
@@ -207,16 +212,19 @@ import type {
   PaperLibraryEntry,
 } from "@/service/api/knowledge"
 import type { UploadFileInfo } from "naive-ui"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { confirmPaperImport, previewPaperImport, previewPdfImport } from "@/service/api/knowledge"
-import { $t } from "@airalogy/shared/locales"
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{ imported: [entry: PaperLibraryEntry] }>()
+
+const { t: $t } = useOrganizationTranslation()
 
 interface Props {
   scope: KnowledgeScope
   scopeLabel: string
 }
-
-const props = defineProps<Props>()
-const emit = defineEmits<{ imported: [entry: PaperLibraryEntry] }>()
 
 type ImportSource = PaperImportSource | "pdf"
 

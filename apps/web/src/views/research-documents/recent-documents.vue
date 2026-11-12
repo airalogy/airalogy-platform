@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { recentResearchDocuments } from "@/service/api/research-documents"
-import { useI18n } from "vue-i18n"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 
 defineProps<{ items: Awaited<ReturnType<typeof recentResearchDocuments>>["items"] }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 </script>
 
 <template>

@@ -115,24 +115,26 @@ export async function putLabInfo(
   payload: Partial<{
     name: string
     displayName: string
+    organization_type: import("./instance").OrganizationType
     description: string
     logo: string
     type?: 1 | 2
   }>,
 ) {
-  const { description, name, logo, type } = payload
+  const { description, name, logo, type, organization_type } = payload
   if (!labId) {
     throw new Error("labId is required")
   }
 
   return await request({
-    url: `/labs/${labId}`,
+    url: `/organizations/${labId}`,
     method: "PUT",
     data: {
       description,
       name,
       logo,
       type,
+      organization_type,
     },
   })
 }

@@ -59,17 +59,22 @@
 <script setup lang="ts">
 import { useBasicLayout, useLoading, useShowModal } from "@/composables"
 import { useFormRules, useNaiveForm } from "@/composables/useForm"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { LabRole, ProjectRole } from "@/enum"
 import { postInvitation } from "@/service/api/instance"
+import { useInstanceStore } from "@/store/modules/instance"
 import { copyToClip } from "@airalogy/shared"
-import { $t } from "@airalogy/shared/locales"
 import { reactive } from "vue"
+
+const props = defineProps<Props>()
+
+const { t: $t } = useOrganizationTranslation()
 
 interface Props {
   currentRole: LabRole
 }
 
-const props = defineProps<Props>()
+const instanceStore = useInstanceStore()
 const { isMobile } = useBasicLayout()
 const { isShown, showModal, hideModal, setModalStatus } = useShowModal()
 const { loading, startLoading, endLoading } = useLoading()
@@ -80,7 +85,7 @@ const expiresAt = ref("")
 const model = reactive({
   email: "",
   labRole: LabRole.MEMBER,
-  projectRole: ProjectRole.RECORDER,
+  projectRole: instanceStore.status.default_invitation_project_role ?? ProjectRole.RECORDER,
 })
 
 const rules = {
@@ -124,7 +129,7 @@ watch(isShown, (shown) => {
   if (!shown) {
     model.email = ""
     model.labRole = LabRole.MEMBER
-    model.projectRole = ProjectRole.RECORDER
+    model.projectRole = instanceStore.status.default_invitation_project_role ?? ProjectRole.RECORDER
     inviteUrl.value = ""
     expiresAt.value = ""
   }

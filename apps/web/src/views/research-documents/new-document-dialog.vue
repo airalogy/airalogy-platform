@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DocumentTemplate, TemplateScope } from "@/service/api/document-templates"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { builtinTemplates, getDocumentTemplate, listDocumentTemplates, scopeKey, scopeParams, templateError, templateScopes } from "@/service/api/document-templates"
 import { createResearchDocument, researchProtocolSources } from "@/service/api/research-documents"
 import { useAuthStore } from "@/store/modules/auth"
@@ -14,7 +15,8 @@ import DocumentSelect from "./document-select.vue"
 
 const props = defineProps<{ scope: ResearchLogScopeParams }>()
 const emit = defineEmits<{ close: [] }>()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
+const { t } = useOrganizationTranslation()
 const router = useRouter()
 const scopes = ref<TemplateScope[]>([])
 const source = ref("builtin")

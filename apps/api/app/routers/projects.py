@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, StringConstraints
+from pydantic import AliasChoices, BaseModel, Field, StringConstraints, model_validator
 from pydash import py_
 from sqlalchemy import and_, case, delete, distinct, func, or_, select
 from sqlalchemy.orm import aliased, selectinload
@@ -484,8 +484,19 @@ async def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     lab = await Lab.find(db_session, project.lab_id)
     return await project_response(project, lab, current_user, db_session)
+
+
 class ProjectCreateParams(BaseModel):
-    lab_id: UUID
+    lab_id: UUID = Field(validation_alias=AliasChoices("organization_id", "lab_id"))
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_organization_alias(cls, values):
+        if isinstance(values, dict) and "organization_id" in values and "lab_id" in values:
+            if UUID(str(values["organization_id"])) != UUID(str(values["lab_id"])):
+                raise ValueError("organization_id conflicts with lab_id")
+        return values
+
     parent_project_id: UUID | None = None
     name: Annotated[
         str, StringConstraints(max_length=64, min_length=3, strip_whitespace=True)

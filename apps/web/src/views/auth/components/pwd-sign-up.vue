@@ -111,11 +111,11 @@
 <script setup lang="ts">
 import type { FormItemRule } from "naive-ui"
 import { createPasswordValidator, useFormRules, useNaiveForm } from "@/composables/useForm"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { fetchInvitation, type InvitationInfo } from "@/service/api/instance"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { $t } from "@airalogy/shared/locales"
 import EyeOffOutline from "~icons/ion/eye-off-outline"
 import EyeOutline from "~icons/ion/eye-outline"
 import { reactive } from "vue"
@@ -125,6 +125,9 @@ defineOptions({
 })
 
 const emits = defineEmits<IEmits>()
+
+const { t: $t } = useOrganizationTranslation()
+
 const { formRef, validate } = useNaiveForm()
 const {
   formRules: { user: userFormRules },

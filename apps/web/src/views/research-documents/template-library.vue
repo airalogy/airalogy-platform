@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { DocumentTemplate } from "@/service/api/document-templates"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { archiveDocumentTemplate, listDocumentTemplates, scopeKey, templateError } from "@/service/api/document-templates"
-import { useI18n } from "vue-i18n"
 import TemplateEditorDialog from "./template-editor-dialog.vue"
 
 const props = defineProps<{ scope: ResearchLogScopeParams }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const router = useRouter()
 const items = ref<DocumentTemplate[]>([])
 const total = ref(0)

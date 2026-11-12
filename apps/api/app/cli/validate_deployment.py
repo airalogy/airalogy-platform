@@ -3,16 +3,18 @@ from urllib.parse import urlparse
 from app.config import config
 
 
-def validate_single_lab_deployment() -> list[str]:
+def validate_single_organization_deployment() -> list[str]:
     errors: list[str] = []
     if config.APP_ENV != "production":
         errors.append("APP_ENV must be production")
     if not config.is_single_lab:
-        errors.append("DEPLOYMENT_MODE must be single_lab")
+        errors.append("DEPLOYMENT_MODE must be single_lab or single_organization")
     if config.effective_lab_structure_mode != "structured":
         errors.append("LAB_STRUCTURE_MODE must be structured")
     if config.API_ROOT_PATH:
-        errors.append("API_ROOT_PATH must be empty because the bundled proxy strips /api")
+        errors.append(
+            "API_ROOT_PATH must be empty because the bundled proxy strips /api"
+        )
     if config.LOG_REQUEST_BODIES:
         errors.append("LOG_REQUEST_BODIES must remain false in production")
 
@@ -27,12 +29,18 @@ def validate_single_lab_deployment() -> list[str]:
     return errors
 
 
+# Legacy import retained for existing operator tooling.
+validate_single_lab_deployment = validate_single_organization_deployment
+
+
 def main() -> None:
-    errors = validate_single_lab_deployment()
+    errors = validate_single_organization_deployment()
     if errors:
         details = "\n".join(f"- {error}" for error in errors)
-        raise SystemExit(f"Invalid single-Lab deployment configuration:\n{details}")
-    print("single_lab deployment configuration is valid")
+        raise SystemExit(
+            f"Invalid single-organization deployment configuration:\n{details}"
+        )
+    print(f"{config.DEPLOYMENT_MODE} deployment configuration is valid")
 
 
 if __name__ == "__main__":

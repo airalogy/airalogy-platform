@@ -16,7 +16,7 @@ def test_deployment_validator_reports_profile_mismatch(monkeypatch):
     errors = validate_single_lab_deployment()
 
     assert "APP_ENV must be production" in errors
-    assert "DEPLOYMENT_MODE must be single_lab" in errors
+    assert "DEPLOYMENT_MODE must be single_lab or single_organization" in errors
     assert "LAB_STRUCTURE_MODE must be structured" in errors
     assert "API_ROOT_PATH must be empty because the bundled proxy strips /api" in errors
 
@@ -277,10 +277,15 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     later_tables.update(document_revision.TABLE_NAMES)
     template_revision = import_module("migrations.versions.0080_document_templates")
     assert template_revision.down_revision == document_revision.revision
-    later_tables.update({"document_templates", "document_template_revisions"})
+    later_tables.update({
+        "document_template_revisions",
+        "document_templates",
+    })
     visit_revision = import_module("migrations.versions.0081_project_visits")
     assert visit_revision.down_revision == template_revision.revision
     later_tables.add("project_visits")
+    # Later features must never be created by the initial revision.
+    later_tables.update({'external_oauth_clients', 'external_analysis_files', 'protocol_ratings', 'protocol_rating_revisions', 'aira_memory_events', 'external_oauth_codes', 'protocol_use_records', 'protocol_uses', 'aira_memories', 'external_analysis_sources', 'external_snapshots'})
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

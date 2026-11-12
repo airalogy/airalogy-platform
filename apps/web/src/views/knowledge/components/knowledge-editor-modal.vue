@@ -7,8 +7,8 @@
   </n-button>
 
   <n-modal
-    style="--aira-dialog-width: 48rem"
     v-model:show="visible"
+    style="--aira-dialog-width: 48rem"
     preset="card"
     class="aira-dialog knowledge-editor-modal"
     :title="editing ? $t('page.knowledge.editKnowledge') : $t('page.knowledge.createKnowledge')"
@@ -101,12 +101,18 @@ import type {
   KnowledgeScope,
   KnowledgeVisibility,
 } from "@/service/api/knowledge"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import {
   createKnowledgeItem,
   previewKnowledgeItem,
   updateKnowledgeItem,
 } from "@/service/api/knowledge"
-import { $t } from "@airalogy/shared/locales"
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{ saved: [item: KnowledgeItem] }>()
+
+const { t: $t } = useOrganizationTranslation()
 
 interface Props {
   scope: KnowledgeScope
@@ -120,9 +126,6 @@ interface OpenOptions {
   restrictedSource?: boolean
   airaDraft?: AiraPaperKnowledgeDraft
 }
-
-const props = defineProps<Props>()
-const emit = defineEmits<{ saved: [item: KnowledgeItem] }>()
 
 const visible = ref(false)
 const saving = ref(false)

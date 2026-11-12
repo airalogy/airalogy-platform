@@ -12,6 +12,7 @@ declare namespace Api {
     }
 
     interface LabInfo {
+      organization_type?: import("@/service/api/instance").OrganizationType
       avatar?: string | null
       create_user_id: string
       created_at: string

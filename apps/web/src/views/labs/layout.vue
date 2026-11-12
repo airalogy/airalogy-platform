@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import type { TabPaneProps } from "naive-ui/es/tabs"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { LabRole } from "@/enum"
 import ContentLayout from "@/layouts/content-layout/index.vue"
@@ -61,13 +62,12 @@ import GlobalLayout from "@/layouts/global-layout/index.vue"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
+
 import { useRouteStore } from "@/store/modules/route"
-
 import { convertDisplayname } from "@/utils/convertDisplayname"
-import { singleLabManagementEntries, singleLabManagementRoutes, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 
+import { singleLabManagementEntries, singleLabManagementRoutes, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 import CreateProjectModal from "@/views/projects/modules/create-project-modal.vue"
-import { $t } from "@airalogy/shared/locales"
 import { h } from "vue"
 import TabHintLabel from "../../components/common/tab-hint-label.vue"
 import LabIcon from "../../components/icon/lab-icon.vue"
@@ -92,6 +92,7 @@ interface Props {
   showPadding?: boolean
 }
 
+const { t: $t } = useOrganizationTranslation()
 const route = useRoute()
 const instanceStore = useInstanceStore()
 const routerStore = useRouteStore()

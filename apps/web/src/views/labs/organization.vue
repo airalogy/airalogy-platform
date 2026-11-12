@@ -153,6 +153,7 @@
 import type { LabOrganizationalUnit, OrganizationalUnitMember, OrganizationalUnitMembershipRole, OrganizationalUnitType } from "@/service/api/access"
 import type { DataTableColumns, FormInst, FormRules, TreeOption } from "naive-ui"
 import { useClosableMessage } from "@/composables"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { LabRole } from "@/enum"
 import {
   deleteOrganizationalUnit,
@@ -164,11 +165,12 @@ import {
 } from "@/service/api/access"
 import { fetchLabMemberList } from "@/service/api/labs"
 import { useAuthStore } from "@/store/modules/auth"
-import { $t } from "@airalogy/shared/locales"
 import { NButton, NPopconfirm, NSelect, NTag } from "naive-ui"
 import { useLabInfoStore } from "./hooks/useLabsInfoStore"
 
 defineOptions({ name: "LabOrganizationalUnits" })
+
+const { t: $t } = useOrganizationTranslation()
 
 const message = useClosableMessage()
 const { labInfo, userLabRole } = useLabInfoStore()!

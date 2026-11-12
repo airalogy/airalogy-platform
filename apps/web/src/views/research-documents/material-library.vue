@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Material } from "@/service/api/research-documents"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { fetchResearchFile } from "@/service/api/knowledge"
 import {
   createResearchDocument,
@@ -9,11 +10,10 @@ import {
   uploadResearchMaterial,
 } from "@/service/api/research-documents"
 import { createResearchDocumentId } from "@/utils/research-document-id"
-import { useI18n } from "vue-i18n"
 
 const props = defineProps<{ scope: ResearchLogScopeParams, attach?: boolean }>()
 const emit = defineEmits<{ attach: [file: Material] }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const router = useRouter()
 const items = ref<Material[]>([])
 const total = ref(0)

@@ -8,6 +8,10 @@ if [[ "${E2E_DEPLOYMENT_MODE:-community}" == "single_lab" ]]; then
   export DEPLOYMENT_MODE=single_lab SIGNUP_MODE=invite_only
   export SINGLE_LAB_UID=dev_lab SINGLE_LAB_NAME="Dev Demo Lab" AI_ENABLED=false
 fi
+if [[ "${E2E_DEPLOYMENT_MODE:-community}" == "single_organization" ]]; then
+  export DEPLOYMENT_MODE=single_organization SIGNUP_MODE=invite_only
+  export SINGLE_ORGANIZATION_UID=dev_lab SINGLE_ORGANIZATION_NAME="Dev R&D Company" SINGLE_ORGANIZATION_TYPE=company AI_ENABLED=false
+fi
 export SITE_URL=http://127.0.0.1:3100
 export DATABASE_URL=postgresql+asyncpg://airalogy_e2e:airalogy_e2e@127.0.0.1:55432/airalogy_e2e
 export REDIS_URL=redis://127.0.0.1:56379/0

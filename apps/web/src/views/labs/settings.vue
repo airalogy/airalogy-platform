@@ -14,6 +14,12 @@
         :title="$t('page.labs.settingsPage.generalTitle')"
         :description="$t('page.labs.settingsPage.generalDescription')"
       >
+        <n-form-item :label="$t('page.organization.type')" path="organizationType">
+          <n-select v-model:value="model.organizationType" :options="organizationTypes" :disabled="!canDeleteLab" />
+        </n-form-item>
+        <p class="mb-4 text-sm text-gray-500">
+          {{ $t("page.organization.typeHint") }}
+        </p>
         <!-- Logo Upload Section -->
         <n-form-item :label="$t('page.labs.settingsPage.logoLabel')" path="logo">
           <div class="flex flex-col space-y-2">
@@ -36,7 +42,8 @@
             <n-input
               :value="labInfo?.uid || ''"
               type="text"
-              disabled
+              readonly
+              data-testid="organization-settings-uid"
               class="!rounded-lg"
             />
             <p class="text-xs text-gray-500">
@@ -266,6 +273,7 @@ import {
   useSettingsForm,
 } from "@/components/common/settings"
 import { useLabPermissions } from "@/composables/useLabPermissions"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
 import {
   deleteLab,
@@ -277,21 +285,26 @@ import {
 import { useInstanceStore } from "@/store/modules/instance"
 import KitCatalog from "@/views/scenario-kits/kit-catalog.vue"
 import { useClosableMessage } from "@airalogy/composables"
-import { $t } from "@airalogy/shared/locales"
 import { useOrProvideLabInfoStore } from "./hooks/useLabsInfoStore"
 import ExternalAccessPolicy from "./modules/external-access-policy.vue"
+
+const { t: $t } = useOrganizationTranslation()
 
 const { labInfo, fetchLabInfoById } = useOrProvideLabInfoStore(null)
 const { routerPushByKey } = useRouterPush()
 const { canDeleteLab } = useLabPermissions(labInfo)
 const message = useClosableMessage()
 const instanceStore = useInstanceStore()
+const organizationTypes = computed(() => (["company", "institution", "laboratory", "other"] as const)
+  .map(value => ({ value, label: $t(`page.organization.types.${value}`) })))
 interface FormModel extends BaseFormModel {
+  organizationType?: import("@/service/api/instance").OrganizationType
   displayName?: string
 }
 
 const initValue = computed(
   (): FormModel => ({
+    organizationType: labInfo.value?.organization_type ?? "laboratory",
     displayName: labInfo.value?.name,
     description: labInfo.value?.description,
     type: labInfo.value?.type,
@@ -320,11 +333,13 @@ const {
     return await putLabInfo(labId, {
       description,
       name: displayName,
+      organization_type: formData.organizationType,
       type,
       logo,
     })
   },
   () => {
+    void instanceStore.load()
     const labId = labInfo.value?.id
     if (labId && !Array.isArray(labId)) {
       fetchLabInfoById(labId, () => {
