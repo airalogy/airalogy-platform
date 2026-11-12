@@ -27,35 +27,24 @@
         </div>
       </template>
       <template v-if="showIcon" #title>
-        <div class="mt-5 flex items-center">
-          <project-icon />
+        <div class="mt-5 min-w-0 flex items-start gap-3 sm:items-center">
+          <project-icon class="shrink-0" />
           <template v-if="projectInfo">
-            <router-link
-              v-if="authStore.isLogin && !instanceStore.isSingleLab"
-              :to="{ name: 'lab-projects', params: { labUid: projectInfo?.lab_uid } }"
-              class="ml-5 text-6 color-text-secondary"
-            >
-              {{ projectInfo?.lab_name || projectInfo?.lab_uid }}
-            </router-link>
-            <span v-else-if="!instanceStore.isSingleLab" class="ml-5 text-6 color-text-secondary">
-              {{ projectInfo?.lab_name || projectInfo?.lab_uid }}
-            </span>
-            <span v-if="!instanceStore.isSingleLab" class="mx-3 select-none text-5 color-text-secondary">/</span>
-            <h2 class="min-w-0 break-words !text-6" :class="{ 'ml-4': instanceStore.isSingleLab }">
-              {{ projectTitle }}
-            </h2>
-            <span
-              v-if="visibilityLabel"
-              class="ml-2 inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-500"
-              :class="visibilityClass"
-            >
+            <div class="min-w-0 flex-1 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-3">
+              <router-link
+                v-if="authStore.isLogin && !instanceStore.isSingleLab"
+                :to="{ name: 'lab-projects', params: { labUid: projectInfo.lab_uid } }"
+                class="block break-words text-sm color-text-secondary sm:text-6"
+              >{{ projectInfo.lab_name || projectInfo.lab_uid }}</router-link>
+              <span v-else-if="!instanceStore.isSingleLab" class="block break-words text-sm color-text-secondary sm:text-6">
+                {{ projectInfo.lab_name || projectInfo.lab_uid }}
+              </span>
+              <span v-if="!instanceStore.isSingleLab" class="hidden select-none text-5 color-text-secondary sm:inline">/</span>
+              <h2 class="m-0 min-w-0 break-words !text-xl sm:!text-6">{{ projectTitle }}</h2>
+            </div>
+            <span v-if="visibilityLabel" class="inline-flex shrink-0 items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-500" :class="visibilityClass">
               {{ visibilityLabel }}
             </span>
-            <!-- <edit-project-modal
-              v-if="projectInfo?.create_user_id === userInfo.id"
-              :item="projectInfo"
-              @modal:edit-project="handleEditProject"
-            /> -->
           </template>
           <n-skeleton v-else width="20rem" class="mx-4" />
         </div>
@@ -110,6 +99,7 @@ const showIcon = computed(
     route.name === "lab-projects"
     || route.name === "lab-members"
     || route.name === "project-protocols"
+    || route.name === "project-work"
     || route.name === "project-overview"
     || route.name === "project-documents"
     || route.name === "project-materials"
@@ -143,6 +133,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
   if (authStore.isLogin) {
     tabs.unshift({ name: "project-overview", tab: $t("page.researchDocuments.overview") })
     tabs.push(
+      { name: "project-work", tab: $t("page.projectWork.title") },
       { name: "project-documents", tab: $t("page.documentUx.documents") },
       { name: "project-materials", tab: $t("page.researchDocuments.materials") },
       { name: "project-knowledge", tab: $t("page.knowledge.title") },

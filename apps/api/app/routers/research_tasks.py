@@ -19,6 +19,7 @@ from app.database import DBSession
 from app.models.knowledge import KnowledgeItem, KnowledgeState, OwnerScope, Visibility
 from app.models.lab import Lab
 from app.models.project import Project
+from app.models.project_work import ProjectWork
 from app.models.protocol import Protocol, ProtocolKind
 from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
@@ -477,6 +478,8 @@ async def _task_context(
     await require_research_capability(
         db_session, user=current_user, project=project, capability=capability
     )
+    if await db_session.get(ProjectWork, task_id):
+        raise HTTPException(409, "This is a manual Project work item. Use the project-work interface; automated execution requires a separate Research Task.")
     lab = await db_session.get(Lab, task.lab_id)
     if lab is None:
         raise HTTPException(status_code=404, detail="Lab not found")
@@ -2542,7 +2545,7 @@ async def list_research_tasks(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
-    conditions = [ResearchTask.archived_at.is_(None)]
+    conditions = [ResearchTask.archived_at.is_(None), ~select(ProjectWork.task_id).where(ProjectWork.task_id == ResearchTask.id).exists()]
     if status:
         conditions.append(ResearchTask.status.in_(status))
     if project_id is not None:

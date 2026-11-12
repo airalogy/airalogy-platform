@@ -111,6 +111,9 @@ const options = computed(() => [
     value => ({ value, label: t(`page.researchDocuments.${value}`) }),
   ),
 ])
+function kindLabel(value: string) {
+  return options.value.find(option => option.value === value)?.label || value
+}
 function params(targetPage = page.value) {
   return { q: queryText(route.query.q), kind: queryText(route.query.kind), page: targetPage, page_size: props.compact ? 5 : 20, order: queryText(route.query.order) === "recorded" ? "recorded" as const : "updated" as const, date_from: queryText(route.query.from) || undefined, date_to: queryText(route.query.to) || undefined, time_zone: documentTimeZone() }
 }
@@ -239,7 +242,7 @@ watch([reading, items], async () => {
     </div>
     <template v-if="!compact">
       <div v-if="hasFilters" class="flex flex-wrap items-center gap-2">
-        <span class="aira-type-meta">{{ [kind ? t(`page.researchDocuments.${kind}`) : '', from, to && to !== from ? `– ${to}` : ''].filter(Boolean).join(' · ') }}</span>
+        <span class="aira-type-meta">{{ [kind ? kindLabel(kind) : '', from, to && to !== from ? `– ${to}` : ''].filter(Boolean).join(' · ') }}</span>
         <n-button text @click="kind = ''; from = ''; to = ''; search()">
           {{ t('page.documentUx.clearFilters') }}
         </n-button>
@@ -340,7 +343,7 @@ watch([reading, items], async () => {
         {{ t("page.researchDocuments.importHint") }} ·
         {{
           t(
-            `page.researchDocuments.scope${scope.scope_type[0].toUpperCase()}${scope.scope_type.slice(1)}`,
+            `page.researchDocuments.scope${scope.scope_type[0].toUpperCase()}${scope.scope_type.slice(1)}` as I18n.I18nKey,
           )
         }}
       </p>

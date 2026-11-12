@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Add a Protocol-independent Project R&D workbench (Issue #26 P0) on existing ResearchTask/ResearchEvent identities: requirements, tasks, issues, milestones, assignment, dependencies, list/board/plan views, project documents and versioned evidence, immutable discussion/decisions/test/acceptance, permission-aware Log activity and home assignment inbox. Add revision conflicts, local input recovery and migration `0086_project_work`; AI remains optional.
+
 - Separate organization information from the administrator's personal account during initial setup. Show the deployment-defined organization UID, distinguish it from the editable name and internal UUID, validate the personal username separately, and reject stale UID confirmations before creating any account or organization. Keep existing bootstrap clients and read-only organization identifiers compatible.
 
 - Add the compatible Organization foundation (Issue #25 P0): company/institution/laboratory types, single-organization setup, generic workspace terminology and contributor invitation defaults. Preserve Lab UUIDs, ownership, authorization, old routes/configuration and Protocol IDs; add organization APIs and migration `0085_organization_foundation`. Reuse the existing single-instance deployment scripts; no SDK or public-ID format change.

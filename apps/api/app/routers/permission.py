@@ -266,6 +266,11 @@ async def check_user_permission(
             db_session, user_id=user.id, project_id=project.id
         )
 
+    # Explicit project members can open its metadata/workspace independently of
+    # Protocol access. Keep every Protocol, Record and file permission unchanged.
+    if action == "read_project" and user is not None and role is not None:
+        return role
+
     if role is None:
         if project.type == ProjectType.PRIVATE:
             raise HTTPException(status_code=400, detail="Permission denied")

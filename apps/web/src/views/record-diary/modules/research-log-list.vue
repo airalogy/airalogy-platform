@@ -66,7 +66,7 @@
         </template>
         <template v-else>
           <p class="aira-type-body aira-text-secondary mb-0 mt-3">
-            {{ item.summary }}
+            {{ item.asset?.type === "project_work" ? $t(`page.projectWork.events.${item.event_type.replace("work.", "")}` as I18n.I18nKey) : item.summary }}
           </p>
           <footer v-if="assetRoute(item)" class="mt-4 flex justify-end">
             <router-link :to="assetRoute(item)!">
@@ -103,6 +103,8 @@ function eventLabel(item: ResearchLogTimelineItem) {
     const suffix = item.kind.charAt(0).toUpperCase() + item.kind.slice(1)
     return $t(`page.recordDiary.kind${suffix}` as I18n.I18nKey)
   }
+  if (item.asset?.type === "project_work")
+    return $t(`page.projectWork.events.${item.event_type.replace("work.", "")}` as I18n.I18nKey)
   const eventKey = item.event_type.replaceAll(".", "_")
   const key = (item.event_type.includes(".")
     ? `page.recordDiary.event.${eventKey}`
@@ -136,6 +138,8 @@ function assetRoute(item: ResearchLogSystemEvent): RouteLocationRaw | null {
   const asset = item.asset
   if (!asset)
     return null
+  if (asset.type === "project_work" && item.lab && item.project)
+    return { name: "project-work", params: { labUid: item.lab.uid, projectUid: item.project.uid }, query: { item: asset.id } }
   if (asset.type === "research_task")
     return { name: "research-task-detail", params: { taskId: asset.id } }
   if (asset.type === "knowledge")

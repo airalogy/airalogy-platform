@@ -19,6 +19,7 @@ export const projectInfoRoute: CustomRoute<ProjectInfoNameKey> = {
   redirect: { name: "project-overview" },
   component: () => import("@/views/project/layout.vue"),
   children: [
+    { path: "work", name: "project-work", meta: { ...createProjectMeta("R&D Work", "page.projectWork.title"), allowGuest: false }, component: () => import("@/views/project-work/index.vue") },
     {
       path: "overview",
       name: "project-overview",

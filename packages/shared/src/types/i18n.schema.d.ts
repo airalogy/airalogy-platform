@@ -1049,6 +1049,7 @@ declare namespace I18n {
             documents: string
             materials: string
             knowledge: string
+            work: string
           }
           resources: string
           pinnedHint: string
@@ -5429,6 +5430,138 @@ declare namespace I18n {
         owner: string
         administrator: string
         logPublisher: string
+      }
+      projectWork: {
+        title: string
+        new: string
+        detail: string
+        intro: string
+        titleLabel: string
+        kind: string
+        state: string
+        priority: string
+        goal: string
+        acceptance: string
+        assignee: string
+        unassigned: string
+        formerMember: string
+        collaborators: string
+        start: string
+        end: string
+        blocker: string
+        nextStep: string
+        dependencies: string
+        evidence: string
+        linkEvidence: string
+        evidenceHint: string
+        invalidUrl: string
+        url: string
+        linkLabel: string
+        sourceUnavailable: string
+        noSources: string
+        exactSnapshot: string
+        failed: string
+        required: string
+        unavailableSave: string
+        changeReason: string
+        saved: string
+        activitySaved: string
+        activity: string
+        activityBody: string
+        occurredAt: string
+        result: string
+        rationale: string
+        decisionScope: string
+        supersedes: string
+        replacesDecision: string
+        post: string
+        completionHint: string
+        version: string
+        unsaved: string
+        destination: string
+        localDraft: string
+        restore: string
+        restored: string
+        compare: string
+        compareHint: string
+        keepMine: string
+        compareAccepted: string
+        leave: string
+        saveFirst: string
+        createDocument: string
+        documentHint: string
+        documentCreated: string
+        more: string
+        reload: string
+        search: string
+        mine: string
+        view: string
+        count: string
+        inProgressCount: string
+        blockedCount: string
+        empty: string
+        emptyHint: string
+        planHint: string
+        noPlan: string
+        unplanned: string
+        myWork: string
+        open: string
+        noAssigned: string
+        states: {
+          pending: string
+          in_progress: string
+          blocked: string
+          in_review: string
+          done: string
+          cancelled: string
+        }
+        kinds: {
+          requirement: string
+          task: string
+          bug: string
+          milestone: string
+        }
+        priorities: {
+          low: string
+          normal: string
+          high: string
+          urgent: string
+        }
+        events: {
+          created: string
+          updated: string
+          comment: string
+          progress: string
+          decision: string
+          test: string
+          acceptance: string
+        }
+        outcomes: {
+          proposed: string
+          adopted: string
+          passed: string
+          failed: string
+          inconclusive: string
+          accepted: string
+          rejected: string
+        }
+        sources: {
+          document: string
+          protocol: string
+          record: string
+          file: string
+          analysis: string
+          research_task: string
+          external: string
+        }
+        views: {
+          list: string
+          board: string
+          plan: string
+        }
+        earlierDecision: string
+        linkedWork: string
+        wrongProject: string
       }
     }
     form: {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useAuthStore } from "@/store/modules/auth"
+import WorkSummary from "@/views/project-work/work-summary.vue"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import DocumentList from "./document-list.vue"
 import MaterialLibrary from "./material-library.vue"
@@ -36,6 +37,7 @@ const materials = computed(() => route.name === "project-materials")
       }}
     </h1>
     <template v-if="auth.isLogin">
+      <work-summary v-if="overview" :project-id="scope.project_id" />
       <material-library v-if="materials" :scope="scope" />
       <document-list v-else :scope="scope" :scope-name="projectInfo?.name" :compact="overview" />
       <router-link v-if="overview" :to="{ name: 'project-documents', params: route.params }" class="inline-block text-primary">

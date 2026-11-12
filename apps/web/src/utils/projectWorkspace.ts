@@ -23,7 +23,7 @@ export function projectVisitForRoute(route: RouteContext): ProjectVisitInput | n
   if (!base.lab_uid || !base.project_uid)
     return null
   const section = name.replace("project-", "")
-  if (["overview", "protocols", "documents", "materials", "knowledge"].includes(section))
+  if (["overview", "protocols", "documents", "materials", "knowledge", "work"].includes(section))
     return { ...base, kind: "project", section: section as ProjectVisitInput["section"] }
   const protocol_uid = text(route.params.protocolUid)
   if (!protocol_uid)

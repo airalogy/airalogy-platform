@@ -69,6 +69,7 @@ from .pinned_items import router as pinned_items_router
 from .project_analyses import router as project_analyses_router
 from .project_groups import router as project_groups_router
 from .projects import router as projects_router
+from .project_work import router as project_work_router
 from .protocol_folders import router as protocol_folders_router
 from .protocol_users import router as protocol_users_router
 from .protocol_versions import router as protocol_versions_router
@@ -337,6 +338,7 @@ app.include_router(users_router)
 app.include_router(labs_router)
 app.include_router(organizations_router)
 app.include_router(projects_router)
+app.include_router(project_work_router)
 app.include_router(groups_router)
 app.include_router(protocols_router)
 app.include_router(protocol_ratings_router)

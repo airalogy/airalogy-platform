@@ -331,3 +331,8 @@ test("scenario kit changes select real database integration checks", () => {
   assert.ok(suite.includes("tests/test_scenario_kits_postgres.py"))
   assert.ok(suite.includes("tests/test_scenario_kit_migrations_postgres.py"))
 })
+
+test("project R&D changes retain real database acceptance", () => {
+  for (const file of ["apps/api/app/routers/project_work.py", "apps/api/app/models/project_work.py", "apps/api/app/services/project_work_contracts.py", "apps/api/tests/test_project_work.py", "apps/api/migrations/versions/0086_project_work.py"])
+    includes([file], ["api-tests", "research-integration"])
+})

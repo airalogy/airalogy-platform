@@ -32,7 +32,7 @@ class ProjectVisitRequest(BaseModel):
     kind: Literal[
         "project", "protocol", "recording", "record", "document", "editor"
     ] = "project"
-    section: Literal["overview", "protocols", "documents", "materials", "knowledge"] = (
+    section: Literal["overview", "protocols", "documents", "materials", "knowledge", "work"] = (
         "overview"
     )
     project_id: UUID | None = None
@@ -108,6 +108,10 @@ async def resolve_target(db, user, request):
                 project_id=project.id,
                 capability="log.read",
             )
+        if request.section == "work":
+            from app.services.project_work import project_context
+
+            await project_context(db, user, project.id)
         if request.section == "knowledge":
             # Use the same scope gate as the Knowledge listing.
             from app.services.knowledge import resolve_scope

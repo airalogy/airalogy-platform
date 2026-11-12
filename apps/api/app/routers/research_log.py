@@ -478,7 +478,11 @@ def _event_selects(scope: LogScopeContext):
             ResearchTask.project_id,
         )
         .join(ResearchTask, ResearchTask.id == ResearchEvent.task_id)
-        .where(research_scope_condition)
+        .where(research_scope_condition, or_(
+            ~ResearchEvent.kind.like("work.%"),
+            ResearchEvent.kind.in_(["work.created", "work.progress", "work.decision", "work.test", "work.acceptance"]),
+            ResearchEvent.payload["state_changed"].as_boolean().is_(True),
+        ))
     )
     return [manual, record, protocol, knowledge_created, knowledge_reviewed, research]
 
@@ -578,6 +582,20 @@ async def _system_event_payload(
         task = await db_session.get(ResearchTask, event.task_id)
         if task is None:
             return None
+        if event.kind.startswith("work."):
+            from app.services.project_work import project_context
+
+            try:
+                await project_context(db_session, current_user, task.project_id)
+            except HTTPException as error:
+                if error.status_code in {403, 404}:
+                    return None
+                raise
+            # The Log links to authoritative work history. It does not duplicate
+            # private evidence labels, request receipts or mutable document bodies.
+            return {**base, "title": task.title, "summary": event.kind,
+                    "payload": {"outcome": event.payload.get("outcome"), "actual_occurred_at": event.payload.get("occurred_at")},
+                    "asset": {"type": "project_work", "id": str(task.id), "version": ""}}
         return {
             **base,
             "title": task.title,
@@ -647,6 +665,17 @@ async def get_research_log_timeline(
     )
     event_union = union_all(*_event_selects(scope)).subquery("research_log_events")
     conditions = []
+    if source in {"all", "research"} and scope.scope_type != ResearchLogScope.PERSONAL:
+        from app.services.research_runtime import has_research_capability
+
+        projects = (await db_session.scalars(select(Project).where(
+            Project.id == scope.project_id if scope.project_id else Project.lab_id == scope.lab_id,
+            Project.deleted_at.is_(None),
+        ))).all()
+        readable = [project.id for project in projects if await has_research_capability(
+            db_session, user=current_user, project=project, capability="research.read"
+        )]
+        conditions.append(or_(event_union.c.source_type != "research", event_union.c.project_id.in_(readable)))
     if source in {"all", "knowledge"}:
         hidden_knowledge = await _hidden_analysis_knowledge_ids(
             db_session, current_user, scope

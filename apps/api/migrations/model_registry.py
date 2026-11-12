@@ -33,6 +33,7 @@ MODEL_MODULES = [
     "app.models.oauth",
     "app.models.pinned_item",
     "app.models.project",
+    "app.models.project_work",
     "app.models.project_visit",
     "app.models.project_group",
     "app.models.protocol",

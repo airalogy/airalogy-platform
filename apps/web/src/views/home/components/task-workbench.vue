@@ -12,6 +12,7 @@ import {
 } from "@/service/api/research-tasks"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
+import WorkSummary from "@/views/project-work/work-summary.vue"
 import ResearchApprovalActions from "@/views/research/components/research-approval-actions.vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
@@ -108,6 +109,7 @@ onBeforeUnmount(() => sequence++)
       </n-button>
     </div>
     <project-workspaces :pins="pins" :pinning-keys="pinningKeys" @toggle-pin="emit('togglePin', $event)" />
+    <work-summary />
     <div class="grid min-w-0 gap-4 lg:grid-cols-2">
       <section class="min-w-0 border border-gray-200 rounded-xl p-4" data-testid="home-attention-panel">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">

@@ -54,3 +54,5 @@ History is private to the account and retains up to 50 projects; project pins re
 - [Import and export](./import-export) covers CSV import and governed Record exports.
 
 If an interface option described here is absent, it is usually disabled by the deployment profile or unavailable to your current role. Ask the relevant Lab or instance administrator rather than creating a parallel copy of the data elsewhere.
+
+- [Coordinate R&D work](./rd-workbench.md)
