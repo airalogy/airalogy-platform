@@ -31,9 +31,9 @@ from app.models.project_group import (
 from app.models.protocol import Protocol, ProtocolKind
 from app.models.user import User
 from app.models.user_alias import UserAlias
-from app.routers.utils import UidStr
-from app.services.single_lab import revoke_lab_account_tokens
+from app.routers.utils import OrganizationNameStr, UidStr
 from app.services.access_control import utcnow_naive
+from app.services.single_lab import revoke_lab_account_tokens
 
 from .depends import CurrentUser, get_current_user
 
@@ -328,9 +328,7 @@ class LabAddUserParams(BaseModel):
 
 class LabCreateParams(BaseModel):
     organization_type: OrganizationType = OrganizationType.LABORATORY
-    name: Annotated[
-        str, StringConstraints(max_length=64, min_length=3, strip_whitespace=True)
-    ]
+    name: OrganizationNameStr
     uid: UidStr
     description: Annotated[
         str, StringConstraints(max_length=128, strip_whitespace=True)
@@ -397,12 +395,7 @@ class LabUpdateParams(BaseModel):
     description: Annotated[
         str, StringConstraints(max_length=128, strip_whitespace=True)
     ]
-    name: (
-        Annotated[
-            str, StringConstraints(max_length=64, min_length=3, strip_whitespace=True)
-        ]
-        | None
-    ) = None
+    name: OrganizationNameStr | None = None
     logo: str | None = None
 
 

@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { createPasswordValidator, useFormRules, useNaiveForm } from "@/composables/useForm"
+import { createOrganizationNameValidator, createPasswordValidator, useFormRules, useNaiveForm } from "@/composables/useForm"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { type OrganizationType, postInstanceBootstrap } from "@/service/api/instance"
 import { useAuthStore } from "@/store/modules/auth"
@@ -143,7 +143,7 @@ const model = reactive({
 
 const rules = {
   organizationName: instanceStore.status.deployment_mode === "single_organization"
-    ? [{ required: true, min: 3, max: 64, message: $t("page.organization.nameRequired"), trigger: ["blur", "input"] }]
+    ? createOrganizationNameValidator(() => $t("page.organization.name"))
     : [],
   setupToken: instanceStore.status.bootstrap_token_required ? [defaultRequiredRule] : [],
   name: [defaultRequiredRule],
@@ -174,7 +174,7 @@ async function handleSubmit() {
     const { data, error } = await postInstanceBootstrap({
       ...model,
       organizationUid: instanceStore.status.deployment_mode === "single_organization" ? organizationUid : undefined,
-      organizationName: instanceStore.status.deployment_mode === "single_organization" ? model.organizationName : undefined,
+      organizationName: instanceStore.status.deployment_mode === "single_organization" ? model.organizationName.trim() : undefined,
       organizationType: instanceStore.status.deployment_mode === "single_organization" ? model.organizationType : undefined,
     })
     if (!data || error) {

@@ -31,7 +31,7 @@ from app.services.single_lab import (
 )
 
 from .depends import CurrentUser, create_access_token
-from .utils import UidStr
+from .utils import OrganizationNameStr, UidStr
 
 router = APIRouter(prefix="/instance", tags=["instance"])
 
@@ -124,12 +124,7 @@ class BootstrapParams(BaseModel):
     organization_uid: (
         Annotated[str, StringConstraints(min_length=3, max_length=32)] | None
     ) = None
-    organization_name: (
-        Annotated[
-            str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)
-        ]
-        | None
-    ) = None
+    organization_name: OrganizationNameStr | None = None
     organization_type: OrganizationType | None = None
     setup_token: str = ""
     username: UidStr

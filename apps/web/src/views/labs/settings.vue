@@ -5,6 +5,7 @@
       ref="formRef"
       :model="model"
       :rules="rules"
+      :disabled="!canDeleteLab"
       size="large"
       label-width="auto"
       class="size-full flex-1"
@@ -57,7 +58,8 @@
           <n-input
             v-model:value="model.displayName"
             type="text"
-            :maxlength="40"
+            :maxlength="64"
+            data-testid="organization-settings-name"
             required
             show-count
             :placeholder="$t('page.labs.settingsPage.namePlaceholder')"
@@ -90,7 +92,7 @@
             <n-button
               size="medium"
               type="primary"
-              :disabled="submitting || !isDirty"
+              :disabled="!canDeleteLab || submitting || !isDirty"
               :loading="submitting"
               class="!px-6"
               @click="handleConfirmWrapper"
@@ -100,7 +102,9 @@
           </div>
         </template>
       </settings-card>
+    </n-form>
 
+    <template v-if="labInfo">
       <kit-catalog :lab-id="labInfo.id" class="my-6" />
 
       <!-- Danger Zone -->
@@ -182,7 +186,7 @@
           </div>
         </div>
       </settings-card>
-    </n-form>
+    </template>
     <external-access-policy v-if="labInfo?.id" :lab-id="String(labInfo.id)" />
 
     <!-- Delete Confirmation Modal -->
@@ -272,6 +276,7 @@ import {
   useLogoUpload,
   useSettingsForm,
 } from "@/components/common/settings"
+import { createOrganizationNameValidator } from "@/composables/useForm"
 import { useLabPermissions } from "@/composables/useLabPermissions"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
@@ -332,7 +337,7 @@ const {
     const { description, displayName, type, logo } = formData
     return await putLabInfo(labId, {
       description,
-      name: displayName,
+      name: displayName?.trim(),
       organization_type: formData.organizationType,
       type,
       logo,
@@ -363,7 +368,7 @@ const {
 // Form validation rules
 const rules = {
   ...getBaseRules("Lab"),
-  displayName: getBaseRules("Lab").displayName,
+  displayName: createOrganizationNameValidator(() => $t("page.labs.settingsPage.nameLabel")),
 }
 
 // Logo upload

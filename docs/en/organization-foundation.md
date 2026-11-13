@@ -17,7 +17,7 @@ bash deploy/single-lab/scripts/generate-env.sh \
   --tls-email admin@example.org
 ```
 
-Follow the [single-instance deployment guide](./single-lab-deployment.md) for network preflight, backups and startup. This generates `DEPLOYMENT_MODE=single_organization`. `/setup` accepts the organization name and type and creates the first administrator; upload the logo in **More → Organization management → Settings**.
+Follow the [single-instance deployment guide](./single-lab-deployment.md) for network preflight, backups and startup. This generates `DEPLOYMENT_MODE=single_organization`. `/setup` accepts the organization name and type and creates the first administrator; upload the logo in **Organization management → Settings**.
 
 The name is editable display text. The organization identifier (UID, such as `example_rd`) comes from `SINGLE_ORGANIZATION_UID`, defaulting to `main`. Setup shows this identifier read-only for confirmation and checks the submitted value against current configuration. A mismatch rejects setup without creating accounts or organizations. To change the identifier, update configuration and restart before initial setup. After creation it remains read-only because links and Protocol identifiers use it. The internal database UUID is generated automatically. Setup does not edit deployment configuration or rename an existing UID.
 
@@ -52,3 +52,5 @@ To use an existing single-lab instance as a company workspace, preserve its orig
 Compare UUIDs, member/project counts, grants and version references on the isolated upgrade copy. Restore a verified database recovery point with matching application artifacts when needed; downgrading refuses to discard non-laboratory organization types. Account for writes made after cutover. Switching the application image alone is not database recovery.
 
 Local acceptance covers historical-schema upgrade/downgrade, foreign-key preservation, legacy/canonical API authorization parity, company bootstrap, invitation defaults, private document isolation and browser workflows for both profiles. Synthetic tests do not replace the target deployment's backup/restore rehearsal.
+
+Organization names accept 1–64 characters after trimming surrounding whitespace. URL identifiers and personal usernames retain their own rules. Organization owners/managers have a dedicated header entry (a first-level menu item on mobile); ordinary members keep their existing read-only member links. Personal account settings and system administration remain separate.

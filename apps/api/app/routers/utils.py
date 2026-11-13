@@ -21,6 +21,10 @@ def no_double_underscore(v: str) -> str:
 
 
 # type alias
+OrganizationNameStr = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
+
 UUIDStr = (
     Annotated[
         str,

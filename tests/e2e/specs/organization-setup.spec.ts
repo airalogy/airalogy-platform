@@ -56,7 +56,7 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
       await page.screenshot({ path: testInfo.outputPath(`setup-${locale}-${width}.png`), fullPage: true })
     }
-    await page.getByTestId("setup-organization-name").locator("input").fill("Synthetic Renamed Company")
+    await page.getByTestId("setup-organization-name").locator("input").fill("  研  ")
     await page.getByPlaceholder(labels.administratorNamePlaceholder, { exact: true }).fill("Synthetic Owner")
     const username = page.getByPlaceholder(labels.personalUsernamePlaceholder, { exact: true })
     await username.fill("synthetic_company")
@@ -66,18 +66,29 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
     await page.getByPlaceholder(labels.email, { exact: true }).fill("owner@example.org")
     await page.getByPlaceholder(labels.password, { exact: true }).fill("Synthetic123!")
     await page.getByPlaceholder(labels.confirmPassword, { exact: true }).fill("Synthetic123!")
+    let submissions = 0
+    page.on("request", (request) => {
+      if (request.url().endsWith("/api/instance/bootstrap"))
+        submissions++
+    })
+    const nameInput = page.getByTestId("setup-organization-name").locator("input")
+    await nameInput.fill("   ")
+    await page.getByRole("button", { name: labels.completeSetup, exact: true }).click()
+    await expect(organization.locator(".n-form-item-feedback__line")).toBeVisible()
+    expect(submissions).toBe(0)
+    await nameInput.fill("  研  ")
     const submission = page.waitForRequest(r => r.url().endsWith("/api/instance/bootstrap"))
     await page.getByRole("button", { name: labels.completeSetup, exact: true }).click()
     const request = await submission
     expect(request.postDataJSON()).toMatchObject({
       organization_uid: "synthetic_company",
-      organization_name: "Synthetic Renamed Company",
+      organization_name: "研",
       organization_type: "company",
       name: "Synthetic Owner",
       username: "synthetic_owner",
     })
     await expect(page).toHaveURL(/\/setup$/)
     await expect(identifier).toHaveValue("synthetic_company")
-    await expect(page.getByTestId("setup-organization-name").locator("input")).toHaveValue("Synthetic Renamed Company")
+    await expect(page.getByTestId("setup-organization-name").locator("input")).toHaveValue("  研  ")
   })
 }

@@ -47,7 +47,7 @@
             <n-input
               v-model:value="model.displayName"
               type="text"
-              :maxlength="30"
+              :maxlength="64"
               required
               show-count
               placeholder="Enter lab display name"
@@ -99,9 +99,11 @@
 
 <script setup lang="ts">
 import type { ICustomSelectOption } from "@/components/common/global-add-member.vue"
-
 import type { SelectOption } from "naive-ui/es/select"
 import { useBoolean, useFormRules, useLoading, useNaiveForm, useShowModal } from "@/composables"
+
+import { createOrganizationNameValidator } from "@/composables/useForm"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { putLabInfo } from "@/service/api/labs"
 import { getPinyin } from "@/utils/zhCharToPinyin"
 
@@ -111,12 +113,6 @@ import { isEqual } from "lodash-es"
 import { type UploadFileInfo, type UploadInst, useDialog } from "naive-ui"
 import { type ButtonProps, NButton } from "naive-ui/es/button"
 
-interface IProps {
-  buttonType?: "text" | "ghost"
-  showIcon?: boolean
-  buttonProps?: ButtonProps & { class?: string }
-  item?: Api.Lab.LabInfo | null
-}
 const props = withDefaults(defineProps<IProps>(), {
   buttonType: "ghost",
   showIcon: false,
@@ -126,6 +122,14 @@ const props = withDefaults(defineProps<IProps>(), {
 
 const emits = defineEmits<IEmits>()
 
+const { t: $t } = useOrganizationTranslation()
+
+interface IProps {
+  buttonType?: "text" | "ghost"
+  showIcon?: boolean
+  buttonProps?: ButtonProps & { class?: string }
+  item?: Api.Lab.LabInfo | null
+}
 interface FormModel {
   name?: string
   displayName?: string
@@ -152,27 +156,7 @@ interface IEmits {
 }
 
 const rules: Partial<Record<keyof FormModel, App.Global.FormRule[]>> = {
-  displayName: [
-    defaultRequiredRule,
-    {
-      min: 1,
-      max: 40,
-      message: "Lab display name must be between 1 and 40 characters long",
-      trigger: ["change", "blur"],
-    },
-    {
-      validator: (rule, value, callback) => {
-        if (/^[_-]|[_-]$/.test(value)) {
-          return new Error("Lab display name should not start or end with a hyphen")
-        }
-        if (/[_-]{2,}/.test(value)) {
-          return new Error("Hyphens cannot appear consecutively")
-        }
-        return true
-      },
-      trigger: ["change", "blur"],
-    },
-  ],
+  displayName: createOrganizationNameValidator(() => $t("page.labs.settingsPage.nameLabel")),
   name: [
     defaultRequiredRule,
     {
@@ -278,7 +262,7 @@ async function handleConfirm() {
   const { description, displayName, type, logo } = model.value
   const { data, error } = await putLabInfo(labId, {
     description,
-    name: displayName,
+    name: displayName?.trim(),
     type,
     logo,
   })

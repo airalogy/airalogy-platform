@@ -10,7 +10,7 @@ export const useSingleLabWorkspace = createSharedComposable(() => {
   const instance = useInstanceStore()
   const info = shallowRef<Api.Lab.LabInfo | null>(null)
   let generation = 0
-  watch(() => [instance.isSingleLab, instance.lab?.uid, auth.token, auth.userInfo.id], async () => {
+  watch(() => [instance.isSingleLab, instance.lab, auth.token, auth.userInfo.id], async () => {
     const current = ++generation
     info.value = null
     if (!instance.isSingleLab || !instance.lab || !auth.isLogin || !auth.userInfo.id)

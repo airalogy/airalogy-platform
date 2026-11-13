@@ -5299,7 +5299,7 @@
       "uid": "Organization identifier (UID)",
       "setupUidHint": "Set by deployment configuration and used in links and Protocol identifiers. Confirm it before continuing; to change it, update deployment configuration before setup. It cannot be changed directly after creation. The display name remains editable.",
       "type": "Organization type",
-      "nameRequired": "Enter an organization name of 3–64 characters",
+      "nameRequired": "Enter a non-empty organization name, up to 64 characters",
       "typeHint": "Type controls terminology only. It does not change permissions, existing data or available capabilities.",
       "types": {
         "company": "Company",

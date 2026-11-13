@@ -24,10 +24,9 @@ test("company home, navigation and management remain usable at mobile and deskto
     await page.screenshot({ path: testInfo.outputPath(`company-home-${width}.png`), fullPage: true, animations: "disabled" })
   }
   await page.setViewportSize({ width: 1440, height: 980 })
-  await page.getByTestId("app-shell-header").getByRole("button", { name: "更多", exact: true }).click()
-  await expect(page.getByText("组织管理", { exact: true })).toBeVisible()
-  await page.getByText("组织管理", { exact: true }).hover()
-  await page.getByText("设置", { exact: true }).last().click()
+  await page.getByTestId("organization-management-entry").click()
+  await expect(page).toHaveURL(/\/members$/)
+  await page.locator('.n-tabs-tab[data-name="lab-settings"]').click()
   await expect(page.getByRole("heading", { name: "组织管理", exact: true })).toBeVisible()
   await expect(page.getByText("组织类型", { exact: true })).toBeVisible()
   await expect(page.getByText("组织名称", { exact: true })).toBeVisible()

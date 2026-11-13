@@ -67,10 +67,20 @@
       </n-button>
     </n-dropdown>
     <template v-else>
+      <n-button
+        v-if="showOrganizationManagement"
+        :theme-overrides="buttonThemeOverrides"
+        class="ml-auto mr-2 h-9 rounded-2 px-3"
+        data-testid="organization-management-entry"
+        @click="handleSelect('organization-management')"
+      >
+        {{ $t("page.singleLabWorkspace.management") }}
+      </n-button>
       <n-dropdown trigger="click" :options="localeDropdownOptions" @select="handleLocaleSelect">
         <n-button
           :theme-overrides="buttonThemeOverrides"
-          class="ml-auto mr-2 h-[36px] rounded-2 px-3"
+          class="mr-2 h-[36px] rounded-2 px-3"
+          :class="{ 'ml-auto': !showOrganizationManagement }"
           :aria-label="currentLocaleLabel"
         >
           <template #icon>
@@ -151,6 +161,7 @@ const containerStyle = computed(() =>
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 const { info: workspaceInfo, canManageLab } = useSingleLabWorkspace()
+const showOrganizationManagement = computed(() => authStore.isLogin && instanceStore.isSingleLab && Boolean(instanceStore.lab) && canManageLab.value)
 const appStore = useAppStore()
 const { routerPushByKey } = useRouterPush()
 
@@ -162,11 +173,13 @@ const discoveryOptions = computed<DropdownOption[]>(() => [
   ...(instanceStore.isSingleLab && instanceStore.lab
     ? [
         ...singleLabSharedEntries.map(entry => ({ label: $t(entry.label), key: entry.name })),
-        {
-          label: $t(canManageLab.value ? "page.singleLabWorkspace.management" : "page.singleLabWorkspace.membersAccess"),
-          key: "lab-management",
-          children: singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value).map(entry => ({ label: $t(entry.label), key: entry.name })),
-        },
+        ...(!canManageLab.value
+          ? [{
+              label: $t("page.singleLabWorkspace.membersAccess"),
+              key: "lab-management",
+              children: singleLabManagementEntries(instanceStore.isStructuredLab, false).map(entry => ({ label: $t(entry.label), key: entry.name })),
+            }]
+          : []),
         { type: "divider" as const, key: "workspace-divider" },
       ]
     : []),
@@ -183,6 +196,7 @@ const menuOptions = computed<DropdownOption[]>(() => {
   }
 
   return [
+    ...(showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
     ...(instanceStore.aiEnabled ? [{ label: $t("common.chat"), key: "chat" }] : []),
     ...discoveryOptions.value,
     { label: $t("common.profile"), key: "profile" },
@@ -202,6 +216,10 @@ async function handleSelect(key: string | number) {
     return
   }
   switch (key) {
+    case "organization-management":
+      if (showOrganizationManagement.value && instanceStore.lab)
+        await routerPushByKey("lab-members", { params: { labUid: instanceStore.lab.uid } })
+      break
     case "login":
     case "sign-up":
       await routerPushByKey(key)

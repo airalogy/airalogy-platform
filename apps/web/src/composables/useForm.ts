@@ -335,6 +335,20 @@ export function createDisplayNameValidator(fieldName: MaybeRefOrGetter<string>):
   return [requiredRule, lengthRule, hyphenRule]
 }
 
+/** Organization display text is independent of the URL/account identifier. */
+export function createOrganizationNameValidator(fieldName: MaybeRefOrGetter<string>): FormItemRule[] {
+  return [{
+    required: true,
+    trigger: ["blur", "input"],
+    validator: (_rule, value) => {
+      const length = Array.from(normalizeFormStringValue(value).trim()).length
+      if (length < 1 || length > 64)
+        return new Error($t("form.displayName.length", { field: toValue(fieldName), min: 1, max: 64 }))
+      return true
+    },
+  }]
+}
+
 export function createPasswordValidator(): FormItemRule[] {
   const appStore = useAppStore()
   const uppercaseValidator: FormItemRuleValidator = (_rule, value) => /[A-Z]/.test(normalizeFormStringValue(value))

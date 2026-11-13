@@ -12,12 +12,12 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from fastapi import FastAPI
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import config
 from app.database import get_db_session
 from app.models.base import Base
-from app.models.lab import Lab, LabUser
+from app.models.lab import LabUser
 from app.models.project import Project
 from app.routers import instance, labs, organizations
 from app.routers.depends import create_access_token
@@ -147,6 +147,24 @@ def test_canonical_and_legacy_apis_share_permissions_and_identity(monkeypatch):
                     read = await http.get(f"/{prefix}/{lab.id}", headers=owner)
                     assert read.status_code == 200, read.text
                     assert read.json()["data"]["id"] == str(lab.id)
+                for prefix in ("labs", "organizations"):
+                    for value in ("研", "公司", "  AI  "):
+                        updated = await http.put(
+                            f"/{prefix}/{lab.id}",
+                            headers=owner,
+                            json={"name": value, "description": ""},
+                        )
+                        assert updated.status_code == 200, updated.text
+                        assert updated.json()["name"] == value.strip()
+                    for value in ("", " \t\u3000 ", "研" * 65):
+                        rejected = await http.put(
+                            f"/{prefix}/{lab.id}",
+                            headers=owner,
+                            json={"name": value, "description": ""},
+                        )
+                        assert rejected.status_code == 422, rejected.text
+                    preserved = await http.get(f"/{prefix}/{lab.id}", headers=owner)
+                    assert preserved.json()["data"]["name"] == "AI"
                 member_counts = []
                 for path, key in (
                     (f"/labs/{lab.id}/users", "users"),
@@ -231,7 +249,7 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
                 assert status.json()["initialized"] is False
                 params = {
                     "setup_token": "wrong",
-                    "organization_name": "Synthetic Glasses Company",
+                    "organization_name": "  研  ",
                     "organization_type": "company",
                     "username": "owner",
                     "email": "owner@example.org",
@@ -260,7 +278,9 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
                 created = await http.post("/instance/bootstrap", json=params)
                 assert created.status_code == 200, created.text
                 data = created.json()
-                assert data["organization"]["name"] == params["organization_name"]
+                assert (
+                    data["organization"]["name"] == params["organization_name"].strip()
+                )
                 assert data["organization"]["organization_type"] == "company"
                 assert data["organization"]["uid"] == "company"
                 status = (await http.get("/instance")).json()

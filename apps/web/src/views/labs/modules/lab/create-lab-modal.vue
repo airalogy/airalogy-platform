@@ -32,7 +32,7 @@
                 <n-input
                   v-model:value="model.displayName"
                   type="text"
-                  :maxlength="40"
+                  :maxlength="64"
                   show-count
                   required
                   :placeholder="$t('page.labs.createLabModal.displayNamePlaceholder')"
@@ -141,7 +141,7 @@ import type {
   SelectRenderLabel,
   SelectRenderTag,
 } from "naive-ui/es/select"
-import { createDisplayNameValidator, createUidValidator, useBoolean, useFormRules, useLoading, useNaiveForm, useShowModal } from "@/composables"
+import { createOrganizationNameValidator, createUidValidator, useBoolean, useFormRules, useLoading, useNaiveForm, useShowModal } from "@/composables"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 
 import { checkLabUid, postNewLab } from "@/service/api/labs"
@@ -206,7 +206,7 @@ interface IEmits {
 const authStore = useAuthStore()
 
 const rules: Partial<Record<keyof FormModel, App.Global.FormRule[]>> = {
-  displayName: createDisplayNameValidator($t("page.labs.createLabModal.displayNameLabel")),
+  displayName: createOrganizationNameValidator($t("page.labs.createLabModal.displayNameLabel")),
   uid: createUidValidator({
     fieldName: $t("page.labs.createLabModal.labIdLabel"),
     checkDuplicate: checkLabUid,
@@ -491,7 +491,7 @@ async function handleConfirm() {
   startSubmit()
   try {
     const { data } = await postNewLab({
-      name: displayName,
+      name: displayName.trim(),
       uid: name,
       description,
       members: selectedMembers.value.map(({ value, role, alias }) => ({ user_id: value, role, alias })),
