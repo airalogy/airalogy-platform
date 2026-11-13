@@ -51,3 +51,12 @@ COPY --chown=deploy:deploy . .
 RUN printf '{"version":"%s","tag":"%s","commit":"%s","build_time":"%s","dirty":%s}\n' \
     "$PLATFORM_VERSION" "$GIT_TAG" "$GIT_COMMIT" "$BUILD_TIME" "$BUILD_DIRTY" \
     > app/build-info.json
+
+# Import the actual route tree using only locked production dependencies.
+# This performs no startup/lifespan work and cannot contact external services.
+RUN --network=none APP_ENV=development \
+    DATABASE_URL=postgresql+asyncpg://build:build@127.0.0.1/build \
+    SECRET_KEY=build-only-not-a-runtime-credential \
+    AES_KEY=00000000000000000000000000000000 \
+    AIRALOGY_ENDPOINT=http://127.0.0.1 REDIS_URL=redis://127.0.0.1:6379/0 \
+    python3 -c "from app.main import app; assert app.routes"

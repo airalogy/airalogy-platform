@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Include Pillow in locked production dependencies for research material image validation; import the API route tree without networking during image builds to catch missing runtime packages before deployment.
+
 - Shorten reviewed AI waiting intervals in learning videos while preserving normal-speed actions, full narration and synchronized bilingual captions; retain editing provenance in production files and reject stale cuts after re-recording.
 
 - Add opt-in, real-model Aira tutorials for Protocol creation, conversational Record filling and analysis, with Chinese narration and bilingual captions. Reject unterminated AIMD field literals during authoring, and reopen saved AI interpretations with their analysis report without another model call.

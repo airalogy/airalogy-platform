@@ -151,6 +151,7 @@ dependencies = [
     { name = "miniopy-async" },
     { name = "orjson" },
     { name = "pgvector" },
+    { name = "pillow" },
     { name = "pycryptodome" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -172,7 +173,6 @@ dev = [
     { name = "numpy" },
     { name = "openai" },
     { name = "pandas" },
-    { name = "pillow" },
     { name = "scipy" },
     { name = "sse-starlette" },
 ]
@@ -196,6 +196,7 @@ requires-dist = [
     { name = "miniopy-async", specifier = "==1.22.1" },
     { name = "orjson", specifier = "==3.11.4" },
     { name = "pgvector", specifier = "==0.4.2" },
+    { name = "pillow", specifier = "==11.1.0" },
     { name = "pycryptodome", specifier = "==3.22.0" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pydantic-settings", specifier = "==2.12.0" },
@@ -217,7 +218,6 @@ dev = [
     { name = "numpy", specifier = "==2.4.6" },
     { name = "openai", specifier = ">=2.8.0,<3" },
     { name = "pandas", specifier = "==2.2.3" },
-    { name = "pillow", specifier = "==11.1.0" },
     { name = "scipy", specifier = "==1.15.1" },
     { name = "sse-starlette", specifier = "==3.0.3" },
 ]
