@@ -1,0 +1,328 @@
+{
+  "welcome": {
+    "zh": {
+      "title": "第一次使用：从哪里开始",
+      "summary": "跟着真实平台操作：从首页进入项目，填写并保存一条实验记录，再认识文档、协议创建和表格导入入口。",
+      "requirements": [
+        "已有账号；被邀请的成员先接受邀请。",
+        "视频使用本地虚构数据。画面同时展示 AI 入口；手工填写与保存不依赖 AI。"
+      ],
+      "steps": [
+        "从首页“我的项目”打开工作项目，进入“协议”，选择已有协议并核对版本。",
+        "点击“新增记录”，填写虚构样本 DEMO-START、观察数量 12 和演示备注。",
+        "点击提交，核对项目、协议及版本；确认后打开已保存记录，刷新验证结果。",
+        "回到项目的“文档”页，预览会议记录模板和保存范围；本段仅展示入口，不创建文档。",
+        "已有表格时，打开匹配协议的记录列表，点击“批量上传”并下载模板；本段不执行导入，完整流程见 CSV 演示。",
+        "准备新实验时，项目“新建协议”提供 Aira 创建和模板入口；AI 关闭时使用模板。完整生成、修改、预览和保存见 Aira 创建协议演示。",
+        "返回首页，通过“我的项目”继续上次工作。项目内容按权限共享，保存前核对位置。"
+      ],
+      "success": "已通过真实表单保存一条虚构实验记录，并能在平台里找到文档、协议创建和 CSV 导入入口。"
+    },
+    "en": {
+      "title": "First visit: choose where to start",
+      "summary": "Follow a real Platform walkthrough: open a project, fill and save a Record, then find documents, Protocol creation and CSV import.",
+      "requirements": [
+        "An account; invited members must accept their invitation.",
+        "The local recording uses synthetic data and also shows AI entry points. Manual filling and saving do not require AI."
+      ],
+      "steps": [
+        "Open a workspace from My projects on Home, choose Protocols, then open an existing Protocol and check its version.",
+        "Choose Add Record and enter synthetic sample DEMO-START, count 12 and a demo note.",
+        "Submit after checking the project, Protocol and version. Open the saved Record and reload to verify persistence.",
+        "Return to the project’s Documents and preview Meeting notes and its destination. This introduction shows the entry without creating a document.",
+        "For spreadsheets, open the matching Protocol’s Records, choose Bulk upload and download its template. No data is imported here; follow the CSV demo for the full workflow.",
+        "New protocol offers Aira and templates; use templates when AI is disabled. Follow the Aira Protocol demo for the full generation, refinement, preview and save workflow.",
+        "Return to Home and resume through My projects. Project content follows permissions; check the destination before saving."
+      ],
+      "success": "One synthetic Record is saved through the real form, and you can locate document, Protocol creation and CSV import entry points."
+    },
+    "downloads": []
+  },
+  "first-record": {
+    "zh": {
+      "title": "填写并找回第一条 Record",
+      "summary": "从已有 Protocol 开始，填写、提交，并通过修订保留更正历史。",
+      "requirements": [
+        "已加入项目，并有填写 Record 的权限。",
+        "项目已有“我的第一条 Record”示例协议，或下载下方包由有权限的成员导入。"
+      ],
+      "steps": [
+        "进入项目 → 协议，打开示例协议，阅读说明和版本。",
+        "点击“新增记录”，填写样本标识 DEMO-001、观察数量 12 和“虚构演示数据”备注。",
+        "提交前核对必填项；草稿只保存在当前设备，不等于提交。",
+        "点击提交，核对项目、协议版本，再确认提交 Record。",
+        "点击“查看已保存记录”，刷新后仍能看到刚才的值。",
+        "如需更正，点击“修订”，将数量改为 13，填写更正原因并提交。原修订仍可查看。"
+      ],
+      "success": "Record 已保存到指定项目和协议；刷新可读，修订保留原值。"
+    },
+    "en": {
+      "title": "Submit and find your first Record",
+      "summary": "Use an existing Protocol, submit observations and preserve corrections as revisions.",
+      "requirements": [
+        "Project membership with permission to create Records.",
+        "The project contains the First Record example, or an authorized member imports the package below."
+      ],
+      "steps": [
+        "Open the project’s Protocols and read the example’s instructions and version.",
+        "Start a Record. Enter DEMO-001, observation count 12 and a note saying synthetic demonstration data.",
+        "Check required fields. A draft is stored on this device and is not a submitted Record.",
+        "Submit, verify the project and Protocol version, then confirm.",
+        "Open View saved Record and reload to check persistence.",
+        "To correct it, choose Revise, change the count to 13 and provide a correction reason. The original revision remains available."
+      ],
+      "success": "The Record persists in the selected project and Protocol, with the original values retained in revision history."
+    },
+    "downloads": ["first-record-protocol.zip", "records-template.csv"]
+  },
+  "first-document": {
+    "zh": {
+      "title": "写下第一份研究文档",
+      "summary": "无需先准备 Protocol，选择模板写下想法、观察或会议内容。",
+      "requirements": [
+        "已有账号；个人文档可直接创建。",
+        "项目或实验室文档需要相应范围的写入权限。"
+      ],
+      "steps": [
+        "从主导航进入“文档”，确认页面标题为“我的文档”。",
+        "点击“新建文档”，选择“会议记录”模板并预览结构。",
+        "填写标题“演示：样品观察讨论”，确认保存位置为个人空间，再创建。",
+        "在可视化编辑器写下观察、决定和下一步；等待“已保存”。",
+        "打开保存位置与权限说明，确认个人文档仅自己可见。",
+        "返回列表，按日期或搜索找回文档，再打开核对正文。需要团队共享时，从对应项目或实验室入口新建。"
+      ],
+      "success": "不用先创建 Protocol，也能保存并找回一份有明确归属的研究文档。"
+    },
+    "en": {
+      "title": "Write your first research document",
+      "summary": "Use a template for an idea, observation or meeting without preparing a Protocol first.",
+      "requirements": [
+        "An account; personal documents can be created directly.",
+        "Project or Lab documents require write access to that scope."
+      ],
+      "steps": [
+        "Open Documents in navigation and check that you are in My documents.",
+        "Choose New document, select Meeting notes and preview the template.",
+        "Enter Demo: sample observation discussion, confirm the personal destination, then create.",
+        "Write observations, decisions and next steps in the visual editor; wait for Saved.",
+        "Check the destination and visibility: a personal document is visible only to you.",
+        "Return to the list, search or filter by date, and reopen the content. Start from a project or Lab when creating shared work."
+      ],
+      "success": "A research document is saved and discoverable without requiring a Protocol, with clear ownership and visibility."
+    },
+    "downloads": ["meeting-note.aimd"]
+  },
+  "first-protocol": {
+    "zh": {
+      "title": "从模板建立第一个 Protocol",
+      "summary": "修改说明与字段，检查可填写效果，再保存到选定项目。",
+      "requirements": [
+        "有在目标项目创建 Protocol 的权限。",
+        "本示例为虚构入门练习；用于真实实验前需调整约束并审核。"
+      ],
+      "steps": [
+        "进入项目 → 协议 → 新建协议，选择“从模板开始”。",
+        "选择第一条 Record 模板，填写新协议名称。",
+        "在可视化编辑器修改说明，保留稳定字段 ID；调整字段时核对类型、必填和范围。",
+        "等待语法检查通过；有错误时先修正，校验通过只说明结构有效。",
+        "切到预览，用示例数据测试表单；预览值不会保存为 Record。",
+        "保存时核对实验室、项目、名称及版本；保存完成后打开 Protocol。"
+      ],
+      "success": "项目中出现可填写的新 Protocol；正式记录从该协议的记录入口创建。"
+    },
+    "en": {
+      "title": "Create your first Protocol from a template",
+      "summary": "Edit instructions and fields, preview the form, then save it to a project.",
+      "requirements": [
+        "Permission to create a Protocol in the target project.",
+        "This is a synthetic introduction. Adapt constraints and review them before real experiments."
+      ],
+      "steps": [
+        "Open Project → Protocols → New protocol and choose Start from a template.",
+        "Select the First Record template and name the new Protocol.",
+        "Edit instructions visually. Keep field IDs stable and check types, required fields and limits when changing fields.",
+        "Wait for syntax validation. Resolve errors before saving; validation establishes structural validity only.",
+        "Switch to Preview and test example data. Preview values do not create Records.",
+        "Check the Lab, project, name and version when saving, then open the saved Protocol."
+      ],
+      "success": "The project contains a fillable Protocol, ready for Records through its record entry."
+    },
+    "downloads": ["first-record-protocol.zip", "protocol.aimd", "protocol.toml"]
+  },
+  "first-import": {
+    "zh": {
+      "title": "导入第一份 CSV 表格",
+      "summary": "使用协议生成的模板，先排除错误，再预检并确认导入。",
+      "requirements": [
+        "目标项目已有示例 Protocol，且你有创建 Record 的权限。",
+        "示例 CSV 只适用于下方示例协议；其他协议应下载各自模板。"
+      ],
+      "steps": [
+        "打开示例 Protocol 的 Records，点击“批量上传”。",
+        "下载 CSV 模板，保留 var.sample_label、var.observation_count、var.notes 标准表头。",
+        "用文本或表格工具按模板整理：DEMO-101 数量为 0，DEMO-102 数量为 12。保存 UTF-8 CSV；0 是有效值。",
+        "选择故意错误的示例文件并预检，查看字段和行号；校验失败不会创建 Record。",
+        "点击“更换文件”，选择修正后的示例，再次预检。通过后核对条数、目标 Protocol 和版本。",
+        "勾选确认，点击“确认导入”；返回列表并刷新，核对两条数据。成功导入后勿重复上传同一文件。"
+      ],
+      "success": "错误文件未写入数据；修正后确认导入恰好两条，刷新可见。"
+    },
+    "en": {
+      "title": "Import your first CSV spreadsheet",
+      "summary": "Use the Protocol’s template, resolve errors, preview and confirm the import.",
+      "requirements": [
+        "The example Protocol exists in a project where you can create Records.",
+        "These CSV files match the supplied example Protocol only. Download separate templates for other Protocols."
+      ],
+      "steps": [
+        "Open the example Protocol’s Records and choose Bulk upload.",
+        "Download the CSV template and keep the standard var.sample_label, var.observation_count and var.notes headers.",
+        "Prepare DEMO-101 with count 0 and DEMO-102 with count 12 using a text or spreadsheet editor. Save UTF-8 CSV; zero is a valid observation.",
+        "Select the intentionally invalid example and validate it. Read its field and row errors; no Record is created.",
+        "Choose Replace file, select the corrected example and validate again. Check the count, destination and Protocol version.",
+        "Acknowledge and confirm the import. Reload the list and verify both rows. Do not upload the same file again after a successful import."
+      ],
+      "success": "Invalid input writes nothing; the corrected file creates exactly two Records after confirmation."
+    },
+    "downloads": [
+      "first-record-protocol.zip",
+      "records-template.csv",
+      "records-invalid.csv",
+      "records-corrected.csv"
+    ]
+  },
+  "aira-protocol": {
+    "ai_required": true,
+    "zh": {
+      "title": "用 Aira 创建并完善 Protocol",
+      "summary": "描述需求，检查 AI 草稿，通过对话修改，再预览并保存。",
+      "requirements": [
+        "实例已开启 AI，账号有模型使用权限；模型调用可能产生费用。",
+        "使用专用私有教学项目，所有样本与数值均为虚构。",
+        "有相应项目的协议、记录或分析写入权限。"
+      ],
+      "steps": [
+        "从项目中新建协议，选择 Aira 创建。我们使用独立的教学项目。",
+        "用自然语言说明研究目标、字段和约束。这里仅需要样本编号、观察数量和备注。",
+        "点击生成。Aira 会调用真实模型起草协议，平台随后检查语法。",
+        "继续对话，请 Aira 增加提交前核对样本编号的说明，保持字段不变。",
+        "检查修改结果并确认语法通过。语法有效不代表实验方案已经经过科学审核。",
+        "进入填写预览，用示例数据检查表单。这里的测试值不会创建正式记录。",
+        "点击保存，核对项目、协议名称和版本。确认后才会保存到项目。",
+        "打开保存后的协议，再刷新核对。现在团队可以按权限开始填写记录。"
+      ],
+      "success": "打开保存后的协议，再刷新核对。现在团队可以按权限开始填写记录。"
+    },
+    "en": {
+      "title": "Create and refine a Protocol with Aira",
+      "summary": "Describe your needs, review an AI draft, refine it in conversation, then preview and save.",
+      "requirements": [
+        "AI is enabled and your account can use a model. Model calls may incur charges.",
+        "Use a dedicated private demo project with synthetic samples and values.",
+        "Permission to create the relevant Protocol, Record or analysis in that project."
+      ],
+      "steps": [
+        "Create a Protocol in a dedicated demo project and choose Aira.",
+        "Describe the goal, fields and constraints: sample label, observation count and notes.",
+        "Generate a draft with the real model. Platform then checks its syntax.",
+        "Continue the conversation: add an instruction to check sample labels, keeping fields unchanged.",
+        "Review the edit and syntax result. Valid syntax is not scientific validation.",
+        "Open the form preview and test example values. Preview data creates no Records.",
+        "Choose Save and check the project, Protocol name and version before confirming.",
+        "Open the saved Protocol and reload to verify it. Authorized members can now create Records."
+      ],
+      "success": "Open the saved Protocol and reload to verify it. Authorized members can now create Records."
+    },
+    "downloads": []
+  },
+  "aira-record": {
+    "ai_required": true,
+    "zh": {
+      "title": "与 Aira 对话填写 Record",
+      "summary": "先问字段，再提供数值；逐项核对、手动修改并保存。",
+      "requirements": [
+        "实例已开启 AI，账号有模型使用权限；模型调用可能产生费用。",
+        "使用专用私有教学项目，所有样本与数值均为虚构。",
+        "有相应项目的协议、记录或分析写入权限。"
+      ],
+      "steps": [
+        "打开已有协议的记录表单，切换到左侧 Aira 对话。右侧仍是可编辑表单。",
+        "先询问两个字段的含义，明确只解释、不填写。",
+        "接着说，把刚才那两项填为指定值。Aira 根据同一段对话，将明确提供的值填入空字段。",
+        "再次提出修改。已有值先显示逐字段建议，不会直接被覆盖。",
+        "逐项处理：样本编号保留原值，观察数量接受替换。",
+        "也可以手动改成十四，填写备注并保存草稿。刷新后检查草稿仍然存在。",
+        "提交前检查数据和保存位置。AI 填入的内容同样需要你确认。",
+        "确认提交后打开记录并刷新。对话帮助填写，最终结果保存在正式记录里。"
+      ],
+      "success": "确认提交后打开记录并刷新。对话帮助填写，最终结果保存在正式记录里。"
+    },
+    "en": {
+      "title": "Fill a Record in conversation with Aira",
+      "summary": "Ask about fields, provide values, review individual changes and save.",
+      "requirements": [
+        "AI is enabled and your account can use a model. Model calls may incur charges.",
+        "Use a dedicated private demo project with synthetic samples and values.",
+        "Permission to create the relevant Protocol, Record or analysis in that project."
+      ],
+      "steps": [
+        "Open a Record and select Aira on the left. The form on the right stays editable.",
+        "First ask what two fields mean, without filling them.",
+        "Then provide values for those two fields. Aira uses the same conversation to fill empty fields.",
+        "Ask for another change. Existing values receive individual suggestions instead of silent replacement.",
+        "Review each suggestion: keep the sample label and accept the new count.",
+        "You can also edit the count to 14, add a note and save a draft. Reload to verify it.",
+        "Check the data and destination before submitting. AI-filled values still need your review.",
+        "Confirm, open the saved Record and reload. The final values belong to the Record, not just the chat."
+      ],
+      "success": "Confirm, open the saved Record and reload. The final values belong to the Record, not just the chat."
+    },
+    "downloads": ["first-record-protocol.zip"]
+  },
+  "aira-analysis": {
+    "ai_required": true,
+    "zh": {
+      "title": "向 Aira 提问并保存分析结果",
+      "summary": "从自然语言问题到真实计算、可追溯解释和可复用分析方法。",
+      "requirements": [
+        "实例已开启 AI，账号有模型使用权限；模型调用可能产生费用。",
+        "使用专用私有教学项目，所有样本与数值均为虚构。",
+        "有相应项目的协议、记录或分析写入权限。",
+        "先导入下方分析示例 Protocol，再通过批量上传导入配套 CSV；两组各 3 条。勿重复导入。"
+      ],
+      "steps": [
+        "打开记录列表，分析当前筛选结果。这六条读数全部为虚构教学数据。",
+        "输入分析问题：按组比较读数。先阅读模型调用说明，再同意生成分析建议。",
+        "Aira 根据字段和问题生成分析草稿，此时尚未执行计算。",
+        "检查并采用建议，再预览数据范围和分析设置。",
+        "确认执行。平台根据实际记录计算，两组平均值分别是十二和十八。",
+        "让 Aira 解释计算结果。说明中的指标带有来源，虚构数据不能用于科研结论。",
+        "将分析配置保存为方法，以后可以对新记录再次运行。",
+        "刷新页面，检查报告、图表和解释仍可查看。成果保存在项目中。"
+      ],
+      "success": "刷新页面，检查报告、图表和解释仍可查看。成果保存在项目中。"
+    },
+    "en": {
+      "title": "Ask Aira and save a reproducible analysis",
+      "summary": "Go from a question to computation, traceable interpretation and a reusable method.",
+      "requirements": [
+        "AI is enabled and your account can use a model. Model calls may incur charges.",
+        "Use a dedicated private demo project with synthetic samples and values.",
+        "Permission to create the relevant Protocol, Record or analysis in that project.",
+        "Import the supplied Protocol, then bulk-import its CSV once: three Records per group. Avoid duplicate imports."
+      ],
+      "steps": [
+        "Open the Records list and analyze the filtered results. All six readings are synthetic.",
+        "Ask to compare readings by group. Read the disclosure before consenting to model use.",
+        "Aira proposes an analysis from the question and fields. No computation has run yet.",
+        "Review and adopt the proposal, then preview the data scope and settings.",
+        "Confirm execution. Platform computes from the Records: the group means are 12 and 18.",
+        "Ask Aira to explain the computed results. Metrics have sources; synthetic data cannot establish research findings.",
+        "Save the analysis configuration as a reusable method for future Records.",
+        "Reload and verify that the report, charts and explanation persist in the project."
+      ],
+      "success": "Reload and verify that the report, charts and explanation persist in the project."
+    },
+    "downloads": ["analysis-protocol.zip", "analysis-records.csv"]
+  }
+}

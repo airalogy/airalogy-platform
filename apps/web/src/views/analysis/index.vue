@@ -23,6 +23,9 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <learning-link v-if="context?.ai_available" lesson="aira-analysis">
+          {{ $t("page.learning.aira") }}
+        </learning-link>
         <n-button data-testid="analysis-open-project" @click="changeAnalysisScope(true)">
           {{ $t('page.projectAnalysis.open') }}
         </n-button>
@@ -420,6 +423,7 @@
 import type { AnalysisAIRequest, AnalysisContext, AnalysisField, AnalysisFilter, AnalysisPipeline, AnalysisPreview, AnalysisRecipe, AnalysisRun, AnalysisScalar, AnalysisSelection, AnalysisSource, AnalysisWarning } from "@/service/api/analysis"
 import type { AnalysisComputeSeed } from "@/service/api/analysis-compute"
 import type { ProtocolModels } from "@airalogy/shared/types"
+import LearningLink from "@/components/learning/learning-link.vue"
 import { cancelAnalysis, consumeAnalysisSelectionTransfer, createAnalysis, createAnalysisPipeline, createAnalysisPipelineRevision, downloadAnalysis, fetchAnalysis, fetchAnalysisContext, fetchAnalysisPipeline, fetchProjectAnalyses, fetchProjectAnalysisPipelines, previewAnalysis } from "@/service/api/analysis"
 import { fetchAnalysisComputeApprovals } from "@/service/api/analysis-compute"
 import { fetchProtocols, getProtocolInfo } from "@/service/api/project-protocols"

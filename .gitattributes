@@ -1,0 +1,2 @@
+# Keep the downloadable spreadsheet examples byte-for-byte, including CSV CRLF.
+docs/public/demos/examples/*.csv -text whitespace=cr-at-eol

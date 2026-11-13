@@ -20,6 +20,7 @@
       <p class="text-sm leading-6">
         {{ t("page.protocol.records.importGuide") }}
       </p>
+      <learning-link lesson="first-import" />
       <n-button :disabled="!template || loading" :loading="templateLoading" @click="downloadTemplate">
         {{ t("page.protocol.records.importTemplate") }}
       </n-button>
@@ -67,6 +68,7 @@
       </n-collapse>
     </div>
     <n-upload
+      ref="uploadRef"
       :file-list="fileList"
       :default-upload="false"
       :max="1"
@@ -89,6 +91,9 @@
         </div>
       </n-upload-dragger>
     </n-upload>
+    <n-button v-if="fileList.length" class="mt-2" :disabled="loading" data-testid="replace-import-file" @click="replaceFile">
+      {{ t("page.learning.replaceFile") }}
+    </n-button>
 
     <n-alert
       v-if="errorMessage || importErrors.length"
@@ -133,7 +138,8 @@
 <script setup lang="ts">
 import type { ImportProtocolRecordsResponse } from "@/service/api/project-protocols"
 import type { RecordImportIssue, RecordImportPreview, RecordImportTemplate } from "@/service/api/record-import"
-import type { UploadFileInfo } from "naive-ui"
+import type { UploadFileInfo, UploadInst } from "naive-ui"
+import LearningLink from "@/components/learning/learning-link.vue"
 import { postImportProtocolRecords } from "@/service/api/project-protocols"
 import { canConfirmRecordImport, fetchRecordImportTemplate, groupImportIssues, importFieldType, previewRecordImport } from "@/service/api/record-import"
 import { useClosableMessage } from "@airalogy/composables"
@@ -155,6 +161,11 @@ const { t, te } = useI18n()
 const showModal = ref(false)
 const loading = ref(false)
 const fileList = ref<UploadFileInfo[]>([])
+const uploadRef = ref<UploadInst>()
+function replaceFile() {
+  handleFileListUpdate([])
+  uploadRef.value?.openOpenFileDialog()
+}
 const importErrors = ref<RecordImportIssue[]>([])
 const errorMessage = ref("")
 const template = ref<RecordImportTemplate | null>(null)

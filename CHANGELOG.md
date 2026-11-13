@@ -14,6 +14,14 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Shorten reviewed AI waiting intervals in learning videos while preserving normal-speed actions, full narration and synchronized bilingual captions; retain editing provenance in production files and reject stale cuts after re-recording.
+
+- Add opt-in, real-model Aira tutorials for Protocol creation, conversational Record filling and analysis, with Chinese narration and bilingual captions. Reject unterminated AIMD field literals during authoring, and reopen saved AI interpretations with their analysis report without another model call.
+
+- Add a hands-on first-visit Platform walkthrough (save and reload a Record, then find document, Protocol and CSV entry points) and four complete, self-hosted workflow demos with synchronized Chinese AI narration in a consistent male voice, bilingual captions, synthetic Protocol/CSV examples, completion checks and contextual links. Keep the Home introduction dismissible, require a user action for audio playback, and keep tutorials available without a runtime AI service.
+
+- Preserve the last visual document edit before saving, changing editor modes or leaving the page, and avoid a premature Saved indicator. Clarify Protocol document/form preview labels and add an explicit Replace file action after CSV preflight. Refresh the Protocol record count after imports/deletions and localize its Add Record action. Cover these flows in reproducible local browser acceptance recordings.
+
 - Keep workspace navigation separate from creation: the header New menu now includes Protocol, Record and Document actions above Project/Lab creation. New document reuses the template dialog, inherits explicit Project/Lab/document scope, and defaults to private personal storage from Home. Check destination write access before opening, preserve navigation guards, and clear cancelled creation requests.
 
 - Make daily R&D work easier to reach from Home and Project overview, with direct item creation, state filters, accurate no-results feedback and pagination for assigned items on Home. Separate item details from discussion/progress, keep save actions visible, focus missing required fields and retain activity drafts that contain only dates, outcomes or evidence.

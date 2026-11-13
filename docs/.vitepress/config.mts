@@ -15,6 +15,7 @@ const englishSidebar = [
   {
     text: "User guide",
     items: [
+      { text: "Getting started and demos", link: "/en/learn/" },
       { text: "Get started", link: "/en/user-guide/" },
       { text: "Scenario kits", link: "/en/scenario-kits" },
       { text: "Protocols", link: "/en/user-guide/protocols" },
@@ -22,6 +23,7 @@ const englishSidebar = [
       { text: "Research notes and materials", link: "/en/user-guide/research-documents" },
       { text: "R&D workbench", link: "/en/user-guide/rd-workbench" },
       { text: "Research automation", link: "/en/user-guide/research-automation" },
+      { text: "Aira personal memory", link: "/en/user-guide/personal-memory" },
       { text: "Collaboration", link: "/en/user-guide/collaboration" },
       { text: "Search", link: "/en/user-guide/search" },
       { text: "Import and export", link: "/en/user-guide/import-export" },
@@ -70,6 +72,7 @@ const chineseSidebar = [
   {
     text: "使用手册",
     items: [
+      { text: "入门与演示", link: "/zh/learn/" },
       { text: "快速开始", link: "/zh/user-guide/" },
       { text: "场景套件", link: "/zh/scenario-kits" },
       { text: "Protocol", link: "/zh/user-guide/protocols" },
@@ -77,6 +80,7 @@ const chineseSidebar = [
       { text: "研究记录与资料", link: "/zh/user-guide/research-documents" },
       { text: "研发工作台", link: "/zh/user-guide/rd-workbench" },
       { text: "科研自动化", link: "/zh/user-guide/research-automation" },
+      { text: "Aira 个人记忆", link: "/zh/user-guide/personal-memory" },
       { text: "协作", link: "/zh/user-guide/collaboration" },
       { text: "搜索", link: "/zh/user-guide/search" },
       { text: "导入与导出", link: "/zh/user-guide/import-export" },

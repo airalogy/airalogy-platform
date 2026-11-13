@@ -195,6 +195,7 @@ import { useProjectPermissions } from "@/composables"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { LabRole, ProjectRole } from "@/enum"
 import { createAnalysisSelectionTransfer, discardAnalysisSelectionTransfer } from "@/service/api/analysis"
+import { getProtocolInfo } from "@/service/api/project-protocols"
 import { getProtocolVersions } from "@/service/api/protocol"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
@@ -484,14 +485,22 @@ async function handleFetchRecords(
   }
 }
 
+async function refreshProtocolRecordCount() {
+  const current = protocolInfo.value
+  if (!current?.id)
+    return
+  const { data } = await getProtocolInfo(current.id, undefined, false)
+  // Refresh the permission-filtered server summary, not the current table's
+  // filtered result count. Ignore responses after navigating to another Protocol.
+  if (data && protocolInfo.value === current)
+    current.records_count = data.records_count
+}
 async function handleRecordDeleted() {
-  await fetchLatestRecordNumber()
-  await handleFetchRecords(lastFetchPayload.value)
+  await Promise.all([fetchLatestRecordNumber(), handleFetchRecords(lastFetchPayload.value), refreshProtocolRecordCount()])
 }
 
 async function handleRecordsImported() {
-  await fetchLatestRecordNumber()
-  await handleFetchRecords(lastFetchPayload.value)
+  await Promise.all([fetchLatestRecordNumber(), handleFetchRecords(lastFetchPayload.value), refreshProtocolRecordCount()])
 }
 
 function getRecordDisplayOrder(record: ProtocolModels.RecordInfo, index: number) {

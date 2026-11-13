@@ -1,0 +1,37 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:06.520
+For a new experiment, open New protocol in the project’s Protocols.
+
+2
+00:00:06.520 --> 00:00:13.240
+Start from a template to create a fillable structure.
+
+3
+00:00:13.240 --> 00:00:20.160
+Use a clear name. The template remains editable after creation.
+
+4
+00:00:20.160 --> 00:00:28.600
+Edit the instructions visually. Field IDs, types and constraints define the form.
+
+5
+00:00:28.600 --> 00:00:37.440
+Wait for syntax validation. Resolve errors first; valid structure is not scientific validation.
+
+6
+00:00:37.440 --> 00:00:45.760
+Open Form preview and test example data. Preview values do not create Records.
+
+7
+00:00:45.760 --> 00:00:52.880
+After checking the form, save and verify the destination and version.
+
+8
+00:00:52.880 --> 00:01:00.160
+Confirm the save. The Protocol is available in the project for future Records.
+
+9
+00:01:00.160 --> 00:01:07.680
+Read the saved Protocol. Choose Add Record when collecting observations.

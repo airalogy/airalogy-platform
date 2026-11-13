@@ -17,7 +17,7 @@
     </template>
     <template #suffix>
       <slot name="suffix" />
-      <n-button quaternary size="tiny" @click="handleExpand">
+      <n-button quaternary size="tiny" :aria-label="$t(isFullScreen ? 'editor.previewTabs.collapse' : 'editor.previewTabs.expand')" @click="handleExpand">
         <template #icon>
           <n-icon>
             <icon-ion-arrow-shrink v-if="isFullScreen" />
@@ -26,10 +26,10 @@
         </template>
       </n-button>
     </template>
-    <n-tab-pane name="preview" tab="Preview" display-directive="show">
+    <n-tab-pane name="preview" :tab="$t('editor.previewTabs.form')" display-directive="show">
       <slot name="preview" />
     </n-tab-pane>
-    <n-tab-pane name="raw" tab="Raw" display-directive="show">
+    <n-tab-pane name="raw" :tab="$t('editor.previewTabs.document')" display-directive="show">
       <slot name="raw" />
     </n-tab-pane>
 
@@ -40,6 +40,7 @@
 
 <script setup lang="ts">
 import { useThemeStore } from "@airalogy/composables"
+import { $t } from "@airalogy/shared/locales"
 import IconIonArrowExpand from "~icons/ion/arrow-expand"
 import IconIonArrowShrink from "~icons/ion/arrow-shrink"
 import { NButton, NIcon } from "naive-ui"

@@ -1,0 +1,41 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:08.320
+Open the existing Protocol in your project. Read its instructions and version.
+
+2
+00:00:08.320 --> 00:00:14.480
+Choose Add Record to open the form.
+
+3
+00:00:14.480 --> 00:00:22.360
+Enter sample DEMO-001 and count 12. These are synthetic values.
+
+4
+00:00:22.360 --> 00:00:30.720
+Complete required fields. A draft is on this device; submission creates the Record.
+
+5
+00:00:30.720 --> 00:00:37.080
+Submit, check the project and Protocol version, then confirm.
+
+6
+00:00:37.080 --> 00:00:43.880
+After success, open View saved Record to check the result.
+
+7
+00:00:43.880 --> 00:00:52.360
+Reload: the values remain, confirming platform persistence.
+
+8
+00:00:52.360 --> 00:00:59.600
+Use Revise for a correction and provide its reason.
+
+9
+00:00:59.600 --> 00:01:06.880
+Submit the revision. The new revision contains the corrected value.
+
+10
+00:01:06.880 --> 00:01:15.240
+The original still contains 12. Corrections preserve history.

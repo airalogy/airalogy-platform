@@ -66,3 +66,7 @@ CSV/API 导入不会运行浏览器计算。应按下载模板提供所需派生
 访问范围由 Lab、Project 和 Protocol 规则共同决定。应通过 Platform 的成员和授权能力分享，不要把未公开内容复制到不受控位置。稳定的 Platform 路由可以用于引用 Protocol，但接收者仍需具备相应访问权限。
 
 角色说明见[协作](./collaboration)，使用 Protocol 采集数据见 [Record](./records)。
+
+## 评价与使用
+
+在**评价与使用**中查看准确版本的评价、可选执行反馈和试行推荐度。计数、评分及隐私规则见[协议评价与采用情况](../product/protocol-rating.md)。

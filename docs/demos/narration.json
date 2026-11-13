@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "locale": "zh-CN",
+  "engine": "edge-tts",
+  "engine_version": "7.3.1",
+  "voice": "zh-CN-YunyangNeural",
+  "rate": "+0%",
+  "lessons": {
+    "welcome": [
+      {
+        "source_zh": "第一次使用，从首页开始。可以向 Aira 描述目标，也可以从我的项目继续工作。这里先完成一条记录。",
+        "zh": "第一次使用，从首页开始。可以向 Aira 描述目标，也可以从我的项目继续工作。这里先完成一条记录。",
+        "en": "Start on Home: describe your goal to Aira or continue from My projects. First, we will save a Record."
+      },
+      {
+        "source_zh": "在“我的项目”中打开要工作的项目，再进入“协议”。这里是团队工作的起点。",
+        "zh": "在“我的项目”中打开要工作的项目，再进入“协议”。这里是团队工作的起点。",
+        "en": "Open your workspace from My projects, then choose Protocols."
+      },
+      {
+        "source_zh": "打开已有协议。先阅读操作说明，并确认页面上的协议版本。",
+        "zh": "打开已有协议。先阅读操作说明，并确认页面上的协议版本。",
+        "en": "Open an existing Protocol, read the instructions and check its version."
+      },
+      {
+        "source_zh": "点击“新增记录”，就能进入可填写的表单。",
+        "zh": "点击“新增记录”，就能进入可填写的表单。",
+        "en": "Choose Add Record to open its editable form."
+      },
+      {
+        "source_zh": "输入虚构样本 DEMO-START，观察数量十二，并注明这是演示数据。",
+        "zh": "输入虚构样本 DEMO-START，观察数量十二，并注明这是演示数据。",
+        "en": "Enter synthetic sample DEMO-START, count 12, and mark the note as demo data.",
+        "speech": "输入虚构样本 DEMO START，观察数量十二，并注明这是演示数据。"
+      },
+      {
+        "source_zh": "点击“提交”。先核对保存的项目、协议和版本，确认无误后再继续。",
+        "zh": "点击“提交”。先核对保存的项目、协议和版本，确认无误后再继续。",
+        "en": "Choose Submit, then verify the destination project, Protocol and version."
+      },
+      {
+        "source_zh": "确认提交，再点击“查看已保存记录”，检查刚刚填写的结果。",
+        "zh": "确认提交，再点击“查看已保存记录”，检查刚刚填写的结果。",
+        "en": "Confirm submission and open View saved Record to inspect the result."
+      },
+      {
+        "source_zh": "刷新页面，数据仍然存在。第一条实验记录已经保存成功。",
+        "zh": "刷新页面，数据仍然存在。第一条实验记录已经保存成功。",
+        "en": "Reload the page. The saved values remain: your first Record is complete."
+      },
+      {
+        "source_zh": "除了实验数据，也可以写文档。回到项目，切换到“文档”页。",
+        "zh": "除了实验数据，也可以写文档。回到项目，切换到“文档”页。",
+        "en": "You can also write documents. Return to the project and choose Documents."
+      },
+      {
+        "source_zh": "点击“新建文档”，选择会议记录模板。这里的文档保存到当前项目，按项目权限共享。",
+        "zh": "点击“新建文档”，选择会议记录模板。这里的文档保存到当前项目，按项目权限共享。",
+        "en": "Choose New document and preview Meeting notes. This destination belongs to the project and follows its permissions."
+      },
+      {
+        "source_zh": "如果手头已有表格，打开匹配协议的记录列表，再选择“批量上传”。",
+        "zh": "如果手头已有表格，打开匹配协议的记录列表，再选择“批量上传”。",
+        "en": "For an existing spreadsheet, open the matching Protocol’s Records and choose Bulk upload."
+      },
+      {
+        "source_zh": "下载这个协议的 CSV 模板，按字段整理数据。之后先预检，再确认导入。",
+        "zh": "下载这个协议的 CSV 模板，按字段整理数据。之后先预检，再确认导入。",
+        "en": "Download this Protocol’s CSV template and match its fields. Validate before confirming the import."
+      },
+      {
+        "source_zh": "准备新实验时，新建协议。AI 开启后可以让 Aira 起草，也可以从模板开始。完整 AI 流程见单独演示。",
+        "zh": "准备新实验时，新建协议。AI 开启后可以让 Aira 起草，也可以从模板开始。完整 AI 流程见单独演示。",
+        "en": "For a new experiment, create a Protocol with Aira when AI is enabled, or start from a template. See the separate AI walkthrough."
+      },
+      {
+        "source_zh": "最后回到首页。从“我的项目”继续上次工作，就不必重新寻找入口了。",
+        "zh": "最后回到首页。从“我的项目”继续上次工作，就不必重新寻找入口了。",
+        "en": "Return to Home and resume from My projects instead of finding the same workspace again."
+      }
+    ],
+    "first-record": [
+      {
+        "source_zh": "已有 Protocol 时，从项目中打开它。先阅读说明并确认版本。",
+        "zh": "我们先填写一条实验记录。从项目打开已有协议，阅读说明，并确认版本。",
+        "en": "Open the existing Protocol in your project. Read its instructions and version."
+      },
+      {
+        "source_zh": "选择‘新增记录’，进入可填写的表单。",
+        "zh": "选择“新增记录”，进入右侧可填写的表单。",
+        "en": "Choose Add Record to open the form."
+      },
+      {
+        "source_zh": "填写样本 DEMO-001、数量 12。这些值仅用于演示。",
+        "zh": "这里填写样本 DEMO-001，观察数量为十二。这些数值只用于演示。",
+        "en": "Enter sample DEMO-001 and count 12. These are synthetic values.",
+        "speech": "这里填写样本 DEMO 零零一，观察数量为十二。这些数值只用于演示。"
+      },
+      {
+        "source_zh": "必填项应完成。草稿保存在当前设备；提交才会创建正式 Record。",
+        "zh": "完成所有必填项。草稿保存在当前设备，提交后才会创建正式实验记录。",
+        "en": "Complete required fields. A draft is on this device; submission creates the Record."
+      },
+      {
+        "source_zh": "点击提交，核对项目和 Protocol 版本，再确认。",
+        "zh": "点击“提交”，先核对保存的项目和协议版本，再确认。",
+        "en": "Submit, check the project and Protocol version, then confirm."
+      },
+      {
+        "source_zh": "提交成功后，打开‘查看已保存记录’确认结果。",
+        "zh": "提交成功后，打开“查看已保存记录”，检查刚才填写的结果。",
+        "en": "After success, open View saved Record to check the result."
+      },
+      {
+        "source_zh": "刷新页面，刚才的值仍在，确认已保存到平台。",
+        "zh": "刷新页面，刚才的值仍然存在，说明数据已经保存到平台。",
+        "en": "Reload: the values remain, confirming platform persistence."
+      },
+      {
+        "source_zh": "发现录入错误时使用‘修订’，填写更正原因。",
+        "zh": "如果发现录入错误，可以选择“修订”，更正数值，并填写修订原因。",
+        "en": "Use Revise for a correction and provide its reason."
+      },
+      {
+        "source_zh": "提交修订，新的记录版本保留更正值。",
+        "zh": "确认提交修订，新版本就会保留更正后的值。",
+        "en": "Submit the revision. The new revision contains the corrected value."
+      },
+      {
+        "source_zh": "原修订仍保留 12。数据更正有历史，可以追溯。",
+        "zh": "回到原版本，可以看到数量仍为十二。数据更正保留历史，方便追溯。",
+        "en": "The original still contains 12. Corrections preserve history."
+      }
+    ],
+    "first-document": [
+      {
+        "source_zh": "想记下会议或观察时，进入‘我的文档’，不需要先建立 Protocol。",
+        "zh": "想记录会议或观察，可以直接进入“我的文档”，不必先建立协议。",
+        "en": "For a meeting or observation, open My documents. No Protocol is required."
+      },
+      {
+        "source_zh": "新建文档，选择‘会议记录’模板，查看它的结构。",
+        "zh": "点击“新建文档”，选择“会议记录”模板，先看看它的结构。",
+        "en": "Create a document, select Meeting notes and preview its structure."
+      },
+      {
+        "source_zh": "确认保存到个人空间，仅自己可见，再创建。",
+        "zh": "确认保存在个人空间，仅自己可见，然后创建文档。",
+        "en": "Confirm the personal destination, visible only to you, then create."
+      },
+      {
+        "source_zh": "在可视化编辑器直接写下观察、决定和下一步。",
+        "zh": "在可视化编辑器中，直接写下观察、讨论结论和下一步安排。",
+        "en": "Write observations, decisions and next steps directly in the visual editor."
+      },
+      {
+        "source_zh": "等待‘已保存’。如需查看归属与共享范围，可展开保存位置。",
+        "zh": "等待出现“已保存”。展开保存位置，还能查看内容归属和可见范围。",
+        "en": "Wait for Saved. Expand the destination to check ownership and visibility."
+      },
+      {
+        "source_zh": "返回列表，用标题搜索，就能找回这份文档。",
+        "zh": "返回文档列表，用标题搜索，就能找到刚才的文档。",
+        "en": "Return to the list and search by title to find the document."
+      },
+      {
+        "source_zh": "重新打开，文字还在。团队共享内容请从项目或实验室入口新建。",
+        "zh": "重新打开，确认内容还在。需要团队共享时，从项目或实验室入口新建文档。",
+        "en": "Reopen and verify persistence. Create shared work from its project or Lab entry."
+      }
+    ],
+    "first-protocol": [
+      {
+        "source_zh": "准备新实验时，从项目的‘协议’进入‘新建协议’。",
+        "zh": "准备新实验时，进入项目的“协议”页面，点击“新建协议”。",
+        "en": "For a new experiment, open New protocol in the project’s Protocols."
+      },
+      {
+        "source_zh": "选择‘从模板开始’，用入门模板建立可填写的结构。",
+        "zh": "选择“从模板开始”，用入门模板建立可以填写的结构。",
+        "en": "Start from a template to create a fillable structure."
+      },
+      {
+        "source_zh": "名称清楚表达用途；模板创建后还可以编辑。",
+        "zh": "给方案取一个清楚的名称。创建以后，内容还可以继续编辑。",
+        "en": "Use a clear name. The template remains editable after creation."
+      },
+      {
+        "source_zh": "在可视化界面补充步骤。字段的 ID、类型和约束决定后续表单。",
+        "zh": "在可视化界面补充操作说明。字段标识、类型和约束，决定后续表单。",
+        "en": "Edit the instructions visually. Field IDs, types and constraints define the form."
+      },
+      {
+        "source_zh": "等待语法检查通过；有错误应先修正。结构通过不代表实验方法已验证。",
+        "zh": "等待语法检查通过。有错误先修正；结构有效，并不代表实验方法已经验证。",
+        "en": "Wait for syntax validation. Resolve errors first; valid structure is not scientific validation."
+      },
+      {
+        "source_zh": "右侧切到‘填写预览’，用示例数据测试。测试值不会创建 Record。",
+        "zh": "切换到右侧“填写预览”，用示例数据测试。这些测试值不会创建实验记录。",
+        "en": "Open Form preview and test example data. Preview values do not create Records."
+      },
+      {
+        "source_zh": "检查表单效果后保存，确认协议的归属位置和版本。",
+        "zh": "检查表单效果后点击保存，核对实验室、项目和协议版本。",
+        "en": "After checking the form, save and verify the destination and version."
+      },
+      {
+        "source_zh": "确认保存。新方案进入项目，之后可反复填写 Record。",
+        "zh": "确认保存，这份方案就进入项目了，之后可以反复填写实验记录。",
+        "en": "Confirm the save. The Protocol is available in the project for future Records."
+      },
+      {
+        "source_zh": "完成后阅读刚保存的方案；真正采集数据时选择‘新增记录’。",
+        "zh": "最后读一遍保存的方案。真正采集数据时，选择“新增记录”即可。",
+        "en": "Read the saved Protocol. Choose Add Record when collecting observations."
+      }
+    ],
+    "first-import": [
+      {
+        "source_zh": "已有表格时，打开匹配 Protocol 的 Records，选择‘批量上传’。",
+        "zh": "要导入已有表格，先打开匹配协议的记录列表，选择“批量上传”。",
+        "en": "For existing data, open the matching Protocol’s Records and choose Bulk upload."
+      },
+      {
+        "source_zh": "先下载该版本的 CSV 模板，保留标准表头，用 UTF-8 CSV 整理数据。",
+        "zh": "下载当前版本的 CSV 模板。保留标准表头，并用 UTF-8 编码保存数据。",
+        "en": "Download this version’s CSV template. Keep its standard headers and prepare UTF-8 CSV."
+      },
+      {
+        "source_zh": "先演示错误文件：数量包含 #REF!。选择文件并点击预检。",
+        "zh": "先演示一个错误文件：数量里有 #REF! 引用错误。选择文件，点击预检。",
+        "en": "First try the invalid example: its count contains #REF!. Select it and validate.",
+        "speech": "先演示一个错误文件：数量里有 引用错误。选择文件，点击预检。"
+      },
+      {
+        "source_zh": "错误会指出字段和位置；校验失败时不会创建任何 Record。",
+        "zh": "错误提示会指出字段和位置。校验失败，不会创建任何实验记录。",
+        "en": "Errors identify the field and location. Invalid input creates no Records."
+      },
+      {
+        "source_zh": "点击‘更换文件’，选择修正后的示例；修正源数据时不要猜测缺失值。",
+        "zh": "点击“更换文件”，选择已修正的示例。整理真实数据时，不要猜测缺失值。",
+        "en": "Replace the file with the corrected example. Do not guess missing values in real data."
+      },
+      {
+        "source_zh": "预检通过仍未写入。核对条数、Protocol 和版本，再勾选确认。",
+        "zh": "预检通过还没有写入数据。核对条数、协议和版本，再勾选确认。",
+        "en": "A successful preview has not written data. Check the count, Protocol and version, then acknowledge."
+      },
+      {
+        "source_zh": "点击‘确认导入’，提交这两条虚构数据。",
+        "zh": "点击“确认导入”，将这两条虚构数据保存到平台。",
+        "en": "Confirm the import to save these two synthetic rows."
+      },
+      {
+        "source_zh": "刷新列表核对结果：DEMO-101 为 0，DEMO-102 为 12。成功后不要重复上传。",
+        "zh": "刷新后核对：DEMO-101 的数量为零，DEMO-102 为十二。导入成功后，不要重复上传。",
+        "en": "Reload and verify: DEMO-101 is 0; DEMO-102 is 12. Do not upload again after success.",
+        "speech": "刷新后核对：DEMO 一零一 的数量为零，DEMO 一零二 为十二。导入成功后，不要重复上传。"
+      }
+    ],
+    "aira-protocol": [
+      {
+        "source_zh": "从项目中新建协议，选择 Aira 创建。我们使用独立的教学项目。",
+        "zh": "从项目中新建协议，选择 Aira 创建。我们使用独立的教学项目。",
+        "en": "Create a Protocol in a dedicated demo project and choose Aira."
+      },
+      {
+        "source_zh": "用自然语言说明研究目标、字段和约束。这里仅需要样本编号、观察数量和备注。",
+        "zh": "用自然语言说明研究目标、字段和约束。这里仅需要样本编号、观察数量和备注。",
+        "en": "Describe the goal, fields and constraints: sample label, observation count and notes."
+      },
+      {
+        "source_zh": "点击生成。Aira 会调用真实模型起草协议，平台随后检查语法。",
+        "zh": "点击生成。Aira 会调用真实模型起草协议，平台随后检查语法。",
+        "en": "Generate a draft with the real model. Platform then checks its syntax."
+      },
+      {
+        "source_zh": "继续对话，请 Aira 增加提交前核对样本编号的说明，保持字段不变。",
+        "zh": "继续对话，请 Aira 增加提交前核对样本编号的说明，保持字段不变。",
+        "en": "Continue the conversation: add an instruction to check sample labels, keeping fields unchanged."
+      },
+      {
+        "source_zh": "检查修改结果并确认语法通过。语法有效不代表实验方案已经经过科学审核。",
+        "zh": "检查修改结果并确认语法通过。语法有效不代表实验方案已经经过科学审核。",
+        "en": "Review the edit and syntax result. Valid syntax is not scientific validation."
+      },
+      {
+        "source_zh": "进入填写预览，用示例数据检查表单。这里的测试值不会创建正式记录。",
+        "zh": "进入填写预览，用示例数据检查表单。这里的测试值不会创建正式记录。",
+        "en": "Open the form preview and test example values. Preview data creates no Records."
+      },
+      {
+        "source_zh": "点击保存，核对项目、协议名称和版本。确认后才会保存到项目。",
+        "zh": "点击保存，核对项目、协议名称和版本。确认后才会保存到项目。",
+        "en": "Choose Save and check the project, Protocol name and version before confirming."
+      },
+      {
+        "source_zh": "打开保存后的协议，再刷新核对。现在团队可以按权限开始填写记录。",
+        "zh": "打开保存后的协议，再刷新核对。现在团队可以按权限开始填写记录。",
+        "en": "Open the saved Protocol and reload to verify it. Authorized members can now create Records."
+      }
+    ],
+    "aira-record": [
+      {
+        "source_zh": "打开已有协议的记录表单，切换到左侧 Aira 对话。右侧仍是可编辑表单。",
+        "zh": "打开已有协议的记录表单，切换到左侧 Aira 对话。右侧仍是可编辑表单。",
+        "en": "Open a Record and select Aira on the left. The form on the right stays editable."
+      },
+      {
+        "source_zh": "先询问两个字段的含义，明确只解释、不填写。",
+        "zh": "先询问两个字段的含义，明确只解释、不填写。",
+        "en": "First ask what two fields mean, without filling them."
+      },
+      {
+        "source_zh": "接着说，把刚才那两项填为指定值。Aira 根据同一段对话，将明确提供的值填入空字段。",
+        "zh": "接着说，把刚才那两项填为指定值。Aira 根据同一段对话，将明确提供的值填入空字段。",
+        "en": "Then provide values for those two fields. Aira uses the same conversation to fill empty fields."
+      },
+      {
+        "source_zh": "再次提出修改。已有值先显示逐字段建议，不会直接被覆盖。",
+        "zh": "再次提出修改。已有值先显示逐字段建议，不会直接被覆盖。",
+        "en": "Ask for another change. Existing values receive individual suggestions instead of silent replacement."
+      },
+      {
+        "source_zh": "逐项处理：样本编号保留原值，观察数量接受替换。",
+        "zh": "逐项处理：样本编号保留原值，观察数量接受替换。",
+        "en": "Review each suggestion: keep the sample label and accept the new count."
+      },
+      {
+        "source_zh": "也可以手动改成十四，填写备注并保存草稿。刷新后检查草稿仍然存在。",
+        "zh": "也可以手动改成十四，填写备注并保存草稿。刷新后检查草稿仍然存在。",
+        "en": "You can also edit the count to 14, add a note and save a draft. Reload to verify it."
+      },
+      {
+        "source_zh": "提交前检查数据和保存位置。AI 填入的内容同样需要你确认。",
+        "zh": "提交前检查数据和保存位置。AI 填入的内容同样需要你确认。",
+        "en": "Check the data and destination before submitting. AI-filled values still need your review."
+      },
+      {
+        "source_zh": "确认提交后打开记录并刷新。对话帮助填写，最终结果保存在正式记录里。",
+        "zh": "确认提交后打开记录并刷新。对话帮助填写，最终结果保存在正式记录里。",
+        "en": "Confirm, open the saved Record and reload. The final values belong to the Record, not just the chat."
+      }
+    ],
+    "aira-analysis": [
+      {
+        "source_zh": "打开记录列表，分析当前筛选结果。这六条读数全部为虚构教学数据。",
+        "zh": "打开记录列表，分析当前筛选结果。这六条读数全部为虚构教学数据。",
+        "en": "Open the Records list and analyze the filtered results. All six readings are synthetic."
+      },
+      {
+        "source_zh": "输入分析问题：按组比较读数。先阅读模型调用说明，再同意生成分析建议。",
+        "zh": "输入分析问题：按组比较读数。先阅读模型调用说明，再同意生成分析建议。",
+        "en": "Ask to compare readings by group. Read the disclosure before consenting to model use."
+      },
+      {
+        "source_zh": "Aira 根据字段和问题生成分析草稿，此时尚未执行计算。",
+        "zh": "Aira 根据字段和问题生成分析草稿，此时尚未执行计算。",
+        "en": "Aira proposes an analysis from the question and fields. No computation has run yet."
+      },
+      {
+        "source_zh": "检查并采用建议，再预览数据范围和分析设置。",
+        "zh": "检查并采用建议，再预览数据范围和分析设置。",
+        "en": "Review and adopt the proposal, then preview the data scope and settings."
+      },
+      {
+        "source_zh": "确认执行。平台根据实际记录计算，两组平均值分别是十二和十八。",
+        "zh": "确认执行。平台根据实际记录计算，两组平均值分别是十二和十八。",
+        "en": "Confirm execution. Platform computes from the Records: the group means are 12 and 18."
+      },
+      {
+        "source_zh": "让 Aira 解释计算结果。说明中的指标带有来源，虚构数据不能用于科研结论。",
+        "zh": "让 Aira 解释计算结果。说明中的指标带有来源，虚构数据不能用于科研结论。",
+        "en": "Ask Aira to explain the computed results. Metrics have sources; synthetic data cannot establish research findings."
+      },
+      {
+        "source_zh": "将分析配置保存为方法，以后可以对新记录再次运行。",
+        "zh": "将分析配置保存为方法，以后可以对新记录再次运行。",
+        "en": "Save the analysis configuration as a reusable method for future Records."
+      },
+      {
+        "source_zh": "刷新页面，检查报告、图表和解释仍可查看。成果保存在项目中。",
+        "zh": "刷新页面，检查报告、图表和解释仍可查看。成果保存在项目中。",
+        "en": "Reload and verify that the report, charts and explanation persist in the project."
+      }
+    ]
+  }
+}

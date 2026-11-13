@@ -1,5 +1,8 @@
 <template>
-  <div class="mx-auto w-full space-y-8 px-4">
+  <div class="mx-auto w-full px-4 space-y-8">
+    <learning-link v-if="instanceStore.aiEnabled && !props.protocolInfo" lesson="aira-protocol">
+      {{ $t("page.learning.aira") }}
+    </learning-link>
     <section v-for="section in optionSections" :key="section.key">
       <h2 v-if="section.title" class="mb-3 text-sm text-gray-500 font-semibold tracking-wide uppercase">
         {{ section.title }}
@@ -51,6 +54,7 @@
 import type { ImportAiraArchiveResponse } from "@/service/api/project-protocols"
 import type { ProtocolModels } from "@airalogy/shared/types/models"
 import type { ApplyOption } from "./composables/useApplyProtocolState"
+import LearningLink from "@/components/learning/learning-link.vue"
 import { $t } from "@/locales"
 import { useInstanceStore } from "@/store/modules/instance"
 import ImportAiraArchiveModal from "@/views/project-protocols/modules/import-aira-archive-modal.vue"

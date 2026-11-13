@@ -42,6 +42,9 @@
         <protocol-title-section :protocol-info="protocolInfo" :title="protocolInfo?.name" :is-protocol-link="true" :show-icon="false" size="tiny" />
       </div>
 
+      <learning-link v-if="!isReadonly" :lesson="instanceStore.aiEnabled ? 'aira-record' : 'first-record'">
+        {{ $t(instanceStore.aiEnabled ? "page.learning.aira" : "page.learning.watch") }}
+      </learning-link>
       <!-- <choose-rrec-modal :rrec="rrecRef" :show="showRrec" /> -->
       <n-button v-if="isReadonly" type="warning" @click="handleCloseWindow">
         {{ $t("common.close") }}
@@ -130,10 +133,10 @@
         :recorder-version="displayProtocolVersion"
         :recorder-record-id="typeof route.query.record === 'string' ? route.query.record : undefined"
         :simulated-fields="simulatedFields"
+        :record-data="recordData"
         @set-simulated="setSimulated"
         @review-pending="reviewPending = $event"
         @quiz-change="(field, value) => { (recordData.quiz ??= {})[field] = value }"
-        :record-data="recordData"
         @update:field="handleUpdateField"
         @update:split-size="handleUpdateSize"
       >
@@ -170,18 +173,20 @@ import type { IRecordData, IRecordDataKey } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { ValidateError } from "async-validator"
 import type { OnError } from "naive-ui/es/upload/src/interface"
-
 import type { ShallowRef } from "vue"
+
 import type { ExtractResult, FieldRecord } from "./modules/protocol/helpers/parseFieldStructure"
 import type { IRecordDataItem } from "./types"
-
+import LearningLink from "@/components/learning/learning-link.vue"
 import { useBoolean, useGlobalBeforeUnload, useLoading, useShowModal } from "@/composables"
+
 import { useRouterPush } from "@/composables/useRouterPush"
 import { getProtocolRecordReport, postNewResearchRecord, postValidateRecord, putUpdateResearchRecord, transformFields } from "@/service/api/project-protocols"
 import { fetchResearchWorkItem, type ResearchWorkItemDetail, submitResearchWorkItem } from "@/service/api/research-tasks"
-
 import { baseURL } from "@/service/request"
+
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useRouteStore } from "@/store/modules/route"
 import { useProtocolWorkflowStore } from "@/store/modules/workflow"
 import { type DraftScope, hasRecordDraftContent, recordDraftQuery } from "@/utils/recordDrafts"
@@ -266,6 +271,7 @@ const formRef = ref<{
   restoreFieldRecord: (data?: Partial<IRecordData>) => void
 } | null>(null)
 
+const instanceStore = useInstanceStore()
 const instanceId = nanoid()
 provide("protocol-workflow-channel", { id: instanceId })
 

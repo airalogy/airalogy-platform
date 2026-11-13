@@ -1,5 +1,6 @@
 <template>
   <div data-testid="home-workspace" class="my-6 min-w-0 lg:my-8 space-y-6">
+    <getting-started-card />
     <main data-testid="home-work" class="min-w-0">
       <task-workbench :pins="pinnedItems" :pinning-keys="pinningKeys" @toggle-pin="handleTogglePin" />
     </main>
@@ -52,6 +53,7 @@ import { singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 import TestingNotificationDialog from "@/views/auth/components/testing-notification-dialog.vue"
 import { useClosableMessage, useLoading } from "@airalogy/composables"
 import ActivityCard, { type IProps as ICardItem } from "./components/activity-card.vue"
+import GettingStartedCard from "./components/getting-started-card.vue"
 import PinnedItems from "./components/pinned-items.vue"
 import TaskWorkbench from "./components/task-workbench.vue"
 

@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:08.360
+Open a Record and select Aira on the left. The form on the right stays editable.
+
+2
+00:00:08.360 --> 00:00:14.560
+First ask what two fields mean, without filling them.
+
+3
+00:00:14.560 --> 00:00:24.520
+Then provide values for those two fields. Aira uses the same conversation to fill empty fields.
+
+4
+00:00:24.520 --> 00:00:32.000
+Ask for another change. Existing values receive individual suggestions instead of silent replacement.
+
+5
+00:00:32.000 --> 00:00:38.400
+Review each suggestion: keep the sample label and accept the new count.
+
+6
+00:00:38.400 --> 00:00:46.880
+You can also edit the count to 14, add a note and save a draft. Reload to verify it.
+
+7
+00:00:46.880 --> 00:00:54.360
+Check the data and destination before submitting. AI-filled values still need your review.
+
+8
+00:00:54.360 --> 00:01:03.080
+Confirm, open the saved Record and reload. The final values belong to the Record, not just the chat.

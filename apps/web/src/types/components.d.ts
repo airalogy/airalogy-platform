@@ -237,6 +237,7 @@ declare module 'vue' {
     ImageRenderer: typeof import('./../components/custom/aimd/components/image-renderer.vue')['default']
     InsertWbr: typeof import('./../components/common/insert-wbr.vue')['default']
     LabIcon: typeof import('./../components/icon/lab-icon.vue')['default']
+    LearningLink: typeof import('./../components/learning/learning-link.vue')['default']
     LinearNodeConnector: typeof import('./../components/workflow-timeline/linear-node-connector.vue')['default']
     LinearWorkflowTimeline: typeof import('./../components/workflow-timeline/linear-workflow-timeline.vue')['default']
     ListLabItem: typeof import('./../components/common/list-lab-item.vue')['default']

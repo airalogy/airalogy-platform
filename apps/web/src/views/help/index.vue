@@ -12,6 +12,16 @@
       </p>
     </header>
 
+    <section class="mb-6 border border-blue-100 rounded-xl bg-blue-50 p-5" data-testid="help-learning">
+      <h2 class="m-0 text-lg font-semibold">
+        {{ $t("page.learning.firstVisit") }}
+      </h2>
+      <p class="my-2 text-gray-600">
+        {{ $t("page.learning.intro") }}
+      </p>
+      <learning-link />
+    </section>
+
     <n-spin :show="labsLoading">
       <n-grid cols="1 m:2" responsive="screen" :x-gap="20" :y-gap="20">
         <n-grid-item>
@@ -148,6 +158,7 @@
 
 <script setup lang="ts">
 import type { DocumentationSection } from "@airalogy/shared/utils"
+import LearningLink from "@/components/learning/learning-link.vue"
 import { LabRole } from "@/enum"
 import { fetchUserLabs } from "@/service/api/users"
 import { useAppStore } from "@/store/modules/app"

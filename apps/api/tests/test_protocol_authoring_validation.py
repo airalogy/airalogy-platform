@@ -4,13 +4,14 @@ from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+
 from app.database import get_db_session
 from app.models.chat import ChatModel
 from app.routers import editor
 from app.routers.depends import get_current_user
 from app.services import protocol_authoring as authoring
-from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
 
 VALID = "# Synthetic protocol\n\n{{var|sample_id: str}}\n{{ref_var|sample_id}}\n"
 INVALID = VALID.replace("ref_var|sample_id", "ref_var|sample")
@@ -67,6 +68,46 @@ def test_checker_never_executes_python_or_inline_assigners(tmp_path):
     assert authoring.validate_sources([source(code, "model.py")]).status == "valid"
     authoring.validate_sources([source(f"```assigner\n{code}```")])
     assert not marker.exists()
+
+
+def test_unclosed_field_string_is_not_valid_source_or_an_auto_applied_edit():
+    broken = '# Example\n\n{{var|notes: str = "", description="unfinished}}'
+    report = authoring.validate_sources([source(broken)])
+    assert report.status == "invalid"
+    assert report.diagnostics[0].line == 3
+    assert "quoted" in report.diagnostics[0].message
+    assert (
+        authoring.validate_edit_result(changed(broken), [source()])["risk"][
+            "recommended_action"
+        ]
+        == "block"
+    )
+    fixed = broken.replace("unfinished}}", 'finished"}}')
+    assert authoring.validate_sources([source(fixed)]).status == "valid"
+    assert (
+        authoring.validate_sources(
+            [source(f"Example: `{broken.splitlines()[-1]}`\n{VALID}")]
+        ).status
+        == "valid"
+    )
+    assert (
+        authoring.validate_sources(
+            [source(r"""{{var|notes: str = "", description="A \"quoted\" value"}}""")]
+        ).status
+        == "valid"
+    )
+
+
+def test_quoted_template_examples_and_fenced_code_remain_valid():
+    nested = '{{var|notes: str, description="Write {{var| literally in your notes"}}'
+    assert authoring.validate_sources([source(nested)]).status == "valid"
+    assert (
+        authoring.validate_sources(
+            [source("```aimd\n{{var|bad: int, ge=]}}\n```\n" + VALID)]
+        ).status
+        == "valid"
+    )
+    assert authoring.validate_sources([source("{{var|unfinished")]).status == "invalid"
 
 
 def test_checker_failure_is_not_a_syntax_error(monkeypatch):

@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:07.080
+For existing data, open the matching Protocol’s Records and choose Bulk upload.
+
+2
+00:00:07.080 --> 00:00:16.400
+Download this version’s CSV template. Keep its standard headers and prepare UTF-8 CSV.
+
+3
+00:00:16.400 --> 00:00:24.320
+First try the invalid example: its count contains #REF!. Select it and validate.
+
+4
+00:00:24.320 --> 00:00:32.160
+Errors identify the field and location. Invalid input creates no Records.
+
+5
+00:00:32.160 --> 00:00:40.480
+Replace the file with the corrected example. Do not guess missing values in real data.
+
+6
+00:00:40.480 --> 00:00:48.360
+A successful preview has not written data. Check the count, Protocol and version, then acknowledge.
+
+7
+00:00:48.360 --> 00:00:55.280
+Confirm the import to save these two synthetic rows.
+
+8
+00:00:55.280 --> 00:01:05.680
+Reload and verify: DEMO-101 is 0; DEMO-102 is 12. Do not upload again after success.

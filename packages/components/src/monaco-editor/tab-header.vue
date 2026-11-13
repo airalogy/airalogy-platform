@@ -11,16 +11,16 @@
 
     <!-- Action Buttons -->
     <div class="mr-auto flex items-center gap-4">
-      <tooltip-button tooltip="Click to create empty protocol" :button-props="{ themeOverrides: buttonThemeOverrides, text: true }" @click="handleNewProtocol('empty')">
+      <tooltip-button :tooltip="$t('editor.actions.newHint')" :button-props="{ themeOverrides: buttonThemeOverrides, text: true }" @click="handleNewProtocol('empty')">
         <template #icon>
           <n-icon>
             <icon-tabler-file-plus />
           </n-icon>
         </template>
-        New
+        {{ $t("common.new") }}
       </tooltip-button>
       <tooltip-button
-        :tooltip="isEditorReadOnly ? 'Create a copy to edit this protocol' : 'Click to save protocol'"
+        :tooltip="$t(isEditorReadOnly ? 'editor.actions.copyHint' : 'editor.actions.saveHint')"
         type="primary"
         size="small"
         :theme-overrides="buttonThemeOverrides"
@@ -33,7 +33,7 @@
             <icon-save v-else />
           </n-icon>
         </template>
-        {{ isEditorReadOnly ? 'Edit' : "Save" }}
+        {{ $t(isEditorReadOnly ? "common.edit" : "common.save") }}
       </tooltip-button>
     </div>
   </header>
@@ -43,6 +43,7 @@
 import type { ProtocolModels } from "@airalogy/shared/types/models"
 import { useUploadFileDataStore } from "@airalogy/components/monaco-editor/store/uploadFileDataStore"
 import { useClosableMessage, useLoading } from "@airalogy/composables"
+import { $t } from "@airalogy/shared/locales"
 import IconSave from "~icons/lucide/save"
 import { NIcon } from "naive-ui"
 

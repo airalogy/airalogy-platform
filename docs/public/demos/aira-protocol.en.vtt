@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:07.280
+Create a Protocol in a dedicated demo project and choose Aira.
+
+2
+00:00:07.280 --> 00:00:16.400
+Describe the goal, fields and constraints: sample label, observation count and notes.
+
+3
+00:00:16.400 --> 00:00:24.000
+Generate a draft with the real model. Platform then checks its syntax.
+
+4
+00:00:24.000 --> 00:00:31.600
+Continue the conversation: add an instruction to check sample labels, keeping fields unchanged.
+
+5
+00:00:31.600 --> 00:00:40.520
+Review the edit and syntax result. Valid syntax is not scientific validation.
+
+6
+00:00:40.520 --> 00:00:48.800
+Open the form preview and test example values. Preview data creates no Records.
+
+7
+00:00:48.800 --> 00:00:56.720
+Choose Save and check the project, Protocol name and version before confirming.
+
+8
+00:00:56.720 --> 00:01:04.920
+Open the saved Protocol and reload to verify it. Authorized members can now create Records.

@@ -604,13 +604,13 @@
       "scopeLab": "实验室文档",
       "workbench": "场景工作台",
       "noPermission": "当前无权访问此工作空间。",
+      "cannotCreate": "你没有在此空间新建文档的权限，请选择有写入权限的空间。",
       "reload": "重新加载",
       "open": "打开",
       "revision": "修订 {revision}",
       "submissionSuccess": "结果已提交，工作内容和来源均已保存。",
       "checkErrors": "请检查以下字段后重新提交。",
-      "changedElsewhere": "内容可能已被其他页面修改。请保留当前内容，重新加载后比较。",
-      "cannotCreate": "你没有在此空间新建文档的权限，请选择有写入权限的空间。"
+      "changedElsewhere": "内容可能已被其他页面修改。请保留当前内容，重新加载后比较。"
     },
     "recorderAira": {
       "finishReview": "请先处理当前待确认的替换，再让 Aira 填写其他字段。",
@@ -812,6 +812,16 @@
       "setupTitle": "初始化实验室",
       "setupDescription": "创建首位管理员账号。系统将同时创建配置好的唯一实验室及默认私有项目。",
       "administrator": "管理员",
+      "administratorAccount": "管理员账号",
+      "administratorAccountHint": "这是你个人的账号，用于登录和管理该组织；其他成员以后通过邀请加入。",
+      "administratorName": "管理员姓名",
+      "administratorNamePlaceholder": "填写你自己的姓名或昵称",
+      "personalUsername": "个人用户名",
+      "personalUsernamePlaceholder": "例如 zhangsan",
+      "personalUsernameHint": "个人账号的唯一标识，不是公司名；不能与组织标识相同。",
+      "personalUsernameDistinct": "个人用户名不能与组织标识相同，请填写自己的用户名。",
+      "loginEmail": "登录邮箱",
+      "loginPassword": "登录密码",
       "setupCode": "初始部署口令",
       "displayName": "显示名称",
       "username": "用户名",
@@ -849,17 +859,7 @@
       "currentPassword": "当前密码",
       "newPassword": "新密码",
       "linkExpiresAt": "有效期至 {time}",
-      "resetLinkFor": "为 {name} 重置密码",
-      "administratorAccount": "管理员账号",
-      "administratorAccountHint": "这是你个人的账号，用于登录和管理该组织；其他成员以后通过邀请加入。",
-      "administratorName": "管理员姓名",
-      "administratorNamePlaceholder": "填写你自己的姓名或昵称",
-      "personalUsername": "个人用户名",
-      "personalUsernamePlaceholder": "例如 zhangsan",
-      "personalUsernameHint": "个人账号的唯一标识，不是公司名；不能与组织标识相同。",
-      "personalUsernameDistinct": "个人用户名不能与组织标识相同，请填写自己的用户名。",
-      "loginEmail": "登录邮箱",
-      "loginPassword": "登录密码"
+      "resetLinkFor": "为 {name} 重置密码"
     },
     "about": {
       "title": "关于",
@@ -5294,6 +5294,15 @@
       "chooseProject": "选择项目",
       "chooseProtocol": "选择协议"
     },
+    "learning": {
+      "aira": "看 Aira 操作示例",
+      "title": "入门与演示",
+      "firstVisit": "第一次使用，从哪里开始？",
+      "intro": "按今天的任务选入口，跟着示例完成第一步。",
+      "dismiss": "暂时收起",
+      "watch": "看操作示例",
+      "replaceFile": "更换文件"
+    },
     "organization": {
       "setupSection": "组织信息",
       "name": "组织名称",
@@ -6313,7 +6322,18 @@
         "tooltip": "展开菜单"
       }
     },
-    "characters": "字数"
+    "characters": "字数",
+    "previewTabs": {
+      "form": "填写预览",
+      "document": "正文预览",
+      "expand": "展开预览",
+      "collapse": "收起预览"
+    },
+    "actions": {
+      "newHint": "新建空白协议",
+      "copyHint": "创建可编辑副本",
+      "saveHint": "检查并保存协议"
+    }
   },
   "externalResearch": {
     "connectProject": "连接外部 AI",
@@ -6354,6 +6374,34 @@
     "redirectUri": "客户端回调地址",
     "registerClient": "登记客户端",
     "removeClientHint": "撤销此客户端的全部授权并删除登记？"
+  },
+  "externalOnboarding": {
+    "workspace": "外部分析",
+    "workspaceHint": "连接你使用的 AI 工具，确认它提交的写入，并在项目内查看已保存的分析报告。",
+    "steps": "1. 选择授权 → 2. 配置工具 → 3. 开始任务",
+    "purpose": "用这个工具做什么？",
+    "read": "只读查看",
+    "analyze": "分析并回存报告",
+    "author": "编写协议",
+    "scopeHint": "只授予下列权限。保存报告或发布协议仍需你在平台确认。不可用的预设需要额外的项目权限。",
+    "customScopes": "自定义权限",
+    "permissionUnavailable": "你当前的项目权限不支持所选的导出或协议编写操作。请选择只读权限，或联系项目管理员。",
+    "disabledHint": "此实验室尚未开启外部 AI 接入，请联系实验室所有者或管理员在实验室设置中开启。",
+    "configure": "配置你的 AI 工具",
+    "environmentHint": "使用 Codex 时，先在启动客户端的环境中安全设置 AIRALOGY_PLATFORM_TOKEN，再执行下方命令并重启客户端。不要把令牌粘贴到对话中或提交到代码仓库。",
+    "otherClients": "其他 MCP 客户端",
+    "otherClientsHint": "使用此 Streamable HTTP MCP 地址，并设置 Bearer 身份验证。将令牌保存在客户端受保护的凭据设置中，具体接入方式见使用文档。",
+    "tokenVerified": "令牌有效。此检查仅验证平台访问权限，不代表 AI 客户端已经配置完成：",
+    "startTask": "试用第一个任务",
+    "firstTask": "连接 Airalogy，确认我授权的项目和权限，列出其中的协议。先告诉我有哪些可用数据，询问我想分析什么，再进行数据导出或写入。",
+    "resultsHint": "工具提交报告后，在当前项目的待确认操作中检查内容。确认并执行成功后，报告会出现在分析报告中。点击刷新可查看新提交。",
+    "manageConnections": "管理连接",
+    "searchReports": "搜索报告标题",
+    "emptyReports": "还没有已保存的报告。连接 AI 工具完成分析后，在这里确认并保存报告。",
+    "noMatches": "已加载的报告中没有匹配结果。",
+    "loadMore": "加载更早的报告",
+    "showHistory": "显示历史操作",
+    "platformAnalysis": "平台内分析"
   },
   "airaMemory": {
     "title": "Aira 个人记忆",
@@ -6396,33 +6444,5 @@
     "notUsed": "上次回答未使用个人记忆",
     "unavailable": "记忆暂不可用，已按普通对话继续",
     "close": "关闭"
-  },
-  "externalOnboarding": {
-    "workspace": "外部分析",
-    "workspaceHint": "连接你使用的 AI 工具，确认它提交的写入，并在项目内查看已保存的分析报告。",
-    "steps": "1. 选择授权 → 2. 配置工具 → 3. 开始任务",
-    "purpose": "用这个工具做什么？",
-    "read": "只读查看",
-    "analyze": "分析并回存报告",
-    "author": "编写协议",
-    "scopeHint": "只授予下列权限。保存报告或发布协议仍需你在平台确认。不可用的预设需要额外的项目权限。",
-    "customScopes": "自定义权限",
-    "permissionUnavailable": "你当前的项目权限不支持所选的导出或协议编写操作。请选择只读权限，或联系项目管理员。",
-    "disabledHint": "此实验室尚未开启外部 AI 接入，请联系实验室所有者或管理员在实验室设置中开启。",
-    "configure": "配置你的 AI 工具",
-    "environmentHint": "使用 Codex 时，先在启动客户端的环境中安全设置 AIRALOGY_PLATFORM_TOKEN，再执行下方命令并重启客户端。不要把令牌粘贴到对话中或提交到代码仓库。",
-    "otherClients": "其他 MCP 客户端",
-    "otherClientsHint": "使用此 Streamable HTTP MCP 地址，并设置 Bearer 身份验证。将令牌保存在客户端受保护的凭据设置中，具体接入方式见使用文档。",
-    "tokenVerified": "令牌有效。此检查仅验证平台访问权限，不代表 AI 客户端已经配置完成：",
-    "startTask": "试用第一个任务",
-    "firstTask": "连接 Airalogy，确认我授权的项目和权限，列出其中的协议。先告诉我有哪些可用数据，询问我想分析什么，再进行数据导出或写入。",
-    "resultsHint": "工具提交报告后，在当前项目的待确认操作中检查内容。确认并执行成功后，报告会出现在分析报告中。点击刷新可查看新提交。",
-    "manageConnections": "管理连接",
-    "searchReports": "搜索报告标题",
-    "emptyReports": "还没有已保存的报告。连接 AI 工具完成分析后，在这里确认并保存报告。",
-    "noMatches": "已加载的报告中没有匹配结果。",
-    "loadMore": "加载更早的报告",
-    "showHistory": "显示历史操作",
-    "platformAnalysis": "平台内分析"
   }
 }

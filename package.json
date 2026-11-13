@@ -77,7 +77,13 @@
     "agent:client:test": "python3 -m unittest discover -s tests/agent-client",
     "agent:codex:test": "node tests/agent-client/codex-live.mjs",
     "agent:codex:guards": "node --test tests/agent-client/codex-live.test.mjs",
-    "agent:preview:test": "playwright test -c tests/agent-client/preview.config.ts"
+    "agent:preview:test": "playwright test -c tests/agent-client/preview.config.ts",
+    "demos:examples": "node scripts/build-learning-examples.mjs",
+    "demos:check": "playwright test -c tests/demos/playwright.config.ts",
+    "demos:record": "DEMO_RECORD=1 playwright test -c tests/demos/playwright.config.ts",
+    "demos:voice": "uv run scripts/narrate-learning-demos.py",
+    "demos:media": "node scripts/render-learning-demos.mjs",
+    "demos:verify": "node --test tests/demos/artifacts.test.mjs"
   },
   "dependencies": {
     "lodash-es": "catalog:",

@@ -404,8 +404,16 @@ watch(() => [props.kind, props.protocolId, props.projectId, props.run?.id, props
     // history for explicit recovery instead of attaching an old scope to a new
     // environment. The current live request still polls its captured identity.
     const active = props.kind === "compute_draft" ? undefined : response.items.find(item => item.state === "generating" && (props.kind === "interpretation" || analysisSelectionIdentity(item.source_selection) === analysisSelectionIdentity(props.selection)))
-    if (active && !current.value && !pending.value)
+    if (active && !current.value && !pending.value) {
       storeResponse(active)
+    }
+    else if (props.kind === "interpretation" && !current.value && !pending.value) {
+      // A report should reopen with its saved interpretation. Fetch it again
+      // through the authorized endpoint; never regenerate or grant AI consent.
+      const latest = response.items.find(item => item.state === "generated" && item.analysis_run_id === props.run?.id)
+      if (latest)
+        await openHistory(latest.id)
+    }
   }
   catch (error) {
     if (version === scopeVersion)

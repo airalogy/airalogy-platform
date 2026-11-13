@@ -4,6 +4,7 @@ import type {
   DocumentSummary,
 } from "@/service/api/research-documents"
 import type { ResearchLogScopeParams } from "@/service/api/research-log"
+import LearningLink from "@/components/learning/learning-link.vue"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import {
   importResearchDocument,
@@ -215,6 +216,7 @@ watch([reading, items], async () => {
           {{ compact ? t("page.researchDocuments.recent") : t(hasQuery ? "page.documentUx.matchingCount" : "page.documentUx.documentCount", { count: total }) }}
         </h2>
         <div class="document-list-actions">
+          <learning-link v-if="!compact" lesson="first-document" />
           <n-button
             v-if="canWrite"
             type="primary"

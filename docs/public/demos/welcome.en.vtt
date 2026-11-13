@@ -1,0 +1,57 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:10.160
+Start on Home: describe your goal to Aira or continue from My projects. First, we will save a Record.
+
+2
+00:00:10.160 --> 00:00:18.080
+Open your workspace from My projects, then choose Protocols.
+
+3
+00:00:18.080 --> 00:00:25.440
+Open an existing Protocol, read the instructions and check its version.
+
+4
+00:00:25.440 --> 00:00:31.120
+Choose Add Record to open its editable form.
+
+5
+00:00:31.120 --> 00:00:38.600
+Enter synthetic sample DEMO-START, count 12, and mark the note as demo data.
+
+6
+00:00:38.600 --> 00:00:46.280
+Choose Submit, then verify the destination project, Protocol and version.
+
+7
+00:00:46.280 --> 00:00:53.320
+Confirm submission and open View saved Record to inspect the result.
+
+8
+00:00:53.320 --> 00:01:00.920
+Reload the page. The saved values remain: your first Record is complete.
+
+9
+00:01:00.920 --> 00:01:08.000
+You can also write documents. Return to the project and choose Documents.
+
+10
+00:01:08.000 --> 00:01:17.160
+Choose New document and preview Meeting notes. This destination belongs to the project and follows its permissions.
+
+11
+00:01:17.160 --> 00:01:25.960
+For an existing spreadsheet, open the matching Protocol’s Records and choose Bulk upload.
+
+12
+00:01:25.960 --> 00:01:34.800
+Download this Protocol’s CSV template and match its fields. Validate before confirming the import.
+
+13
+00:01:34.800 --> 00:01:46.320
+For a new experiment, create a Protocol with Aira when AI is enabled, or start from a template. See the separate AI walkthrough.
+
+14
+00:01:46.320 --> 00:01:54.040
+Return to Home and resume from My projects instead of finding the same workspace again.

@@ -1,5 +1,7 @@
 # Get started with Airalogy Platform
 
+First visit? Open [Getting started and demos](../learn/) and choose an existing Protocol, a document, a new experiment or a spreadsheet import.
+
 Airalogy Platform organizes research work so that a procedure, the data collected with it, and the people responsible for it stay connected. The exact sign-in and account-admission flow depends on how your organization operates its instance; the research workflow is the same in Community Edition and private deployments.
 
 ## Sign in or join an instance

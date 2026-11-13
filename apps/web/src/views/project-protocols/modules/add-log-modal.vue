@@ -6,7 +6,7 @@
       </slot>
     </template>
     <span v-if="showTrigger">
-      {{ props.trigger }}
+      {{ props.trigger ?? $t("common.addRecord") }}
     </span>
   </n-button>
 </template>
@@ -22,7 +22,6 @@ defineOptions({ name: "AddLogModal" })
 const props = withDefaults(defineProps<IProps>(), {
   showIcon: true,
   buttonProps: () => ({ type: "primary" }),
-  trigger: "Add",
   showTrigger: true,
   protocolUid: null,
 })

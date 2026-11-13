@@ -608,13 +608,13 @@ declare namespace I18n {
         scopeLab: string
         workbench: string
         noPermission: string
+        cannotCreate: string
         reload: string
         open: string
         revision: string
         submissionSuccess: string
         checkErrors: string
         changedElsewhere: string
-        cannotCreate: string
       }
       recorderAira: {
         finishReview: string
@@ -816,6 +816,16 @@ declare namespace I18n {
         setupTitle: string
         setupDescription: string
         administrator: string
+        administratorAccount: string
+        administratorAccountHint: string
+        administratorName: string
+        administratorNamePlaceholder: string
+        personalUsername: string
+        personalUsernamePlaceholder: string
+        personalUsernameHint: string
+        personalUsernameDistinct: string
+        loginEmail: string
+        loginPassword: string
         setupCode: string
         displayName: string
         username: string
@@ -854,16 +864,6 @@ declare namespace I18n {
         newPassword: string
         linkExpiresAt: string
         resetLinkFor: string
-        administratorAccount: string
-        administratorAccountHint: string
-        administratorName: string
-        administratorNamePlaceholder: string
-        personalUsername: string
-        personalUsernamePlaceholder: string
-        personalUsernameHint: string
-        personalUsernameDistinct: string
-        loginEmail: string
-        loginPassword: string
       }
       about: {
         title: string
@@ -5298,6 +5298,15 @@ declare namespace I18n {
         chooseProject: string
         chooseProtocol: string
       }
+      learning: {
+        aira: string
+        title: string
+        firstVisit: string
+        intro: string
+        dismiss: string
+        watch: string
+        replaceFile: string
+      }
       organization: {
         setupSection: string
         name: string
@@ -6318,6 +6327,17 @@ declare namespace I18n {
         }
       }
       characters: string
+      previewTabs: {
+        form: string
+        document: string
+        expand: string
+        collapse: string
+      }
+      actions: {
+        newHint: string
+        copyHint: string
+        saveHint: string
+      }
     }
     externalResearch: {
       connectProject: string
@@ -6358,6 +6378,34 @@ declare namespace I18n {
       redirectUri: string
       registerClient: string
       removeClientHint: string
+    }
+    externalOnboarding: {
+      workspace: string
+      workspaceHint: string
+      steps: string
+      purpose: string
+      read: string
+      analyze: string
+      author: string
+      scopeHint: string
+      customScopes: string
+      permissionUnavailable: string
+      disabledHint: string
+      configure: string
+      environmentHint: string
+      otherClients: string
+      otherClientsHint: string
+      tokenVerified: string
+      startTask: string
+      firstTask: string
+      resultsHint: string
+      manageConnections: string
+      searchReports: string
+      emptyReports: string
+      noMatches: string
+      loadMore: string
+      showHistory: string
+      platformAnalysis: string
     }
     airaMemory: {
       "title": string
@@ -6400,34 +6448,6 @@ declare namespace I18n {
       "notUsed": string
       "unavailable": string
       "close": string
-    }
-    externalOnboarding: {
-      workspace: string
-      workspaceHint: string
-      steps: string
-      purpose: string
-      read: string
-      analyze: string
-      author: string
-      scopeHint: string
-      customScopes: string
-      permissionUnavailable: string
-      disabledHint: string
-      configure: string
-      environmentHint: string
-      otherClients: string
-      otherClientsHint: string
-      tokenVerified: string
-      startTask: string
-      firstTask: string
-      resultsHint: string
-      manageConnections: string
-      searchReports: string
-      emptyReports: string
-      noMatches: string
-      loadMore: string
-      showHistory: string
-      platformAnalysis: string
     }
   }
 }

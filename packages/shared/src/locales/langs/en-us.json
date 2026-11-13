@@ -604,13 +604,13 @@
       "scopeLab": "Lab documents",
       "workbench": "Scenario workbench",
       "noPermission": "You do not have access to this workspace.",
+      "cannotCreate": "You cannot create documents in this space. Choose a space where you have write access.",
       "reload": "Reload",
       "open": "Open",
       "revision": "Revision {revision}",
       "submissionSuccess": "Results submitted with their working definition and provenance.",
       "checkErrors": "Check these fields and submit again.",
-      "changedElsewhere": "This content may have changed in another page. Preserve your edits, then reload and compare.",
-      "cannotCreate": "You cannot create documents in this space. Choose a space where you have write access."
+      "changedElsewhere": "This content may have changed in another page. Preserve your edits, then reload and compare."
     },
     "recorderAira": {
       "finishReview": "Finish reviewing the current replacements, then ask Aira to fill more fields.",
@@ -812,6 +812,16 @@
       "setupTitle": "Set up your laboratory",
       "setupDescription": "Create the first administrator account. The configured Lab and its default private project will be created automatically.",
       "administrator": "Administrator",
+      "administratorAccount": "Administrator account",
+      "administratorAccountHint": "This is your personal account for signing in and managing the organization. Invite other members after setup.",
+      "administratorName": "Administrator name",
+      "administratorNamePlaceholder": "Your own name or nickname",
+      "personalUsername": "Personal username",
+      "personalUsernamePlaceholder": "For example, alex_chen",
+      "personalUsernameHint": "A unique identifier for your personal account, not the company name. It must differ from the organization identifier.",
+      "personalUsernameDistinct": "Choose a personal username different from the organization identifier.",
+      "loginEmail": "Sign-in email",
+      "loginPassword": "Sign-in password",
       "setupCode": "Initial setup code",
       "displayName": "Display name",
       "username": "Username",
@@ -849,17 +859,7 @@
       "currentPassword": "Current password",
       "newPassword": "New password",
       "linkExpiresAt": "Expires {time}",
-      "resetLinkFor": "Password reset for {name}",
-      "administratorAccount": "Administrator account",
-      "administratorAccountHint": "This is your personal account for signing in and managing the organization. Invite other members after setup.",
-      "administratorName": "Administrator name",
-      "administratorNamePlaceholder": "Your own name or nickname",
-      "personalUsername": "Personal username",
-      "personalUsernamePlaceholder": "For example, alex_chen",
-      "personalUsernameHint": "A unique identifier for your personal account, not the company name. It must differ from the organization identifier.",
-      "personalUsernameDistinct": "Choose a personal username different from the organization identifier.",
-      "loginEmail": "Sign-in email",
-      "loginPassword": "Sign-in password"
+      "resetLinkFor": "Password reset for {name}"
     },
     "about": {
       "title": "About",
@@ -5294,6 +5294,15 @@
       "chooseProject": "Choose a project",
       "chooseProtocol": "Choose a Protocol"
     },
+    "learning": {
+      "aira": "See Aira in action",
+      "title": "Getting started and demos",
+      "firstVisit": "First visit? Start here.",
+      "intro": "Choose today’s task and follow an example to complete your first step.",
+      "dismiss": "Dismiss for now",
+      "watch": "Watch an example",
+      "replaceFile": "Replace file"
+    },
     "organization": {
       "setupSection": "Organization information",
       "name": "Organization name",
@@ -6313,7 +6322,18 @@
         "tooltip": "Expand menu"
       }
     },
-    "characters": "Characters"
+    "characters": "Characters",
+    "previewTabs": {
+      "form": "Form preview",
+      "document": "Document preview",
+      "expand": "Expand preview",
+      "collapse": "Collapse preview"
+    },
+    "actions": {
+      "newHint": "Create an empty Protocol",
+      "copyHint": "Create an editable copy",
+      "saveHint": "Check and save the Protocol"
+    }
   },
   "externalResearch": {
     "connectProject": "Connect external AI",
@@ -6354,6 +6374,34 @@
     "redirectUri": "Client callback URI",
     "registerClient": "Register client",
     "removeClientHint": "Revoke all grants for this client and delete its registration?"
+  },
+  "externalOnboarding": {
+    "workspace": "External analysis",
+    "workspaceHint": "Connect your AI tool, review its proposed writes, and return to the reports saved in this project.",
+    "steps": "1. Choose access → 2. Configure your tool → 3. Start a task",
+    "purpose": "What will this tool do?",
+    "read": "Read and explore",
+    "analyze": "Analyze and save reports",
+    "author": "Develop Protocols",
+    "scopeHint": "Only the permissions below will be granted. Saving a report or publishing a Protocol requires your confirmation in Platform. Unavailable presets need additional project permissions.",
+    "customScopes": "Customize permissions",
+    "permissionUnavailable": "Your current project permissions do not allow the selected export or authoring actions. Choose read-only access or contact the project manager.",
+    "disabledHint": "External AI access is disabled for this laboratory. Ask a Lab Owner or Manager to enable it in laboratory settings.",
+    "configure": "Configure your AI tool",
+    "environmentHint": "For Codex, securely set AIRALOGY_PLATFORM_TOKEN in the environment used to start the client, then run the command below and restart the client. Do not paste the token into a conversation or commit it to a file.",
+    "otherClients": "Other MCP clients",
+    "otherClientsHint": "Use this Streamable HTTP MCP endpoint with Bearer authentication. Keep the token in your client’s protected credential settings. See the guide for supported setup methods.",
+    "tokenVerified": "Token verified. This checks Platform access, not whether your AI client is configured:",
+    "startTask": "Try your first task",
+    "firstTask": "Connect to Airalogy, check my authorized project and permissions, and list its Protocols. Tell me what data is available and ask what I want to analyze before exporting or writing anything.",
+    "resultsHint": "When your tool submits a report, review it under Pending operations in this project. After confirmation and execution, it appears under Analysis reports. Refresh to see new submissions.",
+    "manageConnections": "Manage connections",
+    "searchReports": "Search report titles",
+    "emptyReports": "No saved reports yet. Connect an AI tool, complete an analysis, then confirm its report here.",
+    "noMatches": "No matching reports in the loaded results.",
+    "loadMore": "Load older reports",
+    "showHistory": "Show completed operations",
+    "platformAnalysis": "Analyze in Platform"
   },
   "airaMemory": {
     "title": "Aira personal memory",
@@ -6396,33 +6444,5 @@
     "notUsed": "The last answer did not use personal memory",
     "unavailable": "Memory is unavailable; continued without personalization",
     "close": "Close"
-  },
-  "externalOnboarding": {
-    "workspace": "External analysis",
-    "workspaceHint": "Connect your AI tool, review its proposed writes, and return to the reports saved in this project.",
-    "steps": "1. Choose access → 2. Configure your tool → 3. Start a task",
-    "purpose": "What will this tool do?",
-    "read": "Read and explore",
-    "analyze": "Analyze and save reports",
-    "author": "Develop Protocols",
-    "scopeHint": "Only the permissions below will be granted. Saving a report or publishing a Protocol requires your confirmation in Platform. Unavailable presets need additional project permissions.",
-    "customScopes": "Customize permissions",
-    "permissionUnavailable": "Your current project permissions do not allow the selected export or authoring actions. Choose read-only access or contact the project manager.",
-    "disabledHint": "External AI access is disabled for this laboratory. Ask a Lab Owner or Manager to enable it in laboratory settings.",
-    "configure": "Configure your AI tool",
-    "environmentHint": "For Codex, securely set AIRALOGY_PLATFORM_TOKEN in the environment used to start the client, then run the command below and restart the client. Do not paste the token into a conversation or commit it to a file.",
-    "otherClients": "Other MCP clients",
-    "otherClientsHint": "Use this Streamable HTTP MCP endpoint with Bearer authentication. Keep the token in your client’s protected credential settings. See the guide for supported setup methods.",
-    "tokenVerified": "Token verified. This checks Platform access, not whether your AI client is configured:",
-    "startTask": "Try your first task",
-    "firstTask": "Connect to Airalogy, check my authorized project and permissions, and list its Protocols. Tell me what data is available and ask what I want to analyze before exporting or writing anything.",
-    "resultsHint": "When your tool submits a report, review it under Pending operations in this project. After confirmation and execution, it appears under Analysis reports. Refresh to see new submissions.",
-    "manageConnections": "Manage connections",
-    "searchReports": "Search report titles",
-    "emptyReports": "No saved reports yet. Connect an AI tool, complete an analysis, then confirm its report here.",
-    "noMatches": "No matching reports in the loaded results.",
-    "loadMore": "Load older reports",
-    "showHistory": "Show completed operations",
-    "platformAnalysis": "Analyze in Platform"
   }
 }

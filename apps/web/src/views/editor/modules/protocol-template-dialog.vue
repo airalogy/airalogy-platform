@@ -7,6 +7,7 @@
     <p class="mb-5 text-sm text-gray-600">
       {{ $t("editor.template.description") }}
     </p>
+    <learning-link lesson="first-protocol" class="mb-4" />
     <n-form :model="model" :disabled="loading" size="large">
       <n-form-item :label="$t('editor.template.name')" required>
         <n-input v-model:value="model.name" data-testid="template-name" maxlength="80" :placeholder="$t('editor.template.namePlaceholder')" />
@@ -42,6 +43,7 @@
 
 <script setup lang="ts">
 import type { ProtocolTemplate } from "@airalogy/components/monaco-editor/store/uploadFileDataStore"
+import LearningLink from "@/components/learning/learning-link.vue"
 import { $t } from "@airalogy/shared/locales"
 import { useI18n } from "vue-i18n"
 

@@ -5,6 +5,7 @@
     v-model:split-size="splitSize"
     v-model:selected-tab="selectedTab"
     :wrapper="wrapper"
+    responsive
     @update:collapsed="handleUpdateCollapsed"
   >
     <template #tabs>

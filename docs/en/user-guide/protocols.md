@@ -66,3 +66,7 @@ Where Protocol Workflow is available, multiple Protocols can be connected into a
 Access is determined by Lab, Project, and Protocol rules. Share through Platform membership and grants rather than copying unpublished content to an uncontrolled location. Stable Platform routes can be used to reference a Protocol, but recipients still need the required access.
 
 See [Collaboration](./collaboration) for role guidance and [Records](./records) for using a Protocol to capture data.
+
+## Ratings and use
+
+Use **Ratings & use** for version-specific reviews, optional execution feedback and the transparent trial recommendation. See [Protocol ratings and adoption](../product/protocol-rating.md) for counting, scoring and privacy rules.

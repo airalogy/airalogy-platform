@@ -2,8 +2,10 @@
 
 import ast
 import hashlib
+import io
 import json
 import logging
+import tokenize
 import tomllib
 from pathlib import PurePosixPath
 from typing import Literal
@@ -13,7 +15,7 @@ from airalogy.assigner.graph import (
     extract_server_assigner_graph_nodes_from_python,
     validate_assigner_graph,
 )
-from airalogy.markdown import validate_aimd
+from airalogy.markdown import Lexer, TokenType, validate_aimd
 from airalogy.markdown.errors import AimdParseError
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
@@ -63,6 +65,58 @@ class SourceValidation(BaseModel):
     level: Literal["static"] = "static"
 
 
+def malformed_field_literals(file: SourceFile) -> list[SourceDiagnostic]:
+    """Reject incomplete literals that the SDK's permissive parser treats as text.
+
+    Use the SDK lexer to preserve its code-example exclusions. This adds a
+    lexical check only, without evaluating defaults or duplicating AIMD grammar.
+    """
+    diagnostics = []
+    lexer = Lexer(file.content)
+    # The current SDK deliberately skips an unterminated template as prose.
+    # Authoring must report it rather than let a declared field disappear.
+    covered_until = 0
+    for match in lexer.TEMPLATE_START_PATTERN.finditer(file.content):
+        if match.start() < covered_until:
+            continue
+        if lexer._is_in_excluded_range(match.start(), len(match[0])):
+            continue
+        end = lexer._find_template_end(match.end())
+        if end != -1:
+            covered_until = end
+            continue
+        if end == -1:
+            position = lexer._get_position(match.start(), len(match[0]))
+            diagnostics.append(
+                SourceDiagnostic(
+                    path=file.path,
+                    message="Incomplete quoted value or unclosed AIMD field/template.",
+                    line=position.start_line,
+                    column=position.start_col,
+                )
+            )
+    for token in lexer.tokenize():
+        if token.type not in (TokenType.VAR, TokenType.VAR_TABLE):
+            continue
+        try:
+            parts = tokenize.generate_tokens(io.StringIO(token.value).readline)
+            if not any(
+                p.type == tokenize.ERRORTOKEN and p.string in ("'", '"') for p in parts
+            ):
+                continue
+        except tokenize.TokenError:
+            pass
+        diagnostics.append(
+            SourceDiagnostic(
+                path=file.path,
+                message="Incomplete quoted value or unbalanced brackets in field definition.",
+                line=token.position.start_line,
+                column=token.position.start_col,
+            )
+        )
+    return diagnostics
+
+
 def validate_sources(files: list[SourceFile]) -> SourceValidation:
     """Never import model.py or run assigners in the API process."""
     diagnostics = []
@@ -81,6 +135,7 @@ def validate_sources(files: list[SourceFile]) -> SourceValidation:
                     )
                     continue
                 valid, errors = validate_aimd(file.content)
+                diagnostics.extend(malformed_field_literals(file))
                 diagnostics.extend(
                     SourceDiagnostic(
                         path=file.path,

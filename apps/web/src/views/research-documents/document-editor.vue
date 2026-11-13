@@ -45,6 +45,9 @@ const doc = ref<ResearchDocument>()
 const form = ref<DocumentContent>()
 const mode = ref<"source" | "wysiwyg">("wysiwyg")
 const surfaceRevision = ref(0)
+const visualSurface = ref<InstanceType<typeof AimdRecorderWysiwygSurface>>()
+const visualPending = ref(false)
+let visualLastMarkdown: string | undefined
 const loading = ref(true)
 const saving = ref(false)
 const busy = ref(false)
@@ -83,7 +86,7 @@ let timeout: ReturnType<typeof setTimeout> | undefined
 let generation = 0
 const denyCollector = () => false
 const fingerprint = (value: unknown) => JSON.stringify(value)
-const dirty = computed(() => Boolean(form.value && fingerprint(form.value) !== savedHash.value))
+const dirty = computed(() => Boolean(visualPending.value || (form.value && fingerprint(form.value) !== savedHash.value)))
 const scope = computed(() =>
   doc.value
     ? {
@@ -133,6 +136,8 @@ function contentOf(value: ResearchDocument): DocumentContent {
   }
 }
 function apply(value: ResearchDocument) {
+  visualPending.value = false
+  visualLastMarkdown = undefined
   doc.value = value
   form.value = contentOf(value)
   savedHash.value = fingerprint(form.value)
@@ -185,7 +190,39 @@ function scheduleSave() {
   if (dirty.value && editable.value && !changePreview.value && !submitPreview.value)
     timeout = setTimeout(() => void save(), 1400)
 }
+// Milkdown emits serialized content after a short debounce. Read its current
+// state before a save/navigation, so a final keystroke cannot be discarded.
+interface VisualEditor { action: (read: (ctx: { get: (name: string) => any }) => string) => string }
+function readVisualMarkdown(editor: VisualEditor) {
+  return editor.action((ctx) => {
+    const view = ctx.get("editorView")
+    return ctx.get("serializer")(view.state.doc) as string
+  })
+}
+function onVisualReady({ milkdown }: { milkdown: VisualEditor }) {
+  // The initial serializer output may normalize whitespace. Viewing a document
+  // alone must not create a revision or rewrite its original Markdown.
+  visualLastMarkdown = readVisualMarkdown(milkdown)
+}
+function flushVisualContent() {
+  if (mode.value !== "wysiwyg" || !editable.value)
+    return
+  const editor = visualSurface.value?.getEditor?.()
+  if (!editor)
+    return
+  const markdown = readVisualMarkdown(editor)
+  if (markdown !== visualLastMarkdown)
+    updateBody(markdown, true)
+  else
+    visualPending.value = false
+}
+function markVisualInput(event: Event) {
+  const target = event.target as HTMLElement
+  if (editable.value && target.matches(".ProseMirror[contenteditable=true]"))
+    visualPending.value = true
+}
 async function save(confirmImpact = false): Promise<boolean> {
+  flushVisualContent()
   if (!doc.value || !form.value || !editable.value || saving.value)
     return false
   if (!dirty.value)
@@ -237,6 +274,9 @@ function updateBody(content: string, visual = false) {
     return
   try {
     form.value.body = visual ? preserveVisualFenceMetadata(form.value.body, content) : content
+    visualPending.value = false
+    if (visual)
+      visualLastMarkdown = content
     validation.value = undefined
   }
   catch (err) {
@@ -259,6 +299,7 @@ function updateValues(value: AimdProtocolRecordData) {
   validation.value = undefined
 }
 function switchMode(value: "source" | "wysiwyg") {
+  flushVisualContent()
   mode.value = value
   if (value === "wysiwyg")
     surfaceRevision.value++
@@ -465,12 +506,14 @@ async function deriveAsset(confirm = false) {
   }
 }
 function beforeUnload(event: BeforeUnloadEvent) {
+  flushVisualContent()
   if (dirty.value) {
     event.preventDefault()
     event.returnValue = ""
   }
 }
 async function guard() {
+  flushVisualContent()
   if (!dirty.value || (await save()))
     return true
   return new Promise<boolean>((resolve) => {
@@ -644,12 +687,15 @@ onBeforeUnmount(() => {
             <aimd-recorder-wysiwyg-surface
               v-else
               :key="`${doc.id}:${surfaceRevision}`"
+              ref="visualSurface"
               :content="form.body"
               :model-value="form.record_data"
               :readonly="!editable"
               :locale="locale"
               :min-height="400"
               :request-collector-permission="denyCollector"
+              @ready="onVisualReady"
+              @input="markVisualInput"
               @update:content="updateBody($event, true)"
               @update:model-value="updateValues"
             />
