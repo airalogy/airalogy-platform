@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Avoid redundant pagination URL updates cancelling a project tab switch while the next page loads.
+
 - Include Protocol ratings and external research in affected PostgreSQL checks; keep migration and permission-revocation fixtures aligned with current tables and independent Protocol ownership.
 
 - Accept non-empty, trimmed organization names of 1–64 characters consistently in setup, creation and settings. Promote single-organization management to a direct header/mobile entry, preserve role boundaries and refresh the header after renaming.

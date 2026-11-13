@@ -25,9 +25,21 @@ export function usePagination<T, K extends PaginationPayload = PaginationPayload
   })
 
   const disabledRef = toRef(disabled || false)
-  const currPageRef = mutateRoute
+  const routePage = mutateRoute
     ? useRouteQuery("page", opts?.page, {
       transform: v => typeof v === "undefined" ? 1 : Math.max(1, Number(v)),
+    })
+    : undefined
+  // VueUse compares the raw query value with writes. An absent `page` and
+  // numeric page 1 mean the same thing, but writing 1 still queues a replace.
+  // That redundant navigation can cancel a tab switch while its module loads.
+  const currPageRef = routePage
+    ? computed({
+      get: () => routePage.value,
+      set: (value) => {
+        if (value !== routePage.value)
+          routePage.value = value
+      },
     })
     : opts?.page
 
