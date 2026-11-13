@@ -35,12 +35,16 @@
                 v-if="authStore.isLogin && !instanceStore.isSingleLab"
                 :to="{ name: 'lab-projects', params: { labUid: projectInfo.lab_uid } }"
                 class="block break-words text-sm color-text-secondary sm:text-6"
-              >{{ projectInfo.lab_name || projectInfo.lab_uid }}</router-link>
+              >
+                {{ projectInfo.lab_name || projectInfo.lab_uid }}
+              </router-link>
               <span v-else-if="!instanceStore.isSingleLab" class="block break-words text-sm color-text-secondary sm:text-6">
                 {{ projectInfo.lab_name || projectInfo.lab_uid }}
               </span>
               <span v-if="!instanceStore.isSingleLab" class="hidden select-none text-5 color-text-secondary sm:inline">/</span>
-              <h2 class="m-0 min-w-0 break-words !text-xl sm:!text-6">{{ projectTitle }}</h2>
+              <h2 class="m-0 min-w-0 break-words !text-xl sm:!text-6">
+                {{ projectTitle }}
+              </h2>
             </div>
             <span v-if="visibilityLabel" class="inline-flex shrink-0 items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-500" :class="visibilityClass">
               {{ visibilityLabel }}
@@ -285,7 +289,7 @@ async function setBreadcrumbs(info?: Api.Project.MyProjectInfo | null) {
 
   if (parentProjectUid) {
     breadcrumbs.push({
-      breadcrumbLabel: parentProjectUid,
+      breadcrumbLabel: parentProjectName || parentProjectUid,
       key: "",
       label: parentProjectName || parentProjectUid,
       routeKey: "project-protocols" as App.Global.RouteKey,
@@ -299,9 +303,9 @@ async function setBreadcrumbs(info?: Api.Project.MyProjectInfo | null) {
 
   breadcrumbs.push(
     {
-      breadcrumbLabel: projectUid || "",
+      breadcrumbLabel: info.name || projectUid || "",
       key: "",
-      label: projectUid || "",
+      label: info.name || projectUid || "",
       routeKey: "project-protocols" as App.Global.RouteKey,
       routePath: "/project",
       options: [

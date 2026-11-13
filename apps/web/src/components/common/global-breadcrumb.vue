@@ -19,11 +19,14 @@
       </router-link>
       <n-dropdown
         v-else-if="item.options?.length"
+        trigger="click"
         :options="item.options"
         placement="bottom-start"
         @select="handleClickMenu"
       >
-        <breadcrumb-content :breadcrumb="item" />
+        <button type="button" class="max-w-full rounded text-left focus-visible:outline-2 focus-visible:outline-primary" aria-haspopup="menu">
+          <breadcrumb-content :breadcrumb="item" />
+        </button>
       </n-dropdown>
       <breadcrumb-content v-else :breadcrumb="item" />
     </n-breadcrumb-item>
@@ -53,7 +56,7 @@ const [DefineBreadcrumbContent, BreadcrumbContent]
   = createReusableTemplate<BreadcrumbContentProps>()
 
 async function handleClickMenu(key: RouteNameKey) {
-  if (key === "project-protocols" || key === "project-members") {
+  if (key.startsWith("project-") && route.params.projectUid && route.params.labUid) {
     const { projectUid, labUid } = route.params
     if (projectUid && labUid) {
       await routerPushByKey(key, {
@@ -67,10 +70,22 @@ async function handleClickMenu(key: RouteNameKey) {
   }
 }
 
+function localizeBreadcrumb(item: App.Global.Breadcrumb): App.Global.Breadcrumb {
+  const label = item.i18nKey ? $t(item.i18nKey) : item.label
+  return {
+    ...item,
+    label,
+    breadcrumbLabel: item.breadcrumbI18nKey
+      ? $t(item.breadcrumbI18nKey)
+      : item.i18nKey ? label : item.breadcrumbLabel,
+    options: item.options?.map(localizeBreadcrumb),
+  }
+}
+
 const currentBreadcrumb = computed((): App.Global.Breadcrumb[] => {
   const { breadcrumbs, dynamicBreadcrumbs } = routeStore
 
-  const items = [...breadcrumbs, ...dynamicBreadcrumbs]
+  const items = [...breadcrumbs, ...dynamicBreadcrumbs].map(localizeBreadcrumb)
   if (!instance.isSingleLab)
     return items
   return items.flatMap((item) => {
