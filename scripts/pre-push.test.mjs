@@ -332,6 +332,19 @@ test("scenario kit changes select real database integration checks", () => {
   assert.ok(suite.includes("tests/test_scenario_kit_migrations_postgres.py"))
 })
 
+test("Protocol Rating changes include real PostgreSQL coverage in extended checks", () => {
+  for (const file of ["apps/api/app/services/protocol_rating.py", "apps/api/app/routers/protocol_ratings.py", "apps/api/migrations/versions/0083_protocol_rating.py"])
+    assert.ok(ids([file]).includes("research-integration"), file)
+  assert.ok(readFileSync("tests/e2e/scripts/research-integration.sh", "utf8").includes("tests/test_protocol_rating_postgres.py"))
+})
+
+test("external analysis and onboarding retain real PostgreSQL acceptance", () => {
+  for (const file of ["apps/api/app/routers/external_access.py", "apps/api/app/services/external_research.py", "apps/api/tests/test_external_onboarding_postgres.py"])
+    assert.ok(ids([file]).includes("research-integration"), file)
+  const suite = readFileSync("tests/e2e/scripts/research-integration.sh", "utf8")
+  assert.ok(suite.includes("tests/test_external_research_postgres.py"))
+})
+
 test("project R&D changes retain real database acceptance", () => {
   for (const file of ["apps/api/app/routers/project_work.py", "apps/api/app/models/project_work.py", "apps/api/app/services/project_work_contracts.py", "apps/api/tests/test_project_work.py", "apps/api/migrations/versions/0086_project_work.py"])
     includes([file], ["api-tests", "research-integration"])

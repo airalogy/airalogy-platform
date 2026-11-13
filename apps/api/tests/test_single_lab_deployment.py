@@ -286,6 +286,9 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     later_tables.add("project_visits")
     # Later features must never be created by the initial revision.
     later_tables.update({'external_oauth_clients', 'external_analysis_files', 'protocol_ratings', 'protocol_rating_revisions', 'aira_memory_events', 'external_oauth_codes', 'protocol_use_records', 'protocol_uses', 'aira_memories', 'external_analysis_sources', 'external_snapshots'})
+    project_work_revision = import_module("migrations.versions.0086_project_work")
+    assert project_work_revision.down_revision == "0085_organization_foundation"
+    later_tables.add("project_work")
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

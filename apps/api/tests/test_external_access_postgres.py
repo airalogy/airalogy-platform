@@ -464,9 +464,16 @@ def test_approval_is_invalidated_by_current_state(change):
                         )
                         .values(role=ProjectRole.VIEWER)
                     )
-                    # A Lab Owner still has membership but its Project write role is removed.
+                    # Remove every write grant: Protocol ownership independently
+                    # authorizes recording even after a Project role downgrade.
                     from app.models.lab import LabRole
+                    from app.models.protocol import Protocol
 
+                    await db.execute(
+                        update(Protocol)
+                        .where(Protocol.id == scope.protocol.id)
+                        .values(user_id=scope.analyst.id)
+                    )
                     await db.execute(
                         update(LabUser)
                         .where(

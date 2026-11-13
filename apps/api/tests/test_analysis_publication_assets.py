@@ -286,7 +286,9 @@ def test_log_applies_candidate_exclusions_to_both_count_and_page(monkeypatch):
         AsyncMock(return_value=[hidden_id]),
     )
     db = SimpleNamespace(
-        scalar=AsyncMock(return_value=0), execute=AsyncMock(return_value=rows([]))
+        scalar=AsyncMock(return_value=0),
+        scalars=AsyncMock(return_value=rows([])),
+        execute=AsyncMock(return_value=rows([]))
     )
     result = asyncio.run(
         research_log.get_research_log_timeline(

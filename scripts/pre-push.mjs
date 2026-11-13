@@ -266,7 +266,7 @@ export function buildCheckPlan(files, fullRequested = false, hostPlatform = proc
     plan.push(checks.apiTests)
   }
   if (files.some(file =>
-    /^apps\/api\/(?:app\/(?:models|routers|services)\/project_work|tests\/test_project_work)/.test(file)
+    /^apps\/api\/(?:app\/(?:models|routers|services)\/(?:protocol_rating|project_work|external_access|external_research|external_onboarding)|tests\/test_(?:protocol_rating|project_work|external_access|external_research|external_onboarding))/.test(file)
     || /^apps\/api\/(?:app\/(?:models|routers|services)\/research|tests\/test_research)/.test(file)
     || /^apps\/api\/(?:app\/(?:models|routers|services)\/scenario|tests\/test_scenario)/.test(file)
     || /^apps\/api\/(?:app\/(?:models|routers|services)\/workflow|tests\/test_workflow)/.test(file)
@@ -276,7 +276,7 @@ export function buildCheckPlan(files, fullRequested = false, hostPlatform = proc
     || /^apps\/instrument-gateway\/(?:src|tests|examples)\//.test(file)
     || /^apps\/compute-runner\/(?:src|tests)\//.test(file)
     || file.startsWith("apps/instrument-interface/")
-    || /^apps\/api\/migrations\/versions\/\d+_(?:instrument|analysis|workflow|scenario|record_resource|project_work)/.test(file)
+    || /^apps\/api\/migrations\/versions\/\d+_(?:instrument|analysis|workflow|scenario|record_resource|protocol_rating|project_work|external_access|external_research)/.test(file)
     || [
       "apps/api/app/services/persistent_jobs.py",
       "apps/api/app/services/resource_job_worker.py",

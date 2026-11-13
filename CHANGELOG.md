@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Include Protocol ratings and external research in affected PostgreSQL checks; keep migration and permission-revocation fixtures aligned with current tables and independent Protocol ownership.
+
 - Accept non-empty, trimmed organization names of 1–64 characters consistently in setup, creation and settings. Promote single-organization management to a direct header/mobile entry, preserve role boundaries and refresh the header after renaming.
 
 - Add a Protocol-independent Project R&D workbench (Issue #26 P0) on existing ResearchTask/ResearchEvent identities: requirements, tasks, issues, milestones, assignment, dependencies, list/board/plan views, project documents and versioned evidence, immutable discussion/decisions/test/acceptance, permission-aware Log activity and home assignment inbox. Add revision conflicts, local input recovery and migration `0086_project_work`; AI remains optional.
