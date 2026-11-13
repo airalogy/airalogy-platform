@@ -609,7 +609,8 @@
       "revision": "修订 {revision}",
       "submissionSuccess": "结果已提交，工作内容和来源均已保存。",
       "checkErrors": "请检查以下字段后重新提交。",
-      "changedElsewhere": "内容可能已被其他页面修改。请保留当前内容，重新加载后比较。"
+      "changedElsewhere": "内容可能已被其他页面修改。请保留当前内容，重新加载后比较。",
+      "cannotCreate": "你没有在此空间新建文档的权限，请选择有写入权限的空间。"
     },
     "recorderAira": {
       "finishReview": "请先处理当前待确认的替换，再让 Aira 填写其他字段。",
@@ -5483,7 +5484,7 @@
       "keepMine": "已核对，使用此版本继续合并",
       "compareAccepted": "已更新版本依据，请核对并合并字段后保存。",
       "leave": "存在未保存内容。离开后可在当前浏览器恢复，但尚未写入项目。确定离开？",
-      "saveFirst": "请先保存上面的事项修改，再记录活动。",
+      "saveFirst": "请先保存“事项信息”中的修改，再记录活动。",
       "createDocument": "创建方案文档",
       "documentHint": "在当前项目创建普通 AIMD 文档，复制事项标题与目标。创建后保存事项以完成关联。",
       "documentCreated": "文档已创建；请保存事项以保留关联。可在项目“文档”中继续编辑。",
@@ -5557,7 +5558,26 @@
       },
       "earlierDecision": "较早的决策（加载更多历史可查看）",
       "linkedWork": "关联的研发事项",
-      "wrongProject": "此事项属于另一个项目，请从对应项目的研发工作入口打开。"
+      "wrongProject": "此事项属于另一个项目，请从对应项目的研发工作入口打开。",
+      "allStates": "全部状态",
+      "activeOnly": "未完成",
+      "clearFilters": "清除筛选",
+      "noMatches": "没有符合条件的事项",
+      "noMatchesHint": "可以换个关键词，或清除筛选查看项目中的全部事项。",
+      "noActive": "暂无未完成的项目事项。可以先新建一项，跟进目标、需求或问题。",
+      "summaryCount": "显示 {total} 项未完成事项中的 {shown} 项。",
+      "detailsTab": "事项信息",
+      "activityTab": "讨论与进展",
+      "quickStartHint": "先写一个标题即可创建，负责人、日期和证据可以稍后补充。",
+      "newSave": "创建事项",
+      "notCreated": "尚未保存到项目",
+      "titleRequired": "请填写事项标题。",
+      "blockerRequired": "请说明阻塞原因及所需支持。",
+      "acceptanceRequired": "标记已完成前，请填写完成条件。",
+      "reasonRequired": "请填写修改说明，再保存新版本。",
+      "backToDetails": "返回事项信息",
+      "activityEmpty": "还没有讨论，可以在这里记录进展、问题或决策。",
+      "moreItems": "加载更多事项"
     }
   },
   "form": {

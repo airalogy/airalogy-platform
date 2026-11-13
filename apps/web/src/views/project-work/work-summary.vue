@@ -5,32 +5,50 @@ import { useI18n } from "vue-i18n"
 
 const props = defineProps<{ projectId?: string }>()
 const { t } = useI18n()
+const router = useRouter()
 const items = ref<ProjectWork[]>([])
 const failed = ref(false)
+const loading = ref(true)
+const canWrite = ref(false)
+const total = ref(0)
+const page = ref(0)
 let sequence = 0
-async function load() {
+async function load(append = false) {
   const ticket = ++sequence
   failed.value = false
-  items.value = []
+  loading.value = true
+  if (!append) {
+    canWrite.value = false
+    items.value = []
+  }
+  const nextPage = append ? page.value + 1 : 1
   try {
     const result = await listProjectWork({
       project_id: props.projectId,
+      page: nextPage,
       page_size: 6,
       active_only: true,
       mine: !props.projectId,
     })
     if (ticket === sequence) {
-      items.value = result.items
-        .filter(item => !["done", "cancelled"].includes(item.state))
-        .slice(0, 6)
+      canWrite.value = result.can_write
+      total.value = result.total
+      page.value = nextPage
+      const next = result.items.filter(item => !["done", "cancelled"].includes(item.state))
+      items.value = append ? [...new Map([...items.value, ...next].map(item => [item.id, item])).values()] : next
     }
   }
   catch {
     if (ticket === sequence)
       failed.value = true
   }
+  finally {
+    if (ticket === sequence)
+      loading.value = false
+  }
 }
-watch(() => props.projectId, load, { immediate: true })
+onBeforeUnmount(() => sequence++)
+watch(() => props.projectId, () => load(), { immediate: true })
 </script>
 
 <template>
@@ -39,18 +57,22 @@ watch(() => props.projectId, load, { immediate: true })
     ><h2 class="aira-type-card-title m-0">{{
       t(projectId ? "page.projectWork.title" : "page.projectWork.myWork")
     }}</h2
-    ><router-link v-if="projectId" :to="{ name: 'project-work' }" class="text-primary"
-    >{{ t("page.projectWork.open") }} →</router-link
-    ></div
-    >
+    ><div v-if="projectId" class="flex flex-wrap items-center gap-3">
+      <router-link :to="{ name: 'project-work' }" class="text-primary">{{ t("page.projectWork.open") }} →</router-link>
+      <n-button v-if="canWrite" type="primary" size="small" data-testid="overview-new-work" @click="router.push({ name: 'project-work', query: { create: '1' } })">{{ t("page.projectWork.new") }}</n-button>
+    </div>
+    </div>
+    <div v-if="loading && !items.length" role="status" :aria-label="t('common.loading')" class="mt-3 space-y-2">
+      <n-skeleton text :repeat="2" />
+    </div>
     <p v-if="failed" role="alert"
     >{{ t("page.projectWork.failed") }}
-      <n-button size="small" @click="load">{{ t("page.projectWork.reload") }}</n-button></p
+      <n-button size="small" @click="load(Boolean(items.length))">{{ t("page.projectWork.reload") }}</n-button></p
     >
-    <p v-else-if="!items.length" class="mb-0 text-sm text-gray-500">{{
-      t("page.projectWork.noAssigned")
+    <p v-else-if="!loading && !items.length" class="mb-0 text-sm text-gray-500">{{
+      t(projectId ? "page.projectWork.noActive" : "page.projectWork.noAssigned")
     }}</p>
-    <ul v-else class="m-0 mt-3 list-none p-0 divide-y divide-gray-100">
+    <ul v-if="items.length" class="m-0 mt-3 list-none p-0 divide-y divide-gray-100">
       <li v-for="item in items" :key="item.id" class="flex items-center justify-between gap-3 py-3">
         <router-link
           :to="{
@@ -67,5 +89,7 @@ watch(() => props.projectId, load, { immediate: true })
         }}</span>
       </li>
     </ul>
+    <n-button v-if="!projectId && items.length > 0 && total > items.length" class="mt-3" :loading="loading" :disabled="loading" data-testid="work-summary-more" @click="load(true)">{{ t("page.projectWork.moreItems") }}</n-button>
+    <p v-if="!loading && !failed && total > items.length" class="mb-0 text-sm text-gray-500">{{ t("page.projectWork.summaryCount", { shown: items.length, total }) }}</p>
   </section>
 </template>

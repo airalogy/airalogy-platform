@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProjectWork } from "@/service/api/project-work"
+import type { ProjectWork, WorkState } from "@/service/api/project-work"
 import { templateError } from "@/service/api/document-templates"
 import { listProjectWork, projectWorkMembers, workStates } from "@/service/api/project-work"
 import { useProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
@@ -16,6 +16,14 @@ const total = ref(0)
 const page = ref(1)
 const q = ref("")
 const mine = ref(false)
+const appliedQuery = ref("")
+const stateFilter = ref<WorkState | "all" | "active">("all")
+const hasFilters = computed(() => Boolean(appliedQuery.value || mine.value || stateFilter.value !== "all"))
+const stateOptions = computed(() => [
+  { value: "all", label: t("page.projectWork.allStates") },
+  { value: "active", label: t("page.projectWork.activeOnly") },
+  ...workStates.map(value => ({ value, label: t(`page.projectWork.states.${value}`) })),
+])
 const loading = ref(false)
 const error = ref("")
 const canWrite = ref(false)
@@ -51,20 +59,27 @@ function bar(item: ProjectWork) {
 }
 let sequence = 0
 async function load() {
-  if (!projectInfo.value)
-    return
   const ticket = ++sequence
+  const projectId = projectInfo.value?.id
+  if (!projectId) {
+    loading.value = false
+    return
+  }
   loading.value = true
   error.value = ""
   try {
-    const result = await listProjectWork({
-      project_id: projectInfo.value.id,
-      q: q.value,
-      mine: mine.value,
-      page: page.value,
-      page_size: 100,
-    })
-    const team = await projectWorkMembers(projectInfo.value.id)
+    const [result, team] = await Promise.all([
+      listProjectWork({
+        project_id: projectId,
+        q: appliedQuery.value,
+        mine: mine.value,
+        state: workStates.includes(stateFilter.value as WorkState) ? stateFilter.value as WorkState : undefined,
+        active_only: stateFilter.value === "active",
+        page: page.value,
+        page_size: 100,
+      }),
+      projectWorkMembers(projectId),
+    ])
     if (ticket !== sequence)
       return
     items.value = result.items
@@ -82,8 +97,15 @@ async function load() {
   }
 }
 function search() {
+  appliedQuery.value = q.value.trim()
   page.value = 1
   void load()
+}
+function clearFilters() {
+  q.value = ""
+  mine.value = false
+  stateFilter.value = "all"
+  search()
 }
 function open(id: string) {
   void router.push({
@@ -97,7 +119,7 @@ function close() {
   void router.replace({
     name: "project-work",
     params: route.params,
-    query: { ...route.query, item: undefined },
+    query: { ...route.query, item: undefined, create: undefined },
   })
 }
 function saved(id: string) {
@@ -106,7 +128,7 @@ function saved(id: string) {
     void router.replace({
       name: "project-work",
       params: route.params,
-      query: { ...route.query, item: id },
+      query: { ...route.query, item: id, create: undefined },
     })
   }
   void load()
@@ -122,6 +144,11 @@ watch(
   },
   { immediate: true },
 )
+watch([() => route.query.create, canWrite], ([create, allowed]) => {
+  if (create === "1" && allowed && !selectedId.value)
+    showNew.value = true
+}, { immediate: true })
+onBeforeUnmount(() => sequence++)
 </script>
 
 <template>
@@ -147,13 +174,23 @@ watch(
         class="min-w-40 !w-auto sm:flex-1"
         clearable
         :placeholder="t('page.projectWork.search')"
+        @clear="q = ''; search()"
       />
       <n-button attr-type="submit" :loading="loading">{{ t("common.search") }}</n-button>
+      <n-select
+        v-model:value="stateFilter"
+        :options="stateOptions"
+        :aria-label="t('page.projectWork.state')"
+        class="!w-40"
+        data-testid="work-state-filter"
+        @update:value="search"
+      />
       <n-checkbox
         v-model:checked="mine"
         @update:checked="search"
       >{{ t("page.projectWork.mine") }}</n-checkbox
       >
+      <n-button v-if="hasFilters" quaternary data-testid="work-clear-filters" @click="clearFilters">{{ t("page.projectWork.clearFilters") }}</n-button>
       <n-radio-group
         v-model:value="view"
         size="small"
@@ -179,9 +216,10 @@ watch(
         v-if="!items.length && !loading && !error"
         class="rounded-lg border border-dashed border-gray-300 p-8 text-center"
       >
-        <h2 class="text-lg">{{ t("page.projectWork.empty") }}</h2
-        ><p class="text-gray-500">{{ t("page.projectWork.emptyHint") }}</p>
-        <n-button v-if="canWrite" type="primary" @click="showNew = true">{{
+        <h2 class="text-lg">{{ t(hasFilters ? "page.projectWork.noMatches" : "page.projectWork.empty") }}</h2
+        ><p class="text-gray-500">{{ t(hasFilters ? "page.projectWork.noMatchesHint" : "page.projectWork.emptyHint") }}</p>
+        <n-button v-if="hasFilters" @click="clearFilters">{{ t("page.projectWork.clearFilters") }}</n-button>
+        <n-button v-else-if="canWrite" type="primary" @click="showNew = true">{{
           t("page.projectWork.new")
         }}</n-button>
       </div>

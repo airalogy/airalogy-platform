@@ -614,6 +614,7 @@ declare namespace I18n {
         submissionSuccess: string
         checkErrors: string
         changedElsewhere: string
+        cannotCreate: string
       }
       recorderAira: {
         finishReview: string
@@ -5562,6 +5563,25 @@ declare namespace I18n {
         earlierDecision: string
         linkedWork: string
         wrongProject: string
+        allStates: string
+        activeOnly: string
+        clearFilters: string
+        noMatches: string
+        noMatchesHint: string
+        noActive: string
+        summaryCount: string
+        detailsTab: string
+        activityTab: string
+        quickStartHint: string
+        newSave: string
+        notCreated: string
+        titleRequired: string
+        blockerRequired: string
+        acceptanceRequired: string
+        reasonRequired: string
+        backToDetails: string
+        activityEmpty: string
+        moreItems: string
       }
     }
     form: {

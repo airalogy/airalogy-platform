@@ -46,6 +46,11 @@ const next = computed(() => selectedIndex.value >= 0 && (selectedIndex.value < i
 const error = ref("")
 const busy = ref(false)
 const showCreate = ref(false)
+async function closeCreate() {
+  showCreate.value = false
+  if (["research-documents", "project-documents"].includes(String(route.name)) && route.query.create === "document")
+    await router.replace({ name: route.name === "project-documents" ? "project-documents" : "research-documents", params: route.params, query: { ...route.query, create: undefined } })
+}
 const listElement = ref<HTMLElement>()
 
 const canWrite = ref(false)
@@ -160,6 +165,7 @@ async function load() {
   loading.value = true
   items.value = []
   canWrite.value = false
+  showCreate.value = false
   try {
     const result = await listResearchDocuments(props.scope, params())
     if (ticket !== sequence)
@@ -167,6 +173,11 @@ async function load() {
     items.value = result.items
     total.value = result.total_count
     canWrite.value = result.can_write
+    if (route.query.create === "document") {
+      showCreate.value = result.can_write
+      if (!result.can_write)
+        error.value = t("page.researchDocuments.cannotCreate")
+    }
   }
   catch {
     if (ticket === sequence)
@@ -178,7 +189,7 @@ async function load() {
   }
 }
 watch(
-  () => JSON.stringify([props.scope, ...["q", "kind", "page", "order", "from", "to"].map(key => route.query[key])]),
+  () => JSON.stringify([props.scope, ...["q", "kind", "page", "order", "from", "to", "create"].map(key => route.query[key])]),
   () => {
     q.value = queryText(route.query.q)
     kind.value = queryText(route.query.kind)
@@ -300,7 +311,7 @@ watch([reading, items], async () => {
                   {{ item.title }}
                 </h3>
                 <p class="aira-type-meta my-1">
-                  {{ options.find(option => option.value === item.kind)?.label || item.kind }} · {{ t('page.documentBrowse.recordedDate') }} {{ localDocumentDate(item.occurred_at) }}
+                  {{ t(`page.researchDocuments.${item.kind}`) }} · {{ t('page.documentBrowse.recordedDate') }} {{ localDocumentDate(item.occurred_at) }}
                 </p>
                 <p class="aira-type-meta my-1">
                   {{ t('page.documentBrowse.updated') }} {{ new Date(item.updated_at).toLocaleString() }}
@@ -329,7 +340,7 @@ watch([reading, items], async () => {
         </n-button>
       </n-alert>
     </n-spin>
-    <new-document-dialog v-if="showCreate" :scope="scope" @close="showCreate = false" />
+    <new-document-dialog v-if="showCreate" :scope="scope" @close="closeCreate" />
     <input v-if="canWrite && !compact" ref="archiveInput" type="file" accept=".zip" hidden :disabled="busy" data-testid="document-archive-input" @change="selectArchive">
     <n-modal
       :show="Boolean(archive?.preview)"

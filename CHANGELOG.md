@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Keep workspace navigation separate from creation: the header New menu now includes Protocol, Record and Document actions above Project/Lab creation. New document reuses the template dialog, inherits explicit Project/Lab/document scope, and defaults to private personal storage from Home. Check destination write access before opening, preserve navigation guards, and clear cancelled creation requests.
+
+- Make daily R&D work easier to reach from Home and Project overview, with direct item creation, state filters, accurate no-results feedback and pagination for assigned items on Home. Separate item details from discussion/progress, keep save actions visible, focus missing required fields and retain activity drafts that contain only dates, outcomes or evidence.
+
 - Keep external AI onboarding, write review, and private analysis reports inside each Project. Add purpose-based permission presets, project-scoped report pagination, and direct result/review links while retaining account-level connection management.
 
 - Avoid redundant pagination URL updates cancelling a project tab switch while the next page loads.

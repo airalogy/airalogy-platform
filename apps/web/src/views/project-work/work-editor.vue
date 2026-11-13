@@ -42,6 +42,8 @@ const busy = ref(false)
 const loading = ref(true)
 const error = ref("")
 const notice = ref("")
+const panel = ref<"details" | "activity">("details")
+const editorElement = ref<HTMLElement>()
 const reason = ref("")
 const members = ref<{ id: string, name: string, username: string }[]>([])
 const events = ref<WorkEvent[]>([])
@@ -65,7 +67,10 @@ const activity = reactive({
   supersedes: null as string | null,
   evidence: [] as WorkContent["evidence"],
 })
-const activityDirty = computed(() => Boolean(activity.body.trim() || activity.rationale.trim()))
+const activityDirty = computed(() => Boolean(
+  activity.body.trim() || activity.rationale.trim() || activity.scope.trim()
+  || activity.outcome || activity.occurred || activity.supersedes || activity.evidence.length,
+))
 const pendingActivityKey = computed(() => `${draftKey.value}:activity`)
 const unsaved = computed(() => dirty.value || activityDirty.value)
 const memberOptions = computed(() =>
@@ -213,13 +218,22 @@ async function save() {
     return
   error.value = ""
   notice.value = ""
-  if (
-    !form.value.title.trim()
-    || (form.value.state === "blocked" && !form.value.blocker.trim())
-    || (form.value.state === "done" && !form.value.acceptance.trim())
-    || (revision.value && !reason.value.trim())
-  ) {
-    error.value = t("page.projectWork.required")
+  const missing = !form.value.title.trim()
+    ? ["titleRequired", "work-title"]
+    : form.value.state === "blocked" && !form.value.blocker.trim()
+      ? ["blockerRequired", "work-blocker"]
+      : form.value.state === "done" && !form.value.acceptance.trim()
+        ? ["acceptanceRequired", "work-acceptance"]
+        : revision.value && !reason.value.trim()
+          ? ["reasonRequired", "work-change-reason"]
+          : null
+  if (missing) {
+    error.value = t(`page.projectWork.${missing[0]}`)
+    panel.value = "details"
+    await nextTick()
+    const field = editorElement.value?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-testid="${missing[1]}"] input, [data-testid="${missing[1]}"] textarea`)
+    field?.focus()
+    field?.scrollIntoView({ block: "center", behavior: "smooth" })
     return
   }
   if (form.value.evidence.some(item => item.available === false)) {
@@ -259,7 +273,7 @@ async function save() {
   }
 }
 async function postActivity() {
-  if (busy.value || dirty.value)
+  if (busy.value || dirty.value || !canWrite.value || !revision.value || !activity.body.trim())
     return
   if (activity.evidence.some(item => item.available === false)) {
     error.value = t("page.projectWork.unavailableSave")
@@ -359,6 +373,7 @@ watch(
     activity.outcome = null
     activity.supersedes = null
   },
+  { flush: "sync" },
 )
 onMounted(() => {
   void load()
@@ -412,14 +427,20 @@ async function createPlan() {
     @update:show="requestClose"
   >
     <n-drawer-content
+      data-testid="work-editor"
       :title="itemId ? t('page.projectWork.detail') : t('page.projectWork.new')"
       closable
     >
       <n-spin :show="loading">
-        <div class="space-y-4" data-testid="work-editor">
+        <div ref="editorElement" class="space-y-4">
           <p class="m-0 text-sm text-gray-500">{{
             t("page.projectWork.destination", { name: projectName })
           }}</p>
+          <p v-if="!revision && !loading" class="m-0 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{{ t("page.projectWork.quickStartHint") }}</p>
+          <div v-if="revision" class="flex gap-2 border-b border-gray-200 pb-3" role="group" :aria-label="t('page.projectWork.detail')">
+            <n-button :type="panel === 'details' ? 'primary' : 'default'" :aria-pressed="panel === 'details'" data-testid="work-details-tab" @click="panel = 'details'">{{ t("page.projectWork.detailsTab") }}</n-button>
+            <n-button :type="panel === 'activity' ? 'primary' : 'default'" :aria-pressed="panel === 'activity'" data-testid="work-activity-tab" @click="panel = 'activity'">{{ t("page.projectWork.activityTab") }}</n-button>
+          </div>
           <n-alert v-if="recovered" type="warning">
             {{ t("page.projectWork.localDraft") }}
             <n-button size="small" @click="restoreDraft">{{
@@ -433,8 +454,8 @@ async function createPlan() {
             }}</n-button></n-alert
           >
           <p v-if="notice" role="status" class="text-green-700">{{ notice }}</p>
-          <work-snapshot v-if="!loading && !canWrite && currentItem" :item="currentItem" :members="members" :items="items" :project-id="projectId" />
-          <form v-if="canWrite" class="space-y-4" @submit.prevent="save">
+          <work-snapshot v-if="!loading && !canWrite && currentItem" v-show="panel === 'details'" :item="currentItem" :members="members" :items="items" :project-id="projectId" />
+          <form v-if="canWrite" v-show="panel === 'details'" class="space-y-4" @submit.prevent="save">
             <fieldset :disabled="!canWrite || busy" class="m-0 min-w-0 border-0 p-0 space-y-4">
               <label class="block"
               >{{ t("page.projectWork.titleLabel") }} *<n-input
@@ -521,6 +542,7 @@ async function createPlan() {
               >{{ t("page.projectWork.blocker") }} *<n-input
                 :disabled="!canWrite || busy"
                 v-model:value="form.blocker"
+                data-testid="work-blocker"
                 type="textarea"
               /></label>
               <label class="block"
@@ -567,24 +589,8 @@ async function createPlan() {
             <p v-if="form.state === 'done'" class="text-sm text-gray-500">{{
               t("page.projectWork.completionHint")
             }}</p>
-            <div
-              class="sticky bottom-0 z-1 flex items-center gap-3 border-t border-gray-200 bg-white py-3"
-            >
-              <n-button
-                v-if="canWrite"
-                attr-type="submit"
-                type="primary"
-                :loading="busy"
-                data-testid="work-save"
-              >{{ t("common.save") }}</n-button
-              >
-              <span class="text-sm text-gray-500">{{
-                dirty ? t("page.projectWork.unsaved") : t("page.projectWork.version", { revision })
-              }}</span>
-            </div>
           </form>
-          <section v-if="revision" class="border-t border-gray-200 pt-4">
-            <h3>{{ t("page.projectWork.activity") }}</h3>
+          <section v-if="revision" v-show="panel === 'activity'" class="space-y-3" data-testid="work-activity-panel">
             <form v-if="canWrite" class="space-y-3" @submit.prevent="postActivity">
               <n-select
                 :disabled="!canWrite || busy"
@@ -618,6 +624,7 @@ async function createPlan() {
                 <n-select
                   :disabled="!canWrite || busy"
                   v-model:value="activity.outcome"
+                  data-testid="work-activity-outcome"
                   :options="options(outcomes, 'page.projectWork.outcomes')"
                   :placeholder="t('page.projectWork.result')"
                 />
@@ -647,17 +654,12 @@ async function createPlan() {
                 />
               </template>
               <evidence-links v-model="activity.evidence" :project-id="projectId" editable />
-              <p v-if="dirty" class="text-sm text-amber-700">{{
-                t("page.projectWork.saveFirst")
-              }}</p>
-              <n-button
-                attr-type="submit"
-                :disabled="dirty || !activity.body.trim()"
-                :loading="busy"
-                data-testid="work-activity-save"
-              >{{ t("page.projectWork.post") }}</n-button
-              >
+              <n-alert v-if="dirty" type="warning">
+                {{ t("page.projectWork.saveFirst") }}
+                <n-button size="small" @click="panel = 'details'">{{ t("page.projectWork.backToDetails") }}</n-button>
+              </n-alert>
             </form>
+            <p v-if="!events.some(event => !['created', 'updated'].includes(event.kind))" class="text-sm text-gray-500">{{ t("page.projectWork.activityEmpty") }}</p>
             <ol class="m-0 mt-5 list-none p-0 space-y-4">
               <li
                 v-for="event in events"
@@ -713,6 +715,15 @@ async function createPlan() {
           </section>
         </div>
       </n-spin>
+      <template v-if="canWrite && !loading" #footer>
+        <div class="w-full flex flex-wrap items-center justify-between gap-3" data-testid="work-editor-footer">
+          <span class="text-sm text-gray-500">{{
+            !revision ? t("page.projectWork.notCreated") : unsaved ? t("page.projectWork.unsaved") : t("page.projectWork.version", { revision })
+          }}</span>
+          <n-button v-if="panel === 'details'" type="primary" :loading="busy" data-testid="work-save" @click="save">{{ t(revision ? "common.save" : "page.projectWork.newSave") }}</n-button>
+          <n-button v-else type="primary" :disabled="dirty || !activity.body.trim()" :loading="busy" data-testid="work-activity-save" @click="postActivity">{{ t("page.projectWork.post") }}</n-button>
+        </div>
+      </template>
     </n-drawer-content>
   </n-drawer>
   <n-modal

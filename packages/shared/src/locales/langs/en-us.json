@@ -609,7 +609,8 @@
       "revision": "Revision {revision}",
       "submissionSuccess": "Results submitted with their working definition and provenance.",
       "checkErrors": "Check these fields and submit again.",
-      "changedElsewhere": "This content may have changed in another page. Preserve your edits, then reload and compare."
+      "changedElsewhere": "This content may have changed in another page. Preserve your edits, then reload and compare.",
+      "cannotCreate": "You cannot create documents in this space. Choose a space where you have write access."
     },
     "recorderAira": {
       "finishReview": "Finish reviewing the current replacements, then ask Aira to fill more fields.",
@@ -5483,7 +5484,7 @@
       "keepMine": "Reviewed; continue merging against this revision",
       "compareAccepted": "Revision refreshed. Review and merge the fields before saving.",
       "leave": "Unsaved input is recoverable in this browser but is not saved to the Project. Leave this item?",
-      "saveFirst": "Save the work item changes before recording an activity.",
+      "saveFirst": "Save your changes in Item details before posting activity.",
       "createDocument": "Create plan document",
       "documentHint": "Create a regular AIMD document in this Project with the work title and goal. Save the work item afterward to keep its reference.",
       "documentCreated": "Document created. Save the work item to keep the reference; continue editing in Project Documents.",
@@ -5557,7 +5558,26 @@
       },
       "earlierDecision": "Earlier decision (load more history to view)",
       "linkedWork": "Linked work item",
-      "wrongProject": "This work item belongs to another project. Open it from its project workspace."
+      "wrongProject": "This work item belongs to another project. Open it from its project workspace.",
+      "allStates": "All states",
+      "activeOnly": "Unfinished",
+      "clearFilters": "Clear filters",
+      "noMatches": "No matching work items",
+      "noMatchesHint": "Try another search or clear the filters to see all project work.",
+      "noActive": "No unfinished project work. Create an item to start tracking a goal, requirement or issue.",
+      "summaryCount": "Showing {shown} of {total} unfinished items.",
+      "detailsTab": "Item details",
+      "activityTab": "Discussion & progress",
+      "quickStartHint": "Start with a title. You can add an owner, dates and evidence later.",
+      "newSave": "Create item",
+      "notCreated": "Not saved to the project yet",
+      "titleRequired": "Enter a title for this work item.",
+      "blockerRequired": "Explain what is blocking this item and what support is needed.",
+      "acceptanceRequired": "Describe the completion criteria before marking this item complete.",
+      "reasonRequired": "Explain this change before saving a new revision.",
+      "backToDetails": "Return to item details",
+      "activityEmpty": "No discussions yet. Record an update, question or decision here.",
+      "moreItems": "Load more work items"
     }
   },
   "form": {

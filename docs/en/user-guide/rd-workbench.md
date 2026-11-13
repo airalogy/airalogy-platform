@@ -35,3 +35,11 @@ Work uses existing Project permissions. Public visibility does not expose work, 
 ## Delivery boundary
 
 This is the local P0 workflow for [Issue #26](https://github.com/airalogy/platform/issues/26), with a basic planning timeline. Time sheets, resource scheduling, cost accounting, BD synchronization, shared identity and autonomous coding agents are separate follow-ups. Validate task granularity and review habits with the real team before expanding those areas.
+
+## Daily navigation
+
+Open R&D work directly from a Home project card, or create an item from Project overview. A title is enough to create a pending item; add owners, dates and evidence later. The drawer footer keeps the save action and persistence state visible. Missing required fields receive specific feedback and focus.
+
+Saved items separate details from discussion and progress. Switching between these areas preserves input. Save changed details before posting activity so the activity references the current item revision. Activity recovery includes dates, outcomes and evidence even before body text is entered.
+
+List, board and plan views share search, assignee and state filters. Filter unfinished items or a specific state; clear filters when no results match. Loading is distinct from an empty project. The assigned-work section on Home can load additional pages beyond its first six items.

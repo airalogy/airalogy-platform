@@ -48,9 +48,12 @@ test("researcher coordinates a prototype without a Protocol or AI and retains co
   await editor.getByRole("button", { name: /Synthetic optical design/ }).first().click()
   await expect(page.getByRole("dialog", { name: labels.exactSnapshot })).toContainText(title)
   await page.keyboard.press("Escape")
+  await editor.getByTestId("work-activity-tab").click()
   await editor.getByTestId("work-activity-body").locator("textarea").fill("Discussed the synthetic optical holder; measurements still pending.")
   await editor.getByTestId("work-activity-save").click()
   await expect(editor.getByTestId("work-event").first()).toContainText("measurements still pending")
+
+  await editor.getByTestId("work-details-tab").click()
 
   // A real competing API write must not overwrite the user's unsaved title.
   const auth = (await updated.request().allHeaders())["auth-token"]
@@ -91,8 +94,8 @@ test("researcher coordinates a prototype without a Protocol or AI and retains co
     await expect(page.getByTestId("project-work")).toContainText(`${title} unfinished`)
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 980 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
-      await page.screenshot({ path: testInfo.outputPath(`work-${mode}-${width}.png`), fullPage: true })
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+      await page.screenshot({ path: testInfo.outputPath(`work-${mode}-${width}.png`), fullPage: true, animations: "disabled" })
     }
   }
   await page.goto("/home")
@@ -112,6 +115,12 @@ test("Chinese read-only member can inspect R&D work without write controls", asy
   await page.getByTestId("login-password").locator("input").fill("AiralogyDev123!")
   await page.getByTestId("login-submit").click()
   await expect(page).not.toHaveURL(/\/login/)
+  await page.goto("/labs/dev_lab/projects/quickstart/overview")
+  await expect(page.getByTestId("work-summary").locator("[role=status]")).toHaveCount(0)
+  await expect(page.getByTestId("overview-new-work")).toHaveCount(0)
+  await page.goto(`${projectPath}?create=1`)
+  await expect(page.getByTestId("project-work").locator(".n-spin-body")).toBeHidden()
+  await expect(page.getByTestId("work-editor")).toHaveCount(0)
   // Seed through ordinary authorized endpoints so this test can run alone.
   const authResponse = await page.request.post("/api/signin_by_email", {
     data: { email: "dev.owner@airalogy.dev", password: "AiralogyDev123!" },
@@ -141,7 +150,7 @@ test("Chinese read-only member can inspect R&D work without write controls", asy
   await expect(page.locator(".n-drawer .n-spin-body")).toBeHidden()
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 980 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
-    await page.screenshot({ path: testInfo.outputPath(`work-reader-zh-${width}.png`), fullPage: true })
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`work-reader-zh-${width}.png`), fullPage: true, animations: "disabled" })
   }
 })

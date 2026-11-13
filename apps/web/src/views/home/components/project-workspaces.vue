@@ -75,7 +75,7 @@ async function load() {
   }
 }
 
-function projectRoute(item: WorkspaceProject, section: "overview" | "protocols" | "documents" = "overview"): RouteLocationRaw {
+function projectRoute(item: WorkspaceProject, section: "overview" | "protocols" | "documents" | "work" = "overview"): RouteLocationRaw {
   return { name: `project-${section}`, params: { labUid: item.lab_uid, projectUid: item.uid } }
 }
 function resumeRoute(item: ProjectCard): RouteLocationRaw {
@@ -175,6 +175,9 @@ onBeforeUnmount(() => sequence++)
             </router-link>
             <router-link :to="projectRoute(item, 'protocols')" class="text-primary hover:underline">
               {{ t('page.home.workspace.section.protocols') }}
+            </router-link>
+            <router-link :to="projectRoute(item, 'work')" class="text-primary hover:underline" data-testid="home-project-work">
+              {{ t('page.projectWork.title') }}
             </router-link>
             <router-link :to="projectRoute(item, 'documents')" class="text-primary hover:underline">
               {{ t('page.home.workspace.section.documents') }}
