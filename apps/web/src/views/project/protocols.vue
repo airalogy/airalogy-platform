@@ -4,59 +4,61 @@
     :fetcher="fetcher"
   >
     <template #header>
-      <div class="mb-3 flex items-center gap-3">
-        <search-input
-          v-model:value="searchInputVal"
-          icon-position="right"
-          :placeholder="$t('page.project.protocolsSearchPlaceholder')"
-          class="mr-3 max-w-40%"
-          @submit:search="handleSearch('input')"
-          @clear="handleSearch('clear')"
-        />
-        <n-popselect v-model:value="folderFilter" :options="folderFilterOptions" @update:value="handleSearch('folder')">
-          <n-button icon-placement="right" quaternary class="h-9">
-            <span class="mr-2 text-sm">{{ $t("page.project.protocolFolders.filterLabel") }}:</span>
-            <span class="text-sm font-semibold">{{ selectedFolderLabel }}</span>
+      <section v-if="showToolbar" class="protocol-toolbar" data-testid="project-protocol-toolbar">
+        <form class="protocol-toolbar__search" role="search" :aria-label="$t('page.project.protocolsSearchPlaceholder')" @submit.prevent="handleSearch('input')">
+          <n-input
+            v-model:value="searchInputVal"
+            clearable
+            :placeholder="$t('page.project.protocolsSearchPlaceholder')"
+            :input-props="{ 'aria-label': $t('page.project.protocolsSearchPlaceholder') }"
+            data-testid="protocol-search-input"
+            @clear="handleSearch('clear')"
+          />
+          <n-button attr-type="submit" type="primary" secondary style="height: 100%">
+            {{ $t("common.search") }}
+          </n-button>
+        </form>
+        <div class="protocol-toolbar__filters">
+          <label class="protocol-toolbar__control">
+            <span>{{ $t("page.project.protocolFolders.filterLabel") }}</span>
+            <n-select v-model:value="folderFilter" :options="folderFilterOptions" :aria-label="$t('page.project.protocolFolders.filterLabel')" data-testid="protocol-folder-filter" @update:value="handleSearch('folder')" />
+          </label>
+          <label class="protocol-toolbar__control">
+            <span>{{ $t("common.searchBy") }}</span>
+            <n-select v-model:value="filterOption" :options="filterOptions" :aria-label="$t('common.searchBy')" data-testid="protocol-search-field" @update:value="handleSearch('filter')" />
+          </label>
+          <label class="protocol-toolbar__control">
+            <span>{{ $t("common.sortBy") }}</span>
+            <n-select v-model:value="sortOption" :options="sortOptions" :aria-label="$t('common.sortBy')" data-testid="protocol-sort" @update:value="handleSearch('sort')" />
+          </label>
+          <n-button v-if="canManageFolders" quaternary class="protocol-toolbar__manage" data-testid="protocol-manage-folders" @click="showFolderModal">
             <template #icon>
               <n-icon size="16">
-                <icon-carbon-chevron-down />
+                <icon-tabler-folder-plus />
               </n-icon>
             </template>
+            {{ $t("page.project.protocolFolders.manageAction") }}
           </n-button>
-        </n-popselect>
-        <n-button v-if="canManageFolders" quaternary class="h-9" @click="showFolderModal">
-          <template #icon>
-            <n-icon size="16">
-              <icon-tabler-folder-plus />
-            </n-icon>
-          </template>
-          {{ $t("page.project.protocolFolders.manageAction") }}
+        </div>
+        <n-button v-if="hasActiveFilters" text type="primary" class="mt-2" @click="clearFilters">
+          {{ $t("page.project.protocolsEmpty.clearFilters") }}
         </n-button>
-        <global-sort-selector
-          v-model="filterOption"
-          :options="filterOptions"
-          :label="$t('common.searchBy')"
-          class="ml-auto"
-          @update:value="handleSearch('filter')"
-        />
-        <global-sort-selector
-          v-model="sortOption"
-          :options="sortOptions"
-          class="w-60!"
-          @update:value="handleSearch('sort')"
-        />
-      </div>
+      </section>
     </template>
     <template #default="{ data }">
       <project-protocol-list :list="data" :folders="folders" @folders-updated="handleFoldersUpdated" />
     </template>
     <template #empty>
       <custom-empty
-        v-if="searchQuery || !canCreateProtocol"
+        v-if="hasActiveFilters || !canCreateProtocol"
         :description="emptyDescription"
         class="size-full"
-      />
-      <div v-else-if="canCreateProtocol" class="flex flex-col px-10">
+      >
+        <n-button v-if="hasActiveFilters" @click="clearFilters">
+          {{ $t("page.project.protocolsEmpty.clearFilters") }}
+        </n-button>
+      </custom-empty>
+      <div v-else-if="canCreateProtocol" class="min-w-0 flex flex-col px-0 sm:px-4" data-testid="protocol-first-create">
         <div class="mb-8 max-w-4xl">
           <div class="text-2xl font-bold">
             {{ $t("page.project.protocolsEmpty.title") }}
@@ -64,20 +66,25 @@
           <div class="mt-2 text-gray-500">
             {{ $t("page.project.protocolsEmpty.description") }}
           </div>
-          <div class="grid grid-cols-1 mt-4 gap-3 md:grid-cols-3">
-            <div
-              v-for="item in onboardingTerms"
-              :key="item.key"
-              class="border border-gray-200 rounded bg-gray-50 px-4 py-3"
-            >
-              <div class="text-sm font-semibold">
-                {{ item.title }}
-              </div>
-              <div class="mt-1 text-sm text-gray-500 leading-6">
-                {{ item.description }}
+          <details class="mt-3 text-sm">
+            <summary class="cursor-pointer text-gray-500">
+              {{ $t("page.project.protocolsEmpty.concepts") }}
+            </summary>
+            <div class="grid grid-cols-1 mt-3 gap-3 md:grid-cols-3">
+              <div
+                v-for="item in onboardingTerms"
+                :key="item.key"
+                class="border border-gray-200 rounded bg-gray-50 px-4 py-3"
+              >
+                <div class="text-sm font-semibold">
+                  {{ item.title }}
+                </div>
+                <div class="mt-1 text-sm text-gray-500 leading-6">
+                  {{ item.description }}
+                </div>
               </div>
             </div>
-          </div>
+          </details>
         </div>
         <protocol-steps :protocol-info="protocolInfo" :project-info="projectInfo" :route-query="false" @cancel="handleCancel" />
       </div>
@@ -87,7 +94,7 @@
     :show="isFolderModalShown"
     preset="card"
     size="large"
-    class="w-40rem"
+    class="max-w-[calc(100vw-2rem)] w-40rem"
     header-class="border-b !py-4 !px-5"
     content-class="!px-5 !py-5"
     @update:show="setFolderModalStatus"
@@ -117,7 +124,7 @@
           {{ $t("page.project.protocolFolders.loading") }}
         </div>
         <div v-else class="space-y-2">
-          <div v-for="folder in folders" :key="folder.id" class="flex items-center gap-2">
+          <div v-for="folder in folders" :key="folder.id" class="flex flex-wrap items-center gap-2">
             <template v-if="editingFolderId === folder.id">
               <n-input v-model:value="editingFolderName" class="flex-1" />
               <n-button size="small" type="primary" @click="handleUpdateFolder(folder)">
@@ -156,7 +163,7 @@
     :show="isFolderProtocolsModalShown"
     preset="card"
     size="huge"
-    class="w-160"
+    class="max-w-[calc(100vw-2rem)] w-160"
     header-class="border-b !py-4 !px-5"
     content-class="!px-5 !py-5"
     :mask-closable="false"
@@ -221,14 +228,16 @@ defineOptions({
 
 const wrapperRef = ref<{ reload: () => Promise<any>, pagination: PaginationInfo }>()
 
-const searchInputVal = ref("")
-const searchQuery = useRouteQuery("q")
+const searchQuery = useRouteQuery<string>("q", "")
+const appliedSearch = ref(typeof searchQuery.value === "string" ? searchQuery.value.trim() : "")
+const searchInputVal = ref(appliedSearch.value)
+const unfilteredTotal = ref<number | null>(null)
 const filterOptions = computed<SelectOption[]>(() => ([
-  { label: $t("page.project.protocolsFilter.id"), value: "id" },
-  { label: $t("page.project.protocolsFilter.name"), value: "name" },
+  { label: $t("page.protocol.protocolId"), value: "uid" },
+  { label: $t("page.protocol.protocolName"), value: "name" },
 ]))
 
-const filterOption = ref<"id" | "name">("name")
+const filterOption = ref<"uid" | "name">("name")
 const sortOptions = computed<SelectOption[]>(() => ([
   { label: $t("page.protocol.rating.uses"), value: "confirmed_uses" },
   { label: $t("page.protocol.rating.reuse"), value: "effective_reuse" },
@@ -294,10 +303,8 @@ const folderFilterOptions = computed<SelectOption[]>(() => {
   }))
   return [...base, ...folderOptions]
 })
-const selectedFolderLabel = computed(() => {
-  const selected = folderFilterOptions.value.find(opt => opt.value === folderFilter.value)
-  return selected?.label || $t("page.project.protocolFolders.filterAll")
-})
+const hasActiveFilters = computed(() => Boolean(appliedSearch.value) || folderFilter.value !== "all")
+const showToolbar = computed(() => unfilteredTotal.value !== 0 || hasActiveFilters.value || folders.value.length > 0)
 const protocolTransferOptions = computed<TransferOption[]>(() =>
   projectProtocols.value.map(protocol => ({
     label: `${protocol.name || protocol.uid} (${protocol.uid})`,
@@ -340,13 +347,14 @@ watch(
 )
 
 const emptyDescription = computed(() => {
-  if (searchQuery.value) {
-    const queryText = Array.isArray(searchQuery.value) ? searchQuery.value.join(", ") : searchQuery.value
+  if (appliedSearch.value) {
     return $t("page.project.protocolsEmpty.searchNoResult", {
-      field: filterOption.value === "name" ? $t("page.project.protocolsFilter.name") : $t("page.project.protocolsFilter.id"),
-      query: queryText,
+      field: filterOption.value === "name" ? $t("page.protocol.protocolName") : $t("page.protocol.protocolId"),
+      query: appliedSearch.value,
     })
   }
+  if (folderFilter.value !== "all")
+    return $t("page.project.protocolsEmpty.folderNoResult")
   return $t("page.project.protocolsEmpty.noResult")
 })
 
@@ -365,12 +373,8 @@ async function fetcher(params: FetchPayload): Promise<FetchData> {
       projectUid: projectUid as string,
       page: currentPage,
       pageSize: currentPageSize,
-      // Legacy parameters (keep for backward compatibility)
-      name: filterOption.value === "name" ? searchInputVal.value : undefined,
-      uid: filterOption.value === "id" ? searchInputVal.value : undefined,
-      // New parameters
-      search_by: searchInputVal.value ? filterOption.value : undefined,
-      search_str: searchInputVal.value || undefined,
+      search_by: appliedSearch.value ? filterOption.value : undefined,
+      search_str: appliedSearch.value || undefined,
       sorted_by: sortOption.value,
       folderId,
       folderEmpty,
@@ -378,6 +382,8 @@ async function fetcher(params: FetchPayload): Promise<FetchData> {
 
     if (data) {
       const { protocols, total_count } = data
+      if (!hasActiveFilters.value)
+        unfilteredTotal.value = total_count
       if (total_count > 0 && protocols.length === 0 && currentPage > 1) {
         return await wrapperRef?.value?.reload()
       }
@@ -398,10 +404,19 @@ async function fetcher(params: FetchPayload): Promise<FetchData> {
 const { routerPushByKey } = useRouterPush()
 
 async function handleSearch(source: "input" | "sort" | "filter" | "clear" | "folder") {
-  if (source === "filter" && !searchInputVal.value) {
-    return
+  if (source === "input" || source === "clear") {
+    appliedSearch.value = source === "clear" ? "" : searchInputVal.value.trim()
+    searchInputVal.value = appliedSearch.value
+    searchQuery.value = appliedSearch.value
   }
+  if (source === "filter" && !appliedSearch.value)
+    return
   await wrapperRef.value?.reload()
+}
+
+async function clearFilters() {
+  folderFilter.value = "all"
+  await handleSearch("clear")
 }
 
 // const protocolInfo = ref<UnitToProtocolInfo | null>(null)
@@ -620,4 +635,42 @@ async function handleFoldersUpdated() {
 
 <style scoped lang="sass">
 @use "@styles/sass/list.sass" as *
+
+.protocol-toolbar
+  container-type: inline-size
+  min-width: 0
+  margin-bottom: 1.25rem
+
+.protocol-toolbar__search
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  gap: .5rem
+
+.protocol-toolbar__filters
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  align-items: end
+  gap: .75rem
+  margin-top: .75rem
+
+.protocol-toolbar__control
+  display: grid
+  min-width: 0
+  gap: .25rem
+  > span
+    font-size: .8125rem
+    color: #64748b
+  :deep(.n-select)
+    min-width: 0
+    width: 100%
+
+.protocol-toolbar__manage
+  justify-self: start
+  max-width: 100%
+
+@container (min-width: 38rem)
+  .protocol-toolbar__filters
+    grid-template-columns: repeat(3, minmax(0, 14rem)) minmax(max-content, 1fr)
+  .protocol-toolbar__manage
+    justify-self: end
 </style>

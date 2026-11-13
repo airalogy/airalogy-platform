@@ -3318,6 +3318,9 @@
         "updated": "Recently updated"
       },
       "protocolsEmpty": {
+        "concepts": "How do Projects, Protocols and Records differ?",
+        "clearFilters": "Clear filters",
+        "folderNoResult": "No protocols in this folder. Choose another folder or clear the filters.",
         "title": "Add the first protocol to this project",
         "description": "A protocol is the reusable form or workflow that turns a project into recordable research work.",
         "noResult": "No protocols found",

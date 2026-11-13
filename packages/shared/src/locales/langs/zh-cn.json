@@ -3318,6 +3318,9 @@
         "updated": "最近更新"
       },
       "protocolsEmpty": {
+        "concepts": "项目、协议和记录有什么区别？",
+        "clearFilters": "清除筛选",
+        "folderNoResult": "此文件夹中暂无协议，可切换文件夹或清除筛选。",
         "title": "为当前项目添加第一个协议",
         "description": "协议是可复用的表单或工作流；有了协议，项目才可以持续录入结构化记录。",
         "noResult": "未找到协议",

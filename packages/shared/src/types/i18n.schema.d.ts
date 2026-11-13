@@ -3322,6 +3322,9 @@ declare namespace I18n {
           updated: string
         }
         protocolsEmpty: {
+          concepts: string
+          clearFilters: string
+          folderNoResult: string
           title: string
           description: string
           noResult: string

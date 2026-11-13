@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Reorganize project Protocol search and filters into a responsive toolbar; correct search field labels, ID-search parameters and sorting refresh, distinguish empty projects from empty filtered results, and provide a clear-filters action.
+
 - Localize breadcrumb dropdowns on language changes, display project names without changing their URL identifiers, and preserve the current project for every project menu destination. Breadcrumb menus now support click and keyboard activation.
 
 - Explain the first administrator setup code and where to obtain it; add a persistent Chinese/English language switch to setup, sign-in and invitation pages without clearing form inputs.
