@@ -15,14 +15,29 @@
     </div>
 
     <n-form ref="formRef" :model="model" :rules="rules" size="large">
-      <n-form-item v-if="instanceStore.status.bootstrap_token_required" path="setupToken" :label="$t('page.instance.setupCode')">
-        <n-input
-          v-model:value="model.setupToken"
-          type="password"
-          show-password-on="click"
-          :placeholder="$t('page.instance.setupCode')"
-        />
-      </n-form-item>
+      <fieldset
+        v-if="instanceStore.status.bootstrap_token_required"
+        class="mb-6 min-w-0 border border-gray-200 rounded-xl px-4 pb-1 pt-3"
+      >
+        <legend class="px-2 text-base font-semibold">
+          {{ $t("page.instance.deploymentVerification") }}
+        </legend>
+        <n-form-item path="setupToken" :label="$t('page.instance.setupCode')">
+          <div class="min-w-0 w-full">
+            <n-input
+              v-model:value="model.setupToken"
+              type="password"
+              show-password-on="click"
+              autocomplete="off"
+              :placeholder="$t('page.instance.setupCodePlaceholder')"
+              :input-props="{ 'aria-label': $t('page.instance.setupCode'), 'aria-describedby': 'setup-code-hint' }"
+            />
+            <p id="setup-code-hint" class="mb-0 mt-2 text-sm text-gray-500 leading-6">
+              {{ $t("page.instance.setupCodeHint") }}
+            </p>
+          </div>
+        </n-form-item>
+      </fieldset>
       <fieldset
         v-if="instanceStore.status.deployment_mode === 'single_organization'"
         class="mb-6 min-w-0 border border-gray-200 rounded-xl px-4 pb-1 pt-3"
@@ -151,7 +166,7 @@ const rules = {
     ...user.username,
     {
       validator: (_rule: unknown, value: string) => !organizationUid || value !== organizationUid,
-      message: $t("page.instance.personalUsernameDistinct"),
+      get message() { return $t("page.instance.personalUsernameDistinct") },
       trigger: ["blur", "change"],
     },
   ],
@@ -161,7 +176,7 @@ const rules = {
     ...passwordRules,
     {
       validator: () => model.password === model.confirmPassword,
-      message: $t("form.confirmPwd.invalid"),
+      get message() { return $t("form.confirmPwd.invalid") },
       trigger: ["blur", "change"],
     },
   ],

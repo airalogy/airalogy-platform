@@ -82,8 +82,8 @@ The first build can take time because it compiles PostgreSQL extensions and the 
 
 ## First Setup
 
-1. Open `<SITE_URL>/setup`.
-2. Read the initial setup code with `./scripts/show-setup-code.sh`.
+1. Open `<SITE_URL>/setup`. Choose Chinese or English at the top of the page; switching languages keeps your form inputs.
+2. Get the initial setup code from your private deployment instructions or run `./scripts/show-setup-code.sh`. This verifies deployment administrator access and is not your sign-in password.
 3. Create the owner account.
 4. Confirm that the configured Lab and `lab_protocols` private Project are visible.
 

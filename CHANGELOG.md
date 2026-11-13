@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Explain the first administrator setup code and where to obtain it; add a persistent Chinese/English language switch to setup, sign-in and invitation pages without clearing form inputs.
+
 - Include Pillow in locked production dependencies for research material image validation; import the API route tree without networking during image builds to catch missing runtime packages before deployment.
 
 - Shorten reviewed AI waiting intervals in learning videos while preserving normal-speed actions, full narration and synchronized bilingual captions; retain editing provenance in production files and reject stale cuts after re-recording.

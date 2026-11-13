@@ -11,6 +11,22 @@
       </span>
     </n-layout-sider>
     <n-layout content-class="form__container">
+      <div class="mb-4 max-w-620px w-full flex shrink-0 justify-end">
+        <div role="group" :aria-label="$t('icon.lang')" class="inline-flex overflow-hidden border border-gray-200 rounded-lg bg-white" data-testid="auth-language-switch">
+          <button
+            v-for="option in appStore.localeOptions"
+            :key="option.key"
+            type="button"
+            class="min-h-10 px-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-inset"
+            :class="appStore.locale === option.key ? 'bg-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
+            :aria-pressed="appStore.locale === option.key"
+            :lang="option.key"
+            @click="appStore.changeLocale(option.key)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
       <router-view />
       <div class="mt-6 h-fit w-full text-center text-gray-400 md:mt-0">
         <div class="space-x-3">
@@ -30,8 +46,10 @@
 import ChinaComplianceFooter from "@/components/common/china-compliance-footer.vue"
 import PlatformVersion from "@/components/common/platform-version.vue"
 import { $t } from "@/locales"
+import { useAppStore } from "@/store/modules/app"
 import { useWindowSize } from "@vueuse/core"
 
+const appStore = useAppStore()
 const currYear = new Date().getFullYear()
 const { width } = useWindowSize()
 

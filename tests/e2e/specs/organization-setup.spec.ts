@@ -4,6 +4,30 @@ import { expect, test } from "@playwright/test"
 const en = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/en-us.json", import.meta.url), "utf8"))
 const zh = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/zh-cn.json", import.meta.url), "utf8"))
 
+const uninitializedOrganization = {
+  deployment_mode: "single_organization",
+  single_lab: true,
+  single_organization: true,
+  initialized: false,
+  signup_mode: "invite_only",
+  bootstrap_token_required: false,
+  site_url: "http://localhost",
+  lab_structure_mode: "flat",
+  organization_structure_mode: "flat",
+  documentation_profile: "customer_managed",
+  documentation_url: "/docs/",
+  support_url: "",
+  ai_enabled: false,
+  sms_login_enabled: false,
+  sms_signup_required: false,
+  enabled_chat_models: [],
+  lab: null,
+  organization: null,
+  default_organization_uid: "synthetic_company",
+  default_organization_name: "Synthetic Company",
+  default_organization_type: "company",
+}
+
 // Mock only an uninitialized instance; never reset or bootstrap the running instance.
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -11,29 +35,7 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
   test(`setup confirms deployment identity without allowing a rename (${locale})`, async ({ page }, testInfo) => {
     await page.addInitScript(lang => localStorage.setItem("lang", JSON.stringify({ data: lang, expire: null })), locale)
     await page.route("**/api/instance", route => route.fulfill({
-      json: {
-        deployment_mode: "single_organization",
-        single_lab: true,
-        single_organization: true,
-        initialized: false,
-        signup_mode: "invite_only",
-        bootstrap_token_required: false,
-        site_url: "http://localhost",
-        lab_structure_mode: "flat",
-        organization_structure_mode: "flat",
-        documentation_profile: "customer_managed",
-        documentation_url: "/docs/",
-        support_url: "",
-        ai_enabled: false,
-        sms_login_enabled: false,
-        sms_signup_required: false,
-        enabled_chat_models: [],
-        lab: null,
-        organization: null,
-        default_organization_uid: "synthetic_company",
-        default_organization_name: "Synthetic Company",
-        default_organization_type: "company",
-      },
+      json: uninitializedOrganization,
     }))
     await page.route("**/api/instance/bootstrap", route => route.fulfill({
       status: 409,
@@ -92,3 +94,47 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
     await expect(page.getByTestId("setup-organization-name").locator("input")).toHaveValue("  研  ")
   })
 }
+
+test("setup language switch explains the code and preserves entered values", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 980 })
+  await page.route("**/api/instance", route => route.fulfill({
+    json: { ...uninitializedOrganization, bootstrap_token_required: true },
+  }))
+  let submissions = 0
+  await page.route("**/api/instance/bootstrap", (route) => {
+    submissions++
+    return route.fulfill({ status: 409, json: { detail: "Synthetic setup must not create an account" } })
+  })
+  await page.goto("/setup")
+  const code = page.getByPlaceholder(en.page.instance.setupCodePlaceholder, { exact: true })
+  await code.fill("synthetic-setup-code")
+  await page.getByPlaceholder(en.page.instance.administratorNamePlaceholder, { exact: true }).fill("Synthetic Owner")
+  await page.getByPlaceholder(en.page.instance.password, { exact: true }).fill("Synthetic123!")
+  await expect(page.locator("#setup-code-hint")).toHaveText(en.page.instance.setupCodeHint)
+  await expect(code).toHaveAttribute("aria-describedby", "setup-code-hint")
+
+  await page.getByRole("button", { name: "中文", exact: true }).click()
+  await expect(page.getByRole("button", { name: "中文", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("button", { name: "English", exact: true })).toHaveAttribute("aria-pressed", "false")
+  await expect(page.getByRole("heading", { name: zh.page.organization.labels.page_instance_setupTitle })).toBeVisible()
+  await expect(page.getByRole("group", { name: zh.page.instance.deploymentVerification, exact: true })).toBeVisible()
+  await expect(page.locator("#setup-code-hint")).toHaveText(zh.page.instance.setupCodeHint)
+  await expect(page.getByPlaceholder(zh.page.instance.setupCodePlaceholder, { exact: true })).toHaveValue("synthetic-setup-code")
+  await expect(page.getByPlaceholder(zh.page.instance.administratorNamePlaceholder, { exact: true })).toHaveValue("Synthetic Owner")
+  await expect(page.getByPlaceholder(zh.page.instance.password, { exact: true })).toHaveValue("Synthetic123!")
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+  const username = page.getByPlaceholder(zh.page.instance.personalUsernamePlaceholder, { exact: true })
+  await username.fill("synthetic_company")
+  await username.press("Tab")
+  await expect(page.getByText(zh.page.instance.personalUsernameDistinct, { exact: true })).toBeVisible()
+  expect(submissions).toBe(0)
+  await page.screenshot({ path: testInfo.outputPath("setup-code-zh-mobile.png"), fullPage: true })
+
+  await page.reload()
+  await expect(page.getByRole("heading", { name: zh.page.organization.labels.page_instance_setupTitle })).toBeVisible()
+  await page.setViewportSize({ width: 1440, height: 980 })
+  await page.getByRole("button", { name: "English", exact: true }).press("Enter")
+  await expect(page.getByRole("heading", { name: en.page.organization.labels.page_instance_setupTitle })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+  expect(submissions).toBe(0)
+})

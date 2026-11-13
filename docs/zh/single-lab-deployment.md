@@ -83,8 +83,8 @@ cd deploy/single-lab
 
 ## 首次初始化
 
-1. 打开 `<SITE_URL>/setup`。
-2. 执行 `./scripts/show-setup-code.sh` 查看初始部署口令。
+1. 打开 `<SITE_URL>/setup`，可在页面顶部切换中文或英文；切换语言不会清空已填写的内容。
+2. 从私密的部署完成说明中获取首次设置码，或执行 `./scripts/show-setup-code.sh` 查看。该码用于验证部署管理员身份，不是登录密码。
 3. 创建首位 owner 账号。
 4. 确认页面中出现配置好的唯一 Lab 和 `lab_protocols` 私有 Project。
 

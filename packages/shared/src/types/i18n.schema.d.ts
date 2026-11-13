@@ -827,6 +827,9 @@ declare namespace I18n {
         loginEmail: string
         loginPassword: string
         setupCode: string
+        deploymentVerification: string
+        setupCodePlaceholder: string
+        setupCodeHint: string
         displayName: string
         username: string
         email: string
