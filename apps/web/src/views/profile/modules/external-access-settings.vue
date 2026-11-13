@@ -1,29 +1,27 @@
 <script setup lang="ts">
 import type { ExternalAnalysis, ExternalDashboard, ExternalOperation } from "@/service/api/external-access"
-import { createExternalGrant, decideExternalOperation, deleteExternalOAuthClient, downloadExternalAnalysisFile, getExternalAnalysis, getExternalDashboard, getExternalOperation, listExternalOAuthClients, registerExternalOAuthClient, revokeExternalGrant } from "@/service/api/external-access"
-import { useAppStore } from "@/store/modules/app"
-import { useInstanceStore } from "@/store/modules/instance"
+import { decideExternalOperation, deleteExternalOAuthClient, downloadExternalAnalysisFile, getExternalAnalysis, getExternalDashboard, getExternalOperation, listExternalOAuthClients, registerExternalOAuthClient, revokeExternalGrant } from "@/service/api/external-access"
+import ExternalConnectionForm from "@/views/external-access/components/external-connection-form.vue"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
-import { copyToClip, documentationPageUrl } from "@airalogy/shared/utils"
+import { copyToClip } from "@airalogy/shared/utils"
 
+const props = defineProps<{ projectId?: string }>()
+const setupOpen = ref(false)
+const connectionKey = ref(0)
+const managementOpen = ref(false)
+const showHistory = ref(false)
+const reportSearch = ref("")
+const detailError = ref(false)
+const router = useRouter()
 const message = useClosableMessage()
 const route = useRoute()
-const appStore = useAppStore()
-const instanceStore = useInstanceStore()
-const documentationUrl = computed(() => documentationPageUrl(instanceStore.documentationUrl, appStore.locale, "external-agent-access"))
 const dashboard = ref<ExternalDashboard>({ projects: [], grants: [], operations: [], audit: [] })
 const loading = ref(false)
 const failed = ref(false)
-const name = ref("")
-const projectId = ref<string | null>(null)
-const days = ref<number | null>(7)
-const selectedScopes = ref<string[]>(["protocols:read", "records:read"])
-const token = ref("")
 const current = ref<ExternalOperation | null>(null)
 const reviewed = ref(false)
 const analysis = ref<ExternalAnalysis | null>(null)
-const connectionStatus = ref("")
 const clientName = ref("")
 const clientRedirect = ref("")
 const clients = ref<Array<{ client_id: string, name: string, redirect_uris: string[] }>>([])
@@ -51,9 +49,6 @@ async function removeClient(id: string) {
   }
   catch { message.error($t("externalAccess.failed")) }
 }
-const endpoint = `${window.location.origin}/api/mcp`
-const command = `codex mcp add airalogy --url ${JSON.stringify(endpoint)} --bearer-token-env-var AIRALOGY_PLATFORM_TOKEN`
-const projectOptions = computed(() => dashboard.value.projects.map(p => ({ value: p.id, label: `${p.name}${p.enabled ? "" : ` — ${$t("externalAccess.labDisabled")}`}`, disabled: !p.enabled })))
 const scopeOptions = computed(() => [
   { label: $t("externalAccess.readProtocols"), value: "protocols:read", disabled: true },
   { label: $t("externalAccess.readRecords"), value: "records:read" },
@@ -71,22 +66,6 @@ const scopeOptions = computed(() => [
   { label: $t("externalAccess.importRecords"), value: "records:import" },
   { label: $t("externalAccess.reviseRecords"), value: "records:revise" },
 ])
-// Show all required permissions before the user creates a credential.
-watch(selectedScopes, (scopes) => {
-  const required = new Set(["protocols:read", ...scopes])
-  if (scopes.some(s => ["records:export", "analysis:read", "analysis:write"].includes(s))) {
-    required.add("records:export")
-    required.add("records:read")
-  }
-  if (scopes.some(s => ["records:revise", "records:complex"].includes(s)))
-    required.add("records:read")
-  if (scopes.some(s => ["protocols:candidate", "protocols:publish"].includes(s))) {
-    required.add("protocols:source")
-    required.add("protocols:candidate")
-  }
-  if (required.size !== scopes.length)
-    selectedScopes.value = [...required]
-})
 const states = computed<Record<string, string>>(() => ({
   pending: $t("externalAccess.pending"),
   approved: $t("externalAccess.approved"),
@@ -108,45 +87,27 @@ const auditLabels = computed<Record<string, string>>(() => ({
 function scopeLabel(scope: string) {
   return scopeOptions.value.find(option => option.value === scope)?.label || scope
 }
-const canCreate = computed(() => name.value.trim() && projectId.value && days.value && !loading.value && !failed.value)
+const visibleOperations = computed(() => dashboard.value.operations.filter(item => showHistory.value || ["pending", "approved"].includes(item.state)))
+const visibleAnalyses = computed(() => (dashboard.value.analyses || []).filter(item => item.title.toLocaleLowerCase().includes(reportSearch.value.trim().toLocaleLowerCase())))
 const canDecide = computed(() => current.value?.state === "pending" && Date.parse(current.value.expires_at) > Date.now())
 
 async function refresh() {
   loading.value = true
   failed.value = false
   try {
-    dashboard.value = await getExternalDashboard()
-    const requested = typeof route.query.project_id === "string" ? route.query.project_id : null
-    if (!projectId.value && requested && dashboard.value.projects.some(p => p.id === requested))
-      projectId.value = requested
-    const enabled = dashboard.value.projects.filter(p => p.enabled)
-    if (!projectId.value && enabled.length === 1)
-      projectId.value = enabled[0].id
+    dashboard.value = await getExternalDashboard(props.projectId)
   }
-  catch { failed.value = true }
-  finally { loading.value = false }
-}
-async function create() {
-  if (!canCreate.value)
-    return
-  loading.value = true
-  token.value = ""
-  try {
-    const scopes = selectedScopes.value
-    const result = await createExternalGrant({ name: name.value.trim(), project_id: projectId.value!, scopes, expires_in_days: days.value! })
-    token.value = result.token
-    name.value = ""
-    await refresh()
+  catch {
+    failed.value = true
+    dashboard.value = { projects: [], grants: [], operations: [], audit: [] }
   }
-  catch { message.error($t("externalAccess.failed")) }
   finally { loading.value = false }
 }
 async function revoke(id: string) {
   loading.value = true
   try {
     await revokeExternalGrant(id)
-    token.value = ""
-    connectionStatus.value = ""
+    connectionKey.value += 1
     await refresh()
   }
   catch { message.error($t("externalAccess.failed")) }
@@ -157,9 +118,13 @@ async function inspect(id: string) {
   reviewed.value = false
   current.value = null
   try {
-    current.value = await getExternalOperation(id)
+    detailError.value = false
+    current.value = await getExternalOperation(id, props.projectId)
   }
-  catch { message.error($t("externalAccess.noLongerAvailable")) }
+  catch {
+    detailError.value = true
+    message.error($t("externalAccess.noLongerAvailable"))
+  }
   finally { loading.value = false }
 }
 async function decide(approve: boolean) {
@@ -171,7 +136,10 @@ async function decide(approve: boolean) {
     message.success($t(approve ? "externalAccess.approvedHint" : "externalAccess.rejected"))
     await refresh()
   }
-  catch { message.error($t("externalAccess.noLongerAvailable")) }
+  catch {
+    detailError.value = true
+    message.error($t("externalAccess.noLongerAvailable"))
+  }
   finally { loading.value = false }
 }
 async function copy(value: string) {
@@ -184,9 +152,13 @@ async function copy(value: string) {
 async function inspectAnalysis(id: string) {
   analysis.value = null
   try {
-    analysis.value = await getExternalAnalysis(id)
+    detailError.value = false
+    analysis.value = await getExternalAnalysis(id, props.projectId)
   }
-  catch { message.error($t("externalAccess.noLongerAvailable")) }
+  catch {
+    detailError.value = true
+    message.error($t("externalAccess.noLongerAvailable"))
+  }
 }
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
@@ -202,207 +174,210 @@ async function downloadResult(file: { id: string, filename: string }) {
   try {
     downloadBlob(await downloadExternalAnalysisFile(analysis.value.id, file.id), file.filename)
   }
-  catch { message.error($t("externalAccess.noLongerAvailable")) }
+  catch {
+    detailError.value = true
+    message.error($t("externalAccess.noLongerAvailable"))
+  }
 }
 function downloadPreview(file: { filename: string, content_base64: string }) {
   const bytes = Uint8Array.from(atob(file.content_base64), char => char.charCodeAt(0))
   downloadBlob(new Blob([bytes], { type: "application/octet-stream" }), file.filename)
 }
-async function testConnection() {
-  connectionStatus.value = ""
+async function loadMore() {
+  if (dashboard.value.analysis_next_offset == null || loading.value)
+    return
+  loading.value = true
   try {
-    const response = await fetch("/api/external-access/tools/access_context", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token.value}`, "Content-Type": "application/json" },
-      body: "{}",
-    })
-    if (!response.ok)
-      throw new Error("Connection unavailable")
-    const context = await response.json()
-    connectionStatus.value = `${context.project.name} · ${context.instance.version} · ${context.scopes.map(scopeLabel).join(" · ")}`
+    const next = await getExternalDashboard(props.projectId, dashboard.value.analysis_next_offset)
+    const ids = new Set((dashboard.value.analyses || []).map(item => item.id))
+    dashboard.value.analyses = [...(dashboard.value.analyses || []), ...(next.analyses || []).filter(item => !ids.has(item.id))]
+    dashboard.value.analysis_next_offset = next.analysis_next_offset
   }
-  catch { message.error($t("externalAccess.noLongerAvailable")) }
+  catch { message.error($t("externalAccess.failed")) }
+  finally { loading.value = false }
 }
-onMounted(async () => {
-  await refresh()
+async function openFromRoute() {
+  setupOpen.value = route.query.connect === "1"
+  if (!route.query.analysis_id)
+    analysis.value = null
+  if (!route.query.operation_id)
+    current.value = null
   if (typeof route.query.analysis_id === "string")
     await inspectAnalysis(route.query.analysis_id)
+  if (typeof route.query.operation_id === "string")
+    await inspect(route.query.operation_id)
+}
+function clearQuery(key: string) {
+  if (key in route.query) {
+    const query = { ...route.query }
+    delete query[key]
+    void router.replace({ path: route.path, query, hash: route.hash })
+  }
+}
+watch(setupOpen, (value) => {
+  if (!value)
+    clearQuery("connect")
+})
+watch(() => [route.query.analysis_id, route.query.operation_id, route.query.connect], openFromRoute)
+onMounted(async () => {
+  await refresh()
+  await openFromRoute()
   await nextTick()
   if (route.hash === "#external-access")
     document.getElementById("external-access")?.scrollIntoView({ block: "start" })
 })
-onBeforeUnmount(() => {
-  token.value = ""
-  current.value = null
-})
 </script>
 
 <template>
-  <n-card id="external-access" :title="$t('externalAccess.title')" class="min-w-0 scroll-mt-24">
-    <div class="min-w-0 space-y-4">
-      <n-alert type="info" :show-icon="false">
-        {{ $t("externalAccess.description") }}
-      </n-alert>
-      <n-button :loading="loading" @click="refresh">
+  <n-card id="external-access" :title="$t(props.projectId ? 'externalOnboarding.workspace' : 'externalAccess.title')" class="min-w-0 scroll-mt-24" data-testid="external-research-workspace">
+    <template #header-extra>
+      <n-button :loading="loading" :aria-label="$t('externalAccess.refresh')" @click="refresh">
         {{ $t("externalAccess.refresh") }}
       </n-button>
+    </template>
+    <div class="min-w-0 space-y-5">
+      <p class="color-text-secondary">
+        {{ $t("externalOnboarding.workspaceHint") }}
+      </p>
       <n-alert v-if="failed" type="error">
         {{ $t("externalAccess.failed") }}
       </n-alert>
-      <n-form label-placement="top" @submit.prevent="create">
-        <div class="grid gap-x-4 sm:grid-cols-2">
-          <n-form-item :label="$t('externalAccess.name')">
-            <n-input v-model:value="name" data-testid="external-grant-name" :maxlength="100" :placeholder="$t('externalAccess.nameHint')" />
-          </n-form-item>
-          <n-form-item :label="$t('externalAccess.project')">
-            <n-select v-model:value="projectId" data-testid="external-grant-project" :options="projectOptions" filterable :placeholder="$t('externalAccess.projectHint')" />
-          </n-form-item>
-          <n-form-item :label="$t('externalAccess.days')">
-            <n-input-number v-model:value="days" :min="1" :max="90" class="w-full" />
-          </n-form-item>
-          <n-form-item :label="$t('externalAccess.scopes')">
-            <n-checkbox-group v-model:value="selectedScopes" class="flex flex-wrap gap-2">
-              <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value" :disabled="option.disabled">
-                {{ option.label }}
-              </n-checkbox>
-            </n-checkbox-group>
-          </n-form-item>
-        </div>
-        <p class="mb-3 text-sm color-text-secondary">
-          {{ $t("externalAccess.policyHint") }}
-        </p>
-        <n-button data-testid="external-grant-create" type="primary" :disabled="!canCreate" :loading="loading" attr-type="submit">
-          {{ $t("externalAccess.create") }}
-        </n-button>
-      </n-form>
-      <n-alert v-if="token" type="warning">
-        <p class="mb-2">
-          {{ $t("externalAccess.oneTime") }}
-        </p>
-        <n-input data-testid="external-grant-token" :value="token" type="password" show-password-on="click" readonly :input-props="{ autocomplete: 'off' }" />
-        <div class="mt-2 flex flex-wrap gap-2">
-          <n-button @click="copy(token)">
-            {{ $t("externalAccess.copyToken") }}
-          </n-button>
-          <n-button data-testid="external-test-connection" @click="testConnection">
-            {{ $t("externalResearch.testConnection") }}
-          </n-button>
-          <n-button @click="token = ''; connectionStatus = ''">
-            {{ $t("externalAccess.dismissToken") }}
-          </n-button>
-        </div>
+      <n-alert v-if="detailError" type="error" closable @close="detailError = false">
+        {{ $t("externalAccess.noLongerAvailable") }}
       </n-alert>
-      <n-alert v-if="connectionStatus" type="success" data-testid="external-connection-result">
-        {{ connectionStatus }}
-      </n-alert>
-      <n-collapse>
-        <n-collapse-item :title="$t('externalAccess.connect')" name="connect">
-          <p>{{ $t("externalAccess.connectHint") }}</p>
-          <p class="my-3">
-            {{ $t("externalResearch.taskExample") }}
-          </p>
-          <n-button @click="copy($t('externalResearch.taskExample'))">
-            {{ $t("externalResearch.copyTask") }}
-          </n-button>
-          <pre class="my-2 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-100 p-3 text-sm dark:bg-gray-800">{{ command }}</pre>
-          <n-button @click="copy(command)">
-            {{ $t("externalAccess.copyCommand") }}
-          </n-button>
-          <a :href="documentationUrl" target="_blank" rel="noopener" class="ml-3 underline">{{ $t("externalAccess.documentation") }}</a>
-        </n-collapse-item>
-      </n-collapse>
-      <n-collapse @update:expanded-names="refreshClients">
-        <n-collapse-item :title="$t('externalResearch.oauthClients')" name="oauth">
-          <p>{{ $t("externalResearch.oauthRegistration") }}</p>
-          <n-form label-placement="top" @submit.prevent="registerClient">
-            <n-form-item :label="$t('externalAccess.name')">
-              <n-input v-model:value="clientName" :maxlength="100" />
-            </n-form-item>
-            <n-form-item :label="$t('externalResearch.redirectUri')">
-              <n-input v-model:value="clientRedirect" :maxlength="2048" placeholder="http://127.0.0.1:8765/callback" />
-            </n-form-item>
-            <n-button attr-type="submit" :disabled="!clientName.trim() || !clientRedirect.trim()" :loading="loading">
-              {{ $t("externalResearch.registerClient") }}
-            </n-button>
-          </n-form>
-          <div v-for="client in clients" :key="client.client_id" class="my-3 break-all space-y-2">
-            <p>{{ client.name }} · {{ client.redirect_uris.join(' · ') }}</p>
-            <p>Client ID: {{ client.client_id }}</p>
-            <n-popconfirm @positive-click="removeClient(client.client_id)">
-              {{ $t("externalResearch.removeClientHint") }}
-              <template #trigger>
-                <n-button type="error" secondary>
-                  {{ $t("externalAccess.revoke") }}
-                </n-button>
-              </template>
-            </n-popconfirm>
-          </div>
-        </n-collapse-item>
-      </n-collapse>
-      <h3 class="text-base font-semibold">
-        {{ $t("externalAccess.grants") }}
-      </h3>
-      <n-empty v-if="!dashboard.grants.length" :description="$t('externalAccess.emptyGrants')" />
-      <div v-for="grant in dashboard.grants" :key="grant.id" :data-testid="`external-grant-${grant.id}`" class="flex flex-wrap items-center justify-between gap-3 border-b py-3">
-        <div class="min-w-0 flex-1 break-words">
-          <div class="font-medium">
-            {{ grant.name }}
-          </div>
-          <div class="text-sm color-text-secondary">
-            {{ grant.scopes.map(scopeLabel).join(' · ') }}
-          </div>
-          <div class="text-sm color-text-secondary">
-            {{ grant.token_prefix }}… · {{ $t("externalAccess.expires") }} {{ new Date(grant.expires_at).toLocaleString() }}
-          </div>
-        </div>
-        <n-tag v-if="grant.revoked_at">
-          {{ $t("externalAccess.revoked") }}
-        </n-tag>
-        <n-popconfirm v-else @positive-click="revoke(grant.id)">
-          {{ $t("externalAccess.revokeConfirm") }}
-          <template #trigger>
-            <n-button type="error" secondary :disabled="loading">
-              {{ $t("externalAccess.revoke") }}
-            </n-button>
-          </template>
-        </n-popconfirm>
-      </div>
-      <h3 class="text-base font-semibold">
-        {{ $t("externalResearch.analyses") }}
-      </h3>
-      <p class="text-sm color-text-secondary">
-        {{ $t("externalResearch.privateResults") }}
-      </p>
-      <div v-for="run in (dashboard.analyses || []).filter(item => !projectId || item.project_id === projectId)" :key="run.id" class="flex flex-wrap items-center justify-between gap-3 border-b py-3">
-        <span>{{ run.title }}</span><n-button @click="inspectAnalysis(run.id)">
-          {{ $t("externalResearch.openResult") }}
+      <div v-if="props.projectId" class="flex flex-wrap items-center gap-3">
+        <n-button type="primary" data-testid="external-connect-project" :disabled="failed || loading" @click="setupOpen = true">
+          {{ $t("externalResearch.connectProject") }}
+        </n-button>
+        <n-button quaternary data-testid="external-manage-connections" @click="managementOpen = !managementOpen">
+          {{ $t("externalOnboarding.manageConnections") }}
         </n-button>
       </div>
-      <h3 class="text-base font-semibold">
-        {{ $t("externalAccess.operations") }}
-      </h3>
-      <n-empty v-if="!dashboard.operations.length" :description="$t('externalAccess.emptyOperations')" />
-      <div v-for="operation in dashboard.operations" :key="operation.id" :data-testid="`external-operation-${operation.id}`" class="flex flex-wrap items-center justify-between gap-3 border-b py-3">
-        <div class="min-w-0 flex-1 break-all">
-          {{ operation.kind === 'protocol' ? $t('externalResearch.protocolReview') : operation.kind === 'analysis' ? $t('externalResearch.writeAnalysis') : operation.kind === 'import' ? $t('externalAccess.importRecords') : $t('externalAccess.reviseRecords') }}
-          <span class="ml-2">{{ states[operation.state] || operation.state }}</span>
-          <div class="text-xs color-text-secondary">
-            {{ operation.id }}
-          </div>
+      <external-connection-form v-else :key="connectionKey" :projects="dashboard.projects" :failed="failed" @created="refresh" />
+      <section class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-base font-semibold">
+            {{ $t("externalAccess.operations") }}
+          </h3>
+          <n-checkbox v-model:checked="showHistory">
+            {{ $t("externalOnboarding.showHistory") }}
+          </n-checkbox>
         </div>
-        <n-button :disabled="loading" @click="inspect(operation.id)">
-          {{ $t("externalAccess.review") }}
-        </n-button>
-      </div>
-      <n-collapse>
-        <n-collapse-item :title="$t('externalAccess.audit')" name="audit">
-          <div v-for="event in dashboard.audit" :key="event.id" class="flex flex-wrap justify-between gap-2 border-b py-2 text-sm">
-            <span>{{ auditLabels[event.event] || $t('externalAccess.toolCalled') }}</span><span>{{ new Date(event.created_at).toLocaleString() }}</span>
+        <p v-if="!failed && !loading && !visibleOperations.length" class="text-sm color-text-secondary">
+          {{ $t("externalAccess.emptyOperations") }}
+        </p>
+        <div v-for="operation in visibleOperations" :key="operation.id" :data-testid="`external-operation-${operation.id}`" class="flex flex-wrap items-center justify-between gap-3 border-b py-3">
+          <div class="min-w-0 flex-1 break-all">
+            {{ operation.kind === 'protocol' ? $t('externalResearch.protocolReview') : operation.kind === 'analysis' ? $t('externalResearch.writeAnalysis') : operation.kind === 'import' ? $t('externalAccess.importRecords') : $t('externalAccess.reviseRecords') }}
+            <span class="ml-2">{{ states[operation.state] || operation.state }}</span>
+            <div class="text-xs color-text-secondary">
+              {{ operation.id }}
+            </div>
           </div>
-        </n-collapse-item>
-      </n-collapse>
+          <n-button :disabled="loading" @click="inspect(operation.id)">
+            {{ $t("externalAccess.review") }}
+          </n-button>
+        </div>
+      </section>
+      <section class="space-y-3" data-testid="external-project-reports">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-base font-semibold">
+            {{ $t("externalResearch.analyses") }}
+          </h3>
+          <n-input v-if="dashboard.analyses?.length" v-model:value="reportSearch" class="max-w-80" clearable :placeholder="$t('externalOnboarding.searchReports')" :aria-label="$t('externalOnboarding.searchReports')" />
+        </div>
+        <p class="text-sm color-text-secondary">
+          {{ $t("externalResearch.privateResults") }}
+        </p>
+        <n-empty v-if="!failed && !loading && !visibleAnalyses.length" class="py-6" :description="$t(reportSearch ? 'externalOnboarding.noMatches' : 'externalOnboarding.emptyReports')" />
+        <div v-for="run in visibleAnalyses" :key="run.id" :data-testid="`external-report-${run.id}`" class="flex flex-wrap items-center justify-between gap-3 border rounded p-4">
+          <div class="min-w-0 flex-1 break-words">
+            <p class="font-medium">
+              {{ run.title }}
+            </p>
+            <p class="mt-1 text-sm color-text-secondary">
+              {{ new Date(run.created_at).toLocaleString() }}
+            </p>
+          </div>
+          <n-button :disabled="loading" @click="inspectAnalysis(run.id)">
+            {{ $t("externalResearch.openResult") }}
+          </n-button>
+        </div>
+        <n-button v-if="dashboard.analysis_next_offset != null" :loading="loading" @click="loadMore">
+          {{ $t("externalOnboarding.loadMore") }}
+        </n-button>
+      </section>
+      <section v-if="!props.projectId || managementOpen" data-testid="external-connection-management" class="border-t pt-4 space-y-4">
+        <n-collapse v-if="!props.projectId" @update:expanded-names="refreshClients">
+          <n-collapse-item :title="$t('externalResearch.oauthClients')" name="oauth">
+            <p>{{ $t("externalResearch.oauthRegistration") }}</p>
+            <n-form label-placement="top" @submit.prevent="registerClient">
+              <n-form-item :label="$t('externalAccess.name')">
+                <n-input v-model:value="clientName" :maxlength="100" />
+              </n-form-item>
+              <n-form-item :label="$t('externalResearch.redirectUri')">
+                <n-input v-model:value="clientRedirect" :maxlength="2048" placeholder="http://127.0.0.1:8765/callback" />
+              </n-form-item>
+              <n-button attr-type="submit" :disabled="!clientName.trim() || !clientRedirect.trim()" :loading="loading">
+                {{ $t("externalResearch.registerClient") }}
+              </n-button>
+            </n-form>
+            <div v-for="client in clients" :key="client.client_id" class="my-3 break-all space-y-2">
+              <p>{{ client.name }} · {{ client.redirect_uris.join(' · ') }}</p>
+              <p>Client ID: {{ client.client_id }}</p>
+              <n-popconfirm @positive-click="removeClient(client.client_id)">
+                {{ $t("externalResearch.removeClientHint") }}
+                <template #trigger>
+                  <n-button type="error" secondary>
+                    {{ $t("externalAccess.revoke") }}
+                  </n-button>
+                </template>
+              </n-popconfirm>
+            </div>
+          </n-collapse-item>
+        </n-collapse>
+        <h3 class="text-base font-semibold">
+          {{ $t("externalAccess.grants") }}
+        </h3>
+        <n-empty v-if="!dashboard.grants.length" :description="$t('externalAccess.emptyGrants')" />
+        <div v-for="grant in dashboard.grants" :key="grant.id" :data-testid="`external-grant-${grant.id}`" class="flex flex-wrap items-center justify-between gap-3 border-b py-3">
+          <div class="min-w-0 flex-1 break-words">
+            <div class="font-medium">
+              {{ grant.name }}
+            </div>
+            <div class="text-sm color-text-secondary">
+              {{ grant.scopes.map(scopeLabel).join(' · ') }}
+            </div>
+            <div class="text-sm color-text-secondary">
+              {{ grant.token_prefix }}… · {{ $t("externalAccess.expires") }} {{ new Date(grant.expires_at).toLocaleString() }}
+            </div>
+          </div>
+          <n-tag v-if="grant.revoked_at">
+            {{ $t("externalAccess.revoked") }}
+          </n-tag>
+          <n-popconfirm v-else @positive-click="revoke(grant.id)">
+            {{ $t("externalAccess.revokeConfirm") }}
+            <template #trigger>
+              <n-button type="error" secondary :disabled="loading">
+                {{ $t("externalAccess.revoke") }}
+              </n-button>
+            </template>
+          </n-popconfirm>
+        </div>
+
+        <n-collapse>
+          <n-collapse-item :title="$t('externalAccess.audit')" name="audit">
+            <div v-for="event in dashboard.audit" :key="event.id" class="flex flex-wrap justify-between gap-2 border-b py-2 text-sm">
+              <span>{{ auditLabels[event.event] || $t('externalAccess.toolCalled') }}</span><span>{{ new Date(event.created_at).toLocaleString() }}</span>
+            </div>
+          </n-collapse-item>
+        </n-collapse>
+      </section>
     </div>
-    <n-modal :show="Boolean(current)" data-testid="external-operation-dialog" preset="card" :title="$t('externalAccess.review')" class="max-w-[calc(100vw-32px)] w-200" @update:show="value => { if (!value) current = null }">
+    <n-modal v-if="props.projectId" v-model:show="setupOpen" preset="card" :title="$t('externalResearch.connectProject')" class="max-h-[85vh] max-w-[calc(100vw-32px)] w-200 overflow-auto" :mask-closable="false">
+      <external-connection-form :key="connectionKey" :project-id="props.projectId" :projects="dashboard.projects" :failed="failed" @created="refresh" />
+    </n-modal>
+    <n-modal :show="Boolean(current)" data-testid="external-operation-dialog" preset="card" :title="$t('externalAccess.review')" class="max-h-[85vh] max-w-[calc(100vw-32px)] w-200 overflow-auto" @update:show="value => { if (!value) { current = null; clearQuery('operation_id') } }">
       <div v-if="current" class="min-w-0 space-y-4">
         <n-alert type="warning">
           {{ $t("externalAccess.reviewHint") }}
@@ -508,17 +483,24 @@ onBeforeUnmount(() => {
         </p>
       </div>
     </n-modal>
-    <n-modal :show="Boolean(analysis)" preset="card" :title="$t('externalResearch.openResult')" class="max-w-[calc(100vw-32px)] w-240" @update:show="value => { if (!value) analysis = null }">
+    <n-modal :show="Boolean(analysis)" preset="card" :title="$t('externalResearch.openResult')" class="max-h-[85vh] max-w-[calc(100vw-32px)] w-240 overflow-auto" @update:show="value => { if (!value) { analysis = null; clearQuery('analysis_id') } }">
       <div v-if="analysis" class="space-y-4" data-testid="external-analysis-report">
         <n-alert type="info">
           {{ $t("externalResearch.externalExecution") }}
         </n-alert>
-        <h2>{{ analysis.result.title }}</h2>
+        <h2 class="break-words text-xl font-semibold">
+          {{ analysis.result.title }}
+        </h2>
+        <p class="text-sm color-text-secondary">
+          {{ new Date(analysis.created_at).toLocaleString() }} · {{ $t("externalResearch.privateResults") }}
+        </p>
         <p>{{ analysis.question }}</p>
         <n-alert v-if="analysis.result.reproducibility === 'incomplete'" type="warning">
           {{ $t("externalResearch.incomplete") }}
         </n-alert>
-        <pre class="max-h-120 overflow-auto whitespace-pre-wrap break-words">{{ analysis.result.report }}</pre>
+        <div class="max-h-120 overflow-auto whitespace-pre-wrap break-words text-base leading-relaxed" data-testid="external-report-body">
+          {{ analysis.result.report }}
+        </div>
         <h3>{{ $t("externalResearch.method") }} <span v-if="analysis.result.method">v{{ analysis.result.method.revision }}</span></h3>
         <pre class="max-h-80 overflow-auto whitespace-pre-wrap break-words">{{ analysis.recipe.method }}
         {{ JSON.stringify(analysis.recipe.environment, null, 2) }}</pre>

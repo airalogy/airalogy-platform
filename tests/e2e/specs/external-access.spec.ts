@@ -48,6 +48,7 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     const project = (await choices.json()).projects.find((p: { id: string }) => p.id === fixtures.project.id)
     await page.getByTestId("external-grant-project").click()
     await selectVisibleOption(page, project.name)
+    await panel.getByText(locale === "en-US" ? "Customize permissions" : "自定义权限", { exact: true }).click()
     await panel.getByRole("checkbox", { name: strings.importRecords, exact: true }).check()
     const issued = page.waitForResponse(response => response.url().endsWith("/external-access/grants") && response.request().method() === "POST")
     await page.getByTestId("external-grant-create").click()

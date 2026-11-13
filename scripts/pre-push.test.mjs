@@ -343,6 +343,7 @@ test("external analysis and onboarding retain real PostgreSQL acceptance", () =>
     assert.ok(ids([file]).includes("research-integration"), file)
   const suite = readFileSync("tests/e2e/scripts/research-integration.sh", "utf8")
   assert.ok(suite.includes("tests/test_external_research_postgres.py"))
+  assert.ok(suite.includes("tests/test_external_onboarding_postgres.py"))
 })
 
 test("project R&D changes retain real database acceptance", () => {

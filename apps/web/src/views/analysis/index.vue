@@ -1,5 +1,14 @@
 <template>
-  <project-analysis-workbench v-if="projectScope && projectInfo" :key="projectInfo.id" :project-id="projectInfo.id" @single="changeAnalysisScope(false)" />
+  <nav class="mb-5 flex flex-wrap gap-2" :aria-label="$t('page.analysis.title')">
+    <n-button :type="externalScope ? 'default' : 'primary'" :secondary="!externalScope" @click="changeAnalysisView(false)">
+      {{ $t("externalOnboarding.platformAnalysis") }}
+    </n-button>
+    <n-button :type="externalScope ? 'primary' : 'default'" :secondary="externalScope" data-testid="analysis-external-view" @click="changeAnalysisView(true)">
+      {{ $t("externalResearch.analyses") }}
+    </n-button>
+  </nav>
+  <external-access-settings v-if="externalScope && projectInfo" :key="projectInfo.id" :project-id="projectInfo.id" />
+  <project-analysis-workbench v-else-if="projectScope && projectInfo" :key="projectInfo.id" :project-id="projectInfo.id" @single="changeAnalysisScope(false)" />
   <div v-else class="analysis-page py-8" data-testid="analysis-workbench">
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
@@ -420,6 +429,7 @@ import { canAdoptAnalysisDraft } from "@/utils/analysis-ai"
 import { isBuiltinAnalysisRun, isComputeAnalysisRecipe } from "@/utils/analysis-compute"
 import { analysisFieldType, parseAnalysisFieldOperand } from "@/utils/analysis-context"
 import { isProjectAnalysis } from "@/utils/project-analysis"
+import ExternalAccessSettings from "@/views/profile/modules/external-access-settings.vue"
 import { useProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import { downloadAs } from "@airalogy/shared/utils"
 import { useDialog, useMessage } from "naive-ui"
@@ -438,6 +448,12 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { projectInfo } = useProjectInfoStore()
+const externalScope = computed(() => route.query.view === "external")
+async function changeAnalysisView(external: boolean) {
+  if (external === externalScope.value)
+    return
+  await router.replace({ name: "project-analysis", params: { labUid: route.params.labUid, projectUid: route.params.projectUid }, query: external ? { view: "external" } : {} })
+}
 const projectScope = computed(() => route.query.scope === "project")
 async function changeAnalysisScope(project: boolean) {
   await router.replace({ name: "project-analysis", params: { labUid: route.params.labUid, projectUid: route.params.projectUid }, query: project ? { scope: "project" } : {} })
@@ -744,7 +760,7 @@ async function searchProtocols(name: string) {
   }
 }
 async function initialize() {
-  if (projectScope.value) {
+  if (projectScope.value || externalScope.value) {
     initializationSequence += 1
     reportSequence += 1
     sequence += 1
@@ -1037,7 +1053,7 @@ async function openSource(source: AnalysisSource) {
     loadError.value = errorText(error)
   }
 }
-watch(() => [projectInfo.value?.id, projectScope.value], () => void initialize(), { immediate: true })
+watch(() => [projectInfo.value?.id, projectScope.value, externalScope.value], () => void initialize(), { immediate: true })
 onBeforeUnmount(() => {
   sequence += 1
   initializationSequence += 1

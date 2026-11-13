@@ -743,9 +743,11 @@ async def preview_operation(db, access, args, kind):
         operation_id=str(op.id),
         digest=op.digest,
     )
+    from app.services.external_research import confirmation_url
+
     return {
         **operation_view(op),
-        "confirmation_url": f"{config.SITE_URL.rstrip('/')}/users/{access.user.username}/settings#external-access",
+        "confirmation_url": await confirmation_url(db, access, op.id),
         "instruction": "The user must review and approve in Platform. Agent tokens cannot approve operations.",
     }
 

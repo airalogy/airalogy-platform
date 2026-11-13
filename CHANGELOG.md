@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Keep external AI onboarding, write review, and private analysis reports inside each Project. Add purpose-based permission presets, project-scoped report pagination, and direct result/review links while retaining account-level connection management.
+
 - Avoid redundant pagination URL updates cancelling a project tab switch while the next page loads.
 
 - Include Protocol ratings and external research in affected PostgreSQL checks; keep migration and permission-revocation fixtures aligned with current tables and independent Protocol ownership.

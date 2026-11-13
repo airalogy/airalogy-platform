@@ -6381,5 +6381,33 @@ declare namespace I18n {
       "unavailable": string
       "close": string
     }
+    externalOnboarding: {
+      workspace: string
+      workspaceHint: string
+      steps: string
+      purpose: string
+      read: string
+      analyze: string
+      author: string
+      scopeHint: string
+      customScopes: string
+      permissionUnavailable: string
+      disabledHint: string
+      configure: string
+      environmentHint: string
+      otherClients: string
+      otherClientsHint: string
+      tokenVerified: string
+      startTask: string
+      firstTask: string
+      resultsHint: string
+      manageConnections: string
+      searchReports: string
+      emptyReports: string
+      noMatches: string
+      loadMore: string
+      showHistory: string
+      platformAnalysis: string
+    }
   }
 }

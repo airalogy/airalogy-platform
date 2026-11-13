@@ -4,11 +4,19 @@ import json
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+)
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from sqlalchemy import select, update
+from sqlalchemy import case, select, update
 
 from app.build_info import resolve_build_info
 from app.config import config
@@ -26,7 +34,12 @@ mcp_router = APIRouter(tags=["external-access"])
 
 
 @router.get("/dashboard")
-async def dashboard(db: DBSession, user: CurrentUser):
+async def dashboard(
+    db: DBSession,
+    user: CurrentUser,
+    project_id: UUID | None = None,
+    analysis_offset: int = Query(default=0, ge=0, le=100000),
+):
     await service.lock_user_calls(db, user.id)
     await service.expire_operations(db, user_id=user.id)
     projects = (
@@ -34,6 +47,7 @@ async def dashboard(db: DBSession, user: CurrentUser):
             select(Project)
             .join(LabUser, LabUser.lab_id == Project.lab_id)
             .where(LabUser.user_id == user.id, Project.deleted_at.is_(None))
+            .where(Project.id == project_id if project_id else True)
             .order_by(Project.name)
         )
     ).all()
@@ -43,6 +57,50 @@ async def dashboard(db: DBSession, user: CurrentUser):
             await check_user_permission(db, project, user, "read_project")
         except HTTPException:
             continue
+        from app.routers.record_exports import (
+            RecordExportParams,
+            _resolve_scope_and_authorize,
+        )
+
+        can_export = False
+        try:
+            await _resolve_scope_and_authorize(
+                db,
+                RecordExportParams(
+                    scope_type="project",
+                    lab_id=project.lab_id,
+                    project_id=project.id,
+                ),
+                user.id,
+            )
+            can_export = True
+        except HTTPException:
+            pass
+        can_author = False
+        try:
+            await check_user_permission(db, project, user, "create_protocol")
+            can_author = True
+        except HTTPException:
+            # A protocol-specific editor may update an existing Protocol even
+            # when the Project does not allow creating new ones.
+            from app.models.protocol import Protocol
+
+            for protocol in (
+                await db.scalars(
+                    select(Protocol).where(
+                        Protocol.project_id == project.id,
+                        Protocol.deleted_at.is_(None),
+                    )
+                )
+            ).all():
+                try:
+                    await check_user_permission(
+                        db, project, user, "update_protocol", protocol=protocol
+                    )
+                    can_author = True
+                    break
+                except HTTPException:
+                    continue
         policy = await service.policy_for(db, project.lab_id)
         choices.append(
             {
@@ -50,12 +108,17 @@ async def dashboard(db: DBSession, user: CurrentUser):
                 "name": project.name,
                 "lab_id": str(project.lab_id),
                 "enabled": bool(policy and policy.enabled),
+                "can_export": can_export,
+                "can_author": can_author,
             }
         )
+    if project_id and not choices:
+        service.fail("project_not_found", 404)
     grants = (
         await db.scalars(
             select(ExternalGrant)
             .where(ExternalGrant.user_id == user.id)
+            .where(ExternalGrant.project_id == project_id if project_id else True)
             .order_by(ExternalGrant.created_at.desc())
             .limit(100)
         )
@@ -65,7 +128,15 @@ async def dashboard(db: DBSession, user: CurrentUser):
             select(ExternalOperation)
             .join(ExternalGrant)
             .where(ExternalGrant.user_id == user.id)
-            .order_by(ExternalOperation.created_at.desc())
+            .where(ExternalGrant.project_id == project_id if project_id else True)
+            .order_by(
+                case(
+                    (ExternalOperation.state == "pending", 0),
+                    (ExternalOperation.state == "approved", 1),
+                    else_=2,
+                ),
+                ExternalOperation.created_at.desc(),
+            )
             .limit(50)
         )
     ).all()
@@ -73,6 +144,15 @@ async def dashboard(db: DBSession, user: CurrentUser):
         await db.scalars(
             select(ExternalAudit)
             .where(ExternalAudit.user_id == user.id)
+            .where(
+                ExternalAudit.grant_id.in_(
+                    select(ExternalGrant.id).where(
+                        ExternalGrant.project_id == project_id
+                    )
+                )
+                if project_id
+                else True
+            )
             .order_by(ExternalAudit.created_at.desc())
             .limit(100)
         )
@@ -81,17 +161,20 @@ async def dashboard(db: DBSession, user: CurrentUser):
     from app.services.external_research import ENGINE, get_run
 
     analyses = []
-    for run in (
+    analysis_candidates = (
         await db.scalars(
             select(AnalysisRun)
             .where(
                 AnalysisRun.created_by_user_id == user.id,
                 AnalysisRun.engine_version == ENGINE,
             )
-            .order_by(AnalysisRun.created_at.desc())
-            .limit(50)
+            .where(AnalysisRun.project_id == project_id if project_id else True)
+            .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
+            .offset(analysis_offset)
+            .limit(51)
         )
-    ).all():
+    ).all()
+    for run in analysis_candidates[:50]:
         try:
             await get_run(db, user, run.id)
         except HTTPException:
@@ -109,6 +192,9 @@ async def dashboard(db: DBSession, user: CurrentUser):
     return {
         "projects": choices,
         "analyses": analyses,
+        "analysis_next_offset": analysis_offset + 50
+        if len(analysis_candidates) > 50
+        else None,
         "grants": [g.as_dict() for g in grants],
         "operations": [
             {
@@ -221,9 +307,15 @@ async def own_operation(db, user, operation_id):
 
 @router.get("/operations/{operation_id}")
 async def operation_detail(
-    operation_id: UUID, db: DBSession, user: CurrentUser, response: Response
+    operation_id: UUID,
+    db: DBSession,
+    user: CurrentUser,
+    response: Response,
+    project_id: UUID | None = None,
 ):
     access, op = await own_operation(db, user, operation_id)
+    if project_id and access.project.id != project_id:
+        service.fail("operation_not_found", 404)
     response.headers["Cache-Control"] = "no-store"
     view = service.operation_view(op)
     if view["state"] in ("pending", "approved"):
@@ -596,10 +688,14 @@ async def mcp(
 
 
 @router.get("/analyses/{run_id}")
-async def external_analysis(run_id: UUID, db: DBSession, user: CurrentUser):
+async def external_analysis(
+    run_id: UUID, db: DBSession, user: CurrentUser, project_id: UUID | None = None
+):
     from app.services.external_research import get_run
 
     run = await get_run(db, user, run_id)
+    if project_id and run.project_id != project_id:
+        service.fail("analysis_not_found", 404)
     return run.as_dict()
 
 

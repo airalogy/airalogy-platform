@@ -137,11 +137,11 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
       { name: "project-documents", tab: $t("page.documentUx.documents") },
       { name: "project-materials", tab: $t("page.researchDocuments.materials") },
       { name: "project-knowledge", tab: $t("page.knowledge.title") },
+      { name: "project-analysis", tab: $t("page.analysis.title") },
     )
     const additional = [
       { name: "project-research", tab: $t("page.research.title") },
       { name: "project-workflows", tab: $t("page.workflowDefinitions.title") },
-      { name: "project-analysis", tab: $t("page.analysis.title") },
       { name: "project-scenarios", tab: $t("page.scenarioKits.workbench") },
       { name: "project-records", tab: $t("page.recordDiary.tab") },
       { name: "project-members", tab: hintTab($t("page.project.tab.members"), membersHint.value) },
@@ -164,7 +164,6 @@ const workspaceNavigation = computed(() => [
   { key: "automation", type: "group", label: $t("page.researchDocuments.automation"), children: [
     { key: "project-research", label: $t("page.research.title") },
     { key: "project-workflows", label: $t("page.workflowDefinitions.title") },
-    { key: "project-analysis", label: $t("page.analysis.title") },
     { key: "external-access", label: $t("externalResearch.connectProject") },
   ] },
   { key: "management", type: "group", label: $t("page.researchDocuments.manage"), children: [
@@ -174,7 +173,7 @@ const workspaceNavigation = computed(() => [
 ])
 function navigateWorkspace(name: string) {
   if (name === "external-access") {
-    void routerPush({ name: "profile-settings", params: { username: authStore.userInfo.username }, query: { project_id: projectInfo.value?.id }, hash: "#external-access" })
+    void routerPush({ name: "project-analysis", params: { labUid: route.params.labUid, projectUid: route.params.projectUid }, query: { view: "external", connect: "1" } })
     return
   }
   void routerPushByKey(name as ProjectInfoNameKey, { params: { labUid: route.params.labUid as string, projectUid: route.params.projectUid as string } })

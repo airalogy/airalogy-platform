@@ -42,9 +42,10 @@ export interface ExternalOperation {
   result?: { links?: string[] }
 }
 export interface ExternalDashboard {
-  projects: Array<{ id: string, name: string, lab_id: string, enabled: boolean }>
+  projects: Array<{ id: string, name: string, lab_id: string, enabled: boolean, can_export: boolean, can_author: boolean }>
   grants: ExternalGrant[]
   operations: ExternalOperation[]
+  analysis_next_offset?: number | null
   analyses?: Array<{ id: string, title: string, project_id: string, created_at: string }>
   audit: Array<{ id: string, event: string, created_at: string, grant_id: string | null }>
 }
@@ -56,12 +57,12 @@ async function data<T>(options: Parameters<typeof request<T>>[0]): Promise<T> {
   return result.data
 }
 
-export const getExternalDashboard = () => data<ExternalDashboard>({ url: "/external-access/dashboard" })
+export const getExternalDashboard = (projectId?: string, analysisOffset = 0) => data<ExternalDashboard>({ url: "/external-access/dashboard", params: { project_id: projectId, analysis_offset: analysisOffset } })
 export function createExternalGrant(payload: { name: string, project_id: string, scopes: string[], expires_in_days: number }) {
   return data<{ grant: ExternalGrant, token: string }>({ url: "/external-access/grants", method: "POST", data: payload })
 }
 export const revokeExternalGrant = (id: string) => data<{ revoked: boolean }>({ url: `/external-access/grants/${id}`, method: "DELETE" })
-export const getExternalOperation = (id: string) => data<ExternalOperation>({ url: `/external-access/operations/${id}` })
+export const getExternalOperation = (id: string, projectId?: string) => data<ExternalOperation>({ url: `/external-access/operations/${id}`, params: { project_id: projectId } })
 export function decideExternalOperation(id: string, digest: string, approve: boolean) {
   return data<ExternalOperation>({ url: `/external-access/operations/${id}/decision`, method: "POST", data: { digest, approve } })
 }
@@ -85,7 +86,7 @@ export interface ExternalAnalysis {
   result: { method?: { pipeline_id: string, revision_id: string, revision: number }, title: string, report: string, limitations: string, execution: string, executor: string, reproducibility: string, files: Array<{ id: string, filename: string, sha256: string, size_bytes: number }> }
   rerun_of_id: string | null
 }
-export const getExternalAnalysis = (id: string) => data<ExternalAnalysis>({ url: `/external-access/analyses/${id}` })
+export const getExternalAnalysis = (id: string, projectId?: string) => data<ExternalAnalysis>({ url: `/external-access/analyses/${id}`, params: { project_id: projectId } })
 export async function downloadExternalAnalysisFile(runId: string, fileId: string) {
   const result = await request<Blob, "blob">({ url: `/external-access/analyses/${runId}/files/${fileId}`, responseType: "blob", metadata: { showError: false } })
   if (result.error || result.data === null)

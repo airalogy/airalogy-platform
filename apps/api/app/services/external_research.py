@@ -446,15 +446,24 @@ async def new_operation(
     )
     return {
         **boundary.operation_view(op),
-        "confirmation_url": confirmation_url(access),
+        "confirmation_url": await confirmation_url(db, access, op.id),
         "instruction": "The user must review and approve in Platform; this credential cannot approve.",
     }
 
 
-def confirmation_url(access):
+async def project_analysis_path(db, access):
+    from urllib.parse import quote
+
+    from app.models.lab import Lab
+
+    lab = await db.get(Lab, access.project.lab_id)
+    return f"/labs/{quote(lab.uid, safe='')}/projects/{quote(access.project.uid, safe='')}/analysis?view=external"
+
+
+async def confirmation_url(db, access, operation_id):
     from app.config import config
 
-    return f"{config.SITE_URL.rstrip('/')}/users/{access.user.username}/settings?project_id={access.project.id}#external-access"
+    return f"{config.SITE_URL.rstrip('/')}{await project_analysis_path(db, access)}&operation_id={operation_id}"
 
 
 async def preview_analysis(db, access, params):
@@ -750,9 +759,7 @@ async def execute_analysis(db, access, op):
     op.state, op.payload = "succeeded", {}
     op.result = {
         "run_id": str(run.id),
-        "links": [
-            f"/users/{access.user.username}/settings?analysis_id={run.id}#external-access"
-        ],
+        "links": [f"{await project_analysis_path(db, access)}&analysis_id={run.id}"],
     }
     boundary.audit(
         db,

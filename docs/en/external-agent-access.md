@@ -8,7 +8,7 @@ This implements [Issue #11](https://github.com/airalogy/platform/issues/11) and 
 
 1. A Lab Owner or Manager opens **Lab settings → External tool access policy**. Access is off by default. Enable it only if the organization's data policy permits the external tool and its model provider to process the returned data.
 2. Optionally block top-level Record variable IDs, one per line. These restrictions apply across the Lab, including otherwise public Projects. Changing the policy invalidates outstanding write confirmations.
-3. In **Account settings → External AI tools**, select a Project, name the grant, choose actions and an expiration of 1–90 days. The user must currently belong to that Lab and have access to that Project. The grant never expands the user's permissions.
+3. Open **Project → Analysis → Analysis reports → Connect external AI**. The Project is already selected. Choose **Read and explore**, **Analyze and save reports**, or **Develop Protocols**, review the displayed permissions, name the grant, and set an expiration of 1–90 days. Use **Customize permissions** for additional actions. **Account settings → External AI tools** remains available for cross-project connection management. The user must currently belong to that Lab and have access to that Project. The grant never expands the user's permissions.
 4. Save the token when it is shown once. The server stores only its SHA-256 digest. Do not use a browser session token or legacy API key as a substitute.
 5. Configure the client privately. For a same-origin deployment, the MCP endpoint is `https://your-platform.example/api/mcp`. The settings page supplies the exact command for the current instance:
 
@@ -19,6 +19,12 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 Set `AIRALOGY_PLATFORM_TOKEN` using your client's secure environment configuration. Do not paste the token into chat, source control or shared documents; do not place it literally in the registration command. A desktop application does not necessarily inherit variables from an already-open terminal: restart it with the configured environment. See the [Codex MCP documentation](https://developers.openai.com/codex/mcp/) for client configuration.
 
 Revocation takes effect on subsequent calls and cancels unexecuted requests. Expiry, account credential invalidation, loss of Lab/Project membership and policy changes are checked server-side on each request. An operation already committed before revocation remains a normal Record, with its history.
+
+## Find reports and confirmations
+
+Return to **Project → Analysis → Analysis reports**. Reports are ordered newest first, with title search over the loaded results and **Load older reports** for additional pages. Open a report to read its method, limitations, exact source snapshot and download its files. Reports remain private to the submitting user; placing the entry in a Project does not share it with all members.
+
+Pending operations appear above the reports. Returned confirmation links open the exact request in its Project; saved-result links open the exact report. Completed operations can be shown separately. Use **Manage connections** to revoke a Project credential, or account settings to manage credentials across Projects. The connection check verifies that a token can reach Platform; it does not prove the external client has been configured. Start with the supplied read-only discovery prompt in your client.
 
 ## Complete an import
 
