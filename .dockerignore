@@ -3,6 +3,10 @@
 .husky
 .agents
 .codex
+.private
+**/.private
+.cache
+**/.cache
 **/.DS_Store
 **/.env
 **/.env.*

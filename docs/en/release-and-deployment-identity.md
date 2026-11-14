@@ -82,6 +82,26 @@ Keep one restricted record per incident/deployment with: owner and approval; imp
 
 ## Deployment commands and support artifacts
 
+### Local private operations directory
+
+One public source repository can also contain local-only operational files in `.private/ops/<instance>/`. Keep reusable deployment scripts and sanitized examples in the tracked `deploy/` directory; keep instance configuration, credentials, deployment receipts and recovery evidence in `.private/`. This directory is excluded from Git and Docker build contexts. The exclusion does not encrypt files or remove material already committed to Git history, and must not be bypassed with force-add.
+
+Create the local directories with owner-only access:
+
+```bash
+umask 077
+mkdir -p .private/ops/team
+chmod 700 .private .private/ops .private/ops/team
+git check-ignore .private/ops/team/README.md
+git ls-files -- .private/
+```
+
+The last command must produce no output. Keep a deployment record with the source commit, image digests, configuration revision, migration/recovery evidence and verification result for each update. Record secret references rather than secret values in receipts.
+
+Git commits, clones and worktrees do not preserve these files. Maintain a separate encrypted backup and test recovery; record when and where that backup was verified in the private directory. Back up application data separately. Avoid `git clean -fdx` and other ignored-file cleanup against a checkout containing operations records; do not store permanent records in `.cache/`. When using multiple worktrees, choose one persistent checkout for private operations and refer to it explicitly. Transfer only the required deployment files, not the whole checkout: Git and Docker exclusions do not automatically apply to custom archive or upload commands.
+
+### Release package commands
+
 After extracting a formal release package and completing `.env`, run:
 
 ```bash

@@ -39,6 +39,9 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Local private operational files (never commit)
+/.private/
+
 # Husky
 .husky/_
 

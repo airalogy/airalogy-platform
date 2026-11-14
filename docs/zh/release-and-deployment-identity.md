@@ -90,6 +90,26 @@ Platform 不会默认将部署身份、客户信息或运行状态回传给 Aira
 
 ## 部署命令与支持资料
 
+### 本地私有运维目录
+
+可以只维护一个公开源码仓库，将本地运维资料放在 `.private/ops/<实例>/`。通用部署脚本和脱敏示例保留在受 Git 管理的 `deploy/` 中；实例配置、凭证、部署记录和恢复证据放在 `.private/`。该目录同时从 Git 和 Docker 构建上下文中排除。忽略规则不提供加密，也不会移除已经提交到 Git 历史的内容，不得用强制添加绕过。
+
+创建仅当前用户可访问的本地目录：
+
+```bash
+umask 077
+mkdir -p .private/ops/team
+chmod 700 .private .private/ops .private/ops/team
+git check-ignore .private/ops/team/README.md
+git ls-files -- .private/
+```
+
+最后一条命令应无输出。每次更新记录源码提交、镜像摘要、配置修订、迁移与恢复证据和验证结果；记录中引用密钥位置，不重复抄写密钥值。
+
+Git 提交、克隆和 worktree 均不会保存这些文件。需另外维护加密备份并验证恢复，在私有目录记录备份核验时间和位置；业务数据另行备份。不要对存放运维资料的 checkout 执行 `git clean -fdx` 等清理被忽略文件的命令，长期资料也不要放进 `.cache/`。使用多个 worktree 时，选定一个长期保留的 checkout 保存私有运维资料，并显式引用该位置。传输时只选择所需部署文件，不上传整个 checkout；Git 和 Docker 的排除规则不会自动作用于自定义打包或上传命令。
+
+### 发布包命令
+
 正式发布包解压后，复制并填写 `.env`，然后执行：
 
 ```bash

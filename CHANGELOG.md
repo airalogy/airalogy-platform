@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Reserve `.private/ops/` for local operational configuration and evidence, exclude private directories and local caches from root Docker builds, and document independent encrypted backup and safe file transfer.
+
 - Support explicitly versioned alpha, beta and rc releases with equivalent Python package identities, exact Gateway compatibility and a recorded release channel. Mark GitHub prereleases explicitly, preserve stable image aliases, and retain the full source-CI, artifact acceptance and recovery gates.
 
 - Show actual organization membership and role instead of organization counts and lists on single-organization profiles, use organization terminology for multi-organization profiles, hide legacy groups in structured organizations, localize profile summaries and Protocol pages with reactive language switching, and skip community education Protocol queries on single-organization instances.
