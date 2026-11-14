@@ -35,7 +35,7 @@
           <n-icon size="24">
             <icon-ion-mail-outline />
           </n-icon>
-          <span>Email: <a :href="`mailto:${userInfo.email}`">{{ userInfo.email }}</a></span>
+          <span>{{ $t("common.email") }}: <a :href="`mailto:${userInfo.email}`">{{ userInfo.email }}</a></span>
         </div>
       </div>
     </template>
@@ -77,8 +77,8 @@ function openUserAliasDialog() {
         requiredMessage: $t("common.userAliasRequired"),
         required: false,
       }),
-    positiveText: "Confirm",
-    negativeText: "Cancel",
+    positiveText: $t("common.confirm"),
+    negativeText: $t("common.cancel"),
     showIcon: false,
     onPositiveClick: async () => {
       dialogInstance.loading = true
@@ -87,7 +87,7 @@ function openUserAliasDialog() {
         const trimmedAlias = (alias as string || "").trim()
         await setUserAlias({ target_user_id: userInfo.value!.id, alias: trimmedAlias })
         userInfo.value!.user_alias = trimmedAlias
-        message.success("Alias updated successfully")
+        message.success($t("common.editSuccess"))
       }
       catch (e) {
         message.error((e as Error).message)

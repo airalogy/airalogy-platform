@@ -4283,6 +4283,12 @@ declare namespace I18n {
         confirmPhoneChange: string
         phoneMismatch: string
         newPhoneMustBeDifferent: string
+        organizations: string
+        groups: string
+        organizationMembership: string
+        labMembership: string
+        allProtocols: string
+        noProtocols: string
       }
       group: {
         createGroupTitle: string

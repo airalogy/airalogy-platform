@@ -4278,7 +4278,13 @@
       "enterCodeForNewPhone": "输入新手机验证码",
       "confirmPhoneChange": "确认更换手机号",
       "phoneMismatch": "手机号与您当前账户的手机号不匹配",
-      "newPhoneMustBeDifferent": "新手机号必须与当前手机号不同"
+      "newPhoneMustBeDifferent": "新手机号必须与当前手机号不同",
+      "organizations": "组织",
+      "groups": "小组",
+      "organizationMembership": "所属组织",
+      "labMembership": "所属实验室",
+      "allProtocols": "全部协议",
+      "noProtocols": "暂无协议"
     },
     "group": {
       "createGroupTitle": "新建小组",

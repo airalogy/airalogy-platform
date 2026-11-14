@@ -16,7 +16,6 @@ import GlobalContent from "@/layouts/modules/global-content/index.vue"
 import { getUserByUsername } from "@/service/api/users"
 import { $t } from "@airalogy/shared/locales"
 import { useRouterPush } from "../../composables/useRouterPush"
-import { useAuthStore } from "../../store/modules/auth"
 import { useProvideProfileStore } from "./hooks/useProfileStore"
 import BaseProfile from "./modules/base-profile.vue"
 import ProfileContentLayout from "./modules/content-layout.vue"
@@ -24,16 +23,15 @@ import ProfileContentLayout from "./modules/content-layout.vue"
 defineOptions({ name: "ProfileLayout" })
 
 const route = useRoute()
-const userStore = useAuthStore()
 const username = computed(() => route.params.username as string)
 
-const { fetchUserInfo, userInfo, isCurrentUser } = useProvideProfileStore(null)!
+const { fetchUserInfo, isCurrentUser } = useProvideProfileStore(null)!
 
 const tabsProps = ref<TabsProps>({
   type: "segment",
 })
 
-const tabs = ref<any>([
+const tabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => [
   {
     name: "user-profile",
     tab: $t("page.profile.summary"),
@@ -54,7 +52,13 @@ const tabs = ref<any>([
     name: "profile-records",
     tab: $t("page.recordDiary.tab"),
   },
-] as (TabPaneProps & { name: App.Global.TabKey })[])
+  ...(isCurrentUser.value
+    ? [
+        { name: "profile-starred" as const, tab: $t("page.profile.starred") },
+        { name: "profile-settings" as const, tab: $t("page.profile.settings") },
+      ]
+    : []),
+])
 
 const { routerPushByKey } = useRouterPush()
 onMounted(async () => {
@@ -64,24 +68,10 @@ onMounted(async () => {
       routerPushByKey("not-found")
       return
     }
-
-    await nextTick(() => {
-      if (isCurrentUser.value) {
-        tabs.value.push({
-          name: "profile-starred",
-          tab: $t("page.profile.starred"),
-        }, {
-          name: "profile-settings",
-          tab: $t("page.profile.settings"),
-        })
-      }
-    })
   }
 })
 
-watch(username, (val) => {
-  useTitle(`${val} · Profile · Airalogy`)
-}, { immediate: true })
+useTitle(computed(() => `${username.value} · ${$t("page.profile.info")} · Airalogy`))
 
 onUnmounted(async () => {
   await getUserByUsername.clear()

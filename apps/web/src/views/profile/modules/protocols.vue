@@ -12,7 +12,7 @@
             class="ml-1"
             @click="handleViewAll"
           >
-            View All
+            {{ $t("common.viewAll") }}
             <template #icon>
               <n-icon size="12">
                 <icon-ion-ios-arrow-forward />
@@ -40,7 +40,7 @@
         />
       </wrapper-item>
 
-      <wrapper-item title="All Protocols" content-class="!p-4">
+      <wrapper-item :title="$t('page.profile.allProtocols')" content-class="!p-4">
         <div v-if="isLoading" class="flex justify-center py-4">
           <n-spin size="medium" />
         </div>
@@ -54,7 +54,7 @@
           />
         </div>
 
-        <n-empty v-else description="No protocols found" />
+        <n-empty v-else :description="$t('page.profile.noProtocols')" />
       </wrapper-item>
     </div>
   </div>
@@ -63,7 +63,9 @@
 <script lang="ts" setup>
 import type { ProjectProtocolInfo } from "@airalogy/shared/types/models/protocol"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import ProjectProtocolList from "@/views/project/modules/project-protocol-list.vue"
+import { $t } from "@airalogy/shared/locales"
 import { createReusableTemplate } from "@vueuse/core"
 import { fetchProtocols } from "../../../service/api/project-protocols"
 import { useProfileStore } from "../hooks/useProfileStore"
@@ -79,7 +81,6 @@ const [DefineWrapperItem, WrapperItem] = createReusableTemplate<{
 const {
   userInfo,
   userProtocolList,
-  userProtocolCount,
   fetchUserProtocolsData,
 } = useProfileStore()!
 
@@ -89,6 +90,7 @@ const airalogyEduProtocols = ref<ProjectProtocolInfo[]>([])
 const isLoading = ref(false)
 
 const authStore = useAuthStore()
+const instanceStore = useInstanceStore()
 
 const showPrivate = computed(() => {
   return authStore.userInfo.id === userInfo.value?.id
@@ -111,6 +113,9 @@ watch(
   { immediate: true },
 )
 onMounted(async () => {
+  if (instanceStore.isSingleOrganization)
+    return
+
   try {
     const res = await fetchProtocols({
       projectUid: "nlp",

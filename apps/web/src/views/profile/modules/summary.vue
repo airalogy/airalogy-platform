@@ -1,5 +1,5 @@
 <template>
-  <div class="size-full">
+  <div class="size-full" data-testid="profile-summary">
     <define-summary-item v-slot="{ count, label }">
       <div
         class="min-w-[120px] flex flex-col items-center rounded text-xl font-semibold transition-colors hover:bg-gray-50"
@@ -24,7 +24,7 @@
             class="ml-1"
             @click="handleViewAll"
           >
-            View All
+            {{ $t("common.viewAll") }}
             <template #icon>
               <n-icon size="12">
                 <icon-ion-ios-arrow-forward />
@@ -39,24 +39,30 @@
     </define-wrapper-item>
 
     <div class="size-full" v-bind="$attrs">
-      <wrapper-item title="Overview" content-class="!p-4">
-        <div class="flex flex-wrap justify-center gap-2 sm:justify-start">
+      <div v-if="singleOrganizationMembership" class="mb-4 flex flex-wrap items-center gap-2" data-testid="profile-organization">
+        <span class="text-gray-500">{{ $t(instanceStore.usesOrganizationVocabulary ? "page.profile.organizationMembership" : "page.profile.labMembership") }}</span>
+        <span class="min-w-0 break-words font-medium">{{ singleOrganizationMembership.name }}</span>
+        <global-role-tag :item="singleOrganizationMembership" type="lab" />
+      </div>
+
+      <wrapper-item :title="$t('page.profile.summary')" content-class="!p-4">
+        <div class="flex flex-wrap justify-center gap-2 sm:justify-start" data-testid="profile-statistics">
           <summary-item v-for="key in countKey" :key="key" v-bind="countRecord[key]" />
         </div>
       </wrapper-item>
 
       <wrapper-item
-        v-if="userLabCount > 0 && userLabList.length > 0"
-        title="Labs"
+        v-if="!instanceStore.isSingleOrganization && userLabCount > 0 && userLabList.length > 0"
+        :title="$t('page.profile.organizations')"
         :handle-view-all="handleViewAllLabs"
         :show-view-all="viewAllState.lab === true"
       >
-        <lab-list :list="viewAllState.lab ? userLabList.slice(0, 5) : userLabList " :show-actions="false" :show-private="showPrivate" />
+        <lab-list data-testid="profile-organizations" :list="viewAllState.lab ? userLabList.slice(0, 5) : userLabList " :show-actions="false" :show-private="showPrivate" />
       </wrapper-item>
 
       <wrapper-item
-        v-if="userGroupCount > 0 && userGroupList.length > 0"
-        title="Groups"
+        v-if="!instanceStore.isStructuredLab && userGroupCount > 0 && userGroupList.length > 0"
+        :title="$t('page.profile.groups')"
         :handle-view-all="handleViewAllGroups"
         :show-view-all="viewAllState.group === true"
       >
@@ -65,16 +71,16 @@
 
       <wrapper-item
         v-if="userProjectCount > 0 && userProjectList.length > 0"
-        title="Projects"
+        :title="$t('common.projectsLabel')"
         :handle-view-all="handleViewAllProjects"
         :show-view-all="viewAllState.project === true"
       >
-        <project-list :list="viewAllState.project ? userProjectList.slice(0, 5) : userProjectList" :show-actions="false" :show-private="showPrivate" />
+        <project-list data-testid="profile-projects" :list="viewAllState.project ? userProjectList.slice(0, 5) : userProjectList" :show-actions="false" :show-private="showPrivate" />
       </wrapper-item>
 
       <wrapper-item
         v-if="userProtocolCount > 0 && userProtocolList.length > 0"
-        title="Protocols"
+        :title="$t('page.profile.protocols')"
         :handle-view-all="handleViewAllProtocols"
         :show-view-all="viewAllState.protocol === true"
       >
@@ -86,10 +92,12 @@
 
 <script lang="ts" setup>
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import LabGroupList from "@/views/labs/modules/group/lab-group-list.vue"
 import LabList from "@/views/labs/modules/lab/lab-list.vue"
 import ProjectProtocolList from "@/views/project/modules/project-protocol-list.vue"
 import ProjectList from "@/views/projects/modules/project-list.vue"
+import { $t } from "@airalogy/shared/locales"
 import { useProfileStore } from "../hooks/useProfileStore"
 
 defineOptions({ name: "ProfileSummary", inheritAttrs: false })
@@ -107,8 +115,14 @@ const [DefineWrapperItem, WrapperItem] = createReusableTemplate<{
   showViewAll?: boolean
 }>()
 
-const countKey = ["labs", "projects", "protocols", "groups"] as const
-type CountKey = (typeof countKey)[number]
+type CountKey = "labs" | "projects" | "protocols" | "groups"
+const instanceStore = useInstanceStore()
+const countKey = computed<CountKey[]>(() => [
+  ...(!instanceStore.isSingleOrganization ? ["labs" as const] : []),
+  "projects",
+  "protocols",
+  ...(!instanceStore.isStructuredLab ? ["groups" as const] : []),
+])
 const {
   userLabCount,
   userProjectCount,
@@ -135,11 +149,15 @@ const showPrivate = computed(() => {
   return false
 })
 
+const singleOrganizationMembership = computed(() => instanceStore.isSingleOrganization
+  ? userLabList.value.find(item => item.uid === instanceStore.organization?.uid && (showPrivate.value || item.type !== 1))
+  : undefined)
+
 const countRecord = computed<Record<CountKey, SummaryItemProps>>(() => ({
-  labs: { count: userLabCount.value, label: "Labs" },
-  projects: { count: userProjectCount.value, label: "Projects" },
-  protocols: { count: userProtocolCount.value, label: "Protocols" },
-  groups: { count: userGroupCount.value, label: "Groups" },
+  labs: { count: userLabCount.value, label: $t("page.profile.organizations") },
+  projects: { count: userProjectCount.value, label: $t("common.projectsLabel") },
+  protocols: { count: userProtocolCount.value, label: $t("page.profile.protocols") },
+  groups: { count: userGroupCount.value, label: $t("page.profile.groups") },
 }))
 
 async function handleViewAllLabs() {
@@ -190,7 +208,7 @@ watch(
         fetchUserLabsData(id),
         fetchUserProjectsData(id),
         fetchUserProtocolsData(id),
-        fetchUserGroupsData(id),
+        ...(!instanceStore.isStructuredLab ? [fetchUserGroupsData(id)] : []),
       ])
     }
   },

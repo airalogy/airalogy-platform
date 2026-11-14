@@ -4278,7 +4278,13 @@
       "enterCodeForNewPhone": "Enter verification code for new phone",
       "confirmPhoneChange": "Confirm phone change",
       "phoneMismatch": "The phone number does not match your current account phone number",
-      "newPhoneMustBeDifferent": "New phone number must be different from current phone number"
+      "newPhoneMustBeDifferent": "New phone number must be different from current phone number",
+      "organizations": "Organizations",
+      "groups": "Groups",
+      "organizationMembership": "Organization",
+      "labMembership": "Laboratory",
+      "allProtocols": "All protocols",
+      "noProtocols": "No protocols found"
     },
     "group": {
       "createGroupTitle": "Create new group",

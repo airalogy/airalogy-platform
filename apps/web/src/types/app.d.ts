@@ -9,6 +9,8 @@ declare namespace App {
     type TabKey = Extract<
       RouteKey,
       | "user-profile"
+      | "profile-protocols"
+      | "profile-starred"
       | "profile-settings"
       | "profile-records"
       | "project-dashboard"
