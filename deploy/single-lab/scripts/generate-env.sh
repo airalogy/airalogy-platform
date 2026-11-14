@@ -96,7 +96,7 @@ done
 deployment_mode=single_lab
 config_prefix=SINGLE_LAB
 project_uid=lab_protocols
-project_name="Lab Protocols"
+project_name="General"
 if [[ -n "$organization_name$organization_uid$organization_type" ]]; then
   [[ "$lab_name" == "Airalogy Lab" && "$lab_uid" == main ]] || { echo "Do not mix --lab-* and --organization-* options" >&2; exit 2; }
   deployment_mode=single_organization
@@ -106,7 +106,6 @@ if [[ -n "$organization_name$organization_uid$organization_type" ]]; then
   organization_type="${organization_type:-company}"
   case "$organization_type" in company|institution|laboratory|other) ;; *) echo "invalid --organization-type" >&2; exit 2 ;; esac
   project_uid=workspace
-  project_name="Team Workspace"
 fi
 
 command -v openssl >/dev/null 2>&1 || { echo "openssl is required" >&2; exit 1; }

@@ -31,6 +31,10 @@ const uninitializedOrganization = {
 // Mock only an uninitialized instance; never reset or bootstrap the running instance.
 test.use({ storageState: { cookies: [], origins: [] } })
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/check_user_uid?**", route => route.fulfill({ json: { result: true } }))
+})
+
 for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
   test(`setup confirms deployment identity without allowing a rename (${locale})`, async ({ page }, testInfo) => {
     await page.addInitScript(lang => localStorage.setItem("lang", JSON.stringify({ data: lang, expire: null })), locale)
@@ -44,6 +48,12 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
     await page.goto("/setup")
     const labels = messages.page.instance
     const organization = page.getByRole("group", { name: messages.page.organization.setupSection, exact: true })
+    const firstProject = page.getByRole("group", { name: labels.firstProject, exact: true })
+    const projectName = page.getByTestId("setup-project-name").locator("input")
+    await expect(firstProject).toContainText(labels.firstProjectHint.replace("{name}", labels.defaultProjectName))
+    await expect(projectName).toHaveValue("")
+    await expect(projectName).toHaveAttribute("placeholder", labels.defaultProjectName)
+    await expect(projectName).toHaveAttribute("maxlength", "64")
     const administrator = page.getByRole("group", { name: labels.administratorAccount, exact: true })
     await expect(organization.getByTestId("setup-organization-name")).toBeVisible()
     await expect(administrator).toContainText(labels.administratorAccountHint)
@@ -79,6 +89,11 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
     await expect(organization.locator(".n-form-item-feedback__line")).toBeVisible()
     expect(submissions).toBe(0)
     await nameInput.fill("  研  ")
+    await projectName.fill("AB")
+    await page.getByRole("button", { name: labels.completeSetup, exact: true }).click()
+    await expect(firstProject.getByText(labels.firstProjectNameLength)).toBeVisible()
+    expect(submissions).toBe(0)
+    await projectName.fill(locale === "zh-CN" ? "  眼镜研发  " : "   ")
     const submission = page.waitForRequest(r => r.url().endsWith("/api/instance/bootstrap"))
     await page.getByRole("button", { name: labels.completeSetup, exact: true }).click()
     const request = await submission
@@ -86,6 +101,7 @@ for (const [locale, messages] of [["zh-CN", zh], ["en-US", en]] as const) {
       organization_uid: "synthetic_company",
       organization_name: "研",
       organization_type: "company",
+      project_name: locale === "zh-CN" ? "眼镜研发" : "General",
       name: "Synthetic Owner",
       username: "synthetic_owner",
     })
@@ -108,6 +124,8 @@ test("setup language switch explains the code and preserves entered values", asy
   await page.goto("/setup")
   const code = page.getByPlaceholder(en.page.instance.setupCodePlaceholder, { exact: true })
   await code.fill("synthetic-setup-code")
+  const projectName = page.getByTestId("setup-project-name").locator("input")
+  await projectName.fill("Synthetic optics")
   await page.getByPlaceholder(en.page.instance.administratorNamePlaceholder, { exact: true }).fill("Synthetic Owner")
   await page.getByPlaceholder(en.page.instance.password, { exact: true }).fill("Synthetic123!")
   await expect(page.locator("#setup-code-hint")).toHaveText(en.page.instance.setupCodeHint)
@@ -119,6 +137,8 @@ test("setup language switch explains the code and preserves entered values", asy
   await expect(page.getByRole("heading", { name: zh.page.organization.labels.page_instance_setupTitle })).toBeVisible()
   await expect(page.getByRole("group", { name: zh.page.instance.deploymentVerification, exact: true })).toBeVisible()
   await expect(page.locator("#setup-code-hint")).toHaveText(zh.page.instance.setupCodeHint)
+  await expect(projectName).toHaveValue("Synthetic optics")
+  await expect(projectName).toHaveAttribute("placeholder", "通用项目")
   await expect(page.getByPlaceholder(zh.page.instance.setupCodePlaceholder, { exact: true })).toHaveValue("synthetic-setup-code")
   await expect(page.getByPlaceholder(zh.page.instance.administratorNamePlaceholder, { exact: true })).toHaveValue("Synthetic Owner")
   await expect(page.getByPlaceholder(zh.page.instance.password, { exact: true })).toHaveValue("Synthetic123!")
@@ -137,4 +157,23 @@ test("setup language switch explains the code and preserves entered values", asy
   await expect(page.getByRole("heading", { name: en.page.organization.labels.page_instance_setupTitle })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
   expect(submissions).toBe(0)
+})
+
+test("blank Chinese first project uses the localized default in legacy laboratory setup", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+  await page.route("**/api/instance", route => route.fulfill({ json: { ...uninitializedOrganization, deployment_mode: "single_lab", single_organization: false } }))
+  await page.route("**/api/instance/bootstrap", route => route.fulfill({ status: 409, json: { detail: "Synthetic preview only" } }))
+  await page.goto("/setup")
+  const labels = zh.page.instance
+  await expect(page.getByTestId("setup-project-name").locator("input")).toHaveValue("")
+  await page.getByPlaceholder(labels.administratorNamePlaceholder, { exact: true }).fill("Synthetic Owner")
+  await page.getByPlaceholder(labels.personalUsernamePlaceholder, { exact: true }).fill("synthetic_owner")
+  await page.getByPlaceholder(labels.email, { exact: true }).fill("owner@example.org")
+  await page.getByPlaceholder(labels.password, { exact: true }).fill("Synthetic123!")
+  await page.getByPlaceholder(labels.confirmPassword, { exact: true }).fill("Synthetic123!")
+  const submitted = page.waitForRequest(r => r.url().endsWith("/api/instance/bootstrap"))
+  await page.getByRole("button", { name: labels.completeSetup, exact: true }).click()
+  const payload = (await submitted).postDataJSON()
+  expect(payload.project_name).toBe("通用项目")
+  expect(payload.organization_name).toBeUndefined()
 })

@@ -62,6 +62,8 @@ async def ensure_default_project(
     db_session: AsyncSession,
     lab: Lab,
     owner: User,
+    *,
+    project_name: str | None = None,
 ) -> Project:
     project = await Project.find_by(
         db_session,
@@ -75,7 +77,7 @@ async def ensure_default_project(
         project = Project(
             lab_id=lab.id,
             uid=config.SINGLE_LAB_DEFAULT_PROJECT_UID,
-            name=config.SINGLE_LAB_DEFAULT_PROJECT_NAME,
+            name=project_name or config.SINGLE_LAB_DEFAULT_PROJECT_NAME,
             description="Private workspace for projects, documents, protocols and research."
             if config.DEPLOYMENT_MODE == "single_organization"
             else "Default private project for laboratory protocols and records.",

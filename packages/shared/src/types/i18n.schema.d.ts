@@ -816,6 +816,11 @@ declare namespace I18n {
         setupTitle: string
         setupDescription: string
         administrator: string
+        firstProject: string
+        firstProjectName: string
+        defaultProjectName: string
+        firstProjectHint: string
+        firstProjectNameLength: string
         administratorAccount: string
         administratorAccountHint: string
         administratorName: string

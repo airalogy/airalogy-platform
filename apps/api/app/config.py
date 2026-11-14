@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     SINGLE_LAB_NAME: str = "Airalogy Lab"
     SINGLE_LAB_DESCRIPTION: str = ""
     SINGLE_LAB_DEFAULT_PROJECT_UID: str = "lab_protocols"
-    SINGLE_LAB_DEFAULT_PROJECT_NAME: str = "Lab Protocols"
+    SINGLE_LAB_DEFAULT_PROJECT_NAME: str = "General"
     # Canonical configuration. Legacy SINGLE_LAB_* remains an explicit alias.
     SINGLE_ORGANIZATION_UID: str | None = None
     SINGLE_ORGANIZATION_NAME: str | None = None
@@ -306,7 +306,7 @@ class Settings(BaseSettings):
             "NAME": "Airalogy Organization",
             "DESCRIPTION": "",
             "DEFAULT_PROJECT_UID": "workspace",
-            "DEFAULT_PROJECT_NAME": "Team Workspace",
+            "DEFAULT_PROJECT_NAME": "General",
         }
         for suffix, default in defaults.items():
             current, legacy = f"SINGLE_ORGANIZATION_{suffix}", f"SINGLE_LAB_{suffix}"

@@ -13,12 +13,14 @@ def test_generic_defaults_and_legacy_defaults_are_independent():
     assert company.is_single_organization and company.is_single_lab
     assert company.SINGLE_ORGANIZATION_DEFAULT_PROJECT_UID == "workspace"
     assert company.SINGLE_LAB_DEFAULT_PROJECT_UID == "workspace"
+    assert company.SINGLE_LAB_DEFAULT_PROJECT_NAME == "General"
     assert company.default_invitation_project_role == 30
     assert company.effective_organization_type == "company"
     assert company.effective_signup_mode == "invite_only"
     assert company.effective_sms_signup_required is False
     laboratory = settings(DEPLOYMENT_MODE="single_lab")
     assert laboratory.SINGLE_LAB_DEFAULT_PROJECT_UID == "lab_protocols"
+    assert laboratory.SINGLE_LAB_DEFAULT_PROJECT_NAME == "General"
     assert laboratory.default_invitation_project_role == 40
     assert laboratory.effective_organization_type == "laboratory"
     assert not settings(DEPLOYMENT_MODE="community").is_single_organization

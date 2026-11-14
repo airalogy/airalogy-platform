@@ -50,3 +50,23 @@ def test_display_name_relaxation_does_not_change_identifier_rules():
     with pytest.raises(ValidationError):
         OrganizationCreate(name="研", uid="研发公司", members=[])
     assert LabUpdateParams(description="").name is None
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        (None, None), ("", ""), ("  ", ""),
+        ("  眼镜研发  ", "眼镜研发"), ("General", "General"),
+        ("研" * 64, "研" * 64),
+    ],
+)
+def test_optional_bootstrap_project_name_trims_and_keeps_valid_names(name, expected):
+    _, payload = payloads("Synthetic Company")[-1]
+    assert BootstrapParams(**payload, project_name=name).project_name == expected
+
+
+@pytest.mark.parametrize("name", ["AB", "研" * 65, 123])
+def test_invalid_bootstrap_project_name_is_rejected(name):
+    _, payload = payloads("Synthetic Company")[-1]
+    with pytest.raises(ValidationError):
+        BootstrapParams(**payload, project_name=name)

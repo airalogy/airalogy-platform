@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Let administrators name the first private project during setup, defaulting to “通用项目” in Chinese or “General” in English; preserve existing project names, identifiers and permissions.
+
 - Reorganize project Protocol search and filters into a responsive toolbar; correct search field labels, ID-search parameters and sorting refresh, distinguish empty projects from empty filtered results, and provide a clear-filters action.
 
 - Localize breadcrumb dropdowns on language changes, display project names without changing their URL identifiers, and preserve the current project for every project menu destination. Breadcrumb menus now support click and keyboard activation.

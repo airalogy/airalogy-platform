@@ -61,6 +61,7 @@ export interface BootstrapPayload {
   organizationUid?: string
   organizationName?: string
   organizationType?: OrganizationType
+  projectName?: string
   setupToken: string
   username: string
   email: string
@@ -84,6 +85,7 @@ export async function postInstanceBootstrap(payload: BootstrapPayload) {
       organization_uid: payload.organizationUid,
       organization_name: payload.organizationName,
       organization_type: payload.organizationType,
+      project_name: payload.projectName,
       username: payload.username,
       setup_token: payload.setupToken,
       email: payload.email,

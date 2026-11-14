@@ -72,6 +72,25 @@
       </fieldset>
       <fieldset class="mb-6 min-w-0 border border-gray-200 rounded-xl px-4 pb-1 pt-3">
         <legend class="px-2 text-base font-semibold">
+          {{ $t("page.instance.firstProject") }}
+        </legend>
+        <n-form-item path="projectName" :label="$t('page.instance.firstProjectName')">
+          <div class="min-w-0 w-full">
+            <n-input
+              v-model:value="model.projectName"
+              :maxlength="64"
+              :placeholder="$t('page.instance.defaultProjectName')"
+              data-testid="setup-project-name"
+              :input-props="{ 'aria-label': $t('page.instance.firstProjectName'), 'aria-describedby': 'setup-project-hint' }"
+            />
+            <p id="setup-project-hint" class="mb-0 mt-2 text-sm text-gray-500 leading-6">
+              {{ $t("page.instance.firstProjectHint", { name: $t("page.instance.defaultProjectName") }) }}
+            </p>
+          </div>
+        </n-form-item>
+      </fieldset>
+      <fieldset class="mb-6 min-w-0 border border-gray-200 rounded-xl px-4 pb-1 pt-3">
+        <legend class="px-2 text-base font-semibold">
           {{ $t("page.instance.administratorAccount") }}
         </legend>
         <p class="mb-4 mt-0 text-sm text-gray-500 leading-6">
@@ -146,6 +165,7 @@ const organizationUid = instanceStore.status.default_organization_uid
 const organizationTypes = computed(() => (["company", "institution", "laboratory", "other"] as const)
   .map(value => ({ value, label: $t(`page.organization.types.${value}`) })))
 const model = reactive({
+  projectName: "",
   organizationName: instanceStore.status.default_organization_name || "",
   organizationType: (instanceStore.status.default_organization_type || "company") as OrganizationType,
   setupToken: "",
@@ -157,6 +177,14 @@ const model = reactive({
 })
 
 const rules = {
+  projectName: [{
+    validator: (_rule: unknown, value: string) => {
+      const length = [...value.trim()].length
+      return length === 0 || (length >= 3 && length <= 64)
+    },
+    get message() { return $t("page.instance.firstProjectNameLength") },
+    trigger: ["blur", "change"],
+  }],
   organizationName: instanceStore.status.deployment_mode === "single_organization"
     ? createOrganizationNameValidator(() => $t("page.organization.name"))
     : [],
@@ -188,6 +216,7 @@ async function handleSubmit() {
   try {
     const { data, error } = await postInstanceBootstrap({
       ...model,
+      projectName: model.projectName.trim() || $t("page.instance.defaultProjectName"),
       organizationUid: instanceStore.status.deployment_mode === "single_organization" ? organizationUid : undefined,
       organizationName: instanceStore.status.deployment_mode === "single_organization" ? model.organizationName.trim() : undefined,
       organizationType: instanceStore.status.deployment_mode === "single_organization" ? model.organizationType : undefined,

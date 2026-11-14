@@ -5,7 +5,14 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy import func, select, text
 
 from app.config import config
@@ -126,12 +133,25 @@ class BootstrapParams(BaseModel):
     ) = None
     organization_name: OrganizationNameStr | None = None
     organization_type: OrganizationType | None = None
+    # Omitted by older clients: retain an explicitly configured deployment name.
+    # The setup UI sends the chosen name or its localized generic default.
+    project_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=64)] | None
+    ) = Field(default_factory=lambda: config.SINGLE_LAB_DEFAULT_PROJECT_NAME)
     setup_token: str = ""
     username: UidStr
     email: EmailStr
     name: Annotated[str, StringConstraints(min_length=1, max_length=64)]
     password: Annotated[str, StringConstraints(min_length=8, max_length=32)]
     confirm_password: Annotated[str, StringConstraints(min_length=8, max_length=32)]
+
+    @field_validator("project_name")
+    @classmethod
+    def validate_project_name(cls, value: str | None) -> str | None:
+        # Blank is optional; nonblank names follow the normal Project contract.
+        if value and len(value) < 3:
+            raise ValueError("Project name must contain 3–64 characters")
+        return value
 
     @model_validator(mode="after")
     def validate_passwords(self) -> "BootstrapParams":
@@ -203,7 +223,9 @@ async def bootstrap_single_lab(params: BootstrapParams, db_session: DBSession):
             create_user_id=user.id,
         )
     )
-    await ensure_default_project(db_session, lab, user)
+    await ensure_default_project(
+        db_session, lab, user, project_name=params.project_name or "General"
+    )
     await db_session.commit()
 
     return {

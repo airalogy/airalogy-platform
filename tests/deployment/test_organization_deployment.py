@@ -38,6 +38,7 @@ class OrganizationDeploymentTests(unittest.TestCase):
         self.assertEqual(values["SINGLE_ORGANIZATION_NAME"], "Synthetic R&D")
         self.assertEqual(values["SINGLE_ORGANIZATION_TYPE"], "company")
         self.assertEqual(values["SINGLE_ORGANIZATION_DEFAULT_PROJECT_UID"], "workspace")
+        self.assertEqual(values["SINGLE_ORGANIZATION_DEFAULT_PROJECT_NAME"], "General")
         self.assertNotIn("SINGLE_LAB_UID", values)
         self.assertEqual(values["SIGNUP_MODE"], "invite_only")
 
@@ -48,6 +49,7 @@ class OrganizationDeploymentTests(unittest.TestCase):
         self.assertEqual(values["DEPLOYMENT_MODE"], "single_lab")
         self.assertEqual(values["SINGLE_LAB_UID"], "existing_lab")
         self.assertEqual(values["SINGLE_LAB_DEFAULT_PROJECT_UID"], "lab_protocols")
+        self.assertEqual(values["SINGLE_LAB_DEFAULT_PROJECT_NAME"], "General")
         self.assertNotIn("SINGLE_ORGANIZATION_UID", values)
 
     def test_mixed_arguments_and_unknown_type_fail_before_writing(self):

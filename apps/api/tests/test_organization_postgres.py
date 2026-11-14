@@ -17,8 +17,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.config import config
 from app.database import get_db_session
 from app.models.base import Base
-from app.models.lab import LabUser
+from app.models.lab import Lab, LabUser
 from app.models.project import Project
+from app.models.user import User
+from app.services.single_lab import ensure_default_project
 from app.routers import instance, labs, organizations
 from app.routers.depends import create_access_token
 from migrations.model_registry import import_models
@@ -216,9 +218,19 @@ def test_canonical_and_legacy_apis_share_permissions_and_identity(monkeypatch):
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("confirmed_uid", [None, "company"])
+@pytest.mark.parametrize(
+    "confirmed_uid,project_name,expected_name",
+    [
+        (None, None, "Team Workspace"),  # Older clients keep deployment defaults.
+        ("company", "", "General"),
+        ("company", " \t\u3000 ", "General"),
+        ("company", "  眼镜研发  ", "眼镜研发"),
+        ("company", "通用项目", "通用项目"),
+        ("company", "General", "General"),
+    ],
+)
 def test_company_bootstrap_private_project_and_legacy_invitation_default(
-    monkeypatch, confirmed_uid
+    monkeypatch, confirmed_uid, project_name, expected_name
 ):
     async def run():
         url = os.environ["RESOURCE_TEST_DATABASE_URL"]
@@ -261,6 +273,12 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
                     await http.post("/instance/bootstrap", json=params)
                 ).status_code == 403
                 params["setup_token"] = "synthetic-setup-code"
+                for invalid_name in ("AB", "研" * 65):
+                    rejected = await http.post(
+                        "/instance/bootstrap", json={**params, "project_name": invalid_name}
+                    )
+                    assert rejected.status_code == 422, rejected.text
+                    assert (await http.get("/instance")).json()["initialized"] is False
                 stale = await http.post(
                     "/instance/bootstrap",
                     json={**params, "organization_uid": "old_company"},
@@ -275,6 +293,8 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
                 assert (await http.get("/instance")).json()["initialized"] is False
                 if confirmed_uid is not None:
                     params["organization_uid"] = confirmed_uid
+                if project_name is not None:
+                    params["project_name"] = project_name
                 created = await http.post("/instance/bootstrap", json=params)
                 assert created.status_code == 200, created.text
                 data = created.json()
@@ -287,7 +307,9 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
                 assert status["initialized"] is True
                 assert status["organization"]["uid"] == "company"
                 assert (
-                    await http.post("/instance/bootstrap", json=params)
+                    await http.post(
+                        "/instance/bootstrap", json={**params, "project_name": "Do not rename"}
+                    )
                 ).status_code == 409
                 invitation = instance.CreateInvitationParams(email="member@example.org")
                 assert invitation.project_role.value == 30
@@ -301,8 +323,17 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
             async with sessions() as db:
                 project = (await db.execute(select(Project))).scalar_one()
                 assert project.type == 1 and project.uid == "workspace"
+                assert project.name == expected_name
                 member = (await db.execute(select(LabUser))).scalar_one()
                 assert project.organization_id == member.organization_id
+                # Reusing the helper with a new default must never rename an existing project.
+                preserved = await ensure_default_project(
+                    db,
+                    await db.get(Lab, project.lab_id),
+                    await db.get(User, project.create_user_id),
+                    project_name="Another suggested name",
+                )
+                assert preserved.id == project.id and preserved.name == expected_name
         finally:
             await engine.dispose()
             async with admin.begin() as db:
