@@ -109,12 +109,14 @@ export function buildDirectoryLevelMap(pathList: string[]): Map<number, string[]
 }
 
 export function getRootPath(pathList: string[]): string {
-  const levelMap = buildDirectoryLevelMap(pathList)
-  return levelMap.get(0)?.[0] || ""
+  const paths = pathList.filter(path => path && !shouldExcludeFile(path))
+  const directory = paths[0]?.split("/")[0]
+  return directory && paths.every(path => path.startsWith(`${directory}/`)) ? directory : ""
 }
 
-function createFileStructure(fileRecord: Unzipped): { fileStructure: DirectoryInterface[], rootPath: string } {
+export function createFileStructure(fileRecord: Unzipped): { fileStructure: FileSystemItem[], rootPath: string } {
   const root: { [key: string]: DirectoryInterface } = {}
+  const rootFiles: FileInterface[] = []
   const entries = Object.entries(fileRecord)
 
   // First pass: create all directories
@@ -166,7 +168,7 @@ function createFileStructure(fileRecord: Unzipped): { fileStructure: DirectoryIn
 
     let id: string
 
-    if (topLevelDir && topLevelDir === parentPath) {
+    if (topLevelDir === parentPath) {
       id = filenameIdMap[fileName as keyof typeof filenameIdMap] || nanoid()
     }
     else {
@@ -190,11 +192,14 @@ function createFileStructure(fileRecord: Unzipped): { fileStructure: DirectoryIn
     if (parentPath && root[parentPath] && root[parentPath].children) {
       root[parentPath].children!.push(fileObj)
     }
+    else if (!parentPath) {
+      rootFiles.push(fileObj)
+    }
   })
 
   // Return only top-level items
   return {
-    fileStructure: Object.values(root).filter(item => !item.path.includes("/")) || [],
+    fileStructure: [...rootFiles, ...Object.values(root).filter(item => !item.path.includes("/"))],
     rootPath: topLevelDir || "",
   }
 }
@@ -371,7 +376,7 @@ export function useFileUpload() {
         try {
           const { fileStructure, rootPath } = createFileStructure(unzipped)
           // TODO: just set root's first child as fileData
-          if (fileStructure.length === 1 && fileStructure[0]?.kind === "directory") {
+          if (fileStructure.length === 1 && fileStructure[0] && isDirectory(fileStructure[0])) {
             if (fileStructure[0]?.children) {
               setFileData(fileStructure[0]?.children)
             }
