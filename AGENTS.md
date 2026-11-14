@@ -11,11 +11,17 @@
 - `VERSION` is the canonical Airalogy Platform product release version.
 - `apps/api/pyproject.toml`, the root `package.json`, and `apps/web/package.json` track component versions. Keep them aligned with the product version at release time unless a component is intentionally released independently.
 - Ordinary feature, fix, and dependency commits update the `Unreleased` section of both changelogs when they affect shipped behavior. Do not bump the product version in every development commit.
-- A release change must:
+- A public release change must:
   - choose the SemVer increment from the shipped compatibility impact;
   - update `VERSION` and every component version included in the release;
   - move the relevant changelog entries from `Unreleased` into the new release section;
   - create an annotated Git tag named `v<version>` from the verified release commit.
+
+## Internal deployments
+
+- Internal deployments do not create or push release tags or GitHub Releases. A development version may span many deployments; identify each by its full committed SHA and immutable image IDs.
+- Follow `docs/en/internal-deployment.md` for the application-only fast path. Its exact-candidate source, artifact acceptance and recovery receipts replace the public-publication CI gate for this private delivery path only; failures remain blockers.
+- Reuse an executor only after comparing its source inputs. Database/schema or infrastructure changes require a separate migration/recovery plan rather than the same-schema fast path.
 
 ## Dependency consistency
 

@@ -15,6 +15,10 @@ Airalogy Platform identifies a deployable product as one indivisible release set
 
 Platform does not send deployment identity, customer data, or runtime status back to Airalogy by default. A deployment administrator must explicitly create and share a sanitized support bundle when remote support is needed.
 
+## Internal deployment cadence
+
+Frequent internal updates use the separate [internal application deployment workflow](./internal-deployment.md). They may share a development version while retaining distinct full commit SHAs and immutable image identities. They do not create GitHub Releases or push release tags. The public release gates below apply when publishing a complete product release; internal delivery has its own mandatory source, exact-artifact and recovery checks.
+
 ## Formal releases
 
 `VERSION` is the canonical product version. A formal release synchronizes the root, API, Web, Compute Runner, Instrument Gateway and Instrument Interface package versions; moves both changelogs out of `Unreleased`; and creates an annotated `v<version>` tag from a clean verified commit. See the [v0.1.0 release overview](./releases/v0.1.0.md) for qualification boundaries.
@@ -27,7 +31,7 @@ This reuses completed source tests, lint and types rather than executing them ag
 
 A source checkout remains suitable for development and evaluation. It may be marked dirty and does not carry the verification meaning of a formal release manifest.
 
-### Prereleases for internal use
+### Public prerelease packages
 
 An internal installation may deliberately select an immutable prerelease package while validating new capabilities. Supported product versions are `MAJOR.MINOR.PATCH` and `MAJOR.MINOR.PATCH-{alpha,beta,rc}.N`, with `N >= 1`. Alpha denotes early evaluation, beta denotes broader testing, and rc means release candidate. These labels describe maturity; they do not certify readiness or reduce the release gates above. Do not use an rc label while known release-blocking work remains.
 

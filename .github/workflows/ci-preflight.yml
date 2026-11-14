@@ -8,6 +8,8 @@ on:
       - ".husky/**"
       - "scripts/**"
       - "deploy/object-storage/**"
+      - "deploy/internal/**"
+      - "tests/deployment/**"
       - "apps/instrument-gateway/bootstrap.py"
       - "apps/instrument-gateway/tests/test_bootstrap.py"
       - "package.json"
@@ -21,6 +23,8 @@ on:
       - ".husky/**"
       - "scripts/**"
       - "deploy/object-storage/**"
+      - "deploy/internal/**"
+      - "tests/deployment/**"
       - "apps/instrument-gateway/bootstrap.py"
       - "apps/instrument-gateway/tests/test_bootstrap.py"
       - "package.json"
@@ -58,6 +62,8 @@ jobs:
           corepack pnpm ci:tools:install
       - name: Shared local and CI preflight
         run: node scripts/pre-push.mjs --check ci-config
+      - name: Internal deployment and artifact identity regression tests
+        run: corepack pnpm deployment:identity:test
       - name: Prepare disposable hosted executables
         run: node scripts/prepare-instrument-ci.mjs --executables
       - name: Real offline GitHub CLI compatibility

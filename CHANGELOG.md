@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Add a private single-architecture application delivery workflow with exact-commit/image identities, checked executor reuse and mandatory source, artifact and recovery receipts, independent of GitHub Release publication. Block schema/infrastructure changes from this fast path.
+
 ## [0.5.0-beta.1] - 2026-11-14
 
 Beta for deliberate evaluation of the cumulative R&D workspace, organization navigation and research workflows. See the [release scope and upgrade gates](docs/en/releases/v0.5.0-beta.1.md).
