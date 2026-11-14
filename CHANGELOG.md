@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Use short project URLs and `/organization` management paths on single-organization deployments, and `/orgs` on multi-organization deployments. Preserve legacy `/labs` bookmarks, login returns, query parameters and fragments; unify generated sharing and external Agent links without changing asset identities or permissions.
+
 - Preserve root-level files when opening Protocol ZIP packages in the editor, including stable IDs and mixed root-file/subdirectory archives.
 
 - Let administrators name the first private project during setup, defaulting to “通用项目” in Chinese or “General” in English; preserve existing project names, identifiers and permissions.

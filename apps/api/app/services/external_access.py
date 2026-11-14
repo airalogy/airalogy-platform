@@ -35,6 +35,7 @@ from app.models.record import Record
 from app.models.user import User
 from app.routers.permission import check_user_permission as platform_permission
 from app.services.account_security import get_auth_version
+from app.services.browser_paths import project_browser_path
 from app.services.record_imports import import_fields, template_csv
 
 SCOPES = {
@@ -821,7 +822,7 @@ async def execute_operation(db, access, op):
         result = {"record_id": str(revised.id), "version": revised.version}
     lab = await db.get(Lab, access.project.lab_id)
     result["links"] = [
-        f"/labs/{lab.uid}/projects/{access.project.uid}/protocols/{protocol.uid}/v{version.version}/record/{rid}/v{record_version}"
+        f"{project_browser_path(lab.uid, access.project.uid)}/protocols/{protocol.uid}/v{version.version}/record/{rid}/v{record_version}"
         for rid in ids
     ]
     op.state, op.result, op.payload = "succeeded", result, {}

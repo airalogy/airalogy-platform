@@ -23,6 +23,7 @@ from app.models.knowledge import ResearchFileBlob
 from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
 from app.services import external_access as boundary
+from app.services.browser_paths import project_browser_path
 from app.services.external_research_contracts import AnalysisSubmission
 
 ENGINE = "external-research-v1"
@@ -452,12 +453,10 @@ async def new_operation(
 
 
 async def project_analysis_path(db, access):
-    from urllib.parse import quote
-
     from app.models.lab import Lab
 
     lab = await db.get(Lab, access.project.lab_id)
-    return f"/labs/{quote(lab.uid, safe='')}/projects/{quote(access.project.uid, safe='')}/analysis?view=external"
+    return f"{project_browser_path(lab.uid, access.project.uid)}/analysis?view=external"
 
 
 async def confirmation_url(db, access, operation_id):

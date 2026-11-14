@@ -156,7 +156,7 @@ for (const locale of ["en-US", "zh-CN"] as const) {
     page.on("pageerror", error => pageErrors.push(error.message))
     await page.addInitScript(language => localStorage.setItem("lang", JSON.stringify({ data: language, expire: null })), locale)
     await page.setViewportSize({ width: 390, height: 844 })
-    const projectPath = `/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}`
+    const projectPath = `/orgs/${fixtures.lab.uid}/projects/${fixtures.project.uid}`
     const loaded = page.waitForResponse(response => response.url().includes("/workflow-definitions/context?") && response.ok())
     await page.goto(`${projectPath}/workflows`)
     await loaded

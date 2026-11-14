@@ -22,7 +22,7 @@ test("owner can reach management directly and save a one-character name without 
   const original = status.organization
   await page.setViewportSize({ width: 1440, height: 980 })
   await page.getByTestId("organization-management-entry").click()
-  await expect(page).toHaveURL(new RegExp(`/labs/${original.uid}/members$`))
+  await expect(page).toHaveURL(/\/organization\/members$/)
   await page.locator('.n-tabs-tab[data-name="lab-settings"]').click()
   const input = page.getByTestId("organization-settings-name").locator("input")
   const uid = page.getByTestId("organization-settings-uid").locator("input")
@@ -59,7 +59,7 @@ test("owner can reach management directly and save a one-character name without 
     const header = page.getByTestId("app-shell-header")
     await header.getByRole("button", { name: zh.common.more, exact: true }).click()
     await page.locator(".n-dropdown-menu").getByText("组织管理", { exact: true }).click()
-    await expect(page).toHaveURL(new RegExp(`/labs/${original.uid}/members$`))
+    await expect(page).toHaveURL(/\/organization\/members$/)
   }
   finally {
     if (auth) {

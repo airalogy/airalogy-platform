@@ -2,7 +2,7 @@ import type { CustomRoute, LabInfoNameKey } from "#/page-route"
 
 export const labInfoRoute: CustomRoute<LabInfoNameKey> = {
   meta: { i18nKey: "page.labs.info", title: "Labs info", hideInMenu: true },
-  path: "/labs/:labUid([\\w-]+)",
+  path: "/orgs/:labUid([\\w-]+)",
   redirect: { name: "lab-projects" },
   component: () => import("@/views/labs/layout.vue"),
   children: [

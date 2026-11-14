@@ -5,6 +5,8 @@ import "vue-router"
 
 declare module "vue-router" {
   interface RouteMeta {
+    /** Trusted implicit organization context on single-instance browser routes. */
+    organizationUid?: string
     /**
      * Title of the route
      *

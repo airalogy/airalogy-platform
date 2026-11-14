@@ -10,6 +10,7 @@ from app.database import DBSession
 from app.models.lab import Lab
 from app.models.project import PermissionType, Project, ProjectType
 from app.models.protocol import Protocol
+from app.services.browser_paths import project_browser_path
 
 router = APIRouter(tags=["seo"])
 
@@ -73,7 +74,7 @@ async def get_sitemap(request: Request, db_session: DBSession):
     for row in project_rows:
         entries.append(
             (
-                f"{site_origin}/labs/{quote(row.lab_uid, safe='')}/projects/{quote(row.project_uid, safe='')}/protocols",
+                f"{site_origin}{project_browser_path(row.lab_uid, row.project_uid)}/protocols",
                 format_lastmod(row.updated_at),
             )
         )
@@ -105,7 +106,7 @@ async def get_sitemap(request: Request, db_session: DBSession):
     for row in protocol_rows:
         entries.append(
             (
-                f"{site_origin}/labs/{quote(row.lab_uid, safe='')}/projects/{quote(row.project_uid, safe='')}/protocols/{quote(row.protocol_uid, safe='')}/protocol",
+                f"{site_origin}{project_browser_path(row.lab_uid, row.project_uid)}/protocols/{quote(row.protocol_uid, safe='')}/protocol",
                 format_lastmod(row.updated_at),
             )
         )

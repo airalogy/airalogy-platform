@@ -1,4 +1,5 @@
 import type { CustomRoute } from "#/page-route"
+import { organizationRoutes } from "../organization-routing"
 import { exceptionRoutes } from "./exceptions"
 import { authRoute } from "./modules/auth"
 import { authorizeRoute } from "./modules/authorize"
@@ -69,7 +70,7 @@ export function createRoutes() {
   const constantRoutes: CustomRoute[] = []
   const authRoutes: CustomRoute[] = []
 
-  customRoutes.forEach((item) => {
+  organizationRoutes(customRoutes).forEach((item) => {
     if (item.meta?.constant)
       constantRoutes.push(item)
     else

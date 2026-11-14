@@ -29,6 +29,14 @@ bash deploy/single-lab/scripts/generate-env.sh \
 - 公司、机构使用组织文案；实验室类型仍使用实验室文案。名称、标志、组织类型可在设置中修改，依旧由既有所有者权限控制。
 - AI 关闭时仍可创建项目、编写文档、使用 Protocol 和填写 Record。
 
+## 页面地址
+
+- 单机构（`single_organization` 和旧 `single_lab`）：项目使用 `/projects/{projectUid}/overview`；协议、Record、编辑器和项目内页面沿用这个短前缀。组织管理使用 `/organization/members`、`/organization/settings` 等地址。
+- 多机构（`community`）：项目使用 `/orgs/{organizationUid}/projects/{projectUid}/overview`；组织页面使用 `/orgs/{organizationUid}/members` 等地址。即使用户只加入一个组织，也保留这个前缀。
+- 旧 `/labs/{uid}/...` 链接会替换为规范地址，保留查询参数和锚点；未登录访问的返回地址也使用规范路径。组织列表旧入口在单机构模式下进入项目列表。
+- 单机构收到其他组织的旧链接时显示组织不存在，不会误打开本机构的同名项目。短路由的组织归属只从 `/instance` 部署契约获取，API 仍执行原有权限检查。
+- 前端通过统一路由适配生成地址，并保留内部 `labUid` 上下文供现有页面读取；后端分享、分析成果、Record 和研发事项链接使用统一地址生成函数。这不修改数据库、项目 UID 或已发布 Protocol 标识。
+
 ## 旧部署如何升级
 
 先完成备份及隔离升级演练，再按正常发布流程升级。**不要重新初始化已有实例，不要更改原来的 UID，也不要重新创建用户。**
@@ -54,7 +62,7 @@ bash deploy/single-lab/scripts/generate-env.sh \
 - `/organizations` 支持列表、创建、按 UUID/UID 读取、更新；`/{organization_id}/members` 支持成员读取与维护，复用原有授权处理函数。单机构仍须通过邀请加入，不能利用成员接口绕过邀请。
 - `/projects` 创建请求接受 `organization_id` 或 `lab_id`；两者同时传入且不同则拒绝。项目响应保留 `lab_id` 并提供同值 `organization_id`。
 - `/instance` 增加 `single_organization`、`organization`、组织结构与默认值，同时保留 `single_lab`、`lab` 作为能力兼容字段。`single_lab=true` 也表示新单机构模式，不再仅代表组织的业务类型。
-- 旧 `/labs` API、前端深链、scope 值 `lab`、SDK、MCP、队列键与审计记录暂时保留，仍指向相同资产。专项资源接口继续使用现有路径。
+- 旧 `/labs` API、scope 值 `lab`、SDK、MCP、队列键与审计记录保留，仍指向相同资产。旧前端 `/labs/...` 深链接自动跳转到当前部署的规范地址；专项 API 资源接口继续使用现有路径。
 - `airalogy.id.lab.…` 的已发布协议标识、包、历史 Record 引用**不改写**。引入 `.org.` 格式需要先协调 SDK 读写能力，单独验收；当前不需要升级 Airalogy 包。
 
 ## 迁移影响与恢复

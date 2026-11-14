@@ -2,7 +2,7 @@ import type { CustomRoute, ProtocolInfoNameKey } from "#/page-route"
 
 export const protocolInfoRoute: CustomRoute<ProtocolInfoNameKey> = {
   meta: { i18nKey: "page.protocol.info", title: "protocol info", hideInMenu: true, allowGuest: true },
-  path: "/labs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)/protocols/:protocolUid([\\w-_]+)",
+  path: "/orgs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)/protocols/:protocolUid([\\w-_]+)",
   component: () => import("@/views/project-protocols/layout/tabs-layout.vue"),
   children: [
     {
@@ -57,7 +57,7 @@ export const protocolInfoRoute: CustomRoute<ProtocolInfoNameKey> = {
 }
 
 export const protocolEditorRoute: CustomRoute = {
-  path: "/labs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)/:protocolUid([\\w-_]+)/editor/v:protocolVersion([\\w-_.]+)?",
+  path: "/orgs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)/:protocolUid([\\w-_]+)/editor/v:protocolVersion([\\w-_.]+)?",
   component: () => import("@/views/editor/index.vue"),
   meta: { title: "Airalogy Protocol Editor", icon: "edit", hideInMenu: true },
   name: "protocol-editor",

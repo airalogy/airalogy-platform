@@ -16,7 +16,7 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     expect((await request.put(`${api}/external-access/labs/${fixtures.lab.id}/policy`, { headers, data: { enabled: true, blocked_fields: [], expected_revision: previousPolicy.revision } })).ok()).toBeTruthy()
     await page.addInitScript(lang => localStorage.setItem("lang", JSON.stringify({ data: lang, expire: null })), locale)
     await page.setViewportSize({ width, height: 900 })
-    const project = `/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}`
+    const project = `/orgs/${fixtures.lab.uid}/projects/${fixtures.project.uid}`
     await page.goto(`${project}/protocols`)
     await page.locator(".n-tabs-tab").getByText(language.page.analysis.title, { exact: true }).click()
     await expect(page).toHaveURL(new RegExp(`${project}/analysis$`))

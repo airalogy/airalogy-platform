@@ -2,7 +2,7 @@ import type { CustomRoute, GroupsNameKey } from "#/page-route"
 
 export const groupsRoute: CustomRoute<GroupsNameKey> = {
   meta: { i18nKey: "page.labs.groups", title: "Group info", hideInMenu: true },
-  path: "/labs/:labUid([\\w-]+)/groups/:groupId([\\d]+)",
+  path: "/orgs/:labUid([\\w-]+)/groups/:groupId([\\d]+)",
   component: () => import("@/views/group/layout.vue"),
   children: [
     {

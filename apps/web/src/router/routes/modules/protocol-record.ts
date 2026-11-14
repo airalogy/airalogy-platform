@@ -2,7 +2,7 @@ import type { CustomRoute, ProtocolRecordNameKey } from "#/page-route"
 
 export const protocolRecordRoute: CustomRoute<ProtocolRecordNameKey> = {
   meta: { i18nKey: "page.protocol.tab.logs", title: "protocol records", hideInMenu: true, notContainer: true },
-  path: "/labs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)/protocols/:protocolUid([\\w-_]+)",
+  path: "/orgs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)/protocols/:protocolUid([\\w-_]+)",
   component: () => import("@/views/project-protocols/layout/wrapper-layout.vue"),
   children: [
     {

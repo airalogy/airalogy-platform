@@ -1,4 +1,5 @@
 import type { RouteLocationNormalized } from "vue-router"
+import { projectBrowserPath } from "../router/organization-routing"
 
 export interface SeoMetaInput {
   title?: string | null
@@ -156,7 +157,7 @@ export function buildPublicProjectPath(payload: {
     return null
   }
 
-  return `/labs/${encodeURIComponent(labUid)}/projects/${encodeURIComponent(projectUid)}/protocols`
+  return `${projectBrowserPath(labUid, projectUid)}/protocols`
 }
 
 export function buildPublicProtocolPath(payload: {
@@ -169,7 +170,7 @@ export function buildPublicProtocolPath(payload: {
     return null
   }
 
-  return `/labs/${encodeURIComponent(labUid)}/projects/${encodeURIComponent(projectUid)}/protocols/${encodeURIComponent(protocolUid)}/protocol`
+  return `${projectBrowserPath(labUid, projectUid)}/protocols/${encodeURIComponent(protocolUid)}/protocol`
 }
 
 function getRouteCanonicalPath(route: RouteLocationNormalized) {

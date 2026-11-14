@@ -74,7 +74,7 @@ def test_project_dashboard_filters_before_limits_and_respects_current_permission
                         **submission(snapshot_response.json()),
                     )
                 ).json()
-                path = f"/labs/{scope.lab.uid}/projects/{scope.project.uid}/analysis?view=external"
+                path = f"/orgs/{scope.lab.uid}/projects/{scope.project.uid}/analysis?view=external"
                 assert op["confirmation_url"].endswith(
                     f"{path}&operation_id={op['id']}"
                 )

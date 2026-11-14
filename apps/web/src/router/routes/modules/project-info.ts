@@ -2,7 +2,7 @@ import type { CustomRoute, ProjectInfoNameKey } from "#/page-route"
 import type { RouteMeta } from "vue-router"
 
 // Common path pattern for project routes
-const PROJECT_PATH = "/labs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)"
+const PROJECT_PATH = "/orgs/:labUid([\\w-]+)/projects/:projectUid([\\w-_]+)"
 
 // Common meta configuration for project routes
 function createProjectMeta(title: string, i18nKey: I18n.I18nKey = "page.project.diary"): RouteMeta {

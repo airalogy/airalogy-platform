@@ -18,6 +18,7 @@ from app.models.research import ResearchTask
 from app.models.research_document import ResearchDocument
 from app.models.research_log import ResearchLogEntry, ResearchLogRevision
 from app.routers.permission import check_user_permission
+from app.services.browser_paths import project_browser_path
 from app.services.knowledge import authorize_research_file
 from app.services.project_work_contracts import PUBLIC_STATES, EvidenceLink
 from app.services.record_analyses import authorize_snapshot
@@ -65,7 +66,7 @@ async def evidence_view(db, user, project, raw):
         return {**link.model_dump(), "href": link.id, "available": True}
     identity = UUID(link.id)
     lab = await db.get(Lab, project.lab_id)
-    base = f"/labs/{lab.uid}/projects/{project.uid}"
+    base = project_browser_path(lab.uid, project.uid)
     label, href = link.label, ""
     if link.kind == "document":
         entry = await db.get(ResearchLogEntry, identity)

@@ -567,6 +567,28 @@ async def ensure_schema_governance_fixture(
     return protocol, record
 
 
+async def ensure_analysis_package(db_session, protocol):
+    """Keep the synthetic analysis fixture usable by the real Protocol editor."""
+    from io import BytesIO
+    from zipfile import ZIP_DEFLATED, ZipFile
+
+    version = await ProtocolVersion.find_by(
+        db_session,
+        [ProtocolVersion.protocol_id == protocol.id, ProtocolVersion.version == "1.0.0"],
+    )
+    package = BytesIO()
+    with ZipFile(package, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("protocol.aimd", version.aimd)
+        archive.writestr("protocol.toml", (
+            "[airalogy_protocol]\n"
+            f"id = {json.dumps(protocol.uid)}\n"
+            f"name = {json.dumps(protocol.name)}\n"
+            'version = "1.0.0"\n'
+        ))
+    package.seek(0)
+    await version.upload_package(package, length=package.getbuffer().nbytes)
+
+
 async def ensure_analysis_fixture(
     db_session: DBSession, project: Project, owner: User
 ) -> Protocol:
@@ -576,6 +598,7 @@ async def ensure_analysis_fixture(
         db_session, [Protocol.project_id == project.id, Protocol.uid == uid]
     )
     if protocol is not None:
+        await ensure_analysis_package(db_session, protocol)
         return protocol
     protocol = Protocol(
         project_id=project.id,
@@ -633,6 +656,7 @@ async def ensure_analysis_fixture(
             )
         )
     await db_session.flush()
+    await ensure_analysis_package(db_session, protocol)
     return protocol
 
 

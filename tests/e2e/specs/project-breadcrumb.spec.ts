@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 const zh = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/zh-cn.json", import.meta.url), "utf8"))
 const en = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/en-us.json", import.meta.url), "utf8"))
-const projectPath = "/labs/dev_lab/projects/quickstart"
+const projectPath = "/orgs/dev_lab/projects/quickstart"
 const projectName = "合成研发项目"
 
 test.use({ storageState: { cookies: [], origins: [] } })

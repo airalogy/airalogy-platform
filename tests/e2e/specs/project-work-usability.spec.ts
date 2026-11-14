@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 const zh = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/zh-cn.json", import.meta.url), "utf8"))
 const labels = zh.page.projectWork
-const project = "/labs/dev_lab/projects/quickstart"
+const project = "/orgs/dev_lab/projects/quickstart"
 test.use({ storageState: { cookies: [], origins: [] } })
 test.beforeEach(async ({ page }) => {
   page.setDefaultTimeout(15000)

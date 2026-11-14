@@ -3,8 +3,8 @@ import type { CustomRoute, LabsNameKey } from "#/page-route"
 export const labsRoute: CustomRoute<LabsNameKey> = {
   meta: { title: "Labs", i18nKey: "common.labs", breadcrumbI18nKey: "breadcrumb.allLabs" },
   name: "labs",
-  path: "/labs",
-  redirect: "/labs/my",
+  path: "/orgs",
+  redirect: "/orgs/my",
   component: () => import("@/views/labs/layout.vue"),
   children: [
     {

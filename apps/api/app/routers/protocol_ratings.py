@@ -21,6 +21,7 @@ from app.models.record import Record
 from app.models.research import ResearchAction, ResearchProtocolRun
 from app.models.user import User
 from app.routers.depends import CurrentUser, OptionalCurrentUser
+from app.services.browser_paths import project_browser_path
 from app.services.protocol_rating import RatingContext, audit, fields, summary
 
 router = APIRouter(prefix="/protocol-ratings", tags=["protocol-rating"])
@@ -125,7 +126,7 @@ async def mine_result(ctx, protocol, version, user):
                 "source_protocol_id": str(source.id),
                 "source_version": source_version.version,
                 "source_name": source.name,
-                "source_url": f"/labs/{source_lab.uid}/projects/{source_project.uid}/protocols/{source.uid}/protocol",
+                "source_url": f"{project_browser_path(source_lab.uid, source_project.uid)}/protocols/{source.uid}/protocol",
                 "record_ids": list(
                     map(
                         str,

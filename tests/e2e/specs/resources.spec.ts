@@ -8,7 +8,7 @@ test("resource library renders on first client-side navigation", async ({ page }
 
   await page.getByText("Lab resource library", { exact: true }).click()
 
-  await expect(page).toHaveURL(`/labs/${fixtures.lab.uid}/resources`)
+  await expect(page).toHaveURL(`/orgs/${fixtures.lab.uid}/resources`)
   await expect(page.getByTestId("resource-library")).toBeVisible()
 })
 

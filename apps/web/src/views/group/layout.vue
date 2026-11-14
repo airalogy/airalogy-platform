@@ -154,7 +154,7 @@ function setBreadcrumbs() {
       breadcrumbI18nKey: "breadcrumb.myLabs",
       breadcrumbLabel: "Labs",
       routeKey: "labs",
-      routePath: "/labs",
+      routePath: "/orgs",
       options: [
         {
           key: "labs-my",

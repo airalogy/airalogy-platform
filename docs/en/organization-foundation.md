@@ -25,6 +25,14 @@ Users land on recent projects and personal work without selecting the only organ
 
 Personal documents stay private, and organization type does not expand Restricted access. Existing API permissions control membership, projects and settings. Companies/institutions use organization terminology; laboratories retain laboratory terminology. All core paths work with AI disabled.
 
+## Browser addresses
+
+- Single-organization deployments (`single_organization` and legacy `single_lab`) use `/projects/{projectUid}/overview`. Protocols, Records, the editor and other project pages share this short prefix. Organization management uses `/organization/members`, `/organization/settings` and related paths.
+- Multi-organization deployments (`community`) use `/orgs/{organizationUid}/projects/{projectUid}/overview` and `/orgs/{organizationUid}/members`. Having only one visible organization does not change the URL scheme.
+- Legacy `/labs/{uid}/...` links redirect with replacement, preserving queries and fragments. Login return URLs use canonical paths. Legacy organization-list entries lead to the project dashboard in single-instance mode.
+- A foreign organization's link on a single instance shows organization-not-found instead of opening a same-named local project. The implicit organization comes only from the `/instance` deployment contract; API authorization remains unchanged.
+- A central frontend routing adapter retains the internal `labUid` context for existing pages. Backend sharing, analysis results, Records and work-item evidence use a common browser-path builder. Database identities, project UIDs and published Protocol identifiers do not change.
+
 ## Existing installations
 
 Back up and rehearse the upgrade on an isolated copy first. Do not rerun bootstrap, recreate users, or change an existing UID.
@@ -44,7 +52,7 @@ To use an existing single-lab instance as a company workspace, preserve its orig
 | Projects | Create accepts `organization_id` or `lab_id`; conflicting values fail. Responses preserve `lab_id` and add the same `organization_id`. |
 | Instance | Adds `single_organization`, `organization`, structure and defaults. Legacy `single_lab` and `lab` describe the same capability/identity; the boolean is not an organization-type classifier. |
 | Permissions | Existing scope grants, organizational units, private and Restricted boundaries remain unchanged. |
-| Deep links/specialized APIs | Existing `/labs` URLs and `lab` scope values remain supported, with the same authorization. |
+| Deep links/specialized APIs | Legacy browser `/labs/...` links redirect to deployment-specific URLs. Existing `/labs` APIs and `lab` scope values retain the same authorization. |
 | IDs/SDK/MCP/archives | Existing `airalogy.id.lab.…` Protocol IDs and Record references are not rewritten. A possible `.org.` format requires a separately verified SDK transition. No SDK upgrade is required now. |
 | Queues/cache/audit | No global replacement of persisted identifiers or historical audit text. |
 | Deployment/recovery | Existing backup mechanisms remain; configuration revision includes new organization settings. |

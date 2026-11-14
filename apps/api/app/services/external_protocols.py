@@ -21,6 +21,7 @@ from app.models.lab import Lab
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolMetadata, ProtocolVersion
 from app.services import external_access as boundary
+from app.services.browser_paths import project_browser_path
 from app.services.external_research_contracts import ProtocolCandidate
 from app.services.protocol_authoring import SourceFile, validate_sources
 from app.services.protocol_exports import build_protocol_export
@@ -293,7 +294,7 @@ async def execute(db, access, op):
         "protocol_id": protocol_id,
         "version": op.summary["version"],
         "links": [
-            f"/labs/{lab.uid}/projects/{access.project.uid}/protocols/{published.uid}"
+            f"{project_browser_path(lab.uid, access.project.uid)}/protocols/{published.uid}"
         ],
     }
     # Shared publisher's cleanup and derived indexing must only run after commit.

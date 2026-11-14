@@ -43,7 +43,7 @@ test("project creation menu opens the existing Aira drafting workflow", async ({
   await aiEntry.click()
 
   await expect(page).toHaveURL((url) => {
-    return url.pathname.startsWith("/labs/dev_lab/projects/quickstart/")
+    return url.pathname.startsWith("/orgs/dev_lab/projects/quickstart/")
       && url.pathname.includes("/editor/")
       && url.searchParams.get("show_ai_create") === "true"
   })
