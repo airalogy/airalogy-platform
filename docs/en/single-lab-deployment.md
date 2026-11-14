@@ -6,6 +6,8 @@ The profile creates one configured Lab, a default private Project, an initial ow
 
 Commercial and long-running installations should use the complete package from a GitHub Release rather than a Git worktree on the server. See [Release and Deployment Identity](./release-and-deployment-identity.md) for product versions, image digests, database revisions, opaque deployment IDs, and the boundary around private customer records.
 
+Internal evaluation may explicitly select a prerelease package under the same verification and recovery gates. A beta or rc label does not waive those gates; public prerelease publication and private instance deployment are separate actions.
+
 ## Daily workspace navigation
 
 After signing in, Home shows recent Projects, resumable work, pending actions and personal documents. It no longer redirects to a Lab project list. The configured Lab name and logo identify the workspace; Project and Protocol pages omit the redundant Lab breadcrumb. Existing URLs and asset identifiers remain valid.

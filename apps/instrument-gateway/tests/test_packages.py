@@ -49,6 +49,17 @@ def contents(raw):
 
 
 class PackageTests(unittest.TestCase):
+    def test_gateway_compatibility_accepts_canonical_python_prereleases(self):
+        manifest = example()[1]["manifest"]
+        for version in ("0.5.0a1", "0.5.0b2", "0.5.0rc3", "0.5.0"):
+            with self.subTest(version=version):
+                manifest["compatibility"]["gateway_versions"] = [version]
+                validate_manifest(manifest)
+        for version in ("0.5.0b0", "0.5.0rc01", "0.5.0dev1", "0.5.0b1+dirty"):
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                manifest["compatibility"]["gateway_versions"] = [version]
+                validate_manifest(manifest)
+
     def test_output_names_cannot_collide_on_case_insensitive_stations(self):
         _raw, result = example()
         first = {

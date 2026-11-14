@@ -25,6 +25,9 @@ MAX_FILES = 4096
 SEMVER = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 )
+PYTHON_PRERELEASE = re.compile(
+    r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:a|b|rc)[1-9]\d*"
+)
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_.-]{1,127}$")
 DIGEST = re.compile(r"^[a-f0-9]{64}$")
 ENTRY_POINT = re.compile(r"^[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*:[a-zA-Z_]\w*$")
@@ -262,7 +265,10 @@ def _validate_manifest(value: dict) -> dict:
         "Compatibility",
     )
     for version in _list(compatibility["gateway_versions"], "Gateway versions", 16):
-        if not SEMVER.fullmatch(_text(version, "Gateway version", 64)):
+        if not (
+            SEMVER.fullmatch(_text(version, "Gateway version", 64))
+            or PYTHON_PRERELEASE.fullmatch(version)
+        ):
             raise ValueError("Gateway versions must be exact")
     for version in _list(compatibility["python_versions"], "Python versions", 16):
         if not re.fullmatch(r"3\.\d{1,2}", _text(version, "Python version", 5)):

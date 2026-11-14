@@ -70,6 +70,16 @@ test("source CI verification checks all workflows, exact attempt jobs and pagina
   await assert.rejects(verifySourceCI({ ...context, sha: "HEAD", request: fixtureRequest() }), /full commit/)
 })
 
+test("prereleases require the same exact source CI evidence as stable releases", async () => {
+  for (const tag of ["v0.5.0-alpha.1", "v0.5.0-beta.1", "v0.5.0-rc.1"]) {
+    const result = await verifySourceCI({ ...context, tag, request: fixtureRequest() })
+    assert.equal(result.workflows.length, 9)
+    assert.equal(result.release_tag, tag)
+    await assert.rejects(verifySourceCI({ ...context, tag, request: fixtureRequest({ failure: true }) }), /unavailable/)
+  }
+  await assert.rejects(verifySourceCI({ ...context, tag: "v0.5.0-beta.01", request: fixtureRequest() }), /Expected/)
+})
+
 test("incomplete or ambiguous GitHub inventories never qualify a release", async () => {
   for (const replacement of [{}, { total_count: 101 }, { total_count: 0 }, { total_count: 2 }]) {
     const base = fixtureRequest()

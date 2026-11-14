@@ -151,11 +151,23 @@ def unpack(raw, version):
     return files
 
 
+def release_tag_version(tag):
+    """Map an exact product tag to the wheel's normalized PEP 440 version."""
+    match = re.fullmatch(
+        r"v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))"
+        r"(?:-(alpha|beta|rc)\.([1-9]\d*))?",
+        tag,
+    )
+    if not match:
+        raise ValueError("Select an exact stable or alpha.N/beta.N/rc.N release tag")
+    base, channel, number = match.groups()
+    return base + (
+        {"alpha": "a", "beta": "b", "rc": "rc"}[channel] + number if channel else ""
+    )
+
+
 def inputs(args):
-    if not re.fullmatch(
-        r"v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", args.release_tag
-    ):
-        raise ValueError("Select an exact stable vMAJOR.MINOR.PATCH release")
+    version = release_tag_version(args.release_tag)
     if not re.fullmatch(r"[a-f0-9]{40}", args.commit) or not re.fullmatch(
         r"[a-f0-9]{64}", args.wheel_sha256
     ):
@@ -176,7 +188,6 @@ def inputs(args):
     raw = regular(args.wheel)
     if digest(raw) != args.wheel_sha256:
         raise ValueError("Selected wheel differs from its independent SHA-256")
-    version = args.release_tag[1:]
     files = unpack(raw, version)
     gh = args.gh or shutil.which("gh")
     if not gh:
@@ -206,6 +217,7 @@ def inputs(args):
         "repository": REPOSITORY,
         "signer_workflow": WORKFLOW,
         "release_tag": args.release_tag,
+        "prerelease": "-" in args.release_tag,
         "commit": args.commit,
         "wheel_name": f"airalogy_instrument_gateway-{version}-py3-none-any.whl",
         "wheel_sha256": args.wheel_sha256,

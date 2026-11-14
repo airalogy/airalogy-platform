@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
+import { parsePlatformTag } from "./release-version.mjs"
 
 // A release version change reaches every one of these workflows. Missing runs
 // are not successes: dispatch the missing workflow at the same immutable tag.
@@ -46,8 +47,9 @@ export function verifySourceJobs(jobs, expected) {
 }
 
 export async function verifySourceCI({ repository, sha, tag, request, now = Date.now() }) {
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repository) || !/^[0-9a-f]{40}$/.test(sha) || !/^v\d+\.\d+\.\d+$/.test(tag))
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository) || !/^[0-9a-f]{40}$/.test(sha))
     throw new Error("Expected a repository, full commit SHA and release tag")
+  parsePlatformTag(tag)
   const prefix = `/repos/${repository}/actions`
   const receipts = await Promise.all(Object.entries(requiredSourceCI).map(async ([file, names]) => {
     try {

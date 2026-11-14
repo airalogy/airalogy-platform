@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Support explicitly versioned alpha, beta and rc releases with equivalent Python package identities, exact Gateway compatibility and a recorded release channel. Mark GitHub prereleases explicitly, preserve stable image aliases, and retain the full source-CI, artifact acceptance and recovery gates.
+
 - Show actual organization membership and role instead of organization counts and lists on single-organization profiles, use organization terminology for multi-organization profiles, hide legacy groups in structured organizations, localize profile summaries and Protocol pages with reactive language switching, and skip community education Protocol queries on single-organization instances.
 
 - Use short project URLs and `/organization` management paths on single-organization deployments, and `/orgs` on multi-organization deployments. Preserve legacy `/labs` bookmarks, login returns, query parameters and fragments; unify generated sharing and external Agent links without changing asset identities or permissions.

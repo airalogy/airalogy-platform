@@ -17,6 +17,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      python_version: ${{ steps.identity.outputs.python_version }}
+      prerelease: ${{ steps.identity.outputs.prerelease }}
     env:
       RELEASE_TAG: ${{ github.ref_name }}
       DATABASE_URL: postgresql+asyncpg://user:pass@localhost:5432/airalogy
@@ -38,6 +41,9 @@ jobs:
         with:
           node-version-file: ".node-version"
           cache: pnpm
+      - name: Resolve release channel and Python package version
+        id: identity
+        run: node scripts/release-version.mjs "$(cat VERSION)" >> "$GITHUB_OUTPUT"
       - name: Verify fresh source CI for this exact release commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,7 +116,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
-          python apps/instrument-gateway/tests/check_bootstrap_install.py --wheel "apps/instrument-gateway/dist/airalogy_instrument_gateway-$(cat VERSION)-py3-none-any.whl" --release-tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --verify-release
+          python apps/instrument-gateway/tests/check_bootstrap_install.py --wheel "apps/instrument-gateway/dist/airalogy_instrument_gateway-${{ needs.verify.outputs.python_version }}-py3-none-any.whl" --release-tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --verify-release
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -195,8 +201,8 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=sha-
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.verify.outputs.prerelease == 'false' }}
+            type=sha,prefix=sha-,format=long
       - id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
@@ -237,7 +243,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [images, gateway-package, compute-runner-package]
+    needs: [verify, images, gateway-package, compute-runner-package]
     permissions:
       attestations: write
       contents: write
@@ -368,7 +374,15 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
         run: |
           release_notes=$RUNNER_TEMP/platform-release-notes.md
           { cat "docs/zh/releases/${GITHUB_REF_NAME}.md"; printf '\n---\n\n'; cat "docs/en/releases/${GITHUB_REF_NAME}.md"; } > "$release_notes"
-          gh release create "$GITHUB_REF_NAME" "airalogy-platform-deploy-${GITHUB_REF_NAME}.tar.gz" "airalogy-platform-deploy-${GITHUB_REF_NAME}.tar.gz.sha256" "airalogy-platform-release-${GITHUB_REF_NAME}.json" "airalogy-platform-release-${GITHUB_REF_NAME}.env" compute-runner-package/* instrument-gateway-package/* --title "Airalogy Platform $GITHUB_REF_NAME" --notes-file "$release_notes" --verify-tag
+          publication_flags=(--verify-tag)
+          if [[ "$PRERELEASE" == "true" ]]; then
+            publication_flags+=(--prerelease --latest=false)
+          elif [[ "$PRERELEASE" != "false" ]]; then
+            echo "::error::Missing release channel; refusing publication"
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" "airalogy-platform-deploy-${GITHUB_REF_NAME}.tar.gz" "airalogy-platform-deploy-${GITHUB_REF_NAME}.tar.gz.sha256" "airalogy-platform-release-${GITHUB_REF_NAME}.json" "airalogy-platform-release-${GITHUB_REF_NAME}.env" compute-runner-package/* instrument-gateway-package/* --title "Airalogy Platform $GITHUB_REF_NAME" --notes-file "$release_notes" "${publication_flags[@]}"

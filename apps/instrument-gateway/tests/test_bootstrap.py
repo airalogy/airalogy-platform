@@ -21,7 +21,7 @@ bootstrap = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(bootstrap)
 
 
-def wheel(extra=None):
+def wheel(extra=None, version="0.1.0"):
     files = {
         f"airalogy_instrument_gateway/{name}.py": b"raise RuntimeError('SDK code must not run during installation')\n"
         for name in bootstrap.MODULES.values()
@@ -30,10 +30,10 @@ def wheel(extra=None):
     files["airalogy_instrument_gateway/setup_cli.py"] = (
         b"import sys; print('SYNTHETIC SETUP', sys.argv[1:])\n"
     )
-    prefix = "airalogy_instrument_gateway-0.1.0.dist-info/"
+    prefix = f"airalogy_instrument_gateway-{version}.dist-info/"
     files[prefix + "METADATA"] = (
-        b"Metadata-Version: 2.3\nName: airalogy-instrument-gateway\nVersion: 0.1.0\n"
-    )
+        f"Metadata-Version: 2.3\nName: airalogy-instrument-gateway\nVersion: {version}\n"
+    ).encode()
     files[prefix + "WHEEL"] = (
         b"Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
     )
@@ -117,10 +117,39 @@ class BootstrapTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bootstrap.install(self.args)
             run.assert_not_called()
-        for tag in ("main", "latest", "v0.1.0/../../x", "v0.1.0-rc.1"):
+        for tag in (
+            "main",
+            "latest",
+            "v0.1.0/../../x",
+            "v0.1.0-rc.0",
+            "v0.1.0-rc.01",
+            "v0.1.0-preview.1",
+        ):
             self.args.release_tag = tag
             with self.assertRaises(ValueError):
                 bootstrap.preview(self.args)
+
+    def test_prerelease_wheel_identity_and_exact_source_verification(self):
+        for label, normalized in (("alpha.1", "a1"), ("beta.2", "b2"), ("rc.3", "rc3")):
+            with self.subTest(label=label):
+                self.wheel.write_bytes(wheel(version=f"0.5.0{normalized}"))
+                self.args.wheel_sha256 = bootstrap.digest(self.wheel.read_bytes())
+                self.args.release_tag = f"v0.5.0-{label}"
+                plan = bootstrap.preview(self.args)["impact"]
+                self.assertTrue(plan["prerelease"])
+                self.assertEqual(
+                    plan["wheel_name"],
+                    f"airalogy_instrument_gateway-0.5.0{normalized}-py3-none-any.whl",
+                )
+                command = bootstrap.verification_command(plan, self.wheel, {})
+                self.assertEqual(
+                    command[command.index("--source-ref") + 1],
+                    f"refs/tags/v0.5.0-{label}",
+                )
+                self.assertIn("--deny-self-hosted-runners", command)
+                self.args.release_tag = "v0.5.0"
+                with self.assertRaises(ValueError):
+                    bootstrap.preview(self.args)
 
     def test_exact_certificate_workflow_source_and_runner_policy(self):
         plan = self.approve()

@@ -115,6 +115,18 @@ test("release metadata binds every deployable component by digest", async (t) =>
   await assert.rejects(createReleaseMetadata(options), /object-storage.digest/)
 })
 
+test("prerelease manifests retain the exact channel, tag, source and image identities", async (t) => {
+  const options = await createFixture(t)
+  await writeFile(path.join(options.repositoryRoot, "VERSION"), "0.5.0-beta.1\n")
+  const { manifest } = await createReleaseMetadata({ ...options, releaseTag: "v0.5.0-beta.1" })
+  assert.equal(manifest.release_channel, "beta")
+  assert.equal(manifest.release_tag, "v0.5.0-beta.1")
+  assert.equal(manifest.git_commit, options.gitCommit)
+  for (const component of Object.values(manifest.components))
+    assert.match(component.deployment_reference, /:0\.5\.0-beta\.1@sha256:/)
+  await assert.rejects(createReleaseMetadata({ ...options, releaseTag: "v0.5.0" }), /does not match/)
+})
+
 test("release metadata follows migration ancestry and rejects competing heads", async (t) => {
   const options = await createFixture(t)
   const migrationsDirectory = path.join(options.repositoryRoot, "apps", "api", "migrations", "versions")

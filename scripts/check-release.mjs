@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process"
 import { readFile } from "node:fs/promises"
+import { parsePlatformVersion } from "./release-version.mjs"
 
 const repositoryRoot = new URL("../", import.meta.url)
 const version = (await readFile(new URL("../VERSION", import.meta.url), "utf8")).trim()
-const expectedTag = `v${version}`
+const { tag: expectedTag } = parsePlatformVersion(version)
 const suppliedTag = process.env.RELEASE_TAG?.trim() || process.argv[2]?.trim()
 
 if (!suppliedTag) {

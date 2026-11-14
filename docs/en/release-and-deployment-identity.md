@@ -27,6 +27,18 @@ This reuses completed source tests, lint and types rather than executing them ag
 
 A source checkout remains suitable for development and evaluation. It may be marked dirty and does not carry the verification meaning of a formal release manifest.
 
+### Prereleases for internal use
+
+An internal installation may deliberately select an immutable prerelease package while validating new capabilities. Supported product versions are `MAJOR.MINOR.PATCH` and `MAJOR.MINOR.PATCH-{alpha,beta,rc}.N`, with `N >= 1`. Alpha denotes early evaluation, beta denotes broader testing, and rc means release candidate. These labels describe maturity; they do not certify readiness or reduce the release gates above. Do not use an rc label while known release-blocking work remains.
+
+`VERSION`, JavaScript packages, Git tags and image tags use the product spelling, for example `0.5.0-beta.1` and `v0.5.0-beta.1`. Python package versions and wheel names use the equivalent PEP 440 spelling: `0.5.0a1`, `0.5.0b1` or `0.5.0rc1`. Bundled adapter manifests declare exact Gateway compatibility using that Python spelling. `scripts/check-version.mjs` checks this mapping; it is not independent component versioning.
+
+Prereleases use a clean committed revision, annotated tag, fresh exact-commit source CI, immutable artifacts, provenance, acceptance and recovery evidence just like stable releases. The release manifest records `release_channel`. GitHub marks the release as a prerelease and does not select it as Latest; image publication omits the stable `MAJOR.MINOR` alias and retains the full-version and full-SHA tags. Selecting a prerelease never means installing whatever a branch or `latest` currently points to.
+
+The current workflow publishes through the repository's GitHub Releases and container registry. A prerelease in a public repository is public, even when its intended deployment is internal. Review and authorize publication separately from private deployment; include only product source, artifacts and sanitized release notes. Keep deployment addresses, configuration, backup evidence and research data in private operational records.
+
+For an internal instance carrying real research, record the selected version/SHA/artifact digests, verify the actual source-to-target migration and recovery point, and validate the affected user tasks after deployment. Publishing a prerelease does not update an instance automatically. Promotion to a stable version requires its own versioned release and checks; never move a published tag or relabel different bytes as the same release.
+
 From v0.3.0, `platform-object-storage` is a fifth immutable image in the release set, containing the official MinIO server and mc client, their corresponding vendored source and license notices. Both storage image settings bind to that same digest. Upstream engine changes require separately approved fresh-storage migration and recovery evidence; normal application upgrades cannot silently reuse old MinIO data with a different engine. External OSS/RDS are unaffected.
 
 Release metadata generation requires Node.js and Python 3.11+. The standard-library AST reader accepts annotated and ordinary literal Alembic declarations without executing migration modules. It checks ancestry, missing parents, duplicate revisions and cycles before selecting the single head. Non-literal declarations or `depends_on` relationships require explicit tooling support and block publication instead of being silently ignored.

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { parsePlatformVersion } from "./release-version.mjs"
 
 const digestPattern = /^sha256:[0-9a-f]{64}$/
 const commitPattern = /^[0-9a-f]{40}$/
@@ -104,6 +105,7 @@ export async function createReleaseMetadata({
   createdAt,
 }) {
   const version = await readRequiredText(path.join(repositoryRoot, "VERSION"))
+  const { channel } = parsePlatformVersion(version)
   if (releaseTag !== `v${version}`) {
     throw new Error(`Release tag ${releaseTag} does not match VERSION ${version}`)
   }
@@ -128,6 +130,7 @@ export async function createReleaseMetadata({
     schema_version: 1,
     product: "Airalogy Platform Community Edition",
     product_version: version,
+    release_channel: channel,
     release_tag: releaseTag,
     git_commit: gitCommit,
     created_at: new Date(createdAt).toISOString(),
