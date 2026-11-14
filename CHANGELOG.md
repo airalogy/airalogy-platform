@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+## [0.5.0-beta.1] - 2026-11-14
+
+Beta for deliberate evaluation of the cumulative R&D workspace, organization navigation and research workflows. See the [release scope and upgrade gates](docs/en/releases/v0.5.0-beta.1.md).
+
 - Reserve `.private/ops/` for local operational configuration and evidence, exclude private directories and local caches from root Docker builds, and document independent encrypted backup and safe file transfer.
 
 - Support explicitly versioned alpha, beta and rc releases with equivalent Python package identities, exact Gateway compatibility and a recorded release channel. Mark GitHub prereleases explicitly, preserve stable image aliases, and retain the full source-CI, artifact acceptance and recovery gates.

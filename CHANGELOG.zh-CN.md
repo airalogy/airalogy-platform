@@ -14,6 +14,10 @@ English changelog: [CHANGELOG.md](./CHANGELOG.md)。
 
 ## [未发布]
 
+## [0.5.0-beta.1] - 2026-11-14
+
+用于明确选择的内部试用，汇总研发工作台、组织导航和科研流程更新。参见[版本范围与升级门槛](docs/zh/releases/v0.5.0-beta.1.md)。
+
 - 约定 `.private/ops/` 保存本地私有运维配置与证据，从根目录 Docker 构建中排除私有目录及本地缓存，并说明独立加密备份和按需传输规则。
 
 - 支持明确版本的 alpha、beta 和 rc 预发布，同步等价 Python 包版本、准确 Gateway 兼容声明及发布通道；GitHub 明确标为预发布，不更新稳定镜像别名，保留完整源码 CI、产物验收及恢复门槛。
