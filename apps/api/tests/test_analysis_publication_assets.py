@@ -281,18 +281,18 @@ def test_log_applies_candidate_exclusions_to_both_count_and_page(monkeypatch):
     )
     monkeypatch.setattr(research_log, "_scope_context", AsyncMock(return_value=scope))
     monkeypatch.setattr(
-        research_log,
-        "_hidden_analysis_knowledge_ids",
-        AsyncMock(return_value=[hidden_id]),
+        knowledge_service,
+        "authorize_knowledge_item",
+        AsyncMock(side_effect=HTTPException(404, "Hidden analysis publication")),
     )
     db = SimpleNamespace(
         scalar=AsyncMock(return_value=0),
-        scalars=AsyncMock(return_value=rows([])),
+        scalars=AsyncMock(side_effect=[rows([]), rows([]), rows([SimpleNamespace(id=hidden_id)])]),
         execute=AsyncMock(return_value=rows([]))
     )
     result = asyncio.run(
         research_log.get_research_log_timeline(
-            current_user=object(),
+            current_user=SimpleNamespace(id=uuid4()),
             db_session=db,
             scope_type=scope.scope_type,
             lab_id=scope.lab_id,
