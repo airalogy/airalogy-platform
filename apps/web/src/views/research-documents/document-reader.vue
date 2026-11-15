@@ -88,6 +88,11 @@ onBeforeUnmount(() => sequence++)
     </n-alert>
     <n-spin :show="loading">
       <template v-if="doc">
+        <n-alert v-if="doc.meeting_url" type="info" class="mb-4">
+          <router-link :to="doc.meeting_url" class="text-primary">
+            {{ t('page.meetings.openMeeting') }}
+          </router-link>
+        </n-alert>
         <h2 ref="heading" tabindex="-1" class="aira-type-page-title break-words" data-testid="document-reader-title">
           {{ doc.title }}
         </h2>

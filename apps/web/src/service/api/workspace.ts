@@ -4,7 +4,7 @@ import { documentRequest } from "./research-documents"
 
 export interface ProjectVisitInput {
   kind: "project" | "protocol" | "recording" | "record" | "document" | "editor"
-  section?: "work" | "overview" | "protocols" | "documents" | "materials" | "knowledge"
+  section?: "meetings" | "records" | "work" | "overview" | "protocols" | "documents" | "materials" | "knowledge"
   project_id?: string
   lab_uid?: string
   project_uid?: string
@@ -28,7 +28,7 @@ export interface WorkspaceProject {
     protocol_id?: string
     protocol_version?: string
     record_number?: number
-    route: { name: "project-work" | "project-overview" | "project-protocols" | "project-documents" | "project-materials" | "project-knowledge" | "research-document-detail" | "protocol-detail" | "protocol-editor" | "protocol-record-report", params: Record<string, string> }
+    route: { name: "project-meetings" | "project-records" | "project-work" | "project-overview" | "project-protocols" | "project-documents" | "project-materials" | "project-knowledge" | "research-document-detail" | "protocol-detail" | "protocol-editor" | "protocol-record-report", params: Record<string, string> }
   }
 }
 

@@ -104,6 +104,7 @@ const showIcon = computed(
     || route.name === "lab-members"
     || route.name === "project-protocols"
     || route.name === "project-work"
+    || route.name === "project-meetings"
     || route.name === "project-overview"
     || route.name === "project-documents"
     || route.name === "project-materials"
@@ -138,6 +139,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
     tabs.unshift({ name: "project-overview", tab: $t("page.researchDocuments.overview") })
     tabs.push(
       { name: "project-work", tab: $t("page.projectWork.title") },
+      { name: "project-meetings", tab: $t("page.meetings.title") },
       { name: "project-documents", tab: $t("page.documentUx.documents") },
       { name: "project-materials", tab: $t("page.researchDocuments.materials") },
       { name: "project-knowledge", tab: $t("page.knowledge.title") },

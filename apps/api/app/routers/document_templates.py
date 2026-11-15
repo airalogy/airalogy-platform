@@ -285,6 +285,9 @@ async def create_template(
         from app.routers.research_documents import _context
 
         entry, _ = await _context(db_session, current_user, params.source_document_id)
+        from app.services.meetings import require_shareable_meeting_source
+
+        await require_shareable_meeting_source(db_session, entry)
         if params.source_revision != entry.revision:
             raise HTTPException(
                 409, "Source document changed. Review the current content."

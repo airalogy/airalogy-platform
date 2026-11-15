@@ -561,6 +561,11 @@ onBeforeUnmount(() => {
         {{ t("page.researchDocuments.reload") }}
       </n-button>
       <template v-if="doc && form">
+        <n-alert v-if="doc.meeting_url" type="info" class="mb-4">
+          <router-link :to="doc.meeting_url" class="text-primary">
+            {{ t('page.meetings.openMeeting') }}
+          </router-link>
+        </n-alert>
         <header class="mb-5 space-y-3" data-testid="document-editor-header">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <n-button quaternary data-testid="document-back" @click="router.push(returnTarget)">

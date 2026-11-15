@@ -54,11 +54,14 @@ async def sources(
 
     project = await project_context(db_session, current_user, project_id)
     if kind == "document":
+        from app.services.meetings import meeting_read_condition
+
         query = (
             select(ResearchLogEntry)
             .join(ResearchDocument, ResearchDocument.id == ResearchLogEntry.id)
             .where(
                 ResearchLogEntry.project_id == project.id,
+                meeting_read_condition(current_user.id),
                 ResearchLogEntry.archived_at.is_(None),
                 ResearchLogEntry.title.icontains(q, autoescape=True),
             )

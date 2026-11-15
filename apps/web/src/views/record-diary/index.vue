@@ -1,5 +1,7 @@
 <template>
+  <research-activity v-if="isProjectScope && logScope" :scope="logScope" />
   <loading-list-wrapper
+    v-else
     :key="requestKey"
     :fetcher="fetcher"
     :immediate="canFetch"
@@ -12,8 +14,12 @@
       <div class="mb-4 flex flex-col gap-3">
         <div v-if="showUnifiedLog" class="research-log-heading">
           <div>
-            <div v-if="logScope && logScope.scope_type !== 'personal'" class="aira-type-eyebrow">{{ logScopeLabel }}</div>
-            <h1 class="aira-type-page-title mb-0 mt-1">{{ logPageTitle }}</h1>
+            <div v-if="logScope && logScope.scope_type !== 'personal'" class="aira-type-eyebrow">
+              {{ logScopeLabel }}
+            </div>
+            <h1 class="aira-type-page-title mb-0 mt-1">
+              {{ logPageTitle }}
+            </h1>
             <p class="aira-type-body aira-text-secondary mb-0 mt-1">
               {{ $t("page.recordDiary.description") }}
             </p>
@@ -286,6 +292,7 @@ import { useOrProvideLabInfoStore } from "@/views/labs/hooks/useLabsInfoStore"
 import { useProfileStore } from "@/views/profile/hooks/useProfileStore"
 import { useOrProvideProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import { createProtocolRecordData } from "@/views/project-protocols/utils"
+import ResearchActivity from "@/views/research-activity/index.vue"
 import { $t } from "@airalogy/shared/locales"
 import { formatDate } from "@airalogy/shared/utils"
 import RecordDiaryCalendar from "./modules/record-diary-calendar.vue"
@@ -578,7 +585,7 @@ async function loadProjectOptions() {
 }
 
 async function fetcher(payload: FetchPayload): Promise<FetchData> {
-  if (!canFetch.value) {
+  if (!canFetch.value || isProjectScope.value) {
     return null
   }
 

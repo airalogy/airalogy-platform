@@ -73,6 +73,9 @@ async def evidence_view(db, user, project, raw):
         doc = await db.get(ResearchDocument, identity)
         if not entry or not doc or entry.archived_at or entry.project_id != project.id:
             raise HTTPException(404, "Evidence is unavailable in this Project")
+        from app.routers.research_documents import _context
+
+        await _context(db, user, identity)
         revision = await db.scalar(
             select(ResearchLogRevision).where(
                 ResearchLogRevision.log_entry_id == identity,

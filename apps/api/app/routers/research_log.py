@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import String, case, cast, func, literal, or_, select, union_all
+from sqlalchemy import Date, String, case, cast, func, literal, or_, select, union_all
 
 from app.database import DBSession
 from app.models.knowledge import KnowledgeItem, KnowledgeState
@@ -18,6 +18,9 @@ from app.models.project import Project
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
+from app.models.meeting import Meeting
+from app.services.meetings import authorize_meeting, meeting_read_condition
+from app.services.document_browse import date_bounds
 from app.models.research import ResearchEvent, ResearchTask
 from app.models.research_asset import KnowledgeEvidenceLink, ResearchEvidence
 from app.models.research_log import (
@@ -100,7 +103,9 @@ class ResearchLogEntryDraft(BaseModel):
         self.goal = self.goal.strip()
         for field_name in ("completed_items", "evidence", "risks", "next_steps"):
             values = getattr(self, field_name)
-            setattr(self, field_name, [value.strip() for value in values if value.strip()])
+            setattr(
+                self, field_name, [value.strip() for value in values if value.strip()]
+            )
         if not self.title:
             raise ValueError("Log title is required")
         return self
@@ -134,18 +139,24 @@ async def _scope_context(
 ) -> LogScopeContext:
     if scope_type == ResearchLogScope.PERSONAL:
         if lab_id is not None or project_id is not None:
-            raise HTTPException(status_code=422, detail="Personal Log has no Lab or Project")
+            raise HTTPException(
+                status_code=422, detail="Personal Log has no Lab or Project"
+            )
         return LogScopeContext(scope_type, current_user.id, None, None)
 
     project = None
     if scope_type == ResearchLogScope.PROJECT:
         if project_id is None:
-            raise HTTPException(status_code=422, detail="Project Log requires project_id")
+            raise HTTPException(
+                status_code=422, detail="Project Log requires project_id"
+            )
         project = await db_session.get(Project, project_id)
         if project is None or project.deleted_at is not None:
             raise HTTPException(status_code=404, detail="Project not found")
         if lab_id is not None and project.lab_id != lab_id:
-            raise HTTPException(status_code=422, detail="Project does not belong to Lab")
+            raise HTTPException(
+                status_code=422, detail="Project does not belong to Lab"
+            )
         lab_id = project.lab_id
     if lab_id is None:
         raise HTTPException(status_code=422, detail="Lab Log requires lab_id")
@@ -220,6 +231,11 @@ async def _entry_payload(
 ) -> dict[str, Any]:
     author = await db_session.get(User, entry.created_by_user_id)
     document = await db_session.get(ResearchDocument, entry.id)
+    meeting = await authorize_meeting(db_session, current_user, entry)
+    project = (
+        await db_session.get(Project, entry.project_id) if entry.project_id else None
+    )
+    lab = await db_session.get(Lab, entry.lab_id) if entry.lab_id else None
     return {
         **entry.as_dict(),
         "entry_type": "manual",
@@ -227,7 +243,18 @@ async def _entry_payload(
         "immutable": False,
         "author": _user_payload(author),
         "can_edit": entry.created_by_user_id == current_user.id,
-        "document": {"id": str(entry.id), "state": document.state, "format": document.format_version} if document else None,
+        "meeting_id": str(entry.id) if meeting else None,
+        "project": {"id": str(project.id), "uid": project.uid, "name": project.name}
+        if project
+        else None,
+        "lab": {"id": str(lab.id), "uid": lab.uid, "name": lab.name} if lab else None,
+        "document": {
+            "id": str(entry.id),
+            "state": document.state,
+            "format": document.format_version,
+        }
+        if document
+        else None,
     }
 
 
@@ -283,7 +310,10 @@ async def _entry_context(
     entry = await db_session.get(ResearchLogEntry, entry_id)
     if entry is None or entry.archived_at is not None:
         raise HTTPException(status_code=404, detail="Research Log entry not found")
-    if entry.scope_type == ResearchLogScope.PERSONAL.value and entry.owner_user_id != current_user.id:
+    if (
+        entry.scope_type == ResearchLogScope.PERSONAL.value
+        and entry.owner_user_id != current_user.id
+    ):
         raise HTTPException(status_code=404, detail="Research Log entry not found")
     await _scope_context(
         db_session,
@@ -292,6 +322,9 @@ async def _entry_context(
         lab_id=entry.lab_id,
         project_id=entry.project_id,
         capability=capability,
+    )
+    await authorize_meeting(
+        db_session, current_user, entry, "edit" if capability == "log.write" else "read"
     )
     return entry
 
@@ -315,9 +348,14 @@ async def update_research_log_entry(
 ):
     entry = await _entry_context(db_session, current_user, entry_id, "log.write")
     if await db_session.get(ResearchDocument, entry_id):
-        raise HTTPException(409, "Use the research document editor to preserve fields and revision history")
+        raise HTTPException(
+            409,
+            "Use the research document editor to preserve fields and revision history",
+        )
     if entry.created_by_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the author can revise this Log")
+        raise HTTPException(
+            status_code=403, detail="Only the author can revise this Log"
+        )
     if entry.revision != params.expected_revision:
         raise HTTPException(status_code=409, detail="Research Log entry has changed")
     values = params.model_dump(exclude={"expected_revision", "change_summary"})
@@ -366,7 +404,7 @@ async def list_research_log_revisions(
     return {"revisions": [item.as_dict() for item in revisions]}
 
 
-def _event_selects(scope: LogScopeContext):
+def _event_selects(scope: LogScopeContext, user_id=None):
     columns = (
         "source_id",
         "source_type",
@@ -392,6 +430,14 @@ def _event_selects(scope: LogScopeContext):
         *_scope_conditions(ResearchLogEntry, scope),
     )
 
+    if user_id is not None:
+        manual = manual.where(
+            meeting_read_condition(user_id),
+            ~select(Meeting.document_id)
+            .where(Meeting.document_id == ResearchLogEntry.id, Meeting.status != "held")
+            .exists(),
+        )
+
     record = (
         select(
             cast(Record.id, String),
@@ -407,6 +453,14 @@ def _event_selects(scope: LogScopeContext):
         .join(Project, Project.id == Protocol.project_id)
         .where(Record.deleted_at.is_(None), Project.deleted_at.is_(None))
     )
+
+    if user_id is not None:
+        from app.routers.users import build_record_readable_condition
+
+        record = record.where(
+            Protocol.deleted_at.is_(None),
+            build_record_readable_condition(user_id, Record),
+        )
 
     if scope.scope_type == ResearchLogScope.PERSONAL:
         return [manual, record.where(Record.user_id == scope.owner_user_id)]
@@ -478,11 +532,22 @@ def _event_selects(scope: LogScopeContext):
             ResearchTask.project_id,
         )
         .join(ResearchTask, ResearchTask.id == ResearchEvent.task_id)
-        .where(research_scope_condition, or_(
-            ~ResearchEvent.kind.like("work.%"),
-            ResearchEvent.kind.in_(["work.created", "work.progress", "work.decision", "work.test", "work.acceptance"]),
-            ResearchEvent.payload["state_changed"].as_boolean().is_(True),
-        ))
+        .where(
+            research_scope_condition,
+            or_(
+                ~ResearchEvent.kind.like("work.%"),
+                ResearchEvent.kind.in_(
+                    [
+                        "work.created",
+                        "work.progress",
+                        "work.decision",
+                        "work.test",
+                        "work.acceptance",
+                    ]
+                ),
+                ResearchEvent.payload["state_changed"].as_boolean().is_(True),
+            ),
+        )
     )
     return [manual, record, protocol, knowledge_created, knowledge_reviewed, research]
 
@@ -504,9 +569,7 @@ async def _system_event_payload(
         "author": _user_payload(actor),
         "immutable": True,
         "can_edit": False,
-        "lab": (
-            {"id": str(lab.id), "uid": lab.uid, "name": lab.name} if lab else None
-        ),
+        "lab": ({"id": str(lab.id), "uid": lab.uid, "name": lab.name} if lab else None),
         "project": (
             {"id": str(project.id), "uid": project.uid, "name": project.name}
             if project
@@ -593,9 +656,16 @@ async def _system_event_payload(
                 raise
             # The Log links to authoritative work history. It does not duplicate
             # private evidence labels, request receipts or mutable document bodies.
-            return {**base, "title": task.title, "summary": event.kind,
-                    "payload": {"outcome": event.payload.get("outcome"), "actual_occurred_at": event.payload.get("occurred_at")},
-                    "asset": {"type": "project_work", "id": str(task.id), "version": ""}}
+            return {
+                **base,
+                "title": task.title,
+                "summary": event.kind,
+                "payload": {
+                    "outcome": event.payload.get("outcome"),
+                    "actual_occurred_at": event.payload.get("occurred_at"),
+                },
+                "asset": {"type": "project_work", "id": str(task.id), "version": ""},
+            }
         return {
             **base,
             "title": task.title,
@@ -613,20 +683,38 @@ async def _hidden_analysis_knowledge_ids(db_session, current_user, scope):
     from app.services.knowledge import authorize_knowledge_item
     from app.services.research_asset_visibility import HIDDEN_SOURCE_STATUSES
 
-    items = list((await db_session.scalars(
-        select(KnowledgeItem)
-        .join(KnowledgeEvidenceLink, KnowledgeEvidenceLink.knowledge_item_id == KnowledgeItem.id)
-        .join(ResearchEvidence, ResearchEvidence.id == KnowledgeEvidenceLink.evidence_id)
-        .where(
-            KnowledgeItem.project_id == scope.project_id
-            if scope.scope_type == ResearchLogScope.PROJECT else KnowledgeItem.lab_id == scope.lab_id,
-            KnowledgeItem.state.in_([KnowledgeState.SUGGESTED.value, KnowledgeState.DRAFT.value]),
-            or_(
-                ResearchEvidence.artifact_type == "analysis_publication",
-                KnowledgeEvidenceLink.source_snapshot["artifact_type"].as_string() == "analysis_publication",
-            ),
+    items = list(
+        (
+            await db_session.scalars(
+                select(KnowledgeItem)
+                .join(
+                    KnowledgeEvidenceLink,
+                    KnowledgeEvidenceLink.knowledge_item_id == KnowledgeItem.id,
+                )
+                .join(
+                    ResearchEvidence,
+                    ResearchEvidence.id == KnowledgeEvidenceLink.evidence_id,
+                )
+                .where(
+                    KnowledgeItem.project_id == scope.project_id
+                    if scope.scope_type == ResearchLogScope.PROJECT
+                    else KnowledgeItem.lab_id == scope.lab_id,
+                    KnowledgeItem.state.in_(
+                        [KnowledgeState.SUGGESTED.value, KnowledgeState.DRAFT.value]
+                    ),
+                    or_(
+                        ResearchEvidence.artifact_type == "analysis_publication",
+                        KnowledgeEvidenceLink.source_snapshot[
+                            "artifact_type"
+                        ].as_string()
+                        == "analysis_publication",
+                    ),
+                )
+            )
         )
-    )).unique().all())
+        .unique()
+        .all()
+    )
     hidden = []
     for item in items:
         try:
@@ -639,21 +727,154 @@ async def _hidden_analysis_knowledge_ids(db_session, current_user, scope):
     return hidden
 
 
-@router.get("/timeline")
-async def get_research_log_timeline(
+async def activity_query(
+    db_session,
+    current_user,
+    scope,
+    source="all",
+    actor_user_id=None,
+    date_from=None,
+    date_to=None,
+    time_zone="UTC",
+):
+    """One authorization/date predicate for calendar counts and paginated detail."""
+    from app.routers.permission import check_user_permission
+    from app.services.knowledge import authorize_knowledge_item
+    from app.services.research_runtime import has_research_capability
+
+    events = union_all(*_event_selects(scope, current_user.id)).subquery(
+        "research_log_events"
+    )
+    conditions = []
+    if scope.scope_type != ResearchLogScope.PERSONAL:
+        projects = (
+            await db_session.scalars(
+                select(Project).where(
+                    Project.id == scope.project_id
+                    if scope.project_id
+                    else Project.lab_id == scope.lab_id,
+                    Project.deleted_at.is_(None),
+                )
+            )
+        ).all()
+        readable = [
+            project.id
+            for project in projects
+            if await has_research_capability(
+                db_session,
+                user=current_user,
+                project=project,
+                capability="research.read",
+            )
+        ]
+        conditions.append(
+            or_(events.c.source_type != "research", events.c.project_id.in_(readable))
+        )
+        # Protocol-specific restrictions must apply before counts/pagination.
+        protocols = (
+            await db_session.scalars(
+                select(Protocol).where(
+                    Protocol.project_id.in_([p.id for p in projects]),
+                    Protocol.deleted_at.is_(None),
+                )
+            )
+        ).all()
+        project_map = {p.id: p for p in projects}
+        hidden_versions = []
+        for protocol in protocols:
+            try:
+                await check_user_permission(
+                    db_session,
+                    project_map[protocol.project_id],
+                    current_user,
+                    "read_protocol",
+                    protocol=protocol,
+                )
+            except HTTPException as error:
+                if error.status_code not in {403, 404}:
+                    raise
+                hidden_versions.extend(
+                    str(x)
+                    for x in (
+                        await db_session.scalars(
+                            select(ProtocolVersion.id).where(
+                                ProtocolVersion.protocol_id == protocol.id
+                            )
+                        )
+                    ).all()
+                )
+        if hidden_versions:
+            conditions.append(
+                or_(
+                    events.c.source_type != "protocol",
+                    events.c.source_id.not_in(hidden_versions),
+                )
+            )
+        hidden_knowledge = []
+        knowledge = (
+            await db_session.scalars(
+                select(KnowledgeItem).where(
+                    KnowledgeItem.project_id == scope.project_id
+                    if scope.project_id
+                    else KnowledgeItem.lab_id == scope.lab_id
+                )
+            )
+        ).all()
+        for item in knowledge:
+            try:
+                await authorize_knowledge_item(db_session, current_user, item)
+            except HTTPException as error:
+                if error.status_code not in {403, 404, 410}:
+                    raise
+                hidden_knowledge.append(str(item.id))
+        if hidden_knowledge:
+            conditions.append(
+                or_(
+                    events.c.source_type != "knowledge",
+                    events.c.source_id.not_in(hidden_knowledge),
+                )
+            )
+    if source == "meeting":
+        conditions.extend(
+            [events.c.source_type == "manual", events.c.event_type == "meeting"]
+        )
+    elif source == "document":
+        conditions.extend(
+            [events.c.source_type == "manual", events.c.event_type != "meeting"]
+        )
+    elif source != "all":
+        conditions.append(events.c.source_type == source)
+    if actor_user_id is not None:
+        conditions.append(events.c.actor_user_id == actor_user_id)
+    start, end = date_bounds(date_from, date_to, time_zone)
+    if start:
+        conditions.append(events.c.occurred_at >= start)
+    if end:
+        conditions.append(events.c.occurred_at < end)
+    return events, conditions
+
+
+@router.get("/summary")
+async def research_activity_summary(
     current_user: CurrentUser,
     db_session: DBSession,
     scope_type: ResearchLogScope,
     lab_id: UUID | None = None,
     project_id: UUID | None = None,
     source: Literal[
-        "all", "manual", "record", "protocol", "knowledge", "research"
+        "all",
+        "manual",
+        "meeting",
+        "document",
+        "record",
+        "protocol",
+        "knowledge",
+        "research",
     ] = "all",
     actor_user_id: UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    time_zone: str = "UTC",
 ):
     scope = await _scope_context(
         db_session,
@@ -663,40 +884,75 @@ async def get_research_log_timeline(
         project_id=project_id,
         capability="log.read",
     )
-    event_union = union_all(*_event_selects(scope)).subquery("research_log_events")
-    conditions = []
-    if source in {"all", "research"} and scope.scope_type != ResearchLogScope.PERSONAL:
-        from app.services.research_runtime import has_research_capability
+    events, conditions = await activity_query(
+        db_session,
+        current_user,
+        scope,
+        source,
+        actor_user_id,
+        date_from,
+        date_to,
+        time_zone,
+    )
+    day = cast(func.timezone(time_zone, events.c.occurred_at), Date)
+    rows = (
+        await db_session.execute(
+            select(day.label("day"), func.count().label("count"))
+            .select_from(events)
+            .where(*conditions)
+            .group_by(day)
+            .order_by(day)
+        )
+    ).all()
+    return {
+        "summary": [{"date": row.day.isoformat(), "count": row.count} for row in rows],
+        "total_count": sum(row.count for row in rows),
+        "time_zone": time_zone,
+    }
 
-        projects = (await db_session.scalars(select(Project).where(
-            Project.id == scope.project_id if scope.project_id else Project.lab_id == scope.lab_id,
-            Project.deleted_at.is_(None),
-        ))).all()
-        readable = [project.id for project in projects if await has_research_capability(
-            db_session, user=current_user, project=project, capability="research.read"
-        )]
-        conditions.append(or_(event_union.c.source_type != "research", event_union.c.project_id.in_(readable)))
-    if source in {"all", "knowledge"}:
-        hidden_knowledge = await _hidden_analysis_knowledge_ids(
-            db_session, current_user, scope
-        )
-        if hidden_knowledge:
-            conditions.append(or_(
-                event_union.c.source_type != "knowledge",
-                event_union.c.source_id.not_in(hidden_knowledge),
-            ))
-    if source != "all":
-        conditions.append(event_union.c.source_type == source)
-    if actor_user_id is not None:
-        conditions.append(event_union.c.actor_user_id == actor_user_id)
-    if date_from is not None:
-        conditions.append(
-            event_union.c.occurred_at >= datetime.combine(date_from, time.min, UTC)
-        )
-    if date_to is not None:
-        conditions.append(
-            event_union.c.occurred_at <= datetime.combine(date_to, time.max, UTC)
-        )
+
+@router.get("/timeline")
+async def get_research_log_timeline(
+    current_user: CurrentUser,
+    db_session: DBSession,
+    scope_type: ResearchLogScope,
+    lab_id: UUID | None = None,
+    project_id: UUID | None = None,
+    source: Literal[
+        "all",
+        "manual",
+        "meeting",
+        "document",
+        "record",
+        "protocol",
+        "knowledge",
+        "research",
+    ] = "all",
+    actor_user_id: UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    time_zone: str = "UTC",
+):
+    scope = await _scope_context(
+        db_session,
+        current_user,
+        scope_type=scope_type,
+        lab_id=lab_id,
+        project_id=project_id,
+        capability="log.read",
+    )
+    event_union, conditions = await activity_query(
+        db_session,
+        current_user,
+        scope,
+        source,
+        actor_user_id,
+        date_from,
+        date_to,
+        time_zone,
+    )
     total_count = await db_session.scalar(
         select(func.count()).select_from(event_union).where(*conditions)
     )
@@ -705,7 +961,9 @@ async def get_research_log_timeline(
             await db_session.execute(
                 select(event_union)
                 .where(*conditions)
-                .order_by(event_union.c.occurred_at.desc(), event_union.c.source_id.desc())
+                .order_by(
+                    event_union.c.occurred_at.desc(), event_union.c.source_id.desc()
+                )
                 .offset((page - 1) * page_size)
                 .limit(page_size)
             )

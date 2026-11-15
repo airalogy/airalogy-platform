@@ -33,9 +33,13 @@
         </header>
 
         <template v-if="item.entry_type === 'manual' && item.document">
-          <p class="aira-type-body aira-text-secondary mb-3 mt-3 line-clamp-3 whitespace-pre-wrap">{{ item.body }}</p>
-          <router-link :to="{ name: 'research-document-detail', params: { documentId: item.document.id } }">
-            <n-button type="primary" quaternary>{{ $t('page.researchDocuments.open') }}</n-button>
+          <p class="aira-type-body aira-text-secondary line-clamp-3 mb-3 mt-3 whitespace-pre-wrap">
+            {{ item.body }}
+          </p>
+          <router-link :to="item.meeting_id && item.project ? { name: 'project-meetings', params: { labUid: item.lab?.uid, projectUid: item.project.uid }, query: { meeting: item.meeting_id } } : { name: 'research-document-detail', params: { documentId: item.document.id } }">
+            <n-button type="primary" quaternary>
+              {{ $t('page.researchDocuments.open') }}
+            </n-button>
           </router-link>
         </template>
         <template v-else-if="item.entry_type === 'manual'">
@@ -59,7 +63,9 @@
           </div>
           <footer v-if="item.can_edit" class="mt-4 flex justify-end">
             <n-button quaternary size="small" @click="emit('edit', item)">
-              <template #icon><n-icon><icon-tabler-edit /></n-icon></template>
+              <template #icon>
+                <n-icon><icon-tabler-edit /></n-icon>
+              </template>
               {{ $t("common.edit") }}
             </n-button>
           </footer>
@@ -71,7 +77,9 @@
           <footer v-if="assetRoute(item)" class="mt-4 flex justify-end">
             <router-link :to="assetRoute(item)!">
               <n-button type="primary" quaternary size="small">
-                <template #icon><n-icon><icon-tabler-external-link /></n-icon></template>
+                <template #icon>
+                  <n-icon><icon-tabler-external-link /></n-icon>
+                </template>
                 {{ $t("page.recordDiary.viewAsset") }}
               </n-button>
             </router-link>

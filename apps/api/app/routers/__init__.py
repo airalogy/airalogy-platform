@@ -69,6 +69,7 @@ from .pinned_items import router as pinned_items_router
 from .project_analyses import router as project_analyses_router
 from .project_groups import router as project_groups_router
 from .project_work import router as project_work_router
+from .meetings import router as meetings_router
 from .projects import router as projects_router
 from .protocol_folders import router as protocol_folders_router
 from .protocol_ratings import router as protocol_ratings_router
@@ -288,7 +289,15 @@ async def logger_middleware(request: Request, call_next):
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     if is_external_path(request.url.path):
         logger.error("External request database failure: %s", type(exc).__name__)
-        return ORJSONResponse(status_code=500, content={"detail": {"code": "internal_server_error", "request_id": request.state.request_id}})
+        return ORJSONResponse(
+            status_code=500,
+            content={
+                "detail": {
+                    "code": "internal_server_error",
+                    "request_id": request.state.request_id,
+                }
+            },
+        )
     logger.exception("Database request failed")
     request_id = getattr(request.state, "request_id", None) or request_id_var.get()
     detail: dict[str, object] = {
@@ -339,6 +348,7 @@ app.include_router(labs_router)
 app.include_router(organizations_router)
 app.include_router(projects_router)
 app.include_router(project_work_router)
+app.include_router(meetings_router)
 app.include_router(groups_router)
 app.include_router(protocols_router)
 app.include_router(protocol_ratings_router)

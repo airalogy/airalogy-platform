@@ -2,7 +2,7 @@ import { request } from "../request"
 
 export type ResearchLogScope = "personal" | "lab" | "project"
 export type ResearchLogKind = "progress" | "meeting" | "reflection" | "blocker" | "milestone"
-export type ResearchLogSource = "all" | "manual" | "record" | "protocol" | "knowledge" | "research"
+export type ResearchLogSource = "all" | "meeting" | "document" | "manual" | "record" | "protocol" | "knowledge" | "research"
 
 export interface ResearchLogScopeParams {
   scope_type: ResearchLogScope
@@ -31,6 +31,9 @@ export interface ResearchLogAssetLink {
 }
 
 export interface ResearchLogManualEntry {
+  meeting_id?: string | null
+  project?: ResearchLogContext | null
+  lab?: ResearchLogContext | null
   document?: { id: string, state: "draft" | "submitted", format: string } | null
   id: string
   entry_type: "manual"
@@ -106,6 +109,7 @@ export function fetchResearchLogTimeline(params: ResearchLogScopeParams & {
   date_to?: string
   page?: number
   page_size?: number
+  time_zone?: string
 }) {
   return getData<{
     items: ResearchLogTimelineItem[]
@@ -151,4 +155,8 @@ export function fetchResearchLogRevisions(entryId: string) {
     url: `/research-log/entries/${entryId}/revisions`,
     metadata: { showError: false },
   })
+}
+
+export function fetchResearchActivitySummary(params: ResearchLogScopeParams & { source?: ResearchLogSource, date_from?: string, date_to?: string, time_zone: string, actor_user_id?: string }) {
+  return getData<{ summary: { date: string, count: number }[], total_count: number, time_zone: string }>({ url: "/research-log/summary", params, metadata: { showError: false } })
 }

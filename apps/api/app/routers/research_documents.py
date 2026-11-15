@@ -50,6 +50,12 @@ from app.routers.research_materials import (
     persist_material,
 )
 from app.services.document_browse import date_bounds
+from app.services.browser_paths import project_browser_path
+from app.services.meetings import (
+    authorize_meeting,
+    meeting_read_condition,
+    require_shareable_meeting_source,
+)
 from app.services.knowledge import (
     assert_research_file_upload_quota,
     authorize_research_file,
@@ -119,6 +125,12 @@ async def _context(db, user, document_id, *, write=False):
         project_id=entry.project_id,
         capability="log.write" if write else "log.read",
     )
+    meeting = await authorize_meeting(db, user, entry, "edit" if write else "read")
+    if write and meeting is not None:
+        raise HTTPException(
+            409,
+            "Use the meeting page to preserve attendance, audience and meeting history",
+        )
     if write and entry.created_by_user_id != user.id:
         raise HTTPException(403, "Only the author can revise this document")
     return entry, doc
@@ -189,7 +201,10 @@ async def _files(db, user, entry, ids):
 
 async def _payload(db, user, entry, doc):
     can_edit = False
-    if entry.created_by_user_id == user.id:
+    from app.models.meeting import Meeting
+
+    meeting = await db.get(Meeting, entry.id)
+    if entry.created_by_user_id == user.id or meeting:
         try:
             await _scope_context(
                 db,
@@ -199,6 +214,7 @@ async def _payload(db, user, entry, doc):
                 project_id=entry.project_id,
                 capability="log.write",
             )
+            await authorize_meeting(db, user, entry, "edit")
             can_edit = True
         except HTTPException:
             pass
@@ -217,13 +233,17 @@ async def _payload(db, user, entry, doc):
     )
     return {
         "scope_name": scope_name,
+        "meeting_id": str(entry.id) if meeting else None,
+        "meeting_url": f"{project_browser_path(lab.uid, project.uid)}/meetings?meeting={entry.id}"
+        if meeting and lab and project
+        else None,
         **_content(entry, doc),
         "id": str(entry.id),
         "revision": entry.revision,
         "state": doc.state,
         "format": DOCUMENT_FORMAT,
         "origin": doc.origin,
-        "can_edit": can_edit,
+        "can_edit": can_edit and not meeting,
         "scope_type": entry.scope_type,
         "lab_id": entry.lab_id,
         "project_id": entry.project_id,
@@ -252,12 +272,14 @@ def _save_revision(db, entry, doc, user, summary):
     )
 
 
-def browse_query(scope, q, kind, date_from, date_to, time_zone):
+def browse_query(scope, q, kind, date_from, date_to, time_zone, user_id=None):
     start, end = date_bounds(date_from, date_to, time_zone)
     filters = [
         *_scope_conditions(ResearchLogEntry, scope),
         ResearchLogEntry.archived_at.is_(None),
     ]
+    if user_id is not None:
+        filters.append(meeting_read_condition(user_id))
     if q:
         filters.append(
             or_(
@@ -303,7 +325,13 @@ async def document_calendar(
         raise HTTPException(422, "Month is outside the supported range")
     next_month = date(first.year + first.month // 12, first.month % 12 + 1, 1)
     source = browse_query(
-        scope, q, kind, first, next_month - timedelta(days=1), time_zone
+        scope,
+        q,
+        kind,
+        first,
+        next_month - timedelta(days=1),
+        time_zone,
+        current_user.id,
     ).subquery()
     day = cast(func.timezone(time_zone, source.c.occurred_at), Date)
     rows = (
@@ -340,7 +368,7 @@ async def list_documents(
         project_id=project_id,
         capability="log.read",
     )
-    query = browse_query(scope, q, kind, date_from, date_to, time_zone)
+    query = browse_query(scope, q, kind, date_from, date_to, time_zone, current_user.id)
     total = await db_session.scalar(select(func.count()).select_from(query.subquery()))
     rows = (
         await db_session.execute(
@@ -541,6 +569,7 @@ async def create_document(
                 403,
                 "Copy within the same scope; cross-scope publication requires a separate review",
             )
+        await require_shareable_meeting_source(db_session, source)
         body = source.body
         origin = {
             "kind": "document",
@@ -802,6 +831,13 @@ async def update_document(
     db_session: DBSession,
 ):
     entry, doc = await _context(db_session, current_user, document_id, write=True)
+    from app.models.meeting import Meeting
+
+    if await db_session.get(Meeting, document_id):
+        if params.kind != "meeting" or (
+            params.occurred_at and params.occurred_at != entry.occurred_at
+        ):
+            raise HTTPException(422, "Change meeting type/time in the meeting page")
     _assert_revision(entry, params.expected_revision)
     preview = await asyncio.to_thread(_update_preview, entry, doc, params)
     if (
@@ -849,6 +885,13 @@ async def restore_document(
     db_session: DBSession,
 ):
     entry, doc = await _context(db_session, current_user, document_id, write=True)
+    from app.models.meeting import Meeting
+
+    if await db_session.get(Meeting, document_id):
+        raise HTTPException(
+            422,
+            "Review historical minutes and save the desired text from the meeting page; audience and attendance are not restored implicitly",
+        )
     _assert_revision(entry, params.expected_revision)
     old = await db_session.scalar(
         select(ResearchLogRevision).where(
@@ -983,6 +1026,7 @@ async def derive_document(
     db_session: DBSession,
 ):
     entry, doc = await _context(db_session, current_user, document_id, write=True)
+    await require_shareable_meeting_source(db_session, entry)
     _assert_revision(entry, params.expected_revision)
     scope = None
     if params.kind == "knowledge":

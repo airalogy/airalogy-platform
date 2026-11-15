@@ -32,9 +32,16 @@ class ProjectVisitRequest(BaseModel):
     kind: Literal[
         "project", "protocol", "recording", "record", "document", "editor"
     ] = "project"
-    section: Literal["overview", "protocols", "documents", "materials", "knowledge", "work"] = (
-        "overview"
-    )
+    section: Literal[
+        "overview",
+        "protocols",
+        "documents",
+        "materials",
+        "knowledge",
+        "work",
+        "meetings",
+        "records",
+    ] = "overview"
     project_id: UUID | None = None
     lab_uid: str | None = Field(default=None, max_length=128)
     project_uid: str | None = Field(default=None, max_length=128)
@@ -99,7 +106,7 @@ async def resolve_target(db, user, request):
             },
         )
     elif request.kind == "project":
-        if request.section in {"documents", "materials"}:
+        if request.section in {"documents", "materials", "meetings", "records"}:
             await _scope_context(
                 db,
                 user,

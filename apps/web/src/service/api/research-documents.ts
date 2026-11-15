@@ -34,6 +34,8 @@ export interface Material {
   unavailable?: boolean
 }
 export interface ResearchDocument extends DocumentContent, ResearchLogScopeParams {
+  meeting_id?: string | null
+  meeting_url?: string | null
   id: string
   revision: number
   state: "draft" | "submitted"
