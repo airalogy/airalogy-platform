@@ -29,8 +29,9 @@ test("researcher imports a private Paper, writes Knowledge, and reopens the save
   await expect(page.getByRole("dialog")).toHaveCount(0)
   await expect(page.getByRole("article").getByRole("heading", { name: title, exact: true })).toBeVisible()
   await page.reload()
+  await expect(page.getByRole("button", { name: "New Knowledge", exact: true })).toBeEnabled()
   await page.getByText("Knowledge Notes", { exact: true }).click()
-  await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible()
+  await expect(page.getByRole("article").getByRole("heading", { name: title, exact: true })).toBeVisible()
   await expect(page.getByText("Synthetic test note with uncertainty preserved; no scientific finding is asserted.", { exact: true })).toBeVisible()
 })
 
@@ -188,11 +189,23 @@ test("tablet workbench leads and Record draft has one reliable save entry", asyn
 })
 
 test("opening an empty Record form does not invent outstanding work", async ({ page }) => {
+  await page.goto("/home")
+  const attention = page.getByTestId("home-attention-panel")
+  await expect(attention).toBeVisible()
+  await expect(attention.locator(".n-skeleton")).toHaveCount(0)
+  await expect(attention.getByRole("alert")).toHaveCount(0)
+  // Other journeys may have assigned real synthetic work to this account.
+  // Opening an empty form must preserve that baseline, not empty the workbench.
+  const existingWork = await attention.locator(".workbench-task").allTextContents()
   await page.goto("/labs/dev_lab/projects/quickstart/protocols/schema_governance_e2e/add")
   await expect(page.getByTestId("record-save-draft")).toBeVisible()
-  await page.getByRole("banner").getByRole("link").first().click()
+  await expect(page.locator(".record-inline-content")).toContainText("Current sample record.")
+  await page.getByRole("navigation", { name: "Workspace navigation" }).getByRole("link", { name: "Home", exact: true }).click()
   await expect(page.getByText("Quick links", { exact: true })).toBeVisible()
-  await expect(page.getByTestId("workbench-clear")).toBeVisible()
+  await expect(attention.locator(".n-skeleton")).toHaveCount(0)
+  await expect(attention.getByRole("alert")).toHaveCount(0)
+  await expect(attention.locator(".workbench-task")).toHaveText(existingWork)
+  await expect(page.getByTestId("workbench-clear")).toHaveCount(existingWork.length ? 0 : 1)
   await expect(page.getByTestId("home-project-card").getByText("Unfinished Record", { exact: false })).toHaveCount(0)
 })
 

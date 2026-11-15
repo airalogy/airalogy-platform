@@ -47,7 +47,7 @@ test("research navigation supplies only a view hint, consumed initially and on r
   const knowledge = readFileSync(new URL("../src/views/knowledge/index.vue", import.meta.url), "utf8")
   const panel = readFileSync(new URL("../src/views/research/components/research-assets-panel.vue", import.meta.url), "utf8")
   assert.match(knowledge, /const activeView = ref\(knowledgeViewFromQuery\(route\.query\.view\)\)/)
-  assert.match(knowledge, /watch\(\(\) => route\.fullPath, async \(\) => \{\s+activeView\.value = knowledgeViewFromQuery\(route\.query\.view\)/)
+  assert.match(knowledge, /watch\(\(\) => route\.query\.view, \(\) => \{\s+activeView\.value = knowledgeViewFromQuery\(route\.query\.view\)/)
   assert.match(panel, /function openProjectKnowledge\(\) \{[\s\S]*?query: \{ view: "items" \}/)
   assert.match(knowledge, /\$t\(researchArtifactTypeKey\(source\.source_snapshot\.artifact_type\)\)/)
   assert.match(knowledge, /researchArtifactVersionLabel\(source\.source_snapshot\.artifact_type, source\.source_snapshot\.artifact_version\)/)

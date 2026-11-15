@@ -174,7 +174,17 @@ onBeforeUnmount(() => requestId++)
         :show-button="false"
         class="!w-28"
       /></label>
-      <span class="text-xs text-gray-500">{{ rangeLabel }} · {{ documentTimeZone() }}</span>
+      <div class="flex items-center gap-1 text-xs text-gray-500">
+        <span>{{ rangeLabel }}</span>
+        <n-popover trigger="click" placement="bottom">
+          <template #trigger>
+            <n-button quaternary circle size="tiny" :aria-label="t('page.researchActivity.timeZoneDetails')" data-testid="activity-timezone-info">
+              <template #icon><n-icon :size="15"><icon-tabler-info-circle /></n-icon></template>
+            </n-button>
+          </template>
+          <span data-testid="activity-timezone-details">{{ t('page.researchActivity.timeZoneHint', { timeZone: documentTimeZone() }) }}</span>
+        </n-popover>
+      </div>
     </div>
     <n-alert v-if="error" type="error" role="alert">
       {{ error }}

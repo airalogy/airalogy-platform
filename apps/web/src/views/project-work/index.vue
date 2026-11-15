@@ -19,12 +19,13 @@ const mine = ref(false)
 const appliedQuery = ref("")
 const stateFilter = ref<WorkState | "all" | "active">("all")
 const hasFilters = computed(() => Boolean(appliedQuery.value || mine.value || stateFilter.value !== "all"))
+const showControls = computed(() => total.value > 0 || hasFilters.value)
 const stateOptions = computed(() => [
   { value: "all", label: t("page.projectWork.allStates") },
   { value: "active", label: t("page.projectWork.activeOnly") },
   ...workStates.map(value => ({ value, label: t(`page.projectWork.states.${value}`) })),
 ])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref("")
 const canWrite = ref(false)
 const view = ref("list")
@@ -62,7 +63,7 @@ async function load() {
   const ticket = ++sequence
   const projectId = projectInfo.value?.id
   if (!projectId) {
-    loading.value = false
+    loading.value = true
     return
   }
   loading.value = true
@@ -138,6 +139,7 @@ watch(
   () => {
     page.value = 1
     items.value = []
+    total.value = 0
     canWrite.value = false
     showNew.value = false
     void load()
@@ -158,7 +160,7 @@ onBeforeUnmount(() => sequence++)
       ><h1 class="aira-type-page-title m-0">{{ t("page.projectWork.title") }}</h1
       ><p class="mb-0 mt-1 text-sm text-gray-500">{{ t("page.projectWork.intro") }}</p></div
       >
-      <n-button v-if="canWrite" type="primary" data-testid="work-new" @click="showNew = true"
+      <n-button v-if="canWrite && showControls" type="primary" data-testid="work-new" @click="showNew = true"
       >+ {{ t("page.projectWork.new") }}</n-button
       >
     </header>
@@ -166,6 +168,7 @@ onBeforeUnmount(() => sequence++)
     >{{ error }}<n-button @click="load">{{ t("page.projectWork.reload") }}</n-button></n-alert
     >
     <form
+      v-if="showControls"
       class="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-3"
       @submit.prevent="search"
     >
@@ -202,7 +205,7 @@ onBeforeUnmount(() => sequence++)
         }}</n-radio-button>
       </n-radio-group>
     </form>
-    <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
+    <div v-if="showControls" class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
       <span>{{ t("page.projectWork.count", { count: total }) }}</span>
       <span>{{ t("page.projectWork.inProgressCount", { count: active.length }) }}</span>
       <span>{{
@@ -211,15 +214,17 @@ onBeforeUnmount(() => sequence++)
         })
       }}</span>
     </div>
-    <n-spin :show="loading">
+    <n-spin :show="loading" class="min-h-64">
       <div
         v-if="!items.length && !loading && !error"
-        class="rounded-lg border border-dashed border-gray-300 p-8 text-center"
+        class="work-empty"
+        data-testid="work-empty"
       >
-        <h2 class="text-lg">{{ t(hasFilters ? "page.projectWork.noMatches" : "page.projectWork.empty") }}</h2
-        ><p class="text-gray-500">{{ t(hasFilters ? "page.projectWork.noMatchesHint" : "page.projectWork.emptyHint") }}</p>
+        <div class="work-empty-icon" aria-hidden="true"><n-icon :size="26"><icon-tabler-clipboard-list /></n-icon></div>
+        <h2 class="m-0 text-lg font-semibold">{{ t(hasFilters ? "page.projectWork.noMatches" : "page.projectWork.empty") }}</h2>
+        <p class="mb-6 mt-2 max-w-sm text-sm leading-relaxed text-gray-500">{{ t(hasFilters ? "page.projectWork.noMatchesHint" : canWrite ? "page.projectWork.emptyHint" : "page.projectWork.emptyReadOnlyHint") }}</p>
         <n-button v-if="hasFilters" @click="clearFilters">{{ t("page.projectWork.clearFilters") }}</n-button>
-        <n-button v-else-if="canWrite" type="primary" @click="showNew = true">{{
+        <n-button v-else-if="canWrite" type="primary" data-testid="work-new" @click="showNew = true"><template #icon><n-icon><icon-tabler-plus /></n-icon></template>{{
           t("page.projectWork.new")
         }}</n-button>
       </div>
@@ -344,6 +349,28 @@ onBeforeUnmount(() => sequence++)
 </template>
 
 <style scoped>
+.work-empty {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 40px 24px;
+  background: white;
+  text-align: center;
+}
+.work-empty-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 16px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #6b7280;
+}
 .work-row {
   display: flex;
   width: 100%;

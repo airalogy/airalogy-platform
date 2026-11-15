@@ -5528,6 +5528,7 @@ declare namespace I18n {
         blockedCount: string
         empty: string
         emptyHint: string
+        emptyReadOnlyHint: string
         planHint: string
         noPlan: string
         unplanned: string
@@ -5688,6 +5689,8 @@ declare namespace I18n {
       }
       researchActivity: {
         title: string
+        timeZoneDetails: string
+        timeZoneHint: string
         hint: string
         viewAll: string
         year: string

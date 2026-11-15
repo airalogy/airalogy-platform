@@ -18,6 +18,6 @@ After saving, link existing work or create an action with optional assignee and 
 
 Project Overview displays a recent 90-day heatmap and activity list. Select a day for its detail, or clear it to return to recent activity. Meeting/document/Record/research/Protocol/Knowledge filters apply to both counts and detail. The full activity view provides year selection and pagination.
 
-A meeting is counted once on its actual occurrence date. Editing minutes or attendance does not add activity. The displayed browser timezone is shared by date boundaries and counts; unreadable activity is excluded before aggregation. Counts support recall, not productivity scoring. Existing documents, work, Protocols and Records retain their own save/submission events; ordinary comments and title edits are not work progress.
+A meeting is counted once on its actual occurrence date. Editing minutes or attendance does not add activity. Date boundaries and counts share the browser timezone, available from the information button beside the date range; unreadable activity is excluded before aggregation. Counts support recall, not productivity scoring. Existing documents, work, Protocols and Records retain their own save/submission events; ordinary comments and title edits are not work progress.
 
 Recurring schedules, reminders, real-time text collaboration, transcription and AI summaries remain future work. Ordinary meetings require no Protocol; structured reviews/tests may link existing Protocols and Records.

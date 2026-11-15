@@ -1,11 +1,8 @@
 <template>
-  <div class="knowledge-page py-8">
+  <div class="knowledge-page py-4">
     <header class="knowledge-hero">
       <div class="min-w-0">
-        <div class="aira-type-eyebrow aira-type-eyebrow--accent">
-          {{ $t("page.knowledge.eyebrow") }}
-        </div>
-        <h1 class="aira-type-page-title mb-0 mt-1">
+        <h1 class="aira-type-page-title m-0" data-testid="knowledge-title">
           {{ pageTitle }}
         </h1>
         <p class="aira-type-body aira-text-secondary mb-0 mt-2 max-w-3xl">
@@ -13,23 +10,29 @@
         </p>
       </div>
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <n-button quaternary :loading="loading" @click="() => loadCurrentView()">
+        <n-button quaternary :loading="loading" :disabled="contextsLoading" @click="() => loadCurrentView()">
           <template #icon>
             <n-icon><icon-tabler-refresh /></n-icon>
           </template>
           {{ $t("page.knowledge.refresh") }}
         </n-button>
         <knowledge-editor-modal
+          v-if="contextReady"
           ref="editorRef"
           :scope="scope"
           :scope-label="scopeLabel"
           @saved="handleKnowledgeSaved"
         />
         <import-paper-modal
+          v-if="contextReady"
           :scope="scope"
           :scope-label="scopeLabel"
           @imported="handlePaperImported"
         />
+        <template v-if="!contextReady">
+          <n-button disabled>{{ $t("page.knowledge.newKnowledge") }}</n-button>
+          <n-button type="primary" disabled>{{ $t("page.knowledge.importPaper") }}</n-button>
+        </template>
       </div>
     </header>
 
@@ -44,16 +47,19 @@
         class="min-w-56 flex-1 md:max-w-80"
         :options="scopeOptions"
         :loading="contextsLoading"
+        :disabled="!contextReady"
         :placeholder="$t('page.knowledge.scope')"
         @update:value="handleScopeChange"
       />
       <div v-else class="knowledge-scope-label">
         <n-icon><icon-tabler-folders /></n-icon>
-        <span>{{ scopeLabel }}</span>
+        <span v-if="contextReady">{{ scopeLabel }}</span>
+        <n-skeleton v-else text width="8rem" :sharp="false" />
       </div>
       <n-input
         v-model:value="search"
         clearable
+        :disabled="!contextReady"
         class="min-w-56 flex-[2]"
         :placeholder="$t('page.knowledge.searchPlaceholder')"
         @keyup.enter="() => loadCurrentView()"
@@ -72,10 +78,10 @@
     </n-alert>
 
     <n-tabs v-model:value="activeView" type="line" animated class="mt-6" @update:value="() => loadCurrentView()">
-      <n-tab name="papers">
+      <n-tab name="papers" :disabled="!contextReady">
         {{ $t("page.knowledge.papers") }}
       </n-tab>
-      <n-tab name="items">
+      <n-tab name="items" :disabled="!contextReady">
         {{ $t("page.knowledge.items") }}
       </n-tab>
     </n-tabs>
@@ -107,7 +113,7 @@
               {{ collection.name }}
             </n-tag>
           </div>
-          <n-button size="small" secondary @click="collectionModalVisible = true">
+          <n-button size="small" secondary :disabled="!contextReady" @click="collectionModalVisible = true">
             <template #icon>
               <n-icon><icon-tabler-folder-plus /></n-icon>
             </template>
@@ -149,7 +155,7 @@
             </div>
           </button>
         </div>
-        <n-empty v-else-if="!loading" class="knowledge-empty" :description="$t('page.knowledge.noPapers')">
+        <n-empty v-else-if="contextReady && !loading && !loadError" class="knowledge-empty" :description="$t('page.knowledge.noPapers')">
           <template #extra>
             <import-paper-modal :scope="scope" :scope-label="scopeLabel" @imported="handlePaperImported" />
           </template>
@@ -251,7 +257,7 @@
             </div>
           </article>
         </div>
-        <n-empty v-else-if="!loading" class="knowledge-empty" :description="$t('page.knowledge.noItems')">
+        <n-empty v-else-if="contextReady && !loading && !loadError" class="knowledge-empty" :description="$t('page.knowledge.noItems')">
           <template #extra>
             <n-button type="primary" @click="editorRef?.open()">
               {{ $t("page.knowledge.newKnowledge") }}
@@ -535,8 +541,8 @@ const instanceStore = useInstanceStore()
 const { routerPushByKey } = useRouterPush()
 const editorRef = ref<KnowledgeEditorHandle | null>(null)
 const activeView = ref(knowledgeViewFromQuery(route.query.view))
-const loading = ref(false)
-const contextsLoading = ref(false)
+const loading = ref(true)
+const contextsLoading = ref(true)
 const loadError = ref(false)
 const search = ref("")
 const page = ref(1)
@@ -576,6 +582,11 @@ const protocolDraftItem = ref<KnowledgeItem | null>(null)
 const protocolTargetProjectId = ref("")
 
 const contextLocked = computed(() => route.name === "lab-knowledge" || route.name === "project-knowledge")
+const contextKey = computed(() => `${String(route.name)}:${route.params.labUid || ""}:${route.params.projectUid || ""}`)
+const resolvedContextKey = ref("")
+const contextReady = computed(() => resolvedContextKey.value === contextKey.value && !contextsLoading.value)
+let contextSequence = 0
+let viewSequence = 0
 const availableLabs = computed(() => {
   const values = new Map<string, { id: string, uid: string, name: string }>()
   projects.value.forEach((project) => {
@@ -645,9 +656,9 @@ const scopeLabel = computed(() => {
   return $t("page.knowledge.myKnowledge")
 })
 const pageTitle = computed(() => {
-  if (scope.value.scope_type === "project")
+  if (route.name === "project-knowledge" || (!contextLocked.value && selectedScopeKey.value.startsWith("project:")))
     return $t("page.knowledge.projectKnowledge")
-  if (scope.value.scope_type === "lab")
+  if (route.name === "lab-knowledge" || (!contextLocked.value && selectedScopeKey.value.startsWith("lab:")))
     return $t("page.knowledge.labKnowledge")
   return $t("page.knowledge.myKnowledge")
 })
@@ -692,77 +703,123 @@ const publishTargetLabel = computed(() => {
 })
 
 async function loadContexts() {
+  const ticket = ++contextSequence
+  const key = contextKey.value
+  const name = route.name
+  const { labUid, projectUid } = route.params as Record<string, string>
+  ++viewSequence
   contextsLoading.value = true
+  loading.value = true
+  loadError.value = false
+  resolvedContextKey.value = ""
+  routeProject.value = null
+  routeLab.value = null
+  selectedScopeKey.value = "personal"
+  papers.value = []
+  knowledgeItems.value = []
+  collections.value = []
+  hasNextPage.value = false
+  paperDrawerVisible.value = false
+  collectionModalVisible.value = false
+  publishModalVisible.value = false
+  protocolDraftModalVisible.value = false
   try {
-    if (route.name === "project-knowledge") {
-      const { labUid, projectUid } = route.params as Record<string, string>
-      routeProject.value = await getProjectInfo({ labUid, projectUid })
-      if (!routeProject.value)
+    if (name === "project-knowledge") {
+      const project = await getProjectInfo({ labUid, projectUid })
+      if (ticket !== contextSequence || key !== contextKey.value)
+        return false
+      if (!project)
         throw new Error("Project not found")
-      selectedScopeKey.value = `project:${routeProject.value.id}`
-      return
+      routeProject.value = project
+      selectedScopeKey.value = `project:${project.id}`
     }
-    if (route.name === "lab-knowledge") {
-      const { labUid } = route.params as Record<string, string>
+    else if (name === "lab-knowledge") {
       const response = await getLabInfoByUid(labUid)
+      if (ticket !== contextSequence || key !== contextKey.value)
+        return false
       routeLab.value = response.data?.data || null
       if (!routeLab.value)
         throw new Error("Lab not found")
       selectedScopeKey.value = `lab:${routeLab.value.id}`
-      return
     }
-    const result = await fetchUserProjects(authStore.userInfo.id, {
-      page: 1,
-      pageSize: 100,
-      sortedBy: "updated_at",
-    })
-    projects.value = result?.projects || []
+    else {
+      const result = await fetchUserProjects(authStore.userInfo.id, {
+        page: 1,
+        pageSize: 100,
+        sortedBy: "updated_at",
+      })
+      if (ticket !== contextSequence || key !== contextKey.value)
+        return false
+      projects.value = result?.projects || []
+    }
+    resolvedContextKey.value = key
+    return true
+  }
+  catch {
+    if (ticket === contextSequence) {
+      loadError.value = true
+      loading.value = false
+    }
+    return false
   }
   finally {
-    contextsLoading.value = false
+    if (ticket === contextSequence)
+      contextsLoading.value = false
   }
 }
 
 async function loadCollections() {
-  const result = await fetchCollections(scope.value)
-  collections.value = result.items
+  if (!contextReady.value)
+    return
+  const requestedScope = { ...scope.value }
+  const result = await fetchCollections(requestedScope)
+  if (contextReady.value && JSON.stringify(scope.value) === JSON.stringify(requestedScope))
+    collections.value = result.items
 }
 
 async function loadCurrentView(append = false) {
+  if (!contextReady.value && !(await loadContexts()))
+    return
+  const ticket = ++viewSequence
+  const requestedScope = { ...scope.value }
   loading.value = true
   loadError.value = false
   try {
     if (!append)
       page.value = 1
     if (activeView.value === "papers") {
-      const result = await fetchPapers({
-        ...scope.value,
-        q: search.value.trim(),
-        page: page.value,
-        pageSize,
-      })
+      const [result, groups] = await Promise.all([
+        fetchPapers({ ...requestedScope, q: search.value.trim(), page: page.value, pageSize }),
+        fetchCollections(requestedScope),
+      ])
+      if (ticket !== viewSequence)
+        return
       papers.value = append ? [...papers.value, ...result.items] : result.items
       hasNextPage.value = result.items.length === pageSize
-      await loadCollections()
+      collections.value = groups.items
     }
     else {
       const result = await fetchKnowledgeItems({
-        ...scope.value,
+        ...requestedScope,
         q: search.value.trim(),
         kind: kindFilter.value || undefined,
         state: stateFilter.value || undefined,
         page: page.value,
         pageSize,
       })
+      if (ticket !== viewSequence)
+        return
       knowledgeItems.value = append ? [...knowledgeItems.value, ...result.items] : result.items
       hasNextPage.value = result.items.length === pageSize
     }
   }
   catch {
-    loadError.value = true
+    if (ticket === viewSequence)
+      loadError.value = true
   }
   finally {
-    loading.value = false
+    if (ticket === viewSequence)
+      loading.value = false
   }
 }
 
@@ -914,7 +971,7 @@ function createAiraKnowledgeFromPaper() {
 }
 
 async function saveCollection() {
-  if (!collectionForm.name.trim())
+  if (!contextReady.value || !collectionForm.name.trim())
     return
   collectionSaving.value = true
   try {
@@ -1081,26 +1138,35 @@ function stateType(value: KnowledgeState): TagProps["type"] {
   return "warning"
 }
 
-watch(() => route.fullPath, async () => {
+watch(contextKey, async () => {
+  if (!["knowledge-home", "project-knowledge", "lab-knowledge"].includes(String(route.name)))
+    return
   activeView.value = knowledgeViewFromQuery(route.query.view)
-  routeProject.value = null
-  routeLab.value = null
-  await loadContexts()
-  await loadCurrentView()
+  if (await loadContexts())
+    await loadCurrentView()
+}, { immediate: true })
+
+watch(() => route.query.view, () => {
+  activeView.value = knowledgeViewFromQuery(route.query.view)
+  if (contextReady.value)
+    void loadCurrentView()
 })
 
 onMounted(async () => {
   try {
-    await loadContexts()
     if (contextLocked.value && !projects.value.length && authStore.userInfo.id) {
       const result = await fetchUserProjects(authStore.userInfo.id, { page: 1, pageSize: 100, sortedBy: "updated_at" })
       projects.value = result?.projects || []
     }
-    await loadCurrentView()
   }
   catch {
-    loadError.value = true
+    // Optional publication destinations must not block the current knowledge scope.
   }
+})
+
+onBeforeUnmount(() => {
+  contextSequence++
+  viewSequence++
 })
 </script>
 
@@ -1114,10 +1180,8 @@ onMounted(async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
-  border: 1px solid rgb(209 250 229);
-  border-radius: 1rem;
-  background: linear-gradient(135deg, rgb(16 185 129 / 8%), white 68%);
-  padding: clamp(1.25rem, 3vw, 2rem);
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgb(229 231 235);
 }
 
 .knowledge-toolbar {
