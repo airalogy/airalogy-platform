@@ -396,3 +396,66 @@ def test_meeting_activity_pagination_counts_every_day_without_counting_edits():
                 assert len(timeline["items"]) == 1
 
     asyncio.run(run())
+
+
+@integration
+def test_private_project_reader_sees_meetings_when_protocol_access_is_denied():
+    async def run():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions, public=False)
+            async with sessions() as db:
+                membership = await db.scalar(
+                    select(ProjectUser).where(
+                        ProjectUser.project_id == seed.project.id,
+                        ProjectUser.user_id == seed.analyst.id,
+                    )
+                )
+                membership.role = (
+                    60  # Existing VIEWER can read project logs, not private Protocols.
+                )
+                await db.commit()
+            owner = {"Auth-Token": create_access_token(seed.owner)}
+            viewer = {"Auth-Token": create_access_token(seed.analyst)}
+            async with client(sessions) as http:
+                response = await http.post(
+                    "/meetings",
+                    headers=owner,
+                    json={
+                        "id": str(uuid4()),
+                        "project_id": str(seed.project.id),
+                        "title": "Synthetic readable meeting",
+                        "occurred_at": "2020-01-01T10:00:00Z",
+                    },
+                )
+                assert response.status_code == 200, response.text
+                identity = response.json()["id"]
+                for source, count in [
+                    ("all", 1),
+                    ("meeting", 1),
+                    ("protocol", 0),
+                    ("record", 0),
+                ]:
+                    params = {
+                        "scope_type": "project",
+                        "project_id": str(seed.project.id),
+                        "source": source,
+                    }
+                    summary = await http.get(
+                        "/research-log/summary", headers=viewer, params=params
+                    )
+                    timeline = await http.get(
+                        "/research-log/timeline", headers=viewer, params=params
+                    )
+                    assert summary.status_code == timeline.status_code == 200, (
+                        summary.text,
+                        timeline.text,
+                    )
+                    assert (
+                        summary.json()["total_count"]
+                        == timeline.json()["total_count"]
+                        == count
+                    )
+                    if count:
+                        assert timeline.json()["items"][0]["id"] == identity
+
+    asyncio.run(run())

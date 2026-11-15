@@ -791,7 +791,9 @@ async def activity_query(
                     protocol=protocol,
                 )
             except HTTPException as error:
-                if error.status_code not in {403, 404}:
+                if error.status_code not in {403, 404} and not (
+                    error.status_code == 400 and error.detail == "Permission denied"
+                ):
                     raise
                 hidden_versions.extend(
                     str(x)
