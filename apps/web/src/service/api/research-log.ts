@@ -32,6 +32,7 @@ export interface ResearchLogAssetLink {
 
 export interface ResearchLogManualEntry {
   meeting_id?: string | null
+  meeting_time_precision?: "date" | "datetime" | null
   project?: ResearchLogContext | null
   lab?: ResearchLogContext | null
   document?: { id: string, state: "draft" | "submitted", format: string } | null

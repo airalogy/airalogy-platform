@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Preserve meeting time precision in activity lists: date-only meetings display a date without inventing midnight or a precise relative time.
+
 - Keep authorized meetings visible when the legacy private-Protocol permission check denies access to other project activity.
 
 - Internal additive-schema delivery accepts an exact-candidate migration/recovery plan and requires a separate successful migration receipt.

@@ -182,6 +182,7 @@ def test_meeting_acl_all_entrypoints_timezone_and_atomic_action():
                     and timeline["items"][0]["id"] == identity
                 )
                 assert timeline["items"][0]["meeting_id"] == identity
+                assert timeline["items"][0]["meeting_time_precision"] == "datetime"
                 action = {
                     "id": str(uuid4()),
                     "expected_revision": 1,
@@ -394,6 +395,7 @@ def test_meeting_activity_pagination_counts_every_day_without_counting_edits():
                 assert summary["total_count"] == timeline["total_count"] == 3
                 assert summary["summary"] == [{"date": "2020-01-01", "count": 3}]
                 assert len(timeline["items"]) == 1
+                assert timeline["items"][0]["meeting_time_precision"] == "date"
 
     asyncio.run(run())
 

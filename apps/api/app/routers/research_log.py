@@ -244,6 +244,7 @@ async def _entry_payload(
         "author": _user_payload(author),
         "can_edit": entry.created_by_user_id == current_user.id,
         "meeting_id": str(entry.id) if meeting else None,
+        "meeting_time_precision": meeting.time_precision if meeting else None,
         "project": {"id": str(project.id), "uid": project.uid, "name": project.name}
         if project
         else None,

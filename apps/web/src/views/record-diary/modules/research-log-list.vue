@@ -4,7 +4,7 @@
       v-for="item in items"
       :key="item.id"
       :type="timelineType(item)"
-      :time="formatDate(item.occurred_at, 'date-time')"
+      :time="formatDate(item.occurred_at, dateOnly(item) ? 'date' : 'date-time')"
     >
       <article class="research-log-card">
         <header class="flex flex-wrap items-start justify-between gap-3">
@@ -28,7 +28,7 @@
             <router-link :to="{ name: 'user-profile', params: { username: item.author.username } }" class="record-diary-link">
               {{ item.author.name || item.author.username }}
             </router-link>
-            <n-time :time="new Date(item.occurred_at)" type="relative" />
+            <n-time v-if="!dateOnly(item)" :time="new Date(item.occurred_at)" type="relative" />
           </div>
         </header>
 
@@ -103,6 +103,10 @@ import ResearchLogField from "./research-log-field.vue"
 
 const props = defineProps<{ items: ResearchLogTimelineItem[] }>()
 const emit = defineEmits<{ edit: [entry: ResearchLogManualEntry] }>()
+
+function dateOnly(item: ResearchLogTimelineItem) {
+  return item.entry_type === "manual" && item.meeting_time_precision === "date"
+}
 
 function eventLabel(item: ResearchLogTimelineItem) {
   if (item.entry_type === "manual") {
