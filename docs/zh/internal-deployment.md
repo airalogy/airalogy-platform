@@ -46,3 +46,9 @@ python3 deploy/internal/platform-internal.py ready --bundle /private/ops/candida
 5. 核对版本、SHA、健康状态、原有数据及受影响用户路径。将实际结果写入私有部署记录。测试写入只能在明确隔离的合成测试资产中进行。
 
 保留源码提交的可恢复副本、部署归档和配置的独立加密备份。此流程不负责替代备份系统；仅有同机文件不代表灾备。对外发版时再整理正式版本号、双语说明和完整公开产物。
+
+## 新增数据表的内部更新
+
+经核对的增量数据结构升级可在 `prepare` 时传入 `--migration-plan /private/ops/migration-plan.json`，走独立的迁移验证流程。计划必须写明准确的 `base_commit`、`target_commit`、`source_revision`、`target_revision`、全部 `changed_paths`，以及具体的 `backup_plan`、`migration_validation`、`rollback_policy` 和 `write_impact`。当前只允许新增迁移文件和修改模型注册；修改旧迁移、基础设施仍需另行制定过程。
+
+计划完整保存在部署清单中，并额外要求 `check --name migration` 成功凭据：独立恢复原数据库、核对版本和原数据，使用候选镜像及源码执行升级，再验证数据与权限。缺少此验证不能部署。恢复方案也须核对应用权限：创建了受限会议后，不能退回不认识会议权限的旧应用；不能自动降级已有会议的数据表，也不能用旧备份覆盖更新后的新增资料。

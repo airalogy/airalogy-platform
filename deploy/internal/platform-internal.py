@@ -88,16 +88,62 @@ def fingerprint(commit, paths):
     ).hexdigest()
 
 
-def assert_fast_path(base, target):
+def assert_fast_path(base, target, migration_plan=None):
     if not re.fullmatch(r"[a-f0-9]{40}", base):
         raise ValueError("Base must be a full deployed commit SHA")
     run(["git", "merge-base", "--is-ancestor", base, target], cwd=ROOT)
     changed = output(["git", "diff", "--name-only", base, target, "--", *PROTECTED])
-    if changed:
+    if changed and not migration_plan:
         raise ValueError(
             "Schema/infrastructure changes require a separate migration/recovery plan: "
             + changed
         )
+
+    if not migration_plan:
+        return None
+    plan = json.loads(Path(migration_plan).read_text())
+    if plan.get("base_commit") != base or plan.get("target_commit") != target:
+        raise ValueError(
+            "Migration plan must identify the exact deployed and candidate commits"
+        )
+    for key in (
+        "source_revision",
+        "target_revision",
+        "backup_plan",
+        "migration_validation",
+        "rollback_policy",
+        "write_impact",
+    ):
+        if not isinstance(plan.get(key), str) or not plan[key].strip():
+            raise ValueError("Migration plan is missing " + key)
+    paths = changed.splitlines()
+    if not paths or sorted(plan.get("changed_paths", [])) != sorted(paths):
+        raise ValueError("Migration plan must cover every protected changed path")
+    statuses = output(
+        ["git", "diff", "--name-status", base, target, "--", *PROTECTED]
+    ).splitlines()
+    for line in statuses:
+        status, path = line.split("\t", 1)
+        if path == "apps/api/migrations/model_registry.py" and status == "M":
+            continue
+        if status != "A" or not re.fullmatch(
+            r"apps/api/migrations/versions/[a-zA-Z0-9_]+\.py", path
+        ):
+            raise ValueError(
+                "Reviewed migration delivery only permits added migrations and model registration; infrastructure or old migration edits need a separate procedure"
+            )
+    head = output(
+        ["python3", "scripts/release-migration-head.py", "apps/api/migrations/versions"]
+    )
+    if head != plan["target_revision"]:
+        raise ValueError("Migration plan target revision does not match candidate")
+    return plan
+
+
+def required_checks(manifest):
+    return REQUIRED_CHECKS | (
+        {"migration"} if manifest.get("migration_plan") else set()
+    )
 
 
 def image_info(reference):
@@ -151,7 +197,7 @@ def validate_archive(path):
 
 def prepare(args):
     commit, version = source_identity()
-    assert_fast_path(args.base, commit)
+    migration_plan = assert_fast_path(args.base, commit, args.migration_plan)
     target = Path(args.output).resolve()
     target.mkdir(parents=True, exist_ok=False, mode=0o700)
     architecture = args.platform.split("/")[1]
@@ -270,7 +316,10 @@ def prepare(args):
         "images": images,
         "source_sha256": digest(archive),
         "images_archive_sha256": digest(image_archive),
-        "required_checks": sorted(REQUIRED_CHECKS),
+        "required_checks": sorted(
+            REQUIRED_CHECKS | ({"migration"} if migration_plan else set())
+        ),
+        "migration_plan": migration_plan,
         "github_release": False,
     }
     if source_identity() != (commit, version):
@@ -287,7 +336,7 @@ def load_bundle(directory):
         or manifest.get("github_release") is not False
     ):
         raise ValueError("Unsupported internal manifest")
-    if set(manifest.get("required_checks", [])) != REQUIRED_CHECKS:
+    if set(manifest.get("required_checks", [])) != required_checks(manifest):
         raise ValueError("Required checks cannot be removed")
     if set(manifest["images"]) != set(INPUTS):
         raise ValueError("Incomplete application image set")
@@ -360,7 +409,7 @@ def ready(directory, now=None):
     directory, manifest = load_bundle(directory)
     expected = digest(directory / "manifest.json")
     now = now or datetime.now(timezone.utc)
-    for name in REQUIRED_CHECKS:
+    for name in required_checks(manifest):
         receipt = json.loads((directory / f"check-{name}.json").read_text())
         age = (now - datetime.fromisoformat(receipt["finished_at"])).total_seconds()
         if (
@@ -388,9 +437,15 @@ def main():
     build.add_argument("--web-origin", required=True)
     build.add_argument("--web-title", default="Airalogy Platform")
     build.add_argument("--reuse-executor")
+    build.add_argument(
+        "--migration-plan",
+        help="Reviewed private JSON plan for additive schema changes",
+    )
     validate = commands.add_parser("check")
     validate.add_argument("--bundle", required=True)
-    validate.add_argument("--name", choices=sorted(REQUIRED_CHECKS), required=True)
+    validate.add_argument(
+        "--name", choices=sorted(REQUIRED_CHECKS | {"migration"}), required=True
+    )
     validate.add_argument("command", nargs=argparse.REMAINDER)
     for name in ("verify", "ready"):
         command = commands.add_parser(name)

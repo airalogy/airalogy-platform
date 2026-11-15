@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Internal additive-schema delivery accepts an exact-candidate migration/recovery plan and requires a separate successful migration receipt.
+
 - Add project meeting notes with account/external participants, explicit audiences, comments and shared work actions; unify research activity heatmaps and day detail in Project Overview. Apply meeting permissions across document/history/evidence views and add an additive migration with recovery requirements.
 
 - Add a private single-architecture application delivery workflow with exact-commit/image identities, checked executor reuse and mandatory source, artifact and recovery receipts, independent of GitHub Release publication. Block schema/infrastructure changes from this fast path.

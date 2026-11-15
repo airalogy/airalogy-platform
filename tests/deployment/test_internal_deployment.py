@@ -31,6 +31,68 @@ class InternalDeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "full deployed"):
             internal.assert_fast_path("main", "b" * 40)
 
+    def test_reviewed_migration_requires_exact_plan_and_extra_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            plan = {
+                "base_commit": "a" * 40,
+                "target_commit": "b" * 40,
+                "source_revision": "0086_project_work",
+                "target_revision": "0087_project_meetings",
+                "changed_paths": [
+                    "apps/api/migrations/versions/0087_project_meetings.py"
+                ],
+                "backup_plan": "Independent encrypted backup and restored database",
+                "migration_validation": "Restore source then migrate exact artifacts",
+                "rollback_policy": "Old application allowed only before meeting writes",
+                "write_impact": "Never restore over post-cutover writes",
+            }
+            path = root / "plan.json"
+            path.write_text(json.dumps(plan))
+            outputs = [
+                plan["changed_paths"][0],
+                "A\t" + plan["changed_paths"][0],
+                plan["target_revision"],
+            ]
+            with (
+                patch.object(internal, "run"),
+                patch.object(internal, "output", side_effect=outputs),
+            ):
+                self.assertEqual(
+                    internal.assert_fast_path("a" * 40, "b" * 40, path), plan
+                )
+            plan["target_commit"] = "c" * 40
+            path.write_text(json.dumps(plan))
+            with (
+                patch.object(internal, "run"),
+                patch.object(internal, "output", return_value=outputs[0]),
+            ):
+                with self.assertRaisesRegex(ValueError, "exact deployed"):
+                    internal.assert_fast_path("a" * 40, "b" * 40, path)
+            plan["target_commit"] = "b" * 40
+            path.write_text(json.dumps(plan))
+            with (
+                patch.object(internal, "run"),
+                patch.object(
+                    internal,
+                    "output",
+                    side_effect=[outputs[0], "M\t" + plan["changed_paths"][0]],
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "only permits added"):
+                    internal.assert_fast_path("a" * 40, "b" * 40, path)
+            self.fixture(root)
+            manifest_path = root / "manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["migration_plan"] = plan
+            internal.write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "checks cannot be removed"):
+                internal.load_bundle(root)
+            manifest["required_checks"].append("migration")
+            internal.write_json(manifest_path, manifest)
+            self.assertIn("migration", internal.required_checks(manifest))
+            self.assertEqual(internal.load_bundle(root)[1]["migration_plan"], plan)
+
     def test_reused_executor_cannot_hide_changed_inputs_or_wrong_architecture(self):
         image = {
             "Id": "sha256:" + "c" * 64,
