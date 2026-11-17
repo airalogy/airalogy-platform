@@ -1,5 +1,20 @@
+import type { APIRequestContext } from "@playwright/test"
 import { expect, test } from "@playwright/test"
 import { localDate } from "./meetings-test-date"
+
+// Each writable journey owns its project so saved meetings, activity pages and
+// named-person associations from another run cannot change its expectations.
+async function meetingProject(api: APIRequestContext) {
+  const login = await api.post("/api/signin_by_email", { data: { email: "dev.owner@airalogy.dev", password: "AiralogyDev123!" } })
+  expect(login.ok()).toBeTruthy()
+  const headers = { "Auth-Token": (await login.json()).token }
+  const source = await api.get("/api/projects/by_uid", { headers, params: { lab_uid: "dev_lab", project_uid: "quickstart" } })
+  expect(source.ok()).toBeTruthy()
+  const uid = `meeting_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`
+  const created = await api.post("/api/projects", { headers, data: { lab_id: (await source.json()).lab_id, uid, name: "Synthetic meeting journey", description: "Isolated meeting and activity acceptance", type: 1 } })
+  expect(created.ok(), await created.text()).toBeTruthy()
+  return `/labs/dev_lab/projects/${uid}`
+}
 
 test("project meeting, participants, comments, shared action and activity day survive reload", async ({
   page,
@@ -9,7 +24,7 @@ test("project meeting, participants, comments, shared action and activity day su
   await page.addInitScript(() =>
     localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })),
   )
-  await page.goto("/labs/dev_lab/projects/quickstart/meetings")
+  await page.goto(`${await meetingProject(page.request)}/meetings`)
   await page.getByTestId("meeting-new").click()
   const title = `Synthetic meeting ${Date.now()}`
   await page.getByTestId("meeting-title").locator("input").fill(title)
@@ -150,7 +165,7 @@ test("selected meeting remains hidden from other project members until explicitl
 
 test("meeting and two detailed actions save together, and an administrator links a named person", async ({ page }, testInfo) => {
   await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
-  await page.goto("/labs/dev_lab/projects/quickstart/meetings")
+  await page.goto(`${await meetingProject(page.request)}/meetings`)
   await page.getByTestId("meeting-new").click()
   const title = `Synthetic batch ${Date.now()}`
   await page.getByTestId("meeting-title").locator("input").fill(title)
