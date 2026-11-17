@@ -4,7 +4,7 @@
 
 Airalogy Platform is the self-hosted Community Edition of the Airalogy research data and intelligence platform. It provides the web application, backend API, local object storage integration, Protocol and Record workflows, and AI-assisted scientific collaboration surfaces.
 
-This repository is intended to be the public, self-hosted platform layer. The core Airalogy standards, schemas, and SDK packages live in `airalogy/airalogy`; Masterbrain AI services live in `airalogy/masterbrain`.
+This repository is intended to be the public, self-hosted platform layer. The core Airalogy standards, schemas, and SDK packages live in `airalogy/airalogy`; Masterbrain AI source is maintained in this repository under `packages/masterbrain`, with its TypeScript client and reusable Vue components. Studio is no longer actively maintained; its historical source remains in the original repository. See [AI development](docs/en/masterbrain-development.md).
 
 ## Edition Boundary
 
@@ -13,7 +13,7 @@ Community Edition includes:
 - Web UI for labs, projects, protocols, records, chat, and protocol editing.
 - Backend API based on FastAPI, PostgreSQL, Redis, and S3-compatible object storage.
 - Local-first self-hosting defaults with MinIO.
-- Published `airalogy`, `masterbrain`, and `@airalogy/aimd-*` package integrations.
+- Published `airalogy` / `@airalogy/aimd-*` standards and same-repository Masterbrain AI modules.
 - Basic project and lab permissions.
 
 Enterprise extensions should stay outside this repository unless they are generally useful to the open-source edition. Typical Enterprise-only areas include advanced RBAC/ABAC, SSO/LDAP/AD/SAML, compliance audit logs, air-gapped installers, cluster operations, and enterprise support tooling.
@@ -76,7 +76,7 @@ To run the stack in the background:
 docker compose --env-file .env up -d
 ```
 
-Run `docker compose --env-file .env up --build` again only when Dockerfiles, dependency lock files, or Compose build settings change.
+Rebuild when image inputs change, including AI source when not using the development override.
 
 The default Docker mode does not automatically restart the API after backend code changes. For backend development, use the reload override:
 
@@ -95,6 +95,7 @@ Use the appropriate refresh action for each type of backend change:
 | Change | How to apply it |
 | --- | --- |
 | `app/**/*.py` | The reload override reloads automatically; in the default Docker mode, run `docker compose --env-file .env restart api-server` |
+| `packages/masterbrain/src/` | The reload override mounts and reloads this source; otherwise rebuild `api-server` |
 | `migrations/` | Reload does not apply database migrations; run `docker compose --env-file .env exec api-server alembic upgrade head`, or restart `api-server` |
 | `pyproject.toml` or `uv.lock` | Dependencies are built into the image; run `docker compose --env-file .env up -d --build api-server` |
 | `.env` | Environment variables are read when the container is created; run `docker compose --env-file .env up -d --force-recreate api-server` |
@@ -180,7 +181,7 @@ This Community Edition source tree intentionally excludes:
 - Local TLS certificates and private keys.
 - Generated backups, rollback state, and host-specific deployment artifacts.
 - Local caches, virtual environments, logs, and generated build artifacts.
-- Vendored development checkouts; the backend uses the published `masterbrain` package instead.
+- External mutable development checkouts; Masterbrain uses the source committed with Platform.
 
 Run the public-safety scan before publishing:
 

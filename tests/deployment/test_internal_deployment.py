@@ -185,11 +185,25 @@ class InternalDeploymentTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     internal.ready(root)
 
+    def test_api_reuse_accounts_for_embedded_ai_source(self):
+        self.assertIn("packages/masterbrain", internal.INPUTS["api"])
+        self.assertIn(".dockerignore", internal.INPUTS["api"])
+
+    def test_archive_accepts_embedded_ai_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "source.tar.gz"
+            with tarfile.open(path, "w:gz") as archive:
+                for name in ("packages", "packages/masterbrain", "packages/masterbrain/src/masterbrain/configs.py", ".dockerignore"):
+                    archive.addfile(tarfile.TarInfo(name))
+            internal.validate_archive(path)
+
     def test_archive_rejects_private_files_links_and_traversal(self):
         for name, link in (
             (".private/config", False),
             ("../../escape", False),
             ("apps/api/link", True),
+            ("packages/masterbrain/link", True),
+            ("packages/other/source.py", False),
         ):
             with tempfile.TemporaryDirectory() as temporary:
                 path = Path(temporary) / "source.tar.gz"

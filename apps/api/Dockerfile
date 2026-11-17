@@ -2,14 +2,24 @@ FROM python:3.13 AS builder
 
 RUN pip install --no-cache-dir uv==0.12.4
 
-WORKDIR /builder
+WORKDIR /builder/apps/api
 
 # Install backend dependencies from the locked uv dependency graph.
-COPY pyproject.toml uv.lock README.md ./
+COPY apps/api/pyproject.toml apps/api/uv.lock apps/api/README.md ./
+COPY packages/masterbrain/pyproject.toml packages/masterbrain/README.md packages/masterbrain/LICENSE /builder/packages/masterbrain/
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
-RUN uv sync --frozen --no-dev --no-install-project
+# Keep locked third-party installation cached across AI source edits.
+ARG UV_CONCURRENT_DOWNLOADS=8
+RUN --mount=type=cache,id=airalogy-api-uv,target=/root/.cache/uv \
+    UV_LINK_MODE=copy UV_HTTP_TIMEOUT=300 \
+    uv sync --frozen --no-dev --no-install-project --no-install-package masterbrain --no-editable
+
+COPY packages/masterbrain/src /builder/packages/masterbrain/src
+RUN --mount=type=cache,id=airalogy-api-uv,target=/root/.cache/uv \
+    UV_LINK_MODE=copy UV_HTTP_TIMEOUT=300 \
+    uv sync --frozen --no-dev --no-install-project --no-editable
 
 
 # run stage
@@ -46,7 +56,7 @@ WORKDIR /home/deploy/app
 
 RUN mkdir -p log protocols
 
-COPY --chown=deploy:deploy . .
+COPY --chown=deploy:deploy apps/api/ .
 
 RUN printf '{"version":"%s","tag":"%s","commit":"%s","build_time":"%s","dirty":%s}\n' \
     "$PLATFORM_VERSION" "$GIT_TAG" "$GIT_COMMIT" "$BUILD_TIME" "$BUILD_DIRTY" \

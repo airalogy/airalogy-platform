@@ -1,0 +1,338 @@
+"""Unit tests for code edit logic."""
+
+from pathlib import Path
+
+import pytest
+
+from masterbrain.endpoints.code_edit.logic import (
+    SYSTEM_PROMPT,
+    OpenCodeRunResult,
+    ProcessLogBuffer,
+    _record_opencode_usage,
+    _wait_for_server,
+    _workspace_namespace,
+    _sync_workspace,
+    build_code_edit_prompt,
+    compute_workspace_changes,
+    generate_code_edit_result,
+)
+from masterbrain.endpoints.code_edit.types import (
+    ChatHistoryMessage,
+    CodeEditInput,
+    EditorSelection,
+    SupportedModels,
+    WorkspaceFile,
+)
+from masterbrain.usage import InMemoryUsageSink, bind_usage_sinks
+
+
+def test_system_prompt_forbids_validation_only_assigners():
+    assert "Every assigner must declare at least one assigned field" in SYSTEM_PROMPT
+    assert "Never create a validation-only assigner" in SYSTEM_PROMPT
+
+
+class FakeRuntime:
+    """Test runtime that edits files directly in the temp workspace."""
+
+    async def run(self, workspace_dir: Path, **_: object) -> OpenCodeRunResult:
+        protocol_path = workspace_dir / "protocol.aimd"
+        protocol_path.write_text(
+            "# Protocol\n\n{{step|sample,1}} Collect sample twice.\n",
+            encoding="utf-8",
+        )
+        helper_path = workspace_dir / "helper.py"
+        helper_path.write_text(
+            "def repeat(count: int) -> int:\n    return count * 2\n",
+            encoding="utf-8",
+        )
+        return OpenCodeRunResult(
+            message="Updated the protocol step and added a helper.",
+            execution_log=[
+                "Created OpenCode session session-123.",
+                "Submitted edit request to dashscope/qwen3.5-flash.",
+            ],
+        )
+
+
+class FakeNoChangeRuntime:
+    """Test runtime that completes successfully without editing files."""
+
+    async def run(self, workspace_dir: Path, **_: object) -> OpenCodeRunResult:
+        assert (workspace_dir / "protocol.aimd").exists()
+        return OpenCodeRunResult(
+            message="Reviewed the file and no change was necessary.",
+            execution_log=["OpenCode returned an answer without file edits."],
+        )
+
+
+@pytest.mark.asyncio
+async def test_wait_for_local_server_ignores_environment_proxy(monkeypatch):
+    client_options: dict[str, object] = {}
+
+    class SuccessfulResponse:
+        is_success = True
+
+    class LocalClient:
+        def __init__(self, **options: object) -> None:
+            client_options.update(options)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+        async def get(self, _: str):
+            return SuccessfulResponse()
+
+    monkeypatch.setattr(
+        "masterbrain.endpoints.code_edit.logic.httpx.AsyncClient",
+        LocalClient,
+    )
+
+    class RunningProcess:
+        returncode = None
+
+    await _wait_for_server(
+        41234,
+        RunningProcess(),  # type: ignore[arg-type]
+        ProcessLogBuffer(),
+    )
+
+    assert client_options["trust_env"] is False
+
+
+def test_build_code_edit_prompt_contains_editor_context():
+    code_edit_input = CodeEditInput(
+        model=SupportedModels(name="qwen3.5-flash", enable_thinking=False),
+        prompt="Refine the selected step.",
+        files=[
+            WorkspaceFile(
+                path="protocol.aimd",
+                content="# Protocol",
+                type="aimd",
+            )
+        ],
+        active_file_path="protocol.aimd",
+        selection=EditorSelection(
+            text="{{step|sample,1}} Collect sample once.",
+            start_offset=10,
+            end_offset=48,
+        ),
+        chat_history=[
+            ChatHistoryMessage(role="user", content="Please improve the sampling step.")
+        ],
+    )
+
+    prompt = build_code_edit_prompt(code_edit_input)
+
+    assert "Active file: protocol.aimd" in prompt
+    assert "Workspace file count: 1" in prompt
+    assert "{{step|sample,1}} Collect sample once." in prompt
+    assert "Current user request:" in prompt
+
+
+def test_compute_workspace_changes_reports_create_modify_delete():
+    before = {
+        "protocol.aimd": "# old",
+        "model.py": "print('old')\n",
+    }
+    after = {
+        "protocol.aimd": "# new",
+        "helper.py": "print('new helper')\n",
+    }
+
+    changed_files, warnings = compute_workspace_changes(before, after)
+
+    assert warnings == [
+        "Ignored unsupported file change outside the current Protocol editor scope: helper.py"
+    ]
+    assert [change.path for change in changed_files] == [
+        "model.py",
+        "protocol.aimd",
+    ]
+    assert [change.status for change in changed_files] == [
+        "deleted",
+        "modified",
+    ]
+    assert changed_files[0].before_hash is not None
+    assert changed_files[0].after_hash is None
+    assert changed_files[1].before_hash is not None
+    assert changed_files[1].after_hash is not None
+    assert changed_files[1].before_hash != changed_files[1].after_hash
+
+
+def test_sync_workspace_removes_stale_files(tmp_path: Path):
+    stale_path = tmp_path / "helper.py"
+    stale_path.write_text("print('stale')\n", encoding="utf-8")
+
+    code_edit_input = CodeEditInput(
+        prompt="Explain the protocol.",
+        files=[
+            WorkspaceFile(
+                path="protocol.aimd",
+                content="# Protocol",
+                type="aimd",
+            )
+        ],
+    )
+
+    before_state = _sync_workspace(tmp_path, code_edit_input)
+
+    assert before_state == {"protocol.aimd": "# Protocol"}
+    assert not stale_path.exists()
+    assert (tmp_path / "protocol.aimd").read_text(encoding="utf-8") == "# Protocol"
+
+
+def test_workspace_namespace_uses_user_prefix_without_editor_suffix():
+    assert (
+        _workspace_namespace("user:user-123:editor:chat-abc")
+        == "user:user-123"
+    )
+
+
+def test_workspace_namespace_hashes_untrusted_direct_ids():
+    namespace = _workspace_namespace("direct-editor-workspace")
+
+    assert namespace.startswith("workspace:")
+    assert "direct-editor-workspace" not in namespace
+
+
+@pytest.mark.asyncio
+async def test_generate_code_edit_result_uses_runtime_and_collects_changes():
+    code_edit_input = CodeEditInput(
+        model=SupportedModels(name="qwen3.5-flash", enable_thinking=True),
+        prompt="Update the workspace.",
+        files=[
+            WorkspaceFile(
+                path="protocol.aimd",
+                content="# Protocol\n\n{{step|sample,1}} Collect sample once.\n",
+                type="aimd",
+            )
+        ],
+    )
+
+    result = await generate_code_edit_result(code_edit_input, runtime=FakeRuntime())
+
+    assert result.runtime == "opencode"
+    assert "Updated the protocol step" in result.message
+    assert [change.path for change in result.changed_files] == [
+        "protocol.aimd",
+    ]
+    assert result.edit_status == "changed"
+    assert result.contract_version == "1"
+    assert result.outcome == "changed"
+    assert result.change_set_id is not None
+    assert result.risk.level == "warning"
+    assert result.risk.recommended_action == "review"
+    assert any("enable_thinking" in warning for warning in result.warnings)
+    assert any("helper.py" in warning for warning in result.warnings)
+    assert any("Created OpenCode session" in line for line in result.execution_log)
+
+
+@pytest.mark.asyncio
+async def test_generate_code_edit_result_marks_no_changes():
+    code_edit_input = CodeEditInput(
+        model=SupportedModels(name="qwen3.5-flash", enable_thinking=False),
+        prompt="Explain whether the protocol needs edits.",
+        files=[
+            WorkspaceFile(
+                path="protocol.aimd",
+                content="# Protocol\n\n{{step|sample,1}} Collect sample once.\n",
+                type="aimd",
+            )
+        ],
+    )
+
+    result = await generate_code_edit_result(
+        code_edit_input,
+        runtime=FakeNoChangeRuntime(),
+    )
+
+    assert result.edit_status == "no_changes"
+    assert result.outcome == "answer"
+    assert result.change_set_id is None
+    assert result.risk.level == "safe"
+    assert result.risk.recommended_action == "auto_apply"
+    assert result.changed_files == []
+    assert "no change was necessary" in result.message
+    assert any("no supported workspace files changed" in line for line in result.execution_log)
+
+
+@pytest.mark.asyncio
+async def test_opencode_messages_record_each_provider_call():
+    messages = [
+        {"info": {"role": "user", "id": "user-1"}, "parts": []},
+        {
+            "info": {
+                "role": "assistant",
+                "id": "assistant-1",
+                "providerID": "dashscope",
+                "modelID": "qwen3.5-flash-2026-07-01",
+                "cost": 0.003,
+                "tokens": {
+                    "input": 1200,
+                    "output": 300,
+                    "reasoning": 100,
+                    "cache": {"read": 800, "write": 20},
+                },
+            },
+            "parts": [],
+        },
+        {
+            "info": {
+                "role": "assistant",
+                "id": "assistant-3",
+                "providerID": "dashscope",
+                "modelID": "qwen3.5-flash-2026-07-01",
+                "cost": 0.0005,
+                "tokens": {
+                    "input": 100,
+                    "output": 0,
+                    "reasoning": 0,
+                    "cache": {"read": 0, "write": 0},
+                },
+            },
+            "error": {"name": "ProviderError", "message": "rate limited"},
+            "parts": [],
+        },
+        {
+            "info": {
+                "role": "assistant",
+                "id": "assistant-2",
+                "providerID": "dashscope",
+                "modelID": "qwen3.5-flash-2026-07-01",
+                "cost": 0.001,
+                "tokens": {
+                    "input": 400,
+                    "output": 50,
+                    "reasoning": 10,
+                    "cache": {"read": 300, "write": 0},
+                },
+            },
+            "parts": [],
+        },
+    ]
+    sink = InMemoryUsageSink()
+
+    with bind_usage_sinks(sink):
+        await _record_opencode_usage(
+            messages,
+            requested_provider="dashscope",
+            requested_model="qwen3.5-flash",
+            session_id="session-1",
+        )
+
+    assert len(sink.events) == 3
+    first = sink.events[0]
+    assert first.provider_request_id == "assistant-1"
+    assert first.usage.provider == "qwen"
+    assert first.usage.requested_model == "qwen3.5-flash"
+    assert first.usage.cached_input_tokens == 800
+    assert first.usage.cache_creation_input_tokens == 20
+    assert first.usage.reasoning_tokens == 100
+    assert str(first.usage.provider_cost) == "0.003"
+    assert first.usage.provider_cost_currency is None
+    assert first.usage.provider_cost_source == "opencode"
+    assert sink.events[1].status == "failed"
+    assert sink.events[1].error_type == "ProviderError"

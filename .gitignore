@@ -107,7 +107,14 @@ tests/e2e/.state/
 out.txt
 aimd-syntax/
 
-masterbrain
+# Historical root-only Masterbrain checkout (source now lives in packages/)
+/masterbrain/
 
 # Standalone official AIMD preview build
 apps/web/dist-agent-preview/
+
+# Local AI tooling and model runs
+packages/masterbrain/vendor/
+packages/masterbrain/local-file/
+packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/logs/
+*.egg-info/

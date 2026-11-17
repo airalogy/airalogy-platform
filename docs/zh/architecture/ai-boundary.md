@@ -1,12 +1,8 @@
 # Platform 与 Masterbrain 的 AI 边界
 
-Platform 的内置模型调用统一通过正式发布的 `masterbrain==0.14.0` Python 包完成，包括文本向量。默认包模式不要求单独部署 AI 服务。统一的是模型能力入口，不是把整个科研系统移入 Masterbrain。
+Platform 的内置模型调用统一通过同仓 `packages/masterbrain` Python 模块完成，包括文本向量。默认包模式不要求单独部署 AI 服务。统一的是模型能力入口，不是把整个科研系统移入 Masterbrain。
 
-| 层级 | 职责 |
-| --- | --- |
-| Masterbrain | 可复用 AI 能力、供应商客户端、模型请求和响应校验、逐次调用用量事件。 |
-| Platform | 身份、权限、可信上下文选择、运行预算、审批、持久化资产、审计和执行状态。 |
-| Instrument Gateway / Compute Runner | 明确授权的执行，以及独立的结果和停止状态观测。 |
+同仓构建、测试与迁移边界见 [AI 开发说明](../masterbrain-development.md)。| 层级 | 职责 | | --- | --- | | Masterbrain | 可复用 AI 能力、供应商客户端、模型请求和响应校验、逐次调用用量事件。 | | Platform | 身份、权限、可信上下文选择、运行预算、审批、持久化资产、审计和执行状态。 | | Instrument Gateway / Compute Runner | 明确授权的执行，以及独立的结果和停止状态观测。 |
 
 依赖 Platform 业务对象的提示词和上下文组装仍保留在 Platform。模型输出不能授予权限、自行审批、写入正式资产或授权设备操作。离线回归检查禁止 API 产品代码直接导入模型供应商 SDK；统一从 `app/libs/masterbrain.py` 接入。用户提供的 Protocol 执行代码属于独立执行边界，不属于内置模型能力。
 

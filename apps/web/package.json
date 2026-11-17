@@ -35,7 +35,7 @@
     "@airalogy/aimd-renderer": "catalog:",
     "@airalogy/components": "workspace:*",
     "@airalogy/composables": "workspace:*",
-    "@airalogy/masterbrain-client": "0.1.0",
+    "@airalogy/masterbrain-client": "workspace:*",
     "@airalogy/shared": "workspace:*",
     "@arms/rum-browser": "catalog:",
     "@dagrejs/dagre": "catalog:",

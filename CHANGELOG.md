@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Maintain Masterbrain Python core, client and reusable Vue components in the Platform repository; use local source dependencies, shared verification and source-bound production images without a prerequisite Masterbrain publication. Preserve upstream provenance and Platform AI contracts; Studio stays in its original repository.
+
 - Keep project/organization Knowledge titles stable during context loading, withhold actions until their destination is resolved, and ignore stale list responses. Simplify the knowledge header and empty R&D work state; move the activity timezone into an accessible date-range popover.
 
 - Preserve meeting time precision in activity lists: date-only meetings display a date without inventing midnight or a precise relative time.

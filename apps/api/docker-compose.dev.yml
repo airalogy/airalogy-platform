@@ -1,3 +1,7 @@
 services:
   api-server:
-    command: sh -c "alembic upgrade head && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload --reload-dir app --reload-dir migrations"
+    command: sh -c "alembic upgrade head && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload --reload-dir app --reload-dir migrations --reload-dir /home/deploy/masterbrain/src"
+    environment:
+      PYTHONPATH: /home/deploy/masterbrain/src
+    volumes:
+      - ../../packages/masterbrain/src:/home/deploy/masterbrain/src:ro

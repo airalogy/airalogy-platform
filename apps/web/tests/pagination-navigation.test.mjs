@@ -14,7 +14,10 @@ let serial = 0
 async function harness(query = {}) {
   const route = reactive({ params: {}, query, hash: "" })
   const navigations = []
-  const router = { replace: async (target) => { navigations.push(target); route.query = target.query } }
+  const router = { replace: async (target) => {
+    navigations.push(target)
+    route.query = target.query
+  } }
   const bindings = { ref, unref, toRef, computed, toValue, useOffsetPagination, useRouteQuery: (name, fallback, options) => useRouteQuery(name, fallback, { ...options, route, router }) }
   const key = `__pagination${++serial}`
   globalThis[key] = bindings

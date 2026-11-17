@@ -62,8 +62,8 @@ services:
   api-server:
     image: ${AIRALOGY_API_IMAGE:-airalogy-platform-api:0.2.0}
     build:
-      context: ../../apps/api
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/api/Dockerfile
       args:
         PLATFORM_VERSION: ${PLATFORM_VERSION:-0.2.0}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}

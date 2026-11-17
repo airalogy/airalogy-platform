@@ -11,6 +11,7 @@ export VITE_API_BASE_URL=http://127.0.0.1:4100
 export VITE_GA_ID=
 
 cd "$repository_root"
+corepack pnpm masterbrain:build
 exec corepack pnpm --filter @airalogy/web exec vite \
   --host 127.0.0.1 \
   --port 3100 \

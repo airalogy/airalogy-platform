@@ -1,0 +1,194 @@
+# Changelog
+
+[中文版](CHANGELOG.zh-CN.md)
+
+## Unreleased
+
+- Fix conversational Record filling when a model puts an extra pair of JSON quotes around the evidence for a text or numeric field. The exact proposed value must still occur in the current message.
+
+## v0.14.0
+
+- Add conversational Field Input turns with ordered field references, quoted source values and separate question, clarification, fill and simulation intents.
+
+## v0.13.0
+
+### Added
+
+- Added the opt-in `prefer_client_assigners` setting to single-file Protocol generation and code editing. Capable hosts can prefer small deterministic calculations in `assigner runtime=client` blocks within `protocol.aimd`, while privileged, external and heavy computations remain server-side Python.
+- Shared runtime guidance across Protocol generation, editing, checking and debugging, with offline regression coverage in CI and release checks.
+
+### Compatibility
+
+- The new setting defaults to `false`, preserving server-side generation for older hosts. Existing runtime choices are preserved during editing, and the legacy `assigner.py` endpoint remains Python-only without duplicating inline outputs.
+- Hosts retain responsibility for permissions, execution, validation and user review. API/CSV imports do not execute browser calculations. The npm client contract update follows its independent Changesets release track.
+
+## v0.12.0
+
+### Added
+
+- Added the reusable asynchronous `masterbrain.embeddings` API and `POST /api/endpoints/embeddings` for bounded text embedding batches using configured Qwen or OpenAI providers.
+- Unified embedding usage events with existing host metering, including request correlation, upstream failures and cancellation, without storing source text or vectors in usage events.
+- Added request and vector validation, explicit dimension preservation, and offline HTTP-level regression tests that verify one upstream attempt per embedding call with no implicit model fallback.
+
+### Integration
+
+- Documented the boundary between reusable Masterbrain intelligence and host authorization, budgets, assets, indexes, and execution. Platform's existing `text-embedding-v4` indexes can retain their 1024-dimensional vector space.
+
+## v0.11.0
+
+### Added
+
+- Added a versioned code-edit response contract with stable change-set IDs, per-file SHA-256 hashes, explicit answer/change outcomes, and risk recommendations for embedding applications.
+- Added atomic workspace mutations with optimistic conflict checks and rollback, allowing hosts to apply or undo an AI change set without leaving partial file updates.
+
+### Changed
+
+- Code-edit responses now distinguish conversational answers from file changes and classify safe, warning, and destructive operations so hosts can auto-apply safe edits while reviewing risky ones.
+- Masterbrain Studio now uses the shared client and Vue capability packages for automatic application, review, full-size Monaco Diff, and conflict-safe undo.
+
+## v0.10.1
+
+### Fixed
+
+- Made the OpenCode code-edit runtime bypass process-level HTTP proxy settings for its loopback health and message requests, with configurable startup timeout and actionable startup log tails.
+- Kept generated Protocol text in the user's requested language and prevented generation or conversational editing from using invalid validation-only assigners with empty assigned fields.
+
+## v0.10.0
+
+### Added
+
+- Added provider-neutral `ModelUsage`, `ModelUsageEvent`, `UsageContext`, currency-aware aggregation, and `UsageSink` APIs for embedding applications to persist model usage and implement model-specific billing.
+- Added usage capture for LiteLLM chat and transcription calls, streaming completion usage, LangChain paper generation, direct DashScope transcription, and OpenCode code-edit calls.
+- Added FastAPI operation correlation through `X-Masterbrain-Operation-Id` and documented the integration boundary between Masterbrain metering and Platform pricing.
+
+## v0.9.1
+
+### Added
+
+- Added `GET /api/health/providers` to check configured provider credentials, connectivity, and default-model access without generating model output.
+
+### Fixed
+
+- Preserved AIMD template braces in protocol-generation prompts instead of collapsing doubled braces before model invocation.
+
+## v0.9.0
+
+### Added
+
+- Added OpenCode-backed `endpoints/code_edit` support, allowing Airalogy Protocol Editor to understand and modify the current `protocol.aimd`, `model.py`, `assigner.py`, and `protocol.toml` through conversation.
+- `code_edit` now supports `workspace_id`, so an editing session can reuse its OpenCode server process while each request still creates a fresh OpenCode session and treats the complete browser-provided file snapshot as the source of truth.
+
+### Security and Stability
+
+- Limited `code_edit` file changes to the four core Protocol Editor files and ignored out-of-scope edits such as helper files.
+- Added syntax validation for returned AIMD, Python, and TOML changes, with risks surfaced to callers as warnings.
+- Added a session-scoped OpenCode runtime manager with idle-timeout cleanup, a global runtime cap, a per-user namespace cap, same-workspace serialization, and service-shutdown cleanup.
+- Tightened the `code_edit` execution log so it no longer exposes server temporary directories, the OpenCode binary path, or localhost ports to the frontend.
+
+## v0.8.0
+
+### Architecture
+
+- Moved the Python distribution package from `apps/api` to `packages/masterbrain`, making the package and application boundaries clearer.
+- Renamed the Vue frontend app from `apps/web` to `apps/studio`, aligning the app name with Masterbrain Studio as an independent frontend.
+- Added `masterbrain.core` and `masterbrain.providers`, establishing clearer boundaries between the stateless AI core, model-provider adapters, and API endpoints.
+- Updated the model invocation layer to use LiteLLM as the default provider-compatible adapter while preserving Masterbrain's own core/workflow boundaries, and excluded known affected LiteLLM versions `1.82.7` and `1.82.8` from dependency constraints.
+- Added `openai`, `qwen`, `all-providers`, and `api` optional dependency extras to prepare for lighter core installation options.
+
+### Changed
+
+- Added the recommended `masterbrain-studio` startup entry point. The old `masterbrain-desktop` entry point remains as a deprecated compatibility alias and will be removed in a future version.
+- Added a Python package release flow for `masterbrain` based on GitHub Actions and PyPI Trusted Publishing. Pushing a `v*` tag now validates the version, runs release tests, builds distributions, and publishes to PyPI.
+
+### Added
+
+- `packages/masterbrain` now depends directly on the released `airalogy` package and reuses `.aira` archive validation and unpacking logic.
+- Added a local archive library that can import `.aira` files into SQLite and persist protocol metadata, record metadata, and record JSON locally.
+- The desktop launcher now supports passing a `.aira` file path directly as the startup document.
+- Added a `Library` view to the left sidebar in the web UI, allowing users to import `.aira` files, browse protocols and records, and reload library protocols into the current workspace.
+- `apps/studio` now depends directly on the published npm packages `@airalogy/aimd-editor`, `@airalogy/aimd-renderer`, and `@airalogy/aimd-recorder`, integrating AIMD Monaco syntax and the AIMD renderer while replacing the previously maintained lightweight local `.aimd` parser/preview implementation.
+- Added the cross-platform desktop packaging CLI `masterbrain-build-desktop`, which can also generate macOS `.app` bundles, Windows portable packages and installer scripts, Linux portable archives, plus macOS / Windows / Linux platform support matrix documentation.
+
+## v0.7.0
+
+### Added
+
+- `endpoints/chat/qa/language` now supports: 1. thinking mode; 2. web search. The endpoint input structure is:
+
+  ```json
+  {
+    "model": {
+      "name": "qwen3.5-flash", // Can be qwen3.5-flash or qwen3.5-plus
+      "enable_thinking": true, // Can be true or false
+      "enable_search": true // Can be true or false
+    },
+    "messages": [
+      {
+        "role": "user",
+        "content": "Think about who you are."
+      }
+    ]
+  }
+  ```
+
+  The response is returned as a streaming string.
+
+  A complete streaming response can look like:
+
+  ```text
+  <think>
+  Thinking content...
+  </think>
+  I am Airalogy Masterbrain.
+  ```
+
+  Note that when `enable_thinking` is `true`, the thinking process is returned and wrapped in `<think>` tags. When it is `false`, only the final answer is returned and no `<think>` tags are included.
+
+  @荣璐 The frontend should automatically render this tag separately from the final answer text.
+
+### TODO
+
+- `endpoints/chat/qa/vision`
+- `endpoints/stt`
+
+These endpoints still need to be refactored. @攀忠
+
+## v0.6.0
+
+- Completed the AIRA feature and its API.
+
+## v0.2.1
+
+- Removed the `chat_env` field from `ChatDoc` to reduce nesting complexity. See [`masterbrain.models.chat.ChatDoc`](/masterbrain/models/chat.py).
+
+## v0.2.0
+
+- Updated the `chat` endpoint to support the latest `ChatDoc` as the input data model. See [`masterbrain.models.chat.ChatDoc`](/masterbrain/models/chat.py).
+- Added support for the latest `gpt-4o-mini` model.
+
+## v0.1.0
+
+- The `chat` endpoint supports the Tongyi Qianwen model `qwen-long`. After starting FastAPI, you can test it with [chat_doc_qwen.jsonc](test/test_fastapi/test_router/test_chat/chat_doc_qwen.jsonc) at <http://127.0.0.1:8000/docs#/default/post_chat_api_chat_post>. Remove comments from the jsonc file before testing so it becomes valid JSON.
+- Adjusted the returned `assistant` value when calling tools by changing the `content` field from `null` to `""`. The main reason is that OpenAI models can run normally when the value is `null`, while Qwen models fail. When changed to `""`, both OpenAI and Qwen models work normally. Therefore, this change was made for compatibility. The underlying issue is that Qwen models are less tolerant of `null`; this is only a compatibility adjustment.
+
+  ```json
+  {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+          ...
+      ]
+  }
+  ```
+
+  ```json
+  {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+          ...
+      ]
+  }
+  ```
+
+- TODO: Qwen only supports alternating Assistant-User conversation patterns, as do some other commercial models such as ERNIE Bot. It does not support Assistant-Assistant-User conversation patterns. The current injection of `scenario_messages` can produce an Assistant-Assistant-User pattern, so the injection logic still needs to be adjusted.

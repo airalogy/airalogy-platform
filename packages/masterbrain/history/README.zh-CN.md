@@ -1,0 +1,171 @@
+# Airalogy Masterbrain
+
+[![PyPI version](https://img.shields.io/pypi/v/masterbrain.svg)](https://pypi.org/project/masterbrain/) [![Python versions](https://img.shields.io/pypi/pyversions/masterbrain.svg)](https://pypi.org/project/masterbrain/) [![License](https://img.shields.io/pypi/l/masterbrain.svg)](https://pypi.org/project/masterbrain/) [![Release](https://github.com/airalogy/masterbrain/actions/workflows/release.yml/badge.svg)](https://github.com/airalogy/masterbrain/actions/workflows/release.yml)
+
+English: [README.md](README.md)
+
+Masterbrain 现在采用轻量 monorepo 结构：
+
+```txt
+masterbrain/
+├── packages/
+│   ├── masterbrain/  # 发布到 PyPI 的 Python 包与 API runtime
+│   ├── client/       # 框架无关的 npm client 与变更契约
+│   └── vue/          # Vue composable、审核 UI 与可选 Monaco Diff
+├── apps/
+│   └── studio/       # Vue 3 + TypeScript 独立前端
+├── docs/
+└── README.zh-CN.md
+```
+
+`masterbrain` 按运行时依赖不同的基础包：backend 依赖已发布的 `airalogy` Python 包，frontend AIMD 能力依赖已发布的 `@airalogy/aimd-*` npm 包。可复用 AI 集成通过 `@airalogy/masterbrain-client` 和 `@airalogy/masterbrain-vue` 发布；Studio 是参考宿主，Platform 等产品仍负责认证、计费、审计、路由和产品壳。
+
+关于 `masterbrain`、`airalogy`、`aimd` 三者的仓库关系、本地联调方式，以及跨 repo 的 release 顺序，见 [`CONTRIBUTING.zh-CN.md`](./CONTRIBUTING.zh-CN.md)。当前的平台覆盖范围和打包限制见 [`PLATFORM_SUPPORT.zh-CN.md`](./PLATFORM_SUPPORT.zh-CN.md)。PyPI 自动发布流程见 [`RELEASING.zh-CN.md`](./RELEASING.zh-CN.md)。
+
+## 快速开始
+
+### Protocol 编写的运行时偏好
+
+具备客户端 Assigner 执行和校验能力的宿主，可在单文件生成、代码编辑请求中设置 `prefer_client_assigners: true`。简单确定性计算优先放入 `protocol.aimd` 的 `assigner runtime=client` 代码块；有权限要求、重型计算或连接外部服务的逻辑仍使用服务端 Python。为兼容旧宿主，默认值为 `false`。旧的 `assigner.py` 生成接口仍只输出 Python，不重复生成已有内联输出。生成代码仍须宿主校验与用户审核；CSV/API 导入不会执行浏览器计算。
+
+### 启动应用
+
+先构建一次前端：
+
+```shell
+npm install
+npm run studio:build
+```
+
+先在 `packages/masterbrain/.env` 中配置 Python 包运行环境变量：
+
+```shell
+cd packages/masterbrain
+cp .env.example .env
+```
+
+按需填写 `DASHSCOPE_API_KEY`、`OPENAI_API_KEY` 等配置后，再初始化后端并启动一体化本地应用：
+
+```shell
+cd packages/masterbrain
+uv sync
+uv run masterbrain-studio
+```
+
+这会启动一个本地进程，同时提供后端 API 和已构建的 Web UI，并自动在默认浏览器中打开 Masterbrain。
+
+`uv run masterbrain-desktop` 仅作为废弃的兼容别名保留，未来版本会移除。
+
+如果你要直接绑定某个工作目录启动：
+
+```shell
+uv run masterbrain-studio --workspace /path/to/project
+```
+
+如果你想让 Masterbrain 直接打开一个 `.aira` 文件并先导入本地库：
+
+```shell
+uv run masterbrain-studio /path/to/archive.aira
+```
+
+源代码运行模式下，对话改代码功能仍然需要 OpenCode runtime。你可以把 `opencode` 放到系统 `PATH`，或者执行：
+
+```shell
+python3 scripts/vendor_opencode.py
+```
+
+## 开发模式
+
+在 `packages/masterbrain` 中启动 FastAPI 服务：
+
+```shell
+cd packages/masterbrain
+uv sync --dev
+uv run uvicorn masterbrain.fastapi.main:app --reload --host 127.0.0.1 --port 8080
+```
+
+在仓库根目录启动 Studio 前端：
+
+```shell
+npm install
+npm run studio:dev
+```
+
+Vite 开发服务器默认运行在 `http://localhost:5173`，并将 `/api/*` 代理到 `http://127.0.0.1:8080`。
+
+可以通过以下接口检查模型 provider 的凭据、连通性和默认模型权限；该检查不会生成模型内容：
+
+```shell
+curl http://127.0.0.1:8080/api/health/providers
+```
+
+所有已配置 provider 均正常时接口返回 `200`；未配置任何 provider，或任一已配置 provider 不可用时返回 `503`。
+
+## 打包
+
+PyPI 在推送 `v*` tag 时发布；两个公开 npm 包通过 `main` 上的 Changesets 发布。完整流程见 [`RELEASING.zh-CN.md`](./RELEASING.zh-CN.md)。
+
+在 `packages/masterbrain` 中构建本地桌面包：
+
+```shell
+cd packages/masterbrain
+uv run masterbrain-build-desktop
+```
+
+也保留了平台封装脚本：
+
+- macOS / Linux：`./scripts/build_desktop_bundle.sh`
+- Windows PowerShell：`.\scripts\build_desktop_bundle.ps1`
+
+该命令会把原始 PyInstaller bundle 输出到 `packages/masterbrain/dist/Masterbrain/`，并同时在 `packages/masterbrain/dist/release/<platform>/` 下生成平台分发物。
+
+- macOS：未签名的 `Masterbrain.app` 与带版本号的 `.zip`
+- Windows x64：portable 目录、portable `.zip`、Inno Setup `.iss` 安装器脚本；如果本机可用 `ISCC.exe`，会自动额外生成安装器 `.exe`
+- Linux：portable 目录与带版本号的 `.tar.gz`
+
+## 测试
+
+在 `packages/masterbrain` 中运行 Python 包测试：
+
+```shell
+cd packages/masterbrain
+uv run python -m pytest
+```
+
+`packages/masterbrain/pytest.ini` 默认会跳过依赖外部 API 的测试标记。
+
+## 应用文档
+
+- Python 包：[packages/masterbrain/README.md](packages/masterbrain/README.md)
+- Studio 前端：[apps/studio/SETUP.md](apps/studio/SETUP.md)
+
+## 文档站
+
+在仓库根目录运行 VitePress 文档站：
+
+```shell
+npm install
+npm run docs:dev
+```
+
+构建静态站点：
+
+```shell
+npm run docs:build
+```
+
+## 引用
+
+如果 Airalogy Masterbrain 对你的研究或项目有帮助，欢迎引用以下论文：
+
+```bibtex
+@misc{yang2025airalogyaiempowereduniversaldata,
+      title={Airalogy: AI-empowered universal data digitization for research automation},
+      author={Zijie Yang and Qiji Zhou and Fang Guo and Sijie Zhang and Yexun Xi and Jinglei Nie and Yudian Zhu and Liping Huang and Chou Wu and Yonghe Xia and Xiaoyu Ma and Yingming Pu and Panzhong Lu and Junshu Pan and Mingtao Chen and Tiannan Guo and Yanmei Dou and Hongyu Chen and Anping Zeng and Jiaxing Huang and Tian Xu and Yue Zhang},
+      year={2025},
+      eprint={2506.18586},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2506.18586},
+}
+```

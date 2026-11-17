@@ -1,0 +1,40 @@
+{
+  "name": "@airalogy/masterbrain-client",
+  "version": "0.1.0",
+  "description": "Framework-neutral client and workspace change contract for Masterbrain",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/airalogy/platform.git",
+    "directory": "packages/masterbrain-client"
+  },
+  "homepage": "https://github.com/airalogy/platform",
+  "bugs": "https://github.com/airalogy/platform/issues",
+  "type": "module",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "schema",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema/code-edit.v1.json": "./schema/code-edit.v1.schema.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "private": true
+}

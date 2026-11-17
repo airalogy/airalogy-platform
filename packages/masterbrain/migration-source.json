@@ -1,0 +1,1901 @@
+{
+  "repository": "https://github.com/airalogy/masterbrain",
+  "commit": "fda4d56ad1bcd9daf96743e98a0df2f383851843",
+  "working_tree_patch_sha256": "19fb00ec54e8eb41dc7c2dfa22b6ee16c13eed2792486f5bb4aedf36b7f661df",
+  "files": [
+    {
+      "source": "CHANGELOG.md",
+      "target": "packages/masterbrain/history/CHANGELOG.md",
+      "sha256": "428b7c67677dcf777669a089b0e0841b20b9a946734884e2d70374a055eb49af"
+    },
+    {
+      "source": "CHANGELOG.zh-CN.md",
+      "target": "packages/masterbrain/history/CHANGELOG.zh-CN.md",
+      "sha256": "5051eb56a32ef694dcca686e94b6ae4360e38980dbc0501d2b009d9b395c5d37"
+    },
+    {
+      "source": "CONTRIBUTING.md",
+      "target": "packages/masterbrain/history/CONTRIBUTING.md",
+      "sha256": "d3bd1a20f6c45ced50528d6548382d07928861c0b568c043c362497a1ae19334"
+    },
+    {
+      "source": "CONTRIBUTING.zh-CN.md",
+      "target": "packages/masterbrain/history/CONTRIBUTING.zh-CN.md",
+      "sha256": "68d45dd3b2815637a1ee39fd9d0ded507dcc99a627828bfec0c10a659d409e72"
+    },
+    {
+      "source": "LICENSE",
+      "target": "packages/masterbrain/history/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "source": "PLATFORM_SUPPORT.md",
+      "target": "packages/masterbrain/history/PLATFORM_SUPPORT.md",
+      "sha256": "f321a6c9fb0a225a963794c5272bae416321b3c37322e91ba4c9f19172e3952a"
+    },
+    {
+      "source": "PLATFORM_SUPPORT.zh-CN.md",
+      "target": "packages/masterbrain/history/PLATFORM_SUPPORT.zh-CN.md",
+      "sha256": "f79b49d0e30f72ac3fb6d64dca776df96c31a1baafa57dfc1adbf9f074eaa821"
+    },
+    {
+      "source": "README.md",
+      "target": "packages/masterbrain/history/README.md",
+      "sha256": "58c2722516210114de97517b99f9017e007fd0e8866cce2444875d0e8cb17ca3"
+    },
+    {
+      "source": "README.zh-CN.md",
+      "target": "packages/masterbrain/history/README.zh-CN.md",
+      "sha256": "ebe3d3224b5bb875cef42c911a129e826cfcd6a07580f5f90fe0d135c2eb3ef5"
+    },
+    {
+      "source": "RELEASING.md",
+      "target": "packages/masterbrain/history/RELEASING.md",
+      "sha256": "64f4bdbc92d64cc639ddfaffd371f97762a44a77d42369dc03a9e3d3c1562aba"
+    },
+    {
+      "source": "RELEASING.zh-CN.md",
+      "target": "packages/masterbrain/history/RELEASING.zh-CN.md",
+      "sha256": "d2bd34cb00f427182646d743aed9b70932f5b1f3bc1362a86a812f026ea6ada1"
+    },
+    {
+      "source": "docs/.vitepress/.gitignore",
+      "target": "packages/masterbrain/history/docs/.vitepress/.gitignore",
+      "sha256": "f02c2a4a87cd4814c90865aeb9fbdaa6f53de13b0f6020ba5588955a59c2b050"
+    },
+    {
+      "source": "docs/.vitepress/config.mjs",
+      "target": "packages/masterbrain/history/docs/.vitepress/config.mjs",
+      "sha256": "c2f67103d599b476e38869e6ed9d2ab659587620b491e59b12b72d770247a228"
+    },
+    {
+      "source": "docs/.vitepress/sidebars/en.mjs",
+      "target": "packages/masterbrain/history/docs/.vitepress/sidebars/en.mjs",
+      "sha256": "31fd2187ec98d74fcf5aa3078489d00fabb8707de88008cae9be4cc4e9b6263f"
+    },
+    {
+      "source": "docs/.vitepress/sidebars/zh.mjs",
+      "target": "packages/masterbrain/history/docs/.vitepress/sidebars/zh.mjs",
+      "sha256": "8086995a292dd0fae95b29aad81719a75913dcee754297f5434e750ce18fcb1a"
+    },
+    {
+      "source": "docs/en/ai-architecture.md",
+      "target": "packages/masterbrain/history/docs/en/ai-architecture.md",
+      "sha256": "23b3a639158d48ede9441933a672a21938aa1f2a3e68825bafd0c723804f9e76"
+    },
+    {
+      "source": "docs/en/ai-automated-field-input/index.md",
+      "target": "packages/masterbrain/history/docs/en/ai-automated-field-input/index.md",
+      "sha256": "5e8843389c9d7b273da0bdc6fef405d06974b2c226e553806144e0d2a760799d"
+    },
+    {
+      "source": "docs/en/chat/data-structure.md",
+      "target": "packages/masterbrain/history/docs/en/chat/data-structure.md",
+      "sha256": "b6df875adfec13f6165d9ef434e0af7e5bf1cd973d446ad38aa18d79f8445330"
+    },
+    {
+      "source": "docs/en/chat/record-qa.md",
+      "target": "packages/masterbrain/history/docs/en/chat/record-qa.md",
+      "sha256": "07474cbc829397634a224b0d8627f06d3a4c3ddeeade624432ace6695cd1a9c3"
+    },
+    {
+      "source": "docs/en/code-structure.md",
+      "target": "packages/masterbrain/history/docs/en/code-structure.md",
+      "sha256": "4e4e0a540ebc0ac6f03588b2c42bd4876df513e8df65125948aee737f5401b85"
+    },
+    {
+      "source": "docs/en/endpoints/aira.md",
+      "target": "packages/masterbrain/history/docs/en/endpoints/aira.md",
+      "sha256": "d68ebf1fa645cb64a461a40e373197490b2c0fd4048b227f184bb4a71e9cc202"
+    },
+    {
+      "source": "docs/en/endpoints/index.md",
+      "target": "packages/masterbrain/history/docs/en/endpoints/index.md",
+      "sha256": "3f2bc946ba278c1dc60c8412d69c024a70b38754607aa7585ba1b5f883c7e683"
+    },
+    {
+      "source": "docs/en/index.md",
+      "target": "packages/masterbrain/history/docs/en/index.md",
+      "sha256": "20a88638f89c6032bc461984b1991252ccc9f3fc00946c24ac41e49d63ce9480"
+    },
+    {
+      "source": "docs/en/quickstart.md",
+      "target": "packages/masterbrain/history/docs/en/quickstart.md",
+      "sha256": "ca2d7ddb089cc9fd99b077bc3be43c88dceea4acfbff651c02f9ac4fffee760f"
+    },
+    {
+      "source": "docs/en/usage-and-billing.md",
+      "target": "packages/masterbrain/history/docs/en/usage-and-billing.md",
+      "sha256": "f79ab83ddbf11ee531cc40e1254d86a500db88ad6f1bb0b7027fe9715478e429"
+    },
+    {
+      "source": "docs/en/workspace-and-editing.md",
+      "target": "packages/masterbrain/history/docs/en/workspace-and-editing.md",
+      "sha256": "4763f9bd694bba6f14ff9a7d56bda3b670c0f2c011651154cd3b5183c7ecd5fb"
+    },
+    {
+      "source": "docs/index.md",
+      "target": "packages/masterbrain/history/docs/index.md",
+      "sha256": "944a79bed6136bd8f8b3440f268c3dab53d3251a0fbd5774e852d32632ae379a"
+    },
+    {
+      "source": "docs/zh/ai-architecture.md",
+      "target": "packages/masterbrain/history/docs/zh/ai-architecture.md",
+      "sha256": "f8977156ec13788d307da6145e23556c6dd253c64c8a1974450c0ea1af1b6090"
+    },
+    {
+      "source": "docs/zh/ai-automated-field-input/img/Interface.png",
+      "target": "packages/masterbrain/history/docs/zh/ai-automated-field-input/img/Interface.png",
+      "sha256": "c3168d9d6dcdd525da6439fca74375f590a0b2b691419bce9becbc8c23a273c1"
+    },
+    {
+      "source": "docs/zh/ai-automated-field-input/img/architecture.drawio",
+      "target": "packages/masterbrain/history/docs/zh/ai-automated-field-input/img/architecture.drawio",
+      "sha256": "9d568d725617fcbbb922b40ca20c39af541a10ab5be785f1d8e137fe897ffe3e"
+    },
+    {
+      "source": "docs/zh/ai-automated-field-input/img/architecture.svg",
+      "target": "packages/masterbrain/history/docs/zh/ai-automated-field-input/img/architecture.svg",
+      "sha256": "e9af4948efd3217e48c25880a00cb519c36ad2f0f23f9ee1590973f538096678"
+    },
+    {
+      "source": "docs/zh/ai-automated-field-input/index.md",
+      "target": "packages/masterbrain/history/docs/zh/ai-automated-field-input/index.md",
+      "sha256": "1764cd45c9c1f8244d4cb97be04e3fabe3105191e18d46c0c84750de5ce3327c"
+    },
+    {
+      "source": "docs/zh/chat/data-structure.md",
+      "target": "packages/masterbrain/history/docs/zh/chat/data-structure.md",
+      "sha256": "455ffca56b5d469afb4a7589d515934c6d2f22a0d78399663ff03bdcb5e876d2"
+    },
+    {
+      "source": "docs/zh/chat/record-qa.md",
+      "target": "packages/masterbrain/history/docs/zh/chat/record-qa.md",
+      "sha256": "73d960a4b2aa02dc3f6843aff86d6d771ef4a9c029e1f225bab1e454ab974d0b"
+    },
+    {
+      "source": "docs/zh/code-structure.md",
+      "target": "packages/masterbrain/history/docs/zh/code-structure.md",
+      "sha256": "85c2c37c8bc715b6292f0c1fc7d0ca762370226a6e763b78d4830a24e66963f4"
+    },
+    {
+      "source": "docs/zh/endpoints/aira.md",
+      "target": "packages/masterbrain/history/docs/zh/endpoints/aira.md",
+      "sha256": "e05f9742f4aa142f5330c9d7d3895ea493d70f0c0b6d4753c5d8ae93080ac291"
+    },
+    {
+      "source": "docs/zh/endpoints/index.md",
+      "target": "packages/masterbrain/history/docs/zh/endpoints/index.md",
+      "sha256": "e8bda22f9bbb431216999ac879e83dfb29bfaba3033bc455ad731f905c50bdba"
+    },
+    {
+      "source": "docs/zh/index.md",
+      "target": "packages/masterbrain/history/docs/zh/index.md",
+      "sha256": "7a96c217d2af8e9c4f1713f9b7d645848975dbe281ad93c4d9c62bded3171a86"
+    },
+    {
+      "source": "docs/zh/quickstart.md",
+      "target": "packages/masterbrain/history/docs/zh/quickstart.md",
+      "sha256": "82c8e35a3f68d5d8023a6e24c70b170512d92e9108949f851cfbc861f30a5a79"
+    },
+    {
+      "source": "docs/zh/usage-and-billing.md",
+      "target": "packages/masterbrain/history/docs/zh/usage-and-billing.md",
+      "sha256": "f8e9dbdb20bb397abf066d9d1a35f9e0261e7d22174402c3f2bb878cbe6e89cd"
+    },
+    {
+      "source": "docs/zh/workspace-and-editing.md",
+      "target": "packages/masterbrain/history/docs/zh/workspace-and-editing.md",
+      "sha256": "7487e14a9359f1aa9c1e9c3624e84d4b8acdfdef13a24a45feb2ffe45bc7f690"
+    },
+    {
+      "source": "packages/client/CHANGELOG.md",
+      "target": "packages/masterbrain-client/CHANGELOG.md",
+      "sha256": "b6e500a5247bfc1dd5d72edf45e24f7d0f44059e4bcbfa5de3738d917173a9f5"
+    },
+    {
+      "source": "packages/client/README.md",
+      "target": "packages/masterbrain-client/README.md",
+      "sha256": "9640166380de8afd0c3f6d31733d85ba7a6ccb29c2d0714f69ac4ff4aa5c5f87"
+    },
+    {
+      "source": "packages/client/package.json",
+      "target": "packages/masterbrain-client/package.json",
+      "sha256": "d374dd710f99cd893721f87078ca499124a3c98c86e2ff64675e2bed8043d843"
+    },
+    {
+      "source": "packages/client/schema/code-edit.v1.schema.json",
+      "target": "packages/masterbrain-client/schema/code-edit.v1.schema.json",
+      "sha256": "0b101e5e4e9ba6a67d3596abcedf2398f4a78bd7311700e4b22b848f0335c06d"
+    },
+    {
+      "source": "packages/client/src/client.ts",
+      "target": "packages/masterbrain-client/src/client.ts",
+      "sha256": "20da6d1afdfc28193d589153a192c12ddf6bb4b8b7d9ae5d7ef6d47194d8ac4e"
+    },
+    {
+      "source": "packages/client/src/contract.ts",
+      "target": "packages/masterbrain-client/src/contract.ts",
+      "sha256": "b94e365aaa1b0cd20513a245e751347a943dbd6273c207883efdc969f122fdf4"
+    },
+    {
+      "source": "packages/client/src/errors.ts",
+      "target": "packages/masterbrain-client/src/errors.ts",
+      "sha256": "dc8af6120638d8bf0348af7fa688c29f2d6edb4724852e4c5908ac40dd196277"
+    },
+    {
+      "source": "packages/client/src/index.ts",
+      "target": "packages/masterbrain-client/src/index.ts",
+      "sha256": "fe6829a85c7c875be98d74fda5c0c73718069e936f6c7bb3c4a7be836c1f542a"
+    },
+    {
+      "source": "packages/client/src/transport.ts",
+      "target": "packages/masterbrain-client/src/transport.ts",
+      "sha256": "389c2840b8d3dac2c9350ca0a236d977dbce772e99f3caaf21b6d079620a0634"
+    },
+    {
+      "source": "packages/client/src/types.ts",
+      "target": "packages/masterbrain-client/src/types.ts",
+      "sha256": "292f3781b1ce81bc5b8dc9c5c3cd650ad5d0c121af3a39b069c652fca24617f7"
+    },
+    {
+      "source": "packages/client/src/workspace.ts",
+      "target": "packages/masterbrain-client/src/workspace.ts",
+      "sha256": "bb542ecb57cc849bb7b32aecbda9632cdca755612edf3281ae1428d8231a0d7e"
+    },
+    {
+      "source": "packages/client/tests/client.test.ts",
+      "target": "packages/masterbrain-client/tests/client.test.ts",
+      "sha256": "bdf1ca037e7d325c52d41d417a85d6fc5da878def7a69b55c3441e5a74b35dfb"
+    },
+    {
+      "source": "packages/client/tsconfig.build.json",
+      "target": "packages/masterbrain-client/tsconfig.build.json",
+      "sha256": "31f0e3863c7150a3566d5a0d66cd25142a9cd769f0f71e10bef9d625912fd66b"
+    },
+    {
+      "source": "packages/client/tsconfig.json",
+      "target": "packages/masterbrain-client/tsconfig.json",
+      "sha256": "9e41087e48ed592da482428d45a0b1a68ad37e087ea3a55d4784368d8d243447"
+    },
+    {
+      "source": "packages/masterbrain/.env.example",
+      "target": "packages/masterbrain/.env.example",
+      "sha256": "34924b7de7be757d1186a97b57dad9cfbcf47b8b542a56644e07cce3a6f16f25"
+    },
+    {
+      "source": "packages/masterbrain/.pylintrc",
+      "target": "packages/masterbrain/.pylintrc",
+      "sha256": "bf531fe264e78f09a671418ba6609af8d43c8a179455a79cde366cca86eeae48"
+    },
+    {
+      "source": "packages/masterbrain/README.md",
+      "target": "packages/masterbrain/README.md",
+      "sha256": "e8ca1bb0422a285d24c453bda39d5cb464acec0056b1eedf5e64a6d2c71c1481"
+    },
+    {
+      "source": "packages/masterbrain/pyproject.toml",
+      "target": "packages/masterbrain/pyproject.toml",
+      "sha256": "b72d0c1da50564181f0a70c081dc8e08fbce309ffdf90db0c73c4d39222ba1b3"
+    },
+    {
+      "source": "packages/masterbrain/pytest.ini",
+      "target": "packages/masterbrain/pytest.ini",
+      "sha256": "17bfee40236bd2953593c36e119b75ae5a377a061db24ea3ec970048ec6aae2a"
+    },
+    {
+      "source": "packages/masterbrain/scripts/vendor_opencode.py",
+      "target": "packages/masterbrain/scripts/vendor_opencode.py",
+      "sha256": "5f451ab161e4e99682204742afabe4cb96992d070c2e255c03df2b075c63f0b3"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/configs.py",
+      "target": "packages/masterbrain/src/masterbrain/configs.py",
+      "sha256": "e5e71063a3fcca27dfdfc722211d4f994936338ed36d9922b5b8783c41ba644c"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/core/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/core/__init__.py",
+      "sha256": "44951cf2f66ab14035ac17bac4756222b77a46f84cd97f18a7e7dad0626bcc68"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/core/types.py",
+      "target": "packages/masterbrain/src/masterbrain/core/types.py",
+      "sha256": "7f0f2feeeb5411a6aa115da10b423a65332294bea9653009b9998225d97087f8"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/core/usage.py",
+      "target": "packages/masterbrain/src/masterbrain/core/usage.py",
+      "sha256": "acad137f779e258c788f75828c0a008027d2c46a80e5015f0b5878e0522335a8"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/embeddings.py",
+      "target": "packages/masterbrain/src/masterbrain/embeddings.py",
+      "sha256": "ff1ee4f61280d0811c765195861e23a0459c1d71c1ca23d104e65a16d53b8a2c"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/__init__.py",
+      "sha256": "b5dbfba07204fe35b777cd5e0734f87784ec18f7a8e82071a33c15db9c7d4746"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/__init__.py",
+      "sha256": "e79136338a6a687fa7cb2086aac739ba194d21bbbf24ff2a3c46b0ea0674c099"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/__init__.py",
+      "sha256": "012033d42ed38b838b240e6aa07e40e15e742186627298ec48f8a5a2f2c6b464"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_final_conclusion/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_final_conclusion/__init__.py",
+      "sha256": "248fa67698e6c5836c0c537490c5e372d1174d50df0b37ca11fd1d7386e5850f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_final_conclusion/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_final_conclusion/prompt.md",
+      "sha256": "ea4609a0745b9b7663675b6afdaf75b62e9563f1f0fdc457c995e67345f36e53"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_goal/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_goal/__init__.py",
+      "sha256": "a7c8e11b6a6107d0836d6734ba2a23ee67d13a59127babf3709a26cd26bdbaa1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_goal/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_goal/prompt.md",
+      "sha256": "35d9c6ab2e2e268065195339b19d35d77c95aaa0446b83260879f22ec3c01672"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_phased_conclusion/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_phased_conclusion/__init__.py",
+      "sha256": "964042d3d43adb1a3f776544d77fd91d53ed73b31a3861a8f5b62a16717ce815"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_phased_conclusion/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_phased_conclusion/prompt.md",
+      "sha256": "86323e9c08ff6c7f2b800643609777aef42b95ce3281c10f8f3c3ddeb62b659f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_strategy/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_strategy/__init__.py",
+      "sha256": "0f642bd44de0325a2592b94e831443d1cca00d9f9aaec3df505057a4c271d1c3"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_strategy/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_strategy/prompt.md",
+      "sha256": "37d4372c1a2ec617265fc816dfd5e5ff52948a424c7c9635d221496a899eb545"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_values/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_values/__init__.py",
+      "sha256": "60176271ca2b6692ae422edaa7bf7afdc983b50f561dec03c2e738b6d23eac93"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_values/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/generate_values/prompt.md",
+      "sha256": "bad6799631381c3829f412d8cef945e1d631e6747f1b72722f10d576e9d8e408"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/select_protocol/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/select_protocol/__init__.py",
+      "sha256": "3cad17281494db2a1016e290ab4bc7c94a7de3458ec429cefd287f58653c4357"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/select_protocol/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/logic/functions/select_protocol/prompt.md",
+      "sha256": "f104e0028c4836023f80f1d8f5d6d84c766d8d36c8ad95952e6a63abd0788e91"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/router.py",
+      "sha256": "87c8bec89d7585b6478446616ae3f3941de68d70465a7ebba5b5a648db7420be"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/types/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/types/__init__.py",
+      "sha256": "8fb71eb18865c37ccb48182a239b4d66bf4f0159cc9ffa9947a89e58522883c4"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/types/path_data.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/types/path_data.py",
+      "sha256": "adc61e6834ee1f8f4e59e37eb9a49ba95a61394ca30ffad6ecaec7d2529bb970"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/types/protocol_info.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/types/protocol_info.py",
+      "sha256": "3681372bd27676cd3927491e42690eb0846a077336f5fa5f62f8264dd6955a38"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/types/steps.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/types/steps.py",
+      "sha256": "d1d0a1fc398ca38bdcdfd9d6a0615e5ae665dd399df61f8ac737ed9069621301"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/types/workflow_data.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/types/workflow_data.py",
+      "sha256": "92be50fee8d422656cca978007f18fb93edab7e86e082c7347ace3d626719668"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/aira/types/workflow_info.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/aira/types/workflow_info.py",
+      "sha256": "2245b5f18e179ea7ca1b5c79f142d34e40cb9b66632862d86f0f54ff23c49a82"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/__init__.py",
+      "sha256": "cef47c6d3ba14e505d90b56890ae05956c27fbc5c86fe16347499fc59349e607"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/__init__.py",
+      "sha256": "568f607d70e37f73e5c0584ca3bb287fc1095e00c559da94a75be5bd4aa36917"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/prompts/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/prompts/__init__.py",
+      "sha256": "11f03b198ae9c8b70519391111b81f5ac4f6b112acb55deb619f5786b4e6af75"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/prompts/system.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/prompts/system.py",
+      "sha256": "cfd1450bdb61f37183df4fe42596dd6d97e28e1708b0efcb1b30709701684361"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/prompts/user_image.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/prompts/user_image.py",
+      "sha256": "e258848a1c9995cdbcf925155587cbb983ea5134fa625e9a62978ead1cd46bc3"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/slot_service.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/logic/slot_service.py",
+      "sha256": "829e1a954bf60fd84f1488e21f7639325565759d47cb9365425609e063315ca1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/router.py",
+      "sha256": "adc7d7aa87b58f8fd21262fd2178b0e95c864812e314b36cd8bf242f99f2c38f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/turn.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/turn.py",
+      "sha256": "04d58fef57f35fe794ef8391949ecabd4e9992e2fce229391ef5ee871a8f835d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/field_input/types.py",
+      "sha256": "72e7f54ced0e638495b9d9db8403c09fc22f9fbbc927a29b7e5e471dd043d014"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/logic/__init__.py",
+      "sha256": "0493f72b7a71933efd40926551dc05d0f6d2112eaddccf617b845da8f9f3a68a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/logic/prompt.md",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/logic/prompt.md",
+      "sha256": "eb9b208241e538635d5dd817637e30e160460f9356431f0665bab43c41d40dc1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/router.py",
+      "sha256": "bd4cf737650a20eb6031de56e69e209653c6dad275c306b6e60398dd76e24bf5"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/language/types.py",
+      "sha256": "5b030c49aa27eb81e749a0fa211378b4ff8030f6a1749c2e62fe5791e9d4798f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/logic/.gitkeep",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/logic/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/router.py",
+      "sha256": "6b657cfc59acc73e512b8354e89b81488d95e6b916b9bb1b06f1cd172200ea82"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/stt/types.py",
+      "sha256": "5adb4bafac1453ddc5349f66ac664ba738217ba002505dc152d36fd168042fe5"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/logic/.gitkeep",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/logic/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/router.py",
+      "sha256": "a8aedcc826a01c6c5174fe31665882bac0a223864b4a53dab068effe6743f857"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/chat/qa/vision/types.py",
+      "sha256": "85677b1bf9d720ccf8150d12712d09c2ebca7e8b3879e8d4ac50233d1c319b07"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/code_edit/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/code_edit/__init__.py",
+      "sha256": "1cf63957e6debae6f6c39281eb0ba2d27ec73637262ab88004442dc6f0e26bf1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/code_edit/logic.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/code_edit/logic.py",
+      "sha256": "768683ca933964c5a103f562f2bfa0b728f9cbfde2410da28c04302916703f8a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/code_edit/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/code_edit/router.py",
+      "sha256": "43e10865979e6835ac55e00091e4c1f4dff9e8072b94f1c0ffe22bbd3dea606a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/code_edit/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/code_edit/types.py",
+      "sha256": "5a082acf971c864fe3c1467c74cac9561a59469bcd36bcb679e153172cd324c4"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/__init__.py",
+      "sha256": "cbd744ed0f2ba136a2281f0eec4f287644c38fc90aa5e3a4112cb511b9a3abf3"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/__init__.py",
+      "sha256": "ec0d7b2890f7f7dda4046552dcaa6ee1b62c62893f4e48bdfd47090a07ef6086"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/config.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/config.py",
+      "sha256": "18ee239f5b09e68daff8fe6295a2fe4ed488915d45a21edc6efa5bade201dba8"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_abstract.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_abstract.py",
+      "sha256": "dfb7e2bfb0a4112d83a9525caaab8146f65470c45dc975407099cf9b0a258e12"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_discussion.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_discussion.py",
+      "sha256": "0caa698d8c7ed50b4cd74dc293855155241b40303f8fe99aaf3455cb5d4932ff"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_introduction.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_introduction.py",
+      "sha256": "36811a8d7ede29dfe81591bc1196efcd0032b048a8cc1bfb53858c90d301664a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_methods.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_methods.py",
+      "sha256": "a4251848ffd2df92f2b4847a53e117629bbad378597e5c9a534f0a7bcd6f1859"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_results.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_results.py",
+      "sha256": "59059dd68db80bfe0798ddb7461586ce32c41a5a727d8e242e59d9cbb4c38318"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_title.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/functions/generate_title.py",
+      "sha256": "191f23a0be63b8fd540e4e1056fbe5e1d0c974ede9a32aef9de8618f4c44d9f7"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/generate_paper.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/generate_paper.py",
+      "sha256": "d7bb4ec89af05276a461ff56601f09f05a4d65eb09a1aa739c49dc6329110648"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/search_utils.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/search_utils.py",
+      "sha256": "18cb5e47b19338717e4b1902afbf2077d2294e25c92d7291a9a6a6a63d0f622a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/utils.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/logic/utils.py",
+      "sha256": "66d9f2c574bce4b498d7fbdabe660a9508acbf409a2cd73f3a76d82370170412"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/router.py",
+      "sha256": "ebf2a765a24265163cb2874795b473a51847e7809d1fc28c503100d3722a9a9a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/paper_generation/types.py",
+      "sha256": "cf54561873c9e43944e762b8dafe63b05dd29cda3212d6f63a3ebce1c074d551"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/logic/__init__.py",
+      "sha256": "7626f6dba079c57e34bb258627e30a5448411e02712b5c5f134152ece9f76d69"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/logic/prompts.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/logic/prompts.py",
+      "sha256": "948ea9d18314dc6faa33cd4a006b1a921b583ac056688ad9cad8f0d38d4c451a"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/router.py",
+      "sha256": "74d1301208526cf1e095a40fb6a72ab55e2f3c9e4ed7e5dd6e7f70363f5ebaec"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_check/types.py",
+      "sha256": "27cfe49ae59cddb33bd018d7699340fadda0462a441c1173f14dfdbf83289bfa"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/logic/__init__.py",
+      "sha256": "37f9c2aee471879d75fdf45ae094e344c606be10dbccc0fa9d7d2683a52860f8"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/logic/prompts.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/logic/prompts.py",
+      "sha256": "c0199ba8a1893cd0eba5294f7eee48342c42100636f2f8508113aa942c0e20d5"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/router.py",
+      "sha256": "61205eb9b1d70b8e17b4844617574eff99181661e9c5dc50112264d78a69d6a8"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_debug/types.py",
+      "sha256": "c72c6c8eabcb89b713d647df0b2bac8a583603392fe7ff286523b7487a82e195"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/__init__.py",
+      "sha256": "55cb626f7bdf1dfe4ea7795c026a94804fd39d296f20ff16300641c9dc23d07d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/prompts/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/prompts/__init__.py",
+      "sha256": "b8a2361ee8b3eed5121f982b4d8ba92e05f3c4a336dcf32448618a2658d0094d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/prompts/system.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/prompts/system.py",
+      "sha256": "0937134e283eb67be29d27b089ca97aff3ecd5d805749f953223774ba8295eb1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/prompts/user_protocol.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/prompts/user_protocol.py",
+      "sha256": "4f706d6fbed9d22b81d7365420cb12dfe8e131171a2d5aafade2b27fb4e1f1f2"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/stream_generator.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/logic/stream_generator.py",
+      "sha256": "8712c8720a08f50e09860e2b40c9a3c5b7c0ef20eaf0aaeb9cfaa9dcad05a292"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/router.py",
+      "sha256": "f0b1c45ddac7b6261344a031f1b003f2b600dae14fb75d27a656393dd0018aea"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/aimd/types.py",
+      "sha256": "d3aacc53e1ee107d8e6873791baf9785331d220559a532771e078a023c97ed85"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/__init__.py",
+      "sha256": "bd0694f98272d2b4016145025b936b17fbc32714202a2d43b0681b28219436cd"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/__init__.py",
+      "sha256": "55cb626f7bdf1dfe4ea7795c026a94804fd39d296f20ff16300641c9dc23d07d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/prompts/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/prompts/__init__.py",
+      "sha256": "aeccf9a6ef81a72ea8700ac4da4ed84bb7ced2e971c0c4989571d935c00b9d3f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/prompts/system.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/prompts/system.py",
+      "sha256": "e00a601485190bdf9a05b558b71d4143281f616dde4c8daade41542c177a8bfa"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/prompts/user_assigner.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/prompts/user_assigner.py",
+      "sha256": "9096e830af009f59c6ed842f268f70035d379eca16a2b4e6053c3bbc2db4fd5c"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/stream_generator.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/logic/stream_generator.py",
+      "sha256": "fbd565288e701c13c17436da858086e99317eae191664b4836db8c7720c3ff95"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/router.py",
+      "sha256": "cc41a8fd25b77467d1e3e83a3f00560cd69db3c735e4075add260d209ea21594"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/assigner/types.py",
+      "sha256": "eb140b55910b446dfb88a734b653890a9003930d243c5d12c574988b4768cafc"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/__init__.py",
+      "sha256": "55cb626f7bdf1dfe4ea7795c026a94804fd39d296f20ff16300641c9dc23d07d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/prompts/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/prompts/__init__.py",
+      "sha256": "be28a47bb4c342a02ba6e709be7c0aa9feccca71319569cc9d415e1967738559"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/prompts/system.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/prompts/system.py",
+      "sha256": "0937134e283eb67be29d27b089ca97aff3ecd5d805749f953223774ba8295eb1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/prompts/user_model.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/prompts/user_model.py",
+      "sha256": "ee9c9ce21664b94079845942a2ea1b30962d03620cb0ef175b3339653fda575f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/stream_generator.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/logic/stream_generator.py",
+      "sha256": "a685475aa822993e4be9519c03f0307575da1b5baf00dd4e901539a95d218f60"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/router.py",
+      "sha256": "b5c585e22260ac7be98ec6c0301f09cd0be0ced0a911e074fdea7e604c6d5f9c"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/protocol_generation/model/types.py",
+      "sha256": "caa91bc64afd723e56f8864dc11812b518cbd9334440b4e5432354e4ca900667"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/__init__.py",
+      "sha256": "e57858e683cb09fb71172cb9285e08216c5cdc4f8c94aed18b1d3e136ed9ec76"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/__init__.py",
+      "sha256": "55cb626f7bdf1dfe4ea7795c026a94804fd39d296f20ff16300641c9dc23d07d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/__init__.py",
+      "sha256": "2b9acabfc74840b608ad7538b54873dccb75832b955d33bddb94941f1970d424"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/shared.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/shared.py",
+      "sha256": "73070669431f1511db4e93c329a0fa867170ae4ecb22cc52ab9e4048513fd292"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/system.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/system.py",
+      "sha256": "62a4d42d0fe2ff3a99bae19a58aebc1bdaf52615d339ab8c3fcc80d627bfc66c"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/user_protocol.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/prompts/user_protocol.py",
+      "sha256": "9a08aff55a35b49757a2b7ded5f32626ad222f0b55a950eddca29bd074c7438f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/stream_generator.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/logic/stream_generator.py",
+      "sha256": "a25fdb59407c27e8dbee91ff5f45e08f7c5fceedb5757db756fc9302f31166a8"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/router.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/router.py",
+      "sha256": "7fa4887cc0c3caa1138ce98563c5cd0a7c99327ff3aba452389fd7c7abbc93dc"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/types.py",
+      "target": "packages/masterbrain/src/masterbrain/endpoints/single_protocol_file_generation/types.py",
+      "sha256": "b5e79bd8d8d6abd28f01d92031307513bb9e858928f9dd0281c50e9dbde3d2f2"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/fastapi/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/fastapi/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/fastapi/embeddings.py",
+      "target": "packages/masterbrain/src/masterbrain/fastapi/embeddings.py",
+      "sha256": "7a57ff2a8c16b60afda2f1e4a232437a682d3c3e5c2201de0659557cafdab197"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/fastapi/main.py",
+      "target": "packages/masterbrain/src/masterbrain/fastapi/main.py",
+      "sha256": "45ec2b7935e0a6881f4abbb366cf337a46483d279cb1acea82d470b1c1495f68"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/fastapi/provider_health.py",
+      "target": "packages/masterbrain/src/masterbrain/fastapi/provider_health.py",
+      "sha256": "bcd1d9a351e1f84ce34b1a45f31fa3aa5fd8c979714813bd52160c01cb662914"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/fastapi/usage.py",
+      "target": "packages/masterbrain/src/masterbrain/fastapi/usage.py",
+      "sha256": "846153610288bd61d8ae03e715e9cee93dbc7821066abdfbc7fae35dc29ea6dd"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/prompts/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/prompts/__init__.py",
+      "sha256": "8bd821720832c4203532105f0e919b4116df19120c3fb3f2ccb18baa2d06f703"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/prompts/system_message_masterbrain/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/prompts/system_message_masterbrain/__init__.py",
+      "sha256": "968126fd3902b3911372a79da505d035bafdcd60ad6622d758c0b8666aa15af7"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/prompts/system_message_masterbrain/load.py",
+      "target": "packages/masterbrain/src/masterbrain/prompts/system_message_masterbrain/load.py",
+      "sha256": "c7cc1f05a3870f33b3ea737eb61b5a415fcb82881e4d639a53009a594f33e4f4"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/prompts/system_message_masterbrain/masterbrain.md",
+      "target": "packages/masterbrain/src/masterbrain/prompts/system_message_masterbrain/masterbrain.md",
+      "sha256": "ba73f69f73b49d85e50b837e4289156e7fefd5151913831dba12dd538c1c4b40"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/protocol_authoring.py",
+      "target": "packages/masterbrain/src/masterbrain/protocol_authoring.py",
+      "sha256": "09ae10ec6aa7785ac1a92d1e917c3bbbd0a0742d8e32a75d80039d01861b703b"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/providers/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/providers/__init__.py",
+      "sha256": "25b9598fe3149d4784135acfdc2e5bf4ed6ec9985f4550eb8f5fdcbf124b22b4"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/providers/langchain_usage.py",
+      "target": "packages/masterbrain/src/masterbrain/providers/langchain_usage.py",
+      "sha256": "f98c15a4e1e5e18200096a3fd24249690e553bf60b68d7f8e931281999c9e18c"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/providers/litellm.py",
+      "target": "packages/masterbrain/src/masterbrain/providers/litellm.py",
+      "sha256": "3ef29f87b911b6dd4b41362994222a6769b454dcbeb8a15e809fc18c4086a89f"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/providers/openai.py",
+      "target": "packages/masterbrain/src/masterbrain/providers/openai.py",
+      "sha256": "e41d04123e5006da85b1868f2672889c258c58d59c304070260e219556256d81"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/providers/qwen.py",
+      "target": "packages/masterbrain/src/masterbrain/providers/qwen.py",
+      "sha256": "c0e8a1046600541c8880307f1e3919c8e3686408d4376b2c89be4b48b2b3d461"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/providers/registry.py",
+      "target": "packages/masterbrain/src/masterbrain/providers/registry.py",
+      "sha256": "3c67cc8c359b73d6a84e888868fef86a3c6cf96f86620efb187c7d5b8008b145"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/recorder.py",
+      "target": "packages/masterbrain/src/masterbrain/recorder.py",
+      "sha256": "d24fec0ac268e004b467aaceabb9330132c152bb7645128889581b2d4216b3ce"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/types/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/types/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/types/chat.py",
+      "target": "packages/masterbrain/src/masterbrain/types/chat.py",
+      "sha256": "32169c7d7221c958dc0a800066cda25de540948382c0e1d47b2e6fbab556ff0d"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/types/error.py",
+      "target": "packages/masterbrain/src/masterbrain/types/error.py",
+      "sha256": "382cc965581053b219d76c19eb0380a0c58c0ae4a50479794687c44e56f78e6b"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/types/model.py",
+      "target": "packages/masterbrain/src/masterbrain/types/model.py",
+      "sha256": "57fa074389b04a4fc7c53cf01c4f0b83091742e85173e85dca9e598c890c1af1"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/usage.py",
+      "target": "packages/masterbrain/src/masterbrain/usage.py",
+      "sha256": "fdfb7bc58634815a07fa7cea7fae88b6dc644d6e09661626fea9825abdaeffff"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/utils/__init__.py",
+      "target": "packages/masterbrain/src/masterbrain/utils/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/utils/llm.py",
+      "target": "packages/masterbrain/src/masterbrain/utils/llm.py",
+      "sha256": "ad788d125379e01973d1b5ac9e42437623d666a7c200352c12813eb92d3a2641"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/utils/opencode.py",
+      "target": "packages/masterbrain/src/masterbrain/utils/opencode.py",
+      "sha256": "ee3e3a76798f837b03ff1a5e04d056eed0710b6f504578f3a5795100814c1a20"
+    },
+    {
+      "source": "packages/masterbrain/src/masterbrain/utils/print.py",
+      "target": "packages/masterbrain/src/masterbrain/utils/print.py",
+      "sha256": "c0ab57dc23a919f26b25a9c746ef4b334ca79c0ca812f4cf074833506b034e12"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_core/test_usage.py",
+      "target": "packages/masterbrain/tests/test_core/test_usage.py",
+      "sha256": "bfd77872f903f8d3132eb85eb9261256ec9245c11a2f88d6f29fda0821c1916f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/conftest.py",
+      "sha256": "4079e57690b870cbfc1c4c81ecb15161d6459b7f9fd80d90d77419531fe1f9d3"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_final_conclusion.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_final_conclusion.json",
+      "sha256": "621db3b725bd578c40dc6fef82e7eeb67832a81017bc5bf14ddf1954ea8034c5"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_goal.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_goal.json",
+      "sha256": "81e1e6dd0a18318748f8e041a7c1796eafd5c6e1745d560bd68f9dae36785362"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_phased_conclusion.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_phased_conclusion.json",
+      "sha256": "6f4a4f51f4eaa83870c7fa9fef93c03c2a737b9dda6c50eac36f870990e3a182"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_protocol.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_protocol.json",
+      "sha256": "81e80250c14271c3deb549c80bc54a41c2af3d63d784be45addf03cf112f0c90"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_strategy.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_strategy.json",
+      "sha256": "55d50cdb5f4e90f75a84ed6bf5e70caf1f43a4fe9f0895d091d84b6cba00cc20"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_values.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/aira_input/aira_input_for_values.json",
+      "sha256": "8347161fd2b94788508c51584efd049017c8c07299b52f1868a8f8047dffcef6"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_final_conclusion.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_final_conclusion.json",
+      "sha256": "cf9b69659bcd335d5e816c81d58cfcc4fd943093a4d71a8769ea9ceb40d6226f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_goal.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_goal.json",
+      "sha256": "c508b5dae9440c0a893ac39b2e2a6904c3249b56a5b7cccc9057c46b79eae13c"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_phased_conclusion.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_phased_conclusion.json",
+      "sha256": "9f371c1ee95262bc6498fa7f29a3c153b5fb199a0b176e326834cd8b3671af7e"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_protocol.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_protocol.json",
+      "sha256": "75b9c67a12dcb951887476e2a2180f5746baa3a32b1e5c1cfcd53e2753b98a90"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_protocol_end_path.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_protocol_end_path.json",
+      "sha256": "34ce810fc749d427a26c92d77da50bee45b64d0dbdd4711eba31e6a3a63eca3d"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_strategy_non_researchable.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_strategy_non_researchable.json",
+      "sha256": "ac581dfaa8264632def4c766cfbbb2882c52229ff56d2deea8535dc2018207ea"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_strategy_researchable.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_strategy_researchable.json",
+      "sha256": "531829d8bb45d88b16ef4e43be619a021e8a6d8109455c7d570aa0e129e6f248"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_values.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/path_data_waiting_for_values.json",
+      "sha256": "f2ff152e2b5912939bd76d5f869f33770928cf4beaf1ecc290aed4bc032778d2"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/protocols_info.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/protocols_info.json",
+      "sha256": "f9b4ee0e8dd58e5bf0c64565cc872900449af64befca2730e2c7cd31f35756af"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/json/workflow_info.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/json/workflow_info.json",
+      "sha256": "ca383a8184aefb8fae49b1b0b1980aabfc058a03285cf860ef472e233090b384"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_final_conclusion.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_final_conclusion.py",
+      "sha256": "ef5b333a6137fd92bf3a587e09d4221e878831ac2efc8e1920f3d9cc88ac6121"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_goal.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_goal.py",
+      "sha256": "c8144711af3942427fe33937e8c8fad75927fbc6dcd12ff8f9d90e14a576082b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_phased_conclusion.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_phased_conclusion.py",
+      "sha256": "e6a39bd0051796d1c8fba42496834c9a849c814a254dfc39566fbea1be0192de"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_strategy.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_strategy.py",
+      "sha256": "3a8f4ef0ef9424c6c318ba1314c82ce1ef5b1bdd816bfbe0c99d6ad7ee05146a"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_values.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_generate_values.py",
+      "sha256": "5b09ab602dadf718f9b76803f3392fffa6065f78807f7ab7e95ed57edf3a5eca"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_select_protocol.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_functions/test_select_protocol.py",
+      "sha256": "687370bd0dbff1f8ee5209a04e5ec1b437fb6d6a12cd6f43691cd35c81307e37"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_router.py",
+      "sha256": "6f09019c01bc7544a20071b377608d7b73512e900baeb7ff319ce1371e664d90"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_aira/test_types/test_workflow_info.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_aira/test_types/test_workflow_info.py",
+      "sha256": "9057ba89454733b44ecf32ab0880392e002d9f739977fb978f7aa208ae4a3e7d"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/README.md",
+      "sha256": "2e3812cd3364653a97d1131b4da11ee32f70112df2c85c9db24194e03930b40a"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/__init__.py",
+      "sha256": "dce18fe1b0262d799881222b1b90c4c416957dc3b2a0d7461bf190c8f8572651"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/conftest.py",
+      "sha256": "090e7b60cfbcf5f7a5c645c57512b3e97152c5f45b645aedc2966c930619225b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_in_gpt.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_in_gpt.json",
+      "sha256": "32127e65b190e4991fd5ad3139026c2cfecabe70267a4982eb2e9aff982a0e41"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_in_qwen_onestep.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_in_qwen_onestep.json",
+      "sha256": "0f955aa4cd3cd416f704f3b98397adca0fd82ef69325eaee4f28e35219dd96fc"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_in_qwen_twosteps.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_in_qwen_twosteps.json",
+      "sha256": "485c353b6452241fc98a68e409edaf18a62d7713778e27b5e2eb4a4ad71b8e82"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_out_qwen_onestep.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_out_qwen_onestep.json",
+      "sha256": "c831192fb9711e7e8522fd933c3bf1ab2364f6056a71c5a07c8d133d4f9e6976"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_out_qwen_twosteps.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgL_out_qwen_twosteps.json",
+      "sha256": "6e5d70394f413d7bc1276900818a0c47f683d9c05fda8a392c8eb1ed4d515418"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgP_in_gpt.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/imgP_in_gpt.json",
+      "sha256": "b5ac98dc389168fee55d6fd6b4d2b2598e14d90f577a6e8738fa52a657acc2ba"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_conversational_turn.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_conversational_turn.py",
+      "sha256": "30f5f0aabeb74658df24dc91e646d6ce6bfa1e6979eb4b15019ef9be5ffc9a2f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_e2e.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_e2e.py",
+      "sha256": "26dccbc04433a956d0629796a685a8d08176b9f83c2cf33a11d2b931caeb6087"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_field_input_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_field_input_full_flow.py",
+      "sha256": "ebb2d6ebab591cc9bc36a654d34033b60d0204163d463a2290ba790ea1b428bc"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_router.py",
+      "sha256": "b94949e941ccdb1b0f9b2dc29f735a6c1449ba94ae093e0406780145c16ca958"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_slot_service.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_slot_service.py",
+      "sha256": "c6a3a70d94c4e75b6f8efc915e256600c360048deddd0769f17077b4a1bcf398"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_types.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/test_types.py",
+      "sha256": "7390f0d1374d845d834b449eaefcf75c33d7af8c2a06e38aa4e619059e147ced"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_in_1.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_in_1.json",
+      "sha256": "ee84bf36ef1971898f9dfcd46ce29b729a0fe68c995dbf6710a4925cf66692f7"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_in_2.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_in_2.json",
+      "sha256": "c41d318b8de5e62595852ae7ba019ceb68cf8f79aef374d385543b5379fd27e4"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_in_qwen.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_in_qwen.json",
+      "sha256": "a9122d6113490c4e43317a2ff49915d3a8e31db04127d56e9cc13d3a7cddcf30"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_out_qwen.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_field_input/text_out_qwen.json",
+      "sha256": "52b4f61a8841e83132e41aaee9e4507a51c91a2f3a79ec59bd3b93ddbe721e6b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_basic.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_basic.json",
+      "sha256": "f4622f26160be50dc82a81bcf08dee849d29cd1372963468255751dcb57ebe51"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_multi_turn.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_multi_turn.json",
+      "sha256": "5ff6b443a076fb2c0b223e30b41b46dcf5ef646f4b4540c3981a8a4c2d01d52b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_thinking_and_search.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_thinking_and_search.json",
+      "sha256": "9d7ac55ac38d7f37a8b66084970e56d8475c7b684f4007385516930b70e09109"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_with_search.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_with_search.json",
+      "sha256": "d849e9bdc8619f67e966cfa1da2b651d7e6656327fc6f4e820b45f555a9a33bb"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_with_thinking.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/demo_input_with_thinking.json",
+      "sha256": "3e2435b28aeaa523f80d45c0daa988cfba7b63ae2180b14ca83aa40a36341840"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/test_generate_stream.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/test_generate_stream.py",
+      "sha256": "448df4ece77fee256b100e82f72ee80f6b0d88246e7f6f83cfbbb23e6c1ea055"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_language/test_router.py",
+      "sha256": "7af47037115879e2b2ae0db0bd707020038be8e6d843efc4f4b4993571e74dbe"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/README.md",
+      "sha256": "d6b53f1cfbc8d7e3fdc6ec7b8f8a03135f62dd54b6af6fb9245b827c2786f7b4"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/__init__.py",
+      "sha256": "a4afdacbffda1f150f74efe05d3321053005e43684af58adaf3e23d1ee498335"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/conftest.py",
+      "sha256": "e5274539b83be04bb4ab39404f5f948311f3699d52e3f816350144c75763a5e1"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_input_1.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_input_1.json",
+      "sha256": "e64ae4b2e922fe401432dca5695bbe78f3ef6ad7223a1abcfc25d8d73cbf4f18"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_input_2.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_input_2.json",
+      "sha256": "be24fbc7528a3e57b7d73ce30def7594e11200ec64923d68c85749c9e51e8cf2"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_output_1.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_output_1.json",
+      "sha256": "2f51d6193f3843f7cb3fc78d55621d6b893cd39b91f2987f3028b9b85586c43b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_output_2.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_base64_output_2.json",
+      "sha256": "42f81e25eff07d813b7b42111b97569215be013194a45f909cf19fe6581aca57"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_url_input_1.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_url_input_1.json",
+      "sha256": "ea9229683ff821c2407e708f962d770cdfb2ae21efa06d29faa412efc67dcfb2"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_url_output_1.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/demo_url_output_1.json",
+      "sha256": "d6cf93414b7ed077fe189afa5bc2cc1cd96b33f60c0d4bc862c211aff0497fac"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_router.py",
+      "sha256": "0d58250c31a9e3b495b7605c2820fc64763c40d3f0d11b25782181f9a57c5e0c"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_stt_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_stt_full_flow.py",
+      "sha256": "9d2f13956c24d2299c16f71639215cf80c2e419156a1d28a5665f7b3f6ba446c"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_transcribe.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_transcribe.py",
+      "sha256": "e2e2607cb8730d54f2d185eaae39835d76dcbcc23d82f526269332d5c6f5dc16"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_usage.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_stt/test_usage.py",
+      "sha256": "0c8c5620c9d48ecda1c888b484b36309c047341f3b81faa4dca1c804189ddfba"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/README.md",
+      "sha256": "3f44efef9e0f57ff523a916a743fe488fcb8da5b913a1577751d383112a0ffa9"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/__init__.py",
+      "sha256": "ae20c1ad61a144354ffdf9c3aceab063c7f09236c2383485303510f32ba06a18"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/conftest.py",
+      "sha256": "f3b6b7b3917a832f4ef4b67c1fb330161324378822640f5d8c58ac8c36041d30"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/demo_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/demo_input.json",
+      "sha256": "a32c82cc3bd43d78fd69b467709435ad2f23c92c1540a7d30dfd718ef7a9b763"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/demo_input_url.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/demo_input_url.json",
+      "sha256": "6b83d0168ed1ad008221ef554dcb9f17b80c66c285a2a91d9edc1a4c9682fc72"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/demo_output.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/demo_output.json",
+      "sha256": "3d5f27853da0038bb8eb1e216caa9f83ad94744a1da1b07505a8346ba2b82c9e"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/test_recognize.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/test_recognize.py",
+      "sha256": "3a56505f40b8ad7b6d1405a10fd3678f248c3089e583be3f49a663465e1018b5"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/test_router.py",
+      "sha256": "a424f28135aaed734ec869fe0e39ea7eac71e77f1228cbea4b7b25d213b34e2d"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/test_vision_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_chat/test_qa/test_vision/test_vision_full_flow.py",
+      "sha256": "b60eaa5c004ca5e713164572b8ef93878d8eda2b1665d99cfd4a9060c83c681f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_code_edit/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_code_edit/conftest.py",
+      "sha256": "03d94bdd9e503b7c23f7907d90b22b17902d150715a31798a5ed80ee69fda8b5"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_code_edit/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_code_edit/test_logic.py",
+      "sha256": "3f0190c60471a0e396a74b969af2a6443c817f27907c03b2f80ccc3b30912fa8"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_code_edit/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_code_edit/test_router.py",
+      "sha256": "44a7413ff9a3509eb5b9b03bf2a51bff0b7fe2f5075f344d68af5b723f3970bf"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/README.md",
+      "sha256": "7da9774524cc63d76d3bcb2d1861da5e381967e6f53c87976b92c4055ce40bec"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/__init__.py",
+      "sha256": "bd70f1ae6f190981f45a1c4d871a5dbbe36fbda73d1fb6d6cb5de7f120fd6f57"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/conftest.py",
+      "sha256": "d86e7795121a205847ddb9320e07686a0891ef8ae2168b87a9ea1641208502d3"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/example_input_protocol.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/example_input_protocol.md",
+      "sha256": "5a72e5425995a144be72e05808086c89ee6f4723aa7c158bbdc692cb06fc4871"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/example_output_paper.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/example_output_paper.md",
+      "sha256": "78f1b20b3742bab45559e0ea18b8c4953bcf0bd0ebed5cd5c0ade79fd256dbf5"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_api_key_handling.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_api_key_handling.py",
+      "sha256": "f1e4bb996cbeee75a5f0eaab826bdb2a88fa0ec69076fdb7ab070555333236b1"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_input_with_ref.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_input_with_ref.json",
+      "sha256": "12e7a23d23e19ffd7ea964509cbb649cf59605690bbde7a37fbca1c006f133d6"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_input_without_ref.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_input_without_ref.json",
+      "sha256": "24ee47baa6d5ca6dec4b8b10d29b951f08fbf9026145aeb31a22980a124ffb38"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_integration.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_integration.py",
+      "sha256": "967b993c1e2f91cc97b219e406806f221b517307f8cf4fc284146f660b35e09f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_logic.py",
+      "sha256": "48aa9c3464ff5fc45bc3c43e7e616549a01a035c98070c6c6b54d01232a65610"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_router.py",
+      "sha256": "ac504419d46f2e32f5b0c20c1bcb1b6f0156f784187ceac0dde8aa760427cc3f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_types.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_paper_generation/test_types.py",
+      "sha256": "205e7f06b660999246b78da955fb3a918a53519461d4bf72d1a4d8444ddbf46d"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/README.md",
+      "sha256": "7820d634843a4e646d3dab25c9a02a6f717287304bdd18d41de4c6b2ec509a1d"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/__init__.py",
+      "sha256": "be6686bd96e759cf5d897eb24669f90365d79d65d7e72233c7b54547411b93bd"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/conftest.py",
+      "sha256": "6bb4841493c74297ed0e9eeacf2f85c6ddb15a2b76e69b1fb736a865d36b6965"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_assigner_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_assigner_input.json",
+      "sha256": "caa4c2c453bba2bcf9b63660f662dc04991859b43d5d8343f3aaa586a0468d3f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_assigner_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_assigner_output.txt",
+      "sha256": "d7a65e2e96701ad6ec7d502ba97de15ebcc0be869e55add2d94e1be5bacf1a29"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_model_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_model_input.json",
+      "sha256": "21d620e33b176f6a54e99bac6d2774553a86bde6695809ea666906553a3a4271"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_model_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_model_output.txt",
+      "sha256": "173510905ee3ef0958eb5e17441a95653fc69b0fb1bb9fa4ed9307465be8c837"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_protocol_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_protocol_input.json",
+      "sha256": "32f33ff4925729a1f99f464d196ba4c540eb0b71a571e741ade644f3ebd6febb"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_protocol_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/demo_protocol_output.txt",
+      "sha256": "f9cbcb46f06e01e8b3b9777c61a27591907d829ecab6b6e5adcc77d1341e6845"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/test_logic.py",
+      "sha256": "30057a7af611d52abe69d982e23205440c7e3bef11b113f18b09bda05cff269f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/test_protocol_check_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/test_protocol_check_full_flow.py",
+      "sha256": "73f27cc56c2469c8a05e3e8ea34f3842a001632c8d36eaafdf16f374eee9d2e0"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_check/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_check/test_router.py",
+      "sha256": "598f17e61fb47e650d2d1368a90d264ae1c201dc24ef33602bdaec88f1334775"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/README.md",
+      "sha256": "54438fd4dfa84e15ab871f3b82cefdba6273c4a96cba46abb5db40f07cab807c"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/__init__.py",
+      "sha256": "285e484ec690b8b19863bea8545213c1e66f0118cafc7c4a84500b58878615cf"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/conftest.py",
+      "sha256": "493eedda1407a5bfc778031a71b9e3a9e3e93c888539009916b03afd28618956"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/demo_protocol_debug_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/demo_protocol_debug_input.json",
+      "sha256": "e7e7f52e456b99501f85bb54d2278312ddf838ecb1bda3bf2e1873eddc55a254"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/demo_protocol_debug_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/demo_protocol_debug_output.txt",
+      "sha256": "de92a2dd128580fd58736550d13756a88852b2b3fa8b35d33ed55dee47eefca7"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_integration.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_integration.py",
+      "sha256": "1d5968ad4c325fc4e81f153552dd79c38648901b256d8ea5c74b712fc2b2fa54"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_logic.py",
+      "sha256": "23031e9a4a82acce9f16b81739e74ea67811ae39b4f6000fa1626acba5faa99f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_router.py",
+      "sha256": "e76dadc0d9d4860ddbf3ac1a69ddcd61703c511b27f99b514d8063b467ac9476"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_types.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_debug/test_types.py",
+      "sha256": "dbc76e52873da366b0804fb16c2f15d0e294b2b3e1875b9a6a4d12efc9426eee"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/README.md",
+      "sha256": "dcdc275701a78db763b90b35475c9251213cb5c217f7c76429359792e45228e0"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/__init__.py",
+      "sha256": "13bed9704c6cff2abd9855d209cc1cb7c88bb08a2fa050318aa39b95d34c95be"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/conftest.py",
+      "sha256": "e114fa23268a470300843a81e466a6d328d450be30476097a4cee7934e213151"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/demo_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/demo_input.json",
+      "sha256": "efb5185fa51e1768aad1e93ed00fb12128f675e34645702fbc66349657a4aec8"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/demo_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/demo_output.txt",
+      "sha256": "12d38552de5d0cb129f47822b7a7af1f33fee3be2f75fd209170095884db93b3"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/test_aimd_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/test_aimd_full_flow.py",
+      "sha256": "73313c943c0c84b7cbf4a72a7aec4838e892e2e9bbf5fa69cf58a54f8ab09e51"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/test_logic.py",
+      "sha256": "d61d1fb9e999f0e9fdc81ed3f50f906d64971cf8e46e028e691076dfdadb5372"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_aimd/test_router.py",
+      "sha256": "b83d46e17e7d9ebde49a17dd072b9c95cafa76bf058ac747e3a67ec2ec93a801"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/README.md",
+      "sha256": "ef2107b15e70b9ddcc519ab34a1ed23e100148ca58cd5ba002f5f66841a7f3bd"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/__init__.py",
+      "sha256": "547b0fd596174d8a256f0f4cc6aff882d2af708694b902a70e5149f3e1aa92c3"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/conftest.py",
+      "sha256": "7c1ae42d16a85c4b93f0e28ca5aaa1b47586c74ccec9c4e5c3d10d8665290012"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/demo_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/demo_input.json",
+      "sha256": "c2596a2d89feb8f823b9f5ce5a9a51d1cbae8329c4fe9434dde998df67a2607a"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/demo_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/demo_output.txt",
+      "sha256": "a1028f949fca614dd66eba31510ec70cc2b5563da0f71ca96e2ed850d86c1259"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_assigner_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_assigner_full_flow.py",
+      "sha256": "f8e28ea11914fd37028aa304ffb8c55c9524ac0931b020752cede623b0d57d6e"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_logic.py",
+      "sha256": "2f530813c567582d9e36a3fd723e29e2d27ca6999ba6d6bbf8f5c2e5f4e88aae"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_prompt_contract.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_prompt_contract.py",
+      "sha256": "2e4d4f41242f7eb1a19a764524aa406e89f45a95e847e1b0fa4e9510c0dadd77"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_assigner/test_router.py",
+      "sha256": "4e99cc76211f280147255932d43deb1df97306922af7f9bfce8952b1bf9b8a74"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/README.md",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/README.md",
+      "sha256": "3b3e6b631894d8c27d13d80042720e6f35bec0a05ca9552a7e8ca0b8962dd18b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/__init__.py",
+      "sha256": "480f6b074b3d5acb5ddaf050b0628441821a9dd23f96ccaefd9d1fe28289e9b5"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/conftest.py",
+      "sha256": "d6e6066f56453adc737d4556856a4143ae1c3856efd591467dc45ca1e89276c8"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/demo_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/demo_input.json",
+      "sha256": "41019eba4a14f43a0f78a934f038c9a1125c33406a3cce8d134192a13816918b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/demo_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/demo_output.txt",
+      "sha256": "8d5e30b17e2c31ab990e988bd654d211d4b77c49eeac7b655ac25e61580e6a39"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/test_logic.py",
+      "sha256": "f9cb3e4372538b8ea53522bc7a411c07736eb564a5ee952774362685b76afbae"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/test_model_full_flow.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/test_model_full_flow.py",
+      "sha256": "800d0de635a5df3ceac43f063916d33d749a08031a103ff50a1fa74039555e9f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_protocol_generation/test_model/test_router.py",
+      "sha256": "eb489b0766e89781e933cfa1ebd36ed038b2fd1e996d760917aac39b4fd3d813"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/__init__.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/__init__.py",
+      "sha256": "eff0325615b9010b707234711b01cec9f3830551407d43d958085642b3727d82"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/conftest.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/conftest.py",
+      "sha256": "be4abff1ecd89ee5f5ea22ef15043768a1c01fd410e4516f86238aa8329accfb"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_input.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_input.json",
+      "sha256": "66df02aa543b8fe284e83faa9b25f57bced4b5e89829c21fc46b9f97b89aacc5"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_input_2.json",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_input_2.json",
+      "sha256": "9afa05b39b717a5950faccdcf7433c2b9d5ea77e28c55c5f9a8069568b9aed8f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_output.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_output.txt",
+      "sha256": "b0b6cd6bbbe6443f23371a667b46b5080bf5a748c83ad80c5467c8ff69317a5b"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_output_2.txt",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/demo_output_2.txt",
+      "sha256": "46780404e97622451aa46d0b12cd3f86ccc7e71716ced2dc598ce247177168b3"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/test_assigner_policy.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/test_assigner_policy.py",
+      "sha256": "f80d60b495a61c1946e52414b4d96bb6a093b753baca1cddc9a9bd8e12a7d7cd"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/test_logic.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/test_logic.py",
+      "sha256": "f64142e87ac98bfe9e9bd78552dbe05edcac7f66480a9bd5474ddbdcfa21b927"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/test_router.py",
+      "target": "packages/masterbrain/tests/test_endpoints/test_single_protocol_file_generation/test_router.py",
+      "sha256": "222b0db7df01bb6ec74310e3f9e57269db1d030308e232fe4ec82738135f9142"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_fastapi/test_provider_health.py",
+      "target": "packages/masterbrain/tests/test_fastapi/test_provider_health.py",
+      "sha256": "9d7499bf60b1f627e971601aaff128961a4ce9aa06c0905ad94f857f3984cc76"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_fastapi/test_usage_context.py",
+      "target": "packages/masterbrain/tests/test_fastapi/test_usage_context.py",
+      "sha256": "4d8715b17f49ccbd4d22e023687b3b7330af56b6266d48c58e1b051af6f764aa"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_providers/test_embeddings.py",
+      "target": "packages/masterbrain/tests/test_providers/test_embeddings.py",
+      "sha256": "26ac5f88c534b81d778be3efcbf1f4098bb5128a0d24303cd45d459a68bde84f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_providers/test_langchain_usage.py",
+      "target": "packages/masterbrain/tests/test_providers/test_langchain_usage.py",
+      "sha256": "ba87713feb175f9a7b17fa2861fa0427a07cf3f041c5c83999c1dd83109a757f"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_providers/test_litellm.py",
+      "target": "packages/masterbrain/tests/test_providers/test_litellm.py",
+      "sha256": "5fddce3a5d75c6bcd67d992b52877155eb769ce58cef9f332fe3a0e152006e60"
+    },
+    {
+      "source": "packages/masterbrain/tests/test_utils/test_llm.py",
+      "target": "packages/masterbrain/tests/test_utils/test_llm.py",
+      "sha256": "818b81c38f76d8bffb4f13f1799c5bbf64a8e3d10c42b6bc2b5b477571f4cd6b"
+    },
+    {
+      "source": "packages/vue/CHANGELOG.md",
+      "target": "packages/masterbrain-vue/CHANGELOG.md",
+      "sha256": "b8702db2c8f6e417320617d66252a4d0ce50722fdfa2c2b81bd2916923d19746"
+    },
+    {
+      "source": "packages/vue/README.md",
+      "target": "packages/masterbrain-vue/README.md",
+      "sha256": "ad42a49eb938207894a46c6fbc4459214c63c9d12d7b954859a1398e87f39d65"
+    },
+    {
+      "source": "packages/vue/package.json",
+      "target": "packages/masterbrain-vue/package.json",
+      "sha256": "024f9e084f5038aa2cdd3b8c65b9d2550700432597a6f8b751f13cea20f90030"
+    },
+    {
+      "source": "packages/vue/src/MasterbrainChangeReview.vue",
+      "target": "packages/masterbrain-vue/src/MasterbrainChangeReview.vue",
+      "sha256": "3a95bb6eec706d3eaab80e27d9f077e5c4f1f90320177cc612fb00ec280e07cd"
+    },
+    {
+      "source": "packages/vue/src/MasterbrainChangeStatus.vue",
+      "target": "packages/masterbrain-vue/src/MasterbrainChangeStatus.vue",
+      "sha256": "b8b3bbbe1ab95cfebff5df8ceb7afd44a10ab412d0b5b21d694d14c6486bf87b"
+    },
+    {
+      "source": "packages/vue/src/MasterbrainI18nProvider.vue",
+      "target": "packages/masterbrain-vue/src/MasterbrainI18nProvider.vue",
+      "sha256": "61f6d202a8dd3ac86aec7e9b0d5a8e012d986dabfe67ce885ad096075011c2d1"
+    },
+    {
+      "source": "packages/vue/src/MasterbrainMonacoDiff.vue",
+      "target": "packages/masterbrain-vue/src/MasterbrainMonacoDiff.vue",
+      "sha256": "67871c98d2ff21d499d4d15584525008834bc2ad0d7fd645670724e0dc9e91e5"
+    },
+    {
+      "source": "packages/vue/src/i18n.ts",
+      "target": "packages/masterbrain-vue/src/i18n.ts",
+      "sha256": "6f9747c8fca27a0b5a1592626b7895f66bbda0ddac4ba61365ee2fdefa2ac51a"
+    },
+    {
+      "source": "packages/vue/src/index.ts",
+      "target": "packages/masterbrain-vue/src/index.ts",
+      "sha256": "7eae0151e8b6d9ae3411207170451a53ab0ab6607c59e0f64d7835698eef6dcd"
+    },
+    {
+      "source": "packages/vue/src/monaco.ts",
+      "target": "packages/masterbrain-vue/src/monaco.ts",
+      "sha256": "4b7103d9d8f5f39de8391a917b1cc08436a84d9203d38c16a2b5eca4fb14d260"
+    },
+    {
+      "source": "packages/vue/src/useCodeEditAssistant.ts",
+      "target": "packages/masterbrain-vue/src/useCodeEditAssistant.ts",
+      "sha256": "f68069b45d312ca3fe674ca9c740de3379e60b59dd2391620c9107ae2c26c4f4"
+    },
+    {
+      "source": "packages/vue/tests/i18n.test.ts",
+      "target": "packages/masterbrain-vue/tests/i18n.test.ts",
+      "sha256": "79232978534118704dab14f543caeff335f807a05a002f6e6f93b93226c7722f"
+    },
+    {
+      "source": "packages/vue/tests/useCodeEditAssistant.test.ts",
+      "target": "packages/masterbrain-vue/tests/useCodeEditAssistant.test.ts",
+      "sha256": "65281e2309eb4570fb0e437e3b85942384c36a2df407e8a61162538f54587cdb"
+    },
+    {
+      "source": "packages/vue/tsconfig.build.json",
+      "target": "packages/masterbrain-vue/tsconfig.build.json",
+      "sha256": "85f60fc8862675a97017c6c5f42a7b1afa50d66f6be4d0f6bbd1b33e25937c22"
+    },
+    {
+      "source": "packages/vue/tsconfig.json",
+      "target": "packages/masterbrain-vue/tsconfig.json",
+      "sha256": "30a7ae69fea5a125d62037971e5080ca99e8d9967b7032d650d218f26d3a17ab"
+    },
+    {
+      "source": "packages/vue/vite.config.ts",
+      "target": "packages/masterbrain-vue/vite.config.ts",
+      "sha256": "df035fb7549c77f97167f0eafb05555f0ad906d7372e4f813f55e98998920eaf"
+    },
+    {
+      "source": "scripts/export_code_edit_contract.py",
+      "target": "scripts/export-masterbrain-contract.py",
+      "sha256": "180cd55d147459be349937a777cb77f861773fdb76ee8e41519554680d012598"
+    }
+  ],
+  "post_import_notes": [
+    "Hashes describe imported baseline contents, before Platform integration edits.",
+    "Studio frontend, desktop launchers/packaging and local filesystem/library endpoints remain in the original repository by user decision.",
+    "The standalone Python lock is replaced by apps/api/uv.lock. Independent publishing workflows were not migrated.",
+    "Original documentation is preserved under history; the maintained guide is docs/en/masterbrain-development.md."
+  ],
+  "excluded_from_platform": [
+    "apps/studio/.gitignore",
+    "apps/studio/README.md",
+    "apps/studio/SETUP.md",
+    "apps/studio/eslint.config.js",
+    "apps/studio/index.html",
+    "apps/studio/package.json",
+    "apps/studio/postcss.config.js",
+    "apps/studio/public/vite.svg",
+    "apps/studio/src/App.vue",
+    "apps/studio/src/assets/airalogy-chat.svg",
+    "apps/studio/src/assets/airalogy-logo.svg",
+    "apps/studio/src/components/ChatPanel/AiAvatar.vue",
+    "apps/studio/src/components/ChatPanel/ChatInput.vue",
+    "apps/studio/src/components/ChatPanel/ChatPanel.vue",
+    "apps/studio/src/components/ChatPanel/MessageList.vue",
+    "apps/studio/src/components/EditorPanel/AimdPreview.vue",
+    "apps/studio/src/components/EditorPanel/CodeEditor.vue",
+    "apps/studio/src/components/EditorPanel/EditorPanel.vue",
+    "apps/studio/src/components/FileManager/FileManager.vue",
+    "apps/studio/src/components/FileManager/FileTree.vue",
+    "apps/studio/src/components/FileManager/LibraryPanel.vue",
+    "apps/studio/src/composables/useChat.ts",
+    "apps/studio/src/composables/useFileManager.ts",
+    "apps/studio/src/composables/useLibrary.ts",
+    "apps/studio/src/composables/useTheme.ts",
+    "apps/studio/src/env.d.ts",
+    "apps/studio/src/index.css",
+    "apps/studio/src/main.ts",
+    "apps/studio/src/types/aimd-modules.d.ts",
+    "apps/studio/src/types/index.ts",
+    "apps/studio/src/utils/apiClient.ts",
+    "apps/studio/tailwind.config.js",
+    "apps/studio/tsconfig.app.json",
+    "apps/studio/tsconfig.json",
+    "apps/studio/tsconfig.node.json",
+    "apps/studio/vite.config.ts",
+    "packages/masterbrain/packaging/pyinstaller/masterbrain.spec",
+    "packages/masterbrain/scripts/build_desktop_bundle.ps1",
+    "packages/masterbrain/scripts/build_desktop_bundle.sh",
+    "packages/masterbrain/src/masterbrain/build_desktop_bundle.py",
+    "packages/masterbrain/src/masterbrain/desktop.py",
+    "packages/masterbrain/src/masterbrain/endpoints/library/__init__.py",
+    "packages/masterbrain/src/masterbrain/endpoints/library/router.py",
+    "packages/masterbrain/src/masterbrain/endpoints/library/types.py",
+    "packages/masterbrain/src/masterbrain/endpoints/workspace/__init__.py",
+    "packages/masterbrain/src/masterbrain/endpoints/workspace/router.py",
+    "packages/masterbrain/src/masterbrain/endpoints/workspace/types.py",
+    "packages/masterbrain/src/masterbrain/library_store.py",
+    "packages/masterbrain/src/masterbrain/workspace_manager.py",
+    "packages/masterbrain/tests/test_endpoints/test_library/conftest.py",
+    "packages/masterbrain/tests/test_endpoints/test_library/test_router.py",
+    "packages/masterbrain/tests/test_endpoints/test_workspace/conftest.py",
+    "packages/masterbrain/tests/test_endpoints/test_workspace/test_router.py",
+    "packages/masterbrain/tests/test_endpoints/test_workspace/test_workspace_manager.py",
+    "packages/masterbrain/tests/test_packaging/test_desktop_packaging.py",
+    "packages/masterbrain/uv.lock"
+  ]
+}

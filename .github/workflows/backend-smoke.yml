@@ -5,10 +5,16 @@ on:
   push:
     paths:
       - "apps/api/**"
+      - "packages/masterbrain/**"
+      - "packages/masterbrain-client/schema/**"
+      - "scripts/export-masterbrain-contract.py"
       - ".github/workflows/backend-smoke.yml"
   pull_request:
     paths:
       - "apps/api/**"
+      - "packages/masterbrain/**"
+      - "packages/masterbrain-client/schema/**"
+      - "scripts/export-masterbrain-contract.py"
       - ".github/workflows/backend-smoke.yml"
 
 concurrency:
@@ -57,3 +63,8 @@ jobs:
 
       - name: Run unit tests
         run: uv run --with pytest python -m pytest tests
+
+      - name: Verify embedded AI and shared contract
+        run: |
+          uv run --no-sync python -m pytest ../../packages/masterbrain/tests -c ../../packages/masterbrain/pytest.ini
+          uv run --no-sync python ../../scripts/export-masterbrain-contract.py --check

@@ -75,6 +75,12 @@ export const checks = {
     command: "corepack",
     args: ["pnpm", "api:check"],
   },
+  masterbrain: {
+    id: "masterbrain",
+    label: "same-repository AI modules, frontend components and shared contract",
+    command: "corepack",
+    args: ["pnpm", "masterbrain:test"],
+  },
   apiTests: {
     id: "api-tests",
     label: "API unit tests",
@@ -236,6 +242,9 @@ export function buildCheckPlan(files, fullRequested = false, hostPlatform = proc
       && (hostPlatform === "darwin" || check.id !== "native-build-tests"))
   }
   const plan = [checks.version, checks.lint, checks.types, checks.apiCompile]
+  const masterbrainChanged = files.some(file => file.startsWith("packages/masterbrain") || file === "scripts/export-masterbrain-contract.py")
+  if (masterbrainChanged)
+    plan.push(checks.masterbrain, checks.apiLock, checks.apiTests, checks.aiE2e)
   const storageChanged = files.some(file => file.startsWith("deploy/object-storage/") || /scripts\/.*object-storage/.test(file))
   if (storageChanged)
     plan.push(checks.storage, checks.researchIntegration, checks.fullE2e)
@@ -385,7 +394,7 @@ export function buildLocalCheckPlan(files, hostPlatform = process.platform) {
   const plan = affected.filter(check => !slow.has(check.id))
   const web = files.some(file => /^(?:apps\/web\/|packages\/|tests\/e2e\/)/.test(file)
     || /^(?:package\.json|pnpm-|tsconfig|uno\.|eslint\.|playwright\.|\.node-version)/.test(file))
-  const backend = files.some(file => file.startsWith("apps/api/") || file === ".node-version")
+  const backend = files.some(file => file.startsWith("apps/api/") || file.startsWith("packages/masterbrain/") || file === ".node-version")
   const result = plan.filter(check => (check.id !== "types" || web)
     && (check.id !== "api-compile" || backend))
   const imagesChanged = files.some(file => /(?:Dockerfile|compose\.ya?ml|docker-compose\.ya?ml)$/.test(file)

@@ -16,6 +16,8 @@ COPY apps/web/package.json ./apps/web/package.json
 COPY packages/components/package.json ./packages/components/package.json
 COPY packages/composables/package.json ./packages/composables/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
+COPY packages/masterbrain-client/package.json ./packages/masterbrain-client/package.json
+COPY packages/masterbrain-vue/package.json ./packages/masterbrain-vue/package.json
 RUN --mount=type=cache,id=airalogy-pnpm-store,target=/pnpm/store \
     corepack pnpm install --frozen-lockfile --store-dir=/pnpm/store
 
@@ -23,6 +25,8 @@ COPY tsconfig.base.json uno.config.ts ./
 COPY packages/shared ./packages/shared
 COPY packages/composables ./packages/composables
 COPY packages/components ./packages/components
+COPY packages/masterbrain-client ./packages/masterbrain-client
+COPY packages/masterbrain-vue ./packages/masterbrain-vue
 
 ARG VITE_APP_TITLE="Airalogy Lab"
 ARG VITE_APP_DESC="Private laboratory protocols, records, and research workflows."

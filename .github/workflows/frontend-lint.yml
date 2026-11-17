@@ -62,3 +62,8 @@ jobs:
 
       - name: Type check
         run: pnpm type-check
+
+      - name: Test embedded AI components
+        run: |
+          pnpm --filter @airalogy/masterbrain-client test
+          pnpm --filter @airalogy/masterbrain-vue test

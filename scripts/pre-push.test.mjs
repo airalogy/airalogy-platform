@@ -68,7 +68,7 @@ test("CI and hook changes select real tooling regressions before expensive check
 })
 
 test("full mode includes every local gate even for an empty or docs-only diff", () => {
-  const required = ["ci-config", "image-availability", "object-storage", "version", "gateway-cli", "api-lock", "gateway-lock", "compute-lock", "lint", "types", "api-compile", "api-tests", "release-metadata", "deployment-identity", "instrument-contract", "research-integration", "gateway-tests", "gateway-sandbox", "interface-tests", "interface-demo", "compute-runner-tests", "compute-engine", "docs", "build", "full-e2e"]
+  const required = ["ci-config", "image-availability", "object-storage", "version", "gateway-cli", "api-lock", "gateway-lock", "compute-lock", "lint", "types", "api-compile", "api-tests", "masterbrain", "release-metadata", "deployment-identity", "instrument-contract", "research-integration", "gateway-tests", "gateway-sandbox", "interface-tests", "interface-demo", "compute-runner-tests", "compute-engine", "docs", "build", "full-e2e"]
   for (const files of [[], ["README.md"]]) {
     assert.deepEqual(new Set(ids(files, true)), new Set(required))
     assert.deepEqual(new Set(ids(files, true, "darwin")), new Set([...required, "native-build-tests"]))
@@ -349,4 +349,9 @@ test("external analysis and onboarding retain real PostgreSQL acceptance", () =>
 test("project R&D changes retain real database acceptance", () => {
   for (const file of ["apps/api/app/routers/project_work.py", "apps/api/app/models/project_work.py", "apps/api/app/services/project_work_contracts.py", "apps/api/tests/test_project_work.py", "apps/api/migrations/versions/0086_project_work.py"])
     includes([file], ["api-tests", "research-integration"])
+})
+
+test("embedded AI changes run the local contract, model and Platform integration gates", () => {
+  for (const file of ["packages/masterbrain/src/masterbrain/recorder.py", "packages/masterbrain-client/src/index.ts", "packages/masterbrain-vue/src/index.ts"])
+    includes([file], ["masterbrain", "api-lock", "api-tests", "ai-e2e"])
 })

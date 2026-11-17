@@ -4,7 +4,7 @@
 
 Airalogy Platform 是 Airalogy 研究数据与智能平台的自托管 Community Edition，包含 Web 应用、后端 API、本地对象存储集成、Protocol / Record 工作流，以及 AI 辅助科研协作界面。
 
-这个仓库定位为公开的自托管平台层。Airalogy 核心标准、schema 和 SDK 包位于 `airalogy/airalogy`；Masterbrain AI 服务位于 `airalogy/masterbrain`。
+这个仓库定位为公开的自托管平台层。Airalogy 核心标准、schema 和 SDK 包位于 `airalogy/airalogy`；Masterbrain AI 核心、客户端和可复用 Vue 组件在本仓库统一维护，Studio 停止主动维护，历史源码保留在原仓库，参见[AI 开发说明](docs/zh/masterbrain-development.md)。
 
 ## 版本边界
 
@@ -13,7 +13,7 @@ Community Edition 包含：
 - Lab、Project、Protocol、Record、Chat 和 Protocol Editor 的 Web UI。
 - 基于 FastAPI、PostgreSQL、Redis 和 S3-compatible object storage 的后端 API。
 - 默认面向本地自托管的 MinIO 存储配置。
-- 对已发布的 `airalogy`、`masterbrain` 和 `@airalogy/aimd-*` 包的集成。
+- 集成已发布的 `airalogy`、`@airalogy/aimd-*` 标准包，以及同仓维护的 Masterbrain AI 模块。
 - 基础 Project / Lab 权限。
 
 Enterprise 扩展不应直接混入这个仓库，除非该能力对开源版也有通用价值。典型 Enterprise-only 能力包括高级 RBAC/ABAC、SSO/LDAP/AD/SAML、合规审计日志、离线安装包、集群运维和企业支持工具。
@@ -76,7 +76,7 @@ docker compose --env-file .env up
 docker compose --env-file .env up -d
 ```
 
-只有 Dockerfile、依赖锁文件或 Compose 构建配置发生变化时，才需要重新执行 `docker compose --env-file .env up --build`。
+镜像输入变化时需要重新构建；未启用开发覆盖配置时，AI 源码变化也需要重建。
 
 默认 Docker 模式不会在后端代码修改后自动重启 API。开发后端时可以启用 reload override：
 
@@ -95,6 +95,7 @@ docker compose --env-file .env restart api-server
 | 改动 | 如何生效 |
 | --- | --- |
 | `app/**/*.py` | reload override 会自动重载；默认 Docker 模式需要 `docker compose --env-file .env restart api-server` |
+| `packages/masterbrain/src/` | reload override 挂载并自动重载；默认模式需要重建 `api-server` |
 | `migrations/` | reload 不会自动执行数据库升级；执行 `docker compose --env-file .env exec api-server alembic upgrade head`，或重启 `api-server` |
 | `pyproject.toml` 或 `uv.lock` | 依赖已构建到镜像中；执行 `docker compose --env-file .env up -d --build api-server` |
 | `.env` | 环境变量只在容器创建时读取；执行 `docker compose --env-file .env up -d --force-recreate api-server` |
@@ -180,7 +181,7 @@ pnpm --filter @airalogy/web type-check
 - 本地 TLS 证书和私钥。
 - 生成的备份、回滚状态和主机专用部署产物。
 - 本地缓存、虚拟环境、日志和构建产物。
-- vendored development checkout；后端使用已发布的 `masterbrain` 包。
+- 仓库外可变的开发源码；Masterbrain 使用随 Platform 提交的同仓源码。
 
 公开发布前建议执行安全扫描：
 

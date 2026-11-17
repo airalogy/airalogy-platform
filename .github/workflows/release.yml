@@ -166,7 +166,7 @@ jobs:
       matrix:
         include:
           - component: api
-            context: ./apps/api
+            context: .
             dockerfile: ./apps/api/Dockerfile
           - component: web
             context: .

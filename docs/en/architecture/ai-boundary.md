@@ -1,12 +1,8 @@
 # Platform and Masterbrain AI boundary
 
-Platform uses the published `masterbrain==0.14.0` Python package for built-in model calls, including text embeddings. It does not require a separate AI service in the default package mode. This unifies model access, not ownership of the research system.
+Platform uses the same-repository `packages/masterbrain` Python module for built-in model calls, including text embeddings. It does not require a separate AI service in the default package mode. This unifies model access, not ownership of the research system.
 
-| Layer | Owns |
-| --- | --- |
-| Masterbrain | Reusable AI capabilities, provider clients, model request/response validation and per-call usage events. |
-| Platform | Identity, authorization, trusted context selection, operational budgets, approvals, durable assets, audit and execution state. |
-| Instrument Gateway / Compute Runner | Explicitly authorized execution and independent result/stop observations. |
+See [same-repository AI development](../masterbrain-development.md) for the shared build, tests and migration boundary. | Layer | Owns | | --- | --- | | Masterbrain | Reusable AI capabilities, provider clients, model request/response validation and per-call usage events. | | Platform | Identity, authorization, trusted context selection, operational budgets, approvals, durable assets, audit and execution state. | | Instrument Gateway / Compute Runner | Explicitly authorized execution and independent result/stop observations. |
 
 Prompts and context assembly that depend on Platform objects remain in Platform. A model response cannot grant access, approve itself, write a final asset or authorize an instrument operation. Built-in provider SDK imports in API product code are guarded by an offline regression test; integration goes through `app/libs/masterbrain.py`. Protocol executor code supplied by users is a separate execution boundary, not a built-in model capability.
 

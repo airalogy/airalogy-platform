@@ -27,7 +27,7 @@ To run the stack in the background:
 docker compose --env-file .env up -d
 ```
 
-Run `docker compose --env-file .env up --build` again only when Dockerfiles, dependency lock files, or Compose build settings change.
+Rebuild when image inputs change, including AI source when not using the development override.
 
 The default Docker mode does not automatically restart the API after backend code changes. For Docker-based backend development, use the reload override:
 
@@ -46,6 +46,7 @@ Use the appropriate refresh action for each type of backend change:
 | Change | How to apply it |
 | --- | --- |
 | `app/**/*.py` | The reload override reloads automatically; in the default Docker mode, run `docker compose --env-file .env restart api-server` |
+| `packages/masterbrain/src/` | The reload override mounts and reloads this source; otherwise rebuild `api-server` |
 | `migrations/` | Reload does not apply database migrations; run `docker compose --env-file .env exec api-server alembic upgrade head`, or restart `api-server` |
 | `pyproject.toml` or `uv.lock` | Dependencies are built into the image; run `docker compose --env-file .env up -d --build api-server` |
 | `.env` | Environment variables are read when the container is created; run `docker compose --env-file .env up -d --force-recreate api-server` |
@@ -113,7 +114,7 @@ uv run fastapi dev app --host 0.0.0.0 --port 4000 --reload
 
 ## Masterbrain
 
-The recommended path is to use the published `masterbrain` Python package in-process. Keep `MASTERBRAIN_CALL_MODE` unset or set to `package`.
+The recommended path is the same-repository `packages/masterbrain` Python module, installed from the local source declared in `pyproject.toml`. Production images install a non-editable wheel from these exact sources. See [AI development](../../docs/en/masterbrain-development.md). Keep `MASTERBRAIN_CALL_MODE` unset or set to `package`.
 
 Built-in text embeddings also use the locked Masterbrain 0.13.0 package; there is no direct provider bypass. Protocol generation and code editing opt in to client-first simple calculations. An external Masterbrain service must be upgraded separately to 0.13.0 or newer to use that preference. See [AI ownership, Protocol authoring, keyword fallback and embedding migration](../../docs/en/architecture/ai-boundary.md) before upgrading or changing model configuration.
 

@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INPUTS = {
-    "api": ["apps/api"],
+    "api": ["apps/api", "packages/masterbrain", ".dockerignore"],
     "web": [
         "apps/web",
         "packages",
@@ -190,7 +190,8 @@ def validate_archive(path):
             if not (
                 member.name.startswith("apps/api/")
                 or member.name.startswith("deploy/single-lab/")
-                or member.name in {"apps", "apps/api", "deploy", "deploy/single-lab"}
+                or member.name.startswith("packages/masterbrain/")
+                or member.name in {"apps", "apps/api", "deploy", "deploy/single-lab", "packages", "packages/masterbrain", ".dockerignore"}
             ):
                 raise ValueError("Unexpected source archive path")
 
@@ -260,7 +261,7 @@ def prepare(args):
                         if role == "api"
                         else "protocol_executor.Dockerfile"
                     ),
-                    "apps/api",
+                    "." if role == "api" else "apps/api",
                 ]
             with (target / f"build-{role}.log").open("w") as log:
                 run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
@@ -284,6 +285,8 @@ def prepare(args):
             "--output=" + str(archive),
             commit,
             "apps/api",
+            "packages/masterbrain",
+            ".dockerignore",
             "deploy/single-lab",
         ],
         cwd=ROOT,

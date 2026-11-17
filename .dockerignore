@@ -22,3 +22,16 @@
 apps/web/public/docs
 deploy/single-lab/backups
 deploy/single-lab/state
+
+# Same-repository AI and development runtime caches/data
+**/.uv-cache
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+**/vendor
+packages/masterbrain/build
+**/local-file
+**/*.pem
+**/*.key
+apps/api/log
+apps/api/protocols

@@ -1,0 +1,125 @@
+import asyncio
+import re
+import time
+
+from masterbrain.configs import select_client
+from masterbrain.protocol_authoring import assigner_host_context
+from masterbrain.endpoints.single_protocol_file_generation.logic.prompts import (
+    USER_MESSAGE_PROTOCOL_HEAD_TEMPLATE,
+    USER_MESSAGE_PROTOCOL_TAIL_TEMPLATE,
+)
+from masterbrain.endpoints.single_protocol_file_generation.types import ProtocolMessage
+
+
+async def generate_stream(protocol_msg: ProtocolMessage, history: list):
+    start_time = time.time()
+
+    # Prepare user prompt.
+    # The TAIL template embeds literal AIMD examples written with double braces
+    # (e.g. {{var|...}}). Rendering it through an f-string / langchain
+    # PromptTemplate would collapse `{{ }}` into single braces `{ }` and teach
+    # the model invalid AIMD syntax, so we substitute the placeholder with a
+    # plain string replace that leaves all other braces untouched.
+    prompt = USER_MESSAGE_PROTOCOL_HEAD_TEMPLATE + USER_MESSAGE_PROTOCOL_TAIL_TEMPLATE.replace(
+        "{USER_MESSAGE_REF_PROTOCOL}", protocol_msg.instruction
+    )
+
+    prompt += "\n\n" + assigner_host_context(protocol_msg.prefer_client_assigners)
+    history.append({"role": "user", "content": prompt})
+
+    client = select_client(protocol_msg.use_model.name)
+    response = await client.chat.completions.create(
+        messages=history,
+        model=protocol_msg.use_model.name,
+        stream=True,
+        timeout=1800,
+    )
+
+    buffer = ""
+    # Track if we've started content collection (after start marker)
+    content_started = False
+    # Track if we've received the end marker
+    content_ended = False
+    # Whether we bypassed marker detection (no ```aimd wrapper)
+    bypass_mode = False
+    # For collecting content
+    pending_buffer = ""
+    # Count how many tokens have been received without finding start marker
+    no_marker_count = 0
+    # Maximum tokens to wait before bypassing marker requirement
+    max_tokens_wait = 8
+    # Track nested code fence depth (for marker mode only)
+    fence_depth = 0
+
+    async for chunk in response:
+        # Keep consuming after the output fence so LiteLLM can deliver its final
+        # usage chunk, while withholding any trailing model text from the client.
+        if content_ended:
+            continue
+        if chunk.choices and chunk.choices[0].delta.content:
+            content = chunk.choices[0].delta.content
+            pending_buffer += content
+
+            # If we've received too many tokens without finding a start marker,
+            # assume the model is not using markers and start streaming all content
+            if not content_started:
+                no_marker_count += 1
+                if no_marker_count >= max_tokens_wait:
+                    content_started = True
+                    bypass_mode = True
+                    # Start streaming what we've already collected
+                    yield pending_buffer
+                    buffer += pending_buffer
+                    pending_buffer = ""
+                    continue
+
+            # Process the pending buffer for markers
+            filtered_content = ""
+
+            # Look for start marker first
+            if not content_started and "```aimd\n" in pending_buffer:
+                # Remove everything up to and including the start marker
+                parts = pending_buffer.split("```aimd\n", 1)
+                pending_buffer = parts[1] if len(parts) > 1 else ""
+                content_started = True
+                fence_depth = 1
+
+            # Check for end marker only in marker mode (not bypass mode)
+            # In bypass mode, stream everything until the model finishes
+            if content_started and not content_ended and not bypass_mode:
+                # Track nested code fences to find the matching outer closing ```
+                # Opening fences: ```identifier (assigner, quiz, fig, python, etc.)
+                for m in re.finditer(r"```\w+", pending_buffer):
+                    fence_depth += 1
+                # Closing fences: bare ``` (not followed by word char)
+                for m in re.finditer(r"```(?!\w)", pending_buffer):
+                    fence_depth -= 1
+                    if fence_depth <= 0:
+                        # Found the matching outer closing ```
+                        pending_buffer = pending_buffer[: m.start()]
+                        content_ended = True
+                        break
+
+            # If we've started content collection
+            if content_started:
+                filtered_content = pending_buffer
+                pending_buffer = ""
+                buffer += filtered_content
+                yield filtered_content
+
+                # Stop emitting content, but consume the upstream stream to its
+                # final usage chunk for accurate metering.
+                if content_ended:
+                    continue
+
+            await asyncio.sleep(0)
+
+    # Handle any remaining content in the pending buffer
+    # Even if we haven't started content collection based on markers,
+    # send the accumulated content if there's anything
+    if pending_buffer:
+        yield pending_buffer
+        buffer += pending_buffer
+
+    end_time = time.time()
+    print(f"Protocol.aimd Generation Total Time: {end_time - start_time:.6f} s")
