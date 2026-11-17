@@ -21,3 +21,11 @@ Project Overview displays a recent 90-day heatmap and activity list. Select a da
 A meeting is counted once on its actual occurrence date. Editing minutes or attendance does not add activity. Date boundaries and counts share the browser timezone, available from the information button beside the date range; unreadable activity is excluded before aggregation. Counts support recall, not productivity scoring. Existing documents, work, Protocols and Records retain their own save/submission events; ordinary comments and title edits are not work progress.
 
 Recurring schedules, reminders, real-time text collaboration, transcription and AI summaries remain future work. Ordinary meetings require no Protocol; structured reviews/tests may link existing Protocols and Records.
+
+## Names, accounts and action batches
+
+A project person can be recorded by name before they register. Use “Add a person / link an account” in participant and work selectors. These contacts are shared within the project; a meeting-only name remains local to that meeting.
+
+Once the person has an account with project access, a project administrator can associate that account with the contact. The confirmation shows the number of responsible tasks affected. Existing assignments then appear in that account's My tasks without individual reassignment. Association grants no permissions, never merges matching names, and retains historical minutes and an account-link history. Administrators can correct a mistaken association.
+
+Saved meetings open in reading mode. Use Edit to change the minutes. During creation, add several action rows and save the meeting and actions together. Existing minutes also accept batches or links to existing work. Paste one title per line, then fill in people, goals, acceptance and timing. Use a timing note for “before the next meeting” rather than guessing a date. A failed batch leaves no partial tasks and keeps the entered rows; retries reuse the same IDs.

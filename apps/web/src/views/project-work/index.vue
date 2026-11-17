@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork, WorkState } from "@/service/api/project-work"
 import { templateError } from "@/service/api/document-templates"
+import { listProjectPeople } from "@/service/api/project-people"
 import { listProjectWork, projectWorkMembers, workStates } from "@/service/api/project-work"
 import { useProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import { useI18n } from "vue-i18n"
@@ -16,9 +18,11 @@ const total = ref(0)
 const page = ref(1)
 const q = ref("")
 const mine = ref(false)
+const personFilter = ref<string | null>(null)
+const people = ref<ProjectPerson[]>([])
 const appliedQuery = ref("")
 const stateFilter = ref<WorkState | "all" | "active">("all")
-const hasFilters = computed(() => Boolean(appliedQuery.value || mine.value || stateFilter.value !== "all"))
+const hasFilters = computed(() => Boolean(appliedQuery.value || mine.value || personFilter.value || stateFilter.value !== "all"))
 const showControls = computed(() => total.value > 0 || hasFilters.value)
 const stateOptions = computed(() => [
   { value: "all", label: t("page.projectWork.allStates") },
@@ -37,7 +41,8 @@ const active = computed(() =>
   items.value.filter(item => !["done", "cancelled"].includes(item.state)),
 )
 function owner(item: ProjectWork) {
-  return members.value.find(m => m.id === item.assignee_user_id)?.name
+  return item.people_snapshot?.find(p => p.id === item.assignee_person_id)?.name
+    || members.value.find(m => m.id === item.assignee_user_id)?.name
     || (item.assignee_user_id ? t("page.projectWork.formerMember") : t("page.projectWork.unassigned"))
 }
 const plan = computed(() => items.value.filter(item => item.planned_start && item.planned_end))
@@ -69,17 +74,20 @@ async function load() {
   loading.value = true
   error.value = ""
   try {
-    const [result, team] = await Promise.all([
+    const [result, team, contacts] = await Promise.all([
       listProjectWork({
         project_id: projectId,
         q: appliedQuery.value,
         mine: mine.value,
+        person_id: personFilter.value?.startsWith("person:") ? personFilter.value.slice(7) : undefined,
+        assignee_id: personFilter.value?.startsWith("user:") ? personFilter.value.slice(5) : undefined,
         state: workStates.includes(stateFilter.value as WorkState) ? stateFilter.value as WorkState : undefined,
         active_only: stateFilter.value === "active",
         page: page.value,
         page_size: 100,
       }),
       projectWorkMembers(projectId),
+      listProjectPeople(projectId),
     ])
     if (ticket !== sequence)
       return
@@ -87,6 +95,7 @@ async function load() {
     total.value = result.total
     canWrite.value = result.can_write
     members.value = team.members
+    people.value = contacts.people
   }
   catch (err) {
     if (ticket === sequence)
@@ -105,6 +114,7 @@ function search() {
 function clearFilters() {
   q.value = ""
   mine.value = false
+  personFilter.value = null
   stateFilter.value = "all"
   search()
 }
@@ -188,6 +198,7 @@ onBeforeUnmount(() => sequence++)
         data-testid="work-state-filter"
         @update:value="search"
       />
+      <n-select v-model:value="personFilter" :options="[...people.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.name}${p.organization ? ` · ${p.organization}` : ''}` })), ...members.filter(m => !people.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name }))]" :placeholder="t('page.projectWork.assignee')" filterable clearable class="!w-44" @update:value="search" />
       <n-checkbox
         v-model:checked="mine"
         @update:checked="search"

@@ -39,6 +39,8 @@ from app.services.browser_paths import project_browser_path
 from app.services.record_imports import import_fields, template_csv
 
 SCOPES = {
+    "collaboration:read",
+    "collaboration:write",
     "protocols:read",
     "records:read",
     "records:import",
@@ -215,7 +217,7 @@ async def change_policy(db, user, lab_id, params):
 async def create_grant(db, user, params):
     if not params.name.strip():
         fail("grant_name_required", 422)
-    if not set(params.scopes) <= SCOPES or "protocols:read" not in params.scopes:
+    if not set(params.scopes) <= SCOPES:
         fail("invalid_scopes", 422)
     project = await db.scalar(
         select(Project).where(
@@ -838,8 +840,29 @@ async def execute_operation(db, access, op):
 
 
 async def tool_call(db, access, name, args):
-    scope(access, "protocols:read")
+    from app.services.external_collaboration import COLLABORATION_TOOLS
+
+    if name not in COLLABORATION_TOOLS and name != "access_context":
+        scope(access, "protocols:read")
     await expire_operations(db, access.grant.id)
+    if name in COLLABORATION_TOOLS:
+        from app.services.external_collaboration import tool_call as collaboration_call
+
+        try:
+            return await collaboration_call(db, access, name, args)
+        except HTTPException as error:
+            if isinstance(error.detail, dict):
+                raise
+            codes = {
+                409: "collaboration_conflict_read_current_before_retry",
+                422: "invalid_collaboration_fields",
+                403: "collaboration_forbidden",
+                404: "collaboration_unavailable",
+            }
+            raise HTTPException(
+                error.status_code,
+                {"code": codes.get(error.status_code, "collaboration_request_failed")},
+            ) from None
     from app.services.external_research_contracts import RESEARCH_TOOLS
 
     if name in RESEARCH_TOOLS:
@@ -848,7 +871,14 @@ async def tool_call(db, access, name, args):
         return await call(db, access, name, args)
     if name == "access_context":
         from app.build_info import resolve_build_info
+        from app.services.research_runtime import has_research_capability
 
+        collaboration_read = await has_research_capability(
+            db, user=access.user, project=access.project, capability="research.read"
+        )
+        collaboration_write = await has_research_capability(
+            db, user=access.user, project=access.project, capability="log.write"
+        )
         return {
             "contract_version": 1,
             "instance": {
@@ -860,6 +890,13 @@ async def tool_call(db, access, name, args):
             "result_limit_bytes": 1024 * 1024,
             "project": {"id": str(access.project.id), "name": access.project.name},
             "scopes": access.grant.scopes,
+            "collaboration_tools": [
+                name
+                for name, (_, _, readonly) in COLLABORATION_TOOLS.items()
+                if ("collaboration:read" if readonly else "collaboration:write")
+                in access.grant.scopes
+                and (collaboration_read if readonly else collaboration_write)
+            ],
             "expires_at": access.grant.expires_at.isoformat(),
             "blocked_fields": access.policy.blocked_fields,
             "attachments": "explicit_scope_and_parent_authorization"

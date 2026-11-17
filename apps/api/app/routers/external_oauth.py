@@ -91,7 +91,7 @@ async def checked_client(db, params):
     if client is None or params.redirect_uri not in client.redirect_uris:
         raise HTTPException(400, "invalid_client_or_redirect_uri")
     scopes = set(params.scope.split())
-    if not scopes or not scopes <= service.SCOPES or "protocols:read" not in scopes:
+    if not scopes or not scopes <= service.SCOPES:
         raise HTTPException(400, "invalid_scope")
     return client
 

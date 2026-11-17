@@ -214,12 +214,12 @@ export function createUidValidator<T extends string | Record<string, any>>(optio
   const lengthRule: FormItemRule = {
     min: 3,
     max: 40,
-    message: $t("form.uid.length", { field: toValue(fieldName), min: 4, max: 40 }),
+    message: $t("form.uid.length", { field: toValue(fieldName), min: 3, max: 40 }),
     trigger: ["change", "blur"],
     key: "check:length",
   }
   const patternRule: FormItemRule = {
-    pattern: /^[\w-]*$/,
+    pattern: /^[a-z0-9_]*$/,
     message: $t("form.uid.pattern"),
     trigger: ["change", "blur"],
     key: "check:pattern",
@@ -232,7 +232,7 @@ export function createUidValidator<T extends string | Record<string, any>>(optio
     if (/[_-]{2,}/.test(normalizedValue)) {
       return new Error($t("form.uid.hyphenConsecutive"))
     }
-    if (!/^[a-z][a-z0-9_]*$/.test(normalizedValue)) {
+    if (!/^[a-z]/.test(normalizedValue)) {
       return new Error($t("form.uid.startLowercase"))
     }
     return true
@@ -248,7 +248,7 @@ export function createUidValidator<T extends string | Record<string, any>>(optio
   const syncMessages = () => {
     const label = toValue(fieldName)
     requiredRule.message = $t("form.required")
-    lengthRule.message = $t("form.uid.length", { field: label, min: 4, max: 40 })
+    lengthRule.message = $t("form.uid.length", { field: label, min: 3, max: 40 })
     patternRule.message = $t("form.uid.pattern")
   }
 
@@ -259,6 +259,11 @@ export function createUidValidator<T extends string | Record<string, any>>(optio
       const normalizedValue = normalizeFormStringValue(value)
       if (!normalizedValue) {
         throw new Error($t("form.fieldRequired", { field: toValue(fieldName) }))
+      }
+      // Local format errors must not trigger a request or expose API validation text.
+      if (!/^[a-z][a-z0-9_]{2,39}$/.test(normalizedValue)
+        || /_$|__/.test(normalizedValue)) {
+        return
       }
 
       const payload = payloadKey === "lab"
@@ -281,7 +286,9 @@ export function createUidValidator<T extends string | Record<string, any>>(optio
         }
       }
       catch (e: any) {
-        const { detail } = (e as AxiosError).response?.data as { detail: PydanticError[] | string }
+        const { detail } = ((e as AxiosError).response?.data || {}) as { detail?: PydanticError[] | string }
+        if (!detail)
+          throw e
         if (typeof detail === "string") {
           // eslint-disable-next-line unicorn/prefer-type-error
           throw new Error(detail)

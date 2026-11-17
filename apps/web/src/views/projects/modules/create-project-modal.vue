@@ -49,22 +49,6 @@
             </template>
           </n-select>
         </n-form-item>
-        <n-form-item :label="$t('page.project.createProjectModal.parentProjectLabel')" path="parentProjectId">
-          <div class="w-full">
-            <n-select
-              v-model:value="model.parentProjectId"
-              :options="parentProjectOptions"
-              :loading="loadingState.parentProjects"
-              clearable
-              filterable
-              :disabled="!selectedLabUid || isParentProjectFixed"
-              :placeholder="$t('page.project.createProjectModal.parentProjectPlaceholder')"
-            />
-            <div class="mt-2 text-sm text-gray-500">
-              {{ isParentProjectFixed ? $t("page.project.createProjectModal.parentProjectFixedHint") : $t("page.project.createProjectModal.parentProjectHint") }}
-            </div>
-          </div>
-        </n-form-item>
         <n-form-item :label="$t('page.project.createProjectModal.displayNameLabel')" path="displayName">
           <n-tooltip trigger="focus" placement="top-start" class="max-w-70%">
             <template #trigger>
@@ -81,22 +65,43 @@
             {{ $t("page.project.createProjectModal.displayNameTip") }}
           </n-tooltip>
         </n-form-item>
-        <n-form-item :label="$t('page.project.createProjectModal.projectIdLabel')" path="uid">
-          <common-id-input
-            v-model="model.uid"
-            type="project"
-            :lab-uid="selectedLabUid"
-            :show-prefix="!instanceStore.isSingleLab"
-            :check-loading="checkLoading"
-            :disabled="!selectedLabUid"
-            @update:value="handleUpdateName"
-            @check="handleValidateUid"
-          />
-        </n-form-item>
+        <details :open="showAdvanced" class="mb-4" @toggle="showAdvanced = ($event.target as HTMLDetailsElement).open">
+          <summary class="cursor-pointer text-sm">{{ $t('page.project.createProjectModal.advanced') }}</summary>
+          <p class="text-sm text-gray-500">{{ $t('page.project.createProjectModal.idHint') }}</p>
+          <n-form-item :label="$t('page.project.createProjectModal.projectIdLabel')" path="uid">
+            <common-id-input
+              v-model="model.uid"
+              type="project"
+              :lab-uid="selectedLabUid"
+              :show-prefix="!instanceStore.isSingleLab"
+              :check-loading="checkLoading"
+              :disabled="!selectedLabUid"
+              @update:value="handleUpdateName"
+              @check="handleValidateUid"
+            />
+          </n-form-item>
+          <n-form-item :label="$t('page.project.createProjectModal.parentProjectLabel')" path="parentProjectId">
+            <div class="w-full">
+              <n-select
+                v-model:value="model.parentProjectId"
+                :options="parentProjectOptions"
+                :loading="loadingState.parentProjects"
+                clearable
+                filterable
+                :disabled="!selectedLabUid || isParentProjectFixed"
+                :placeholder="$t('page.project.createProjectModal.parentProjectPlaceholder')"
+              />
+              <div class="mt-2 text-sm text-gray-500">
+                {{ isParentProjectFixed ? $t("page.project.createProjectModal.parentProjectFixedHint") : $t("page.project.createProjectModal.parentProjectHint") }}
+              </div>
+            </div>
+          </n-form-item>
+        </details>
+        <p v-if="model.uid" class="mb-4 break-all text-xs text-gray-500">{{ projectLink }}</p>
         <n-form-item :label="$t('common.description')" path="description">
           <n-input
             v-model:value="model.description"
-            :maxlength="64"
+            :maxlength="128"
             show-count
             :placeholder="$t('page.project.createProjectModal.descriptionPlaceholder')"
           />
@@ -160,7 +165,6 @@ import { checkProjectUid, fetchProjectList, postNewProject } from "@/service/api
 import { fetchUserLabs } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { snakeCase } from "@/utils/changeCase"
 import { convertDisplayname } from "@/utils/convertDisplayname"
 import CreateLabModal from "@/views/labs/modules/lab/create-lab-modal.vue"
 import CommonIdInput from "@airalogy/components/common/common-id-input.vue"
@@ -252,8 +256,6 @@ const {
   startLoading: startCheckLoading,
   endLoading: endCheckLoading,
 } = useLoading()
-
-const dialog = useDialog()
 
 const rules: Partial<Record<keyof FormModel, App.Global.FormRule[]>> = {
   displayName: createDisplayNameValidator($t("page.project.createProjectModal.displayNameLabel")),
@@ -354,9 +356,8 @@ watch(
   { immediate: true },
 )
 
-const currentOrigin = computed(() => {
-  return `${window.location.origin}/project/`
-})
+const showAdvanced = ref(false)
+const projectLink = computed(() => `${window.location.origin}${instanceStore.isSingleLab ? "" : `/orgs/${selectedLabUid.value}`}/projects/${model.value.uid}/overview`)
 
 function handleAddLab(info: Api.Lab.LabInfo) {
   const { id, name } = info
@@ -397,8 +398,18 @@ async function loadParentProjects() {
   }
 }
 
+const { bool: syncUid, setTrue: startSyncUid, setFalse: endSyncUid } = useBoolean(true)
+
 async function handleConfirm() {
-  await validate()
+  if (syncUid.value)
+    await handleUpdateDisplayName(model.value.displayName || "")
+  try {
+    await validate()
+  }
+  catch {
+    showAdvanced.value = true
+    return
+  }
 
   const { uid: rawUid, displayName, labId, description, parentProjectId, copyMembers, type } = model.value
   if (!labId) {
@@ -412,32 +423,6 @@ async function handleConfirm() {
   if (!displayName) {
     message.error($t("page.project.createProjectModal.displayNameRequired"))
     return
-  }
-
-  const snakeCaseUid = snakeCase(rawUid)
-  if (snakeCaseUid !== rawUid) {
-    const isConfirm = await new Promise<boolean>((resolve) => {
-      dialog.warning({
-        title: $t("common.tip"),
-        content: $t("page.project.createProjectModal.snakeCaseWarning", { rawUid, snakeCaseUid }),
-        negativeText: $t("common.cancel"),
-        positiveText: $t("common.confirm"),
-        onPositiveClick: () => {
-          resolve(true)
-        },
-        onNegativeClick: () => {
-          resolve(false)
-        },
-        onClose: () => {
-          resolve(false)
-        },
-      })
-    })
-
-    if (!isConfirm) {
-      return
-    }
-    model.value.uid = snakeCaseUid
   }
 
   startTargetLoading("submit")
@@ -468,16 +453,19 @@ async function handleConfirm() {
   }
 }
 
-const { bool: syncUid, setTrue: startSyncUid, setFalse: endSyncUid } = useBoolean(true)
-
+let nameGeneration = 0
 async function handleUpdateDisplayName(displayName: string) {
+  const generation = ++nameGeneration
   if (!syncUid.value) {
     return
   }
 
   const uid = await convertDisplayname(displayName)
 
-  model.value.uid = uid
+  if (generation !== nameGeneration || !syncUid.value)
+    return
+  const normalized = uid.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "")
+  model.value.uid = displayName.trim() ? (/^[a-z]/.test(normalized) && normalized.length >= 3 ? normalized : `project_${normalized || "new"}`).slice(0, 40).replace(/_+$/, "") : ""
 }
 
 const authStore = useAuthStore()

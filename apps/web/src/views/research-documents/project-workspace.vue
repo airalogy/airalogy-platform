@@ -25,8 +25,8 @@ const materials = computed(() => route.name === "project-materials")
 </script>
 
 <template>
-  <div v-if="scope" class="min-w-0 space-y-6" data-testid="project-research-workspace">
-    <h1 v-if="overview || materials" class="aira-type-page-title">
+  <div v-if="scope" class="min-w-0 space-y-4" data-testid="project-research-workspace">
+    <h1 v-if="overview || materials" class="aira-type-page-title" :class="{ 'sr-only': overview }">
       {{
         t(
           materials

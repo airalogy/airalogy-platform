@@ -30,12 +30,15 @@ const command = `codex mcp add airalogy --url ${JSON.stringify(endpoint)} --bear
 const selectedProject = computed(() => props.projects.find(item => item.id === projectId.value))
 const projectOptions = computed(() => props.projects.map(p => ({ value: p.id, label: `${p.name}${p.enabled ? "" : ` — ${$t("externalAccess.labDisabled")}`}`, disabled: !p.enabled })))
 const presets: Record<string, string[]> = {
+  collaborate: ["collaboration:read", "collaboration:write"],
   read: ["protocols:read", "records:read"],
   analyze: ["protocols:read", "records:read", "records:export", "analysis:read", "analysis:write"],
   author: ["protocols:read", "protocols:source", "protocols:candidate", "protocols:publish"],
 }
 const scopeOptions = computed(() => [
-  { label: $t("externalAccess.readProtocols"), value: "protocols:read", disabled: true },
+  { label: $t("externalAccess.readCollaboration"), value: "collaboration:read" },
+  { label: $t("externalAccess.writeCollaboration"), value: "collaboration:write" },
+  { label: $t("externalAccess.readProtocols"), value: "protocols:read" },
   { label: $t("externalAccess.readRecords"), value: "records:read" },
   { label: $t("externalResearch.exportRecords"), value: "records:export" },
   { label: $t("externalResearch.readAnalysis"), value: "analysis:read" },
@@ -56,7 +59,7 @@ function scopeLabel(scope: string) {
 }
 const permissionUnavailable = computed(() => (selectedScopes.value.some(s => ["records:export", "analysis:read", "analysis:write"].includes(s)) && !selectedProject.value?.can_export)
   || (selectedScopes.value.some(s => ["protocols:candidate", "protocols:publish"].includes(s)) && !selectedProject.value?.can_author))
-const canCreate = computed(() => name.value.trim() && selectedProject.value?.enabled && days.value && !busy.value && !props.failed && !permissionUnavailable.value)
+const canCreate = computed(() => name.value.trim() && selectedScopes.value.length && selectedProject.value?.enabled && days.value && !busy.value && !props.failed && !permissionUnavailable.value)
 watch(() => props.projects, () => {
   const requested = props.projectId || (typeof route.query.project_id === "string" ? route.query.project_id : null)
   if (requested && props.projects.some(p => p.id === requested))
@@ -69,7 +72,9 @@ function applyPreset(value: string) {
   selectedScopes.value = [...presets[value]]
 }
 watch(selectedScopes, (scopes) => {
-  const required = new Set(["protocols:read", ...scopes])
+  const required = new Set(scopes)
+  if (scopes.includes("collaboration:write"))
+    required.add("collaboration:read")
   if (scopes.some(s => ["records:export", "analysis:read", "analysis:write"].includes(s))) {
     required.add("records:export")
     required.add("records:read")
@@ -146,9 +151,9 @@ onBeforeUnmount(dismiss)
         {{ $t("externalOnboarding.disabledHint") }}
       </n-alert>
       <n-form-item :label="$t('externalOnboarding.purpose')">
-        <div class="grid w-full gap-2 sm:grid-cols-3">
-          <n-button v-for="kind in ['read', 'analyze', 'author']" :key="kind" :data-testid="`external-preset-${kind}`" :aria-pressed="preset === kind" :type="preset === kind ? 'primary' : 'default'" :secondary="preset === kind" class="min-h-12 h-auto! whitespace-normal! py-2!" :disabled="(kind === 'analyze' && !selectedProject?.can_export) || (kind === 'author' && !selectedProject?.can_author)" @click="applyPreset(kind)">
-            {{ $t(kind === 'read' ? 'externalOnboarding.read' : kind === 'analyze' ? 'externalOnboarding.analyze' : 'externalOnboarding.author') }}
+        <div class="grid w-full gap-2 sm:grid-cols-2">
+          <n-button v-for="kind in ['collaborate', 'read', 'analyze', 'author']" :key="kind" :data-testid="`external-preset-${kind}`" :aria-pressed="preset === kind" :type="preset === kind ? 'primary' : 'default'" :secondary="preset === kind" class="min-h-12 h-auto! whitespace-normal! py-2!" :disabled="(kind === 'analyze' && !selectedProject?.can_export) || (kind === 'author' && !selectedProject?.can_author)" @click="applyPreset(kind)">
+            {{ $t(kind === 'collaborate' ? 'externalOnboarding.collaborate' : kind === 'read' ? 'externalOnboarding.read' : kind === 'analyze' ? 'externalOnboarding.analyze' : 'externalOnboarding.author') }}
           </n-button>
         </div>
       </n-form-item>
@@ -158,10 +163,13 @@ onBeforeUnmount(dismiss)
       <p class="mb-3 break-words" data-testid="external-selected-scopes">
         {{ selectedScopes.map(scopeLabel).join(' · ') }}
       </p>
+      <p v-if="selectedScopes.includes('collaboration:write')" class="mb-3 text-sm color-text-secondary">
+        {{ $t("externalAccess.collaborationWriteHint") }}
+      </p>
       <n-collapse class="mb-4">
         <n-collapse-item :title="$t('externalOnboarding.customScopes')" name="scopes">
           <n-checkbox-group v-model:value="selectedScopes" class="flex flex-wrap gap-3" @update:value="preset = 'custom'">
-            <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value" :disabled="option.disabled">
+            <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </n-checkbox>
           </n-checkbox-group>
@@ -212,6 +220,7 @@ onBeforeUnmount(dismiss)
       <n-button data-testid="external-test-connection" :loading="checking" @click="testConnection">
         {{ $t("externalResearch.testConnection") }}
       </n-button>
+      <p class="text-sm color-text-secondary">{{ $t("externalOnboarding.clientProof") }}</p>
       <n-alert v-if="connectionStatus" type="success" data-testid="external-connection-result">
         {{ $t("externalOnboarding.tokenVerified") }} {{ connectionStatus }}
       </n-alert>

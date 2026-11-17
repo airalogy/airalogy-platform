@@ -35,6 +35,9 @@ export interface WorkContent {
   priority: "low" | "normal" | "high" | "urgent"
   assignee_user_id: string | null
   collaborator_ids: string[]
+  assignee_person_id: string | null
+  collaborator_person_ids: string[]
+  deadline_note: string
   planned_start: string | null
   planned_end: string | null
   blocker: string
@@ -43,6 +46,7 @@ export interface WorkContent {
   evidence: WorkEvidence[]
 }
 export interface ProjectWork extends WorkContent {
+  people_snapshot?: { id: string, name: string, organization: string }[]
   id: string
   project_id: string
   revision: number
@@ -84,6 +88,9 @@ export function blankWork(): WorkContent {
     priority: "normal",
     assignee_user_id: null,
     collaborator_ids: [],
+    assignee_person_id: null,
+    collaborator_person_ids: [],
+    deadline_note: "",
     planned_start: null,
     planned_end: null,
     blocker: "",
@@ -94,7 +101,7 @@ export function blankWork(): WorkContent {
 }
 export function workContent(item: WorkContent): WorkContent {
   return Object.fromEntries(
-    Object.keys(blankWork()).map(key => [key, item[key as keyof WorkContent]]),
+    Object.keys(blankWork()).map(key => [key, item[key as keyof WorkContent] ?? blankWork()[key as keyof WorkContent]]),
   ) as unknown as WorkContent
 }
 export function evidencePayload(items: WorkEvidence[]) {
@@ -110,6 +117,8 @@ export function listProjectWork(params: {
   project_id?: string
   state?: WorkState
   mine?: boolean
+  person_id?: string
+  assignee_id?: string
   active_only?: boolean
   q?: string
   page?: number

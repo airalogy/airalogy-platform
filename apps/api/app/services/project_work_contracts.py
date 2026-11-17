@@ -66,6 +66,9 @@ class WorkContent(BaseModel):
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
     assignee_user_id: UUID | None = None
     collaborator_ids: list[UUID] = Field(default_factory=list, max_length=50)
+    assignee_person_id: UUID | None = None
+    collaborator_person_ids: list[UUID] = Field(default_factory=list, max_length=50)
+    deadline_note: str = Field(default="", max_length=1000)
     planned_start: date | None = None
     planned_end: date | None = None
     blocker: str = Field(default="", max_length=4000)
@@ -88,7 +91,9 @@ class WorkContent(BaseModel):
             raise ValueError("Explain the blocker and what is needed next")
         if self.state == "done" and not self.acceptance.strip():
             raise ValueError("Record the acceptance conditions before completing work")
-        for key in ("collaborator_ids", "dependency_ids"):
+        if self.assignee_person_id and self.assignee_user_id:
+            raise ValueError("Choose one responsible person or account")
+        for key in ("collaborator_ids", "collaborator_person_ids", "dependency_ids"):
             if len(set(getattr(self, key))) != len(getattr(self, key)):
                 raise ValueError(f"Duplicate {key}")
         return self

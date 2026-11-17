@@ -64,7 +64,11 @@
     "blockedFieldsHint": "每行一个变量 ID，例如 patient_name；适用于本实验室所有 Protocol。",
     "restrictions": "不提供附件、下载地址、报告和复杂字段。含受限或复杂变量的 Protocol 暂不支持通过此外部通道导入或修订，请使用平台网页。策略变化会使待确认操作失效。",
     "savePolicy": "保存策略",
-    "saved": "策略已保存"
+    "saved": "策略已保存",
+    "readCollaboration": "读取会议、事项和项目人员",
+    "writeCollaboration": "维护会议、事项和人员姓名",
+    "authorizationReviewed": "我已核对项目、权限和有效期，同意授予该连接访问权限。",
+    "collaborationWriteHint": "在授权有效期内，该工具可直接保存会议、研发事项和人员姓名，无需每次回到平台确认。账号关联和成员权限仍需在平台操作。"
   },
   "system": {
     "title": "Airalogy"
@@ -329,7 +333,9 @@
     },
     "my": "我的",
     "readMore": "展开",
-    "showLess": "收起"
+    "showLess": "收起",
+    "expand": "展开",
+    "collapse": "收起"
   },
   "theme": {
     "themeSchema": {
@@ -3468,7 +3474,9 @@
         "createSuccess": "成功创建项目 {name}",
         "createSuccessWithDiary": "成功创建项目 {name} 并添加日志协议",
         "projectIdAvailable": "项目 ID 可用。",
-        "labCreateSuccess": "成功创建实验室 {name}"
+        "labCreateSuccess": "成功创建实验室 {name}",
+        "advanced": "项目链接与归属（可选）",
+        "idHint": "标识用于项目链接，创建后保持不变；项目名称可以修改。默认按名称生成，也可自行调整。"
       }
     },
     "protocol": {
@@ -5604,7 +5612,8 @@
       "reasonRequired": "请填写修改说明，再保存新版本。",
       "backToDetails": "返回事项信息",
       "activityEmpty": "还没有讨论，可以在这里记录进展、问题或决策。",
-      "moreItems": "加载更多事项"
+      "moreItems": "加载更多事项",
+      "deadlineNote": "时间要求（可填“下次会议前”，不代填日期）"
     },
     "meetings": {
       "title": "会议",
@@ -5634,9 +5643,9 @@
       "participantHint": "参会名单用于记录实际参与情况，不会自动授予访问权。外部人员可以只记录姓名。",
       "choosePerson": "选择项目成员",
       "addParticipant": "添加参会人",
-      "externalName": "外部人员姓名",
+      "externalName": "姓名（无需账号）",
       "organization": "单位（可选）",
-      "addExternal": "记录外部参会人",
+      "addExternal": "仅在本次会议按姓名添加",
       "audience": "可见范围",
       "audienceHint": "创建者始终可以访问。指定成员仍须有项目访问权限；阅读、评论、编辑分别授权。附件保持其原有可见范围。",
       "grant": "添加授权",
@@ -5681,7 +5690,18 @@
       "openMeeting": "打开会议：查看参会人、讨论和待办，并编辑纪要",
       "conflict": "内容已发生变化。当前输入已保留，请重新加载后核对再保存。",
       "unavailable": "会议不存在，或你目前没有访问权限。",
-      "invalid": "请检查标题、会议时间和成员设置，已召开会议不能填写未来时间。"
+      "invalid": "请检查标题、会议时间和成员设置，已召开会议不能填写未来时间。",
+      "batchTitle": "添加行动项",
+      "batchLimit": "一次最多添加 50 项，请分批处理。",
+      "batchFailed": "本批行动项未保存成功。内容已保留，可核对后重试。",
+      "pasteTitles": "粘贴多条待办",
+      "onePerLine": "每行一项；导入后可逐项补充负责人、日期和说明。",
+      "addRows": "转为可编辑行",
+      "addActionRow": "添加一项",
+      "saveActions": "保存 {count} 项行动项",
+      "actionDetails": "协作人、目标与验收条件",
+      "noDate": "时间未定",
+      "recordSaved": "纪要已保存"
     },
     "researchActivity": {
       "title": "研究活动",
@@ -5710,6 +5730,20 @@
         "protocol": "Protocol 版本",
         "knowledge": "知识与成果"
       }
+    },
+    "projectPeople": {
+      "manage": "添加姓名 / 关联账号",
+      "hint": "人员名单在项目内共享。姓名不要求注册账号；关联账号不会授予项目权限。",
+      "name": "姓名",
+      "organization": "单位或备注（可选，用于区分同名人员）",
+      "add": "添加并选择",
+      "linked": "已关联账号",
+      "unlinked": "未关联账号",
+      "adminHint": "未关联账号，可由项目管理员关联",
+      "associate": "确认账号关联",
+      "confirm": "将“{name}”关联为“{account}”。当前有 {count} 项任务以此人为负责人，关联后会按该账号归集到“我的任务”。此操作不会更改项目权限，历史会议姓名保持原样。",
+      "failed": "人员信息未保存或未加载成功，请刷新后重试；如信息已变化，请重新核对。",
+      "disconnectConfirm": "解除“{name}”的账号关联。{count} 项任务仍由这条人员记录负责，但不再通过此关联归入原账号的“我的任务”。项目权限和历史会议不变。"
     }
   },
   "form": {
@@ -5746,9 +5780,9 @@
     },
     "uid": {
       "length": "{field}长度需为{min}-{max}个字符",
-      "pattern": "仅支持字母、数字和连字符",
-      "hyphenEdges": "不能以连字符开头或结尾",
-      "hyphenConsecutive": "不能包含连续连字符",
+      "pattern": "仅支持小写英文字母、数字和下划线（_）",
+      "hyphenEdges": "不能以下划线开头或结尾",
+      "hyphenConsecutive": "不能包含连续下划线",
       "startLowercase": "必须以小写字母开头"
     },
     "displayName": {
@@ -5894,7 +5928,8 @@
     "publicLabs": "公开实验室",
     "myProfile": "我的信息",
     "allProfile": "所有用户",
-    "hubAll": "所有协议"
+    "hubAll": "所有协议",
+    "projects": "项目"
   },
   "chat": {
     "newChatButton": "新建聊天",
@@ -6514,7 +6549,7 @@
     "environmentHint": "使用 Codex 时，先在启动客户端的环境中安全设置 AIRALOGY_PLATFORM_TOKEN，再执行下方命令并重启客户端。不要把令牌粘贴到对话中或提交到代码仓库。",
     "otherClients": "其他 MCP 客户端",
     "otherClientsHint": "使用此 Streamable HTTP MCP 地址，并设置 Bearer 身份验证。将令牌保存在客户端受保护的凭据设置中，具体接入方式见使用文档。",
-    "tokenVerified": "令牌有效。此检查仅验证平台访问权限，不代表 AI 客户端已经配置完成：",
+    "tokenVerified": "平台授权检查通过。",
     "startTask": "试用第一个任务",
     "firstTask": "连接 Airalogy，确认我授权的项目和权限，列出其中的协议。先告诉我有哪些可用数据，询问我想分析什么，再进行数据导出或写入。",
     "resultsHint": "工具提交报告后，在当前项目的待确认操作中检查内容。确认并执行成功后，报告会出现在分析报告中。点击刷新可查看新提交。",
@@ -6524,7 +6559,9 @@
     "noMatches": "已加载的报告中没有匹配结果。",
     "loadMore": "加载更早的报告",
     "showHistory": "显示历史操作",
-    "platformAnalysis": "平台内分析"
+    "platformAnalysis": "平台内分析",
+    "collaborate": "会议与研发事项",
+    "clientProof": "此检查只验证平台和授权可用。客户端是否连接成功，以客户端列出 Airalogy 工具并成功调用为准。"
   },
   "airaMemory": {
     "title": "Aira 个人记忆",

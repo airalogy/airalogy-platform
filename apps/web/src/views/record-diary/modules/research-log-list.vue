@@ -1,5 +1,5 @@
 <template>
-  <n-timeline size="large" class="research-log-timeline">
+  <n-timeline size="large" class="research-log-timeline" :class="{ compact }">
     <n-timeline-item
       v-for="item in items"
       :key="item.id"
@@ -13,10 +13,10 @@
               <n-tag size="small" :type="tagType(item)">
                 {{ eventLabel(item) }}
               </n-tag>
-              <span v-if="item.entry_type === 'manual'" class="aira-type-meta">
+              <span v-if="item.entry_type === 'manual' && !item.document" class="aira-type-meta">
                 {{ scopeLabel(item) }} · r{{ item.revision }}
               </span>
-              <span v-else class="aira-type-meta">
+              <span v-else-if="item.entry_type === 'system' && !compact" class="aira-type-meta">
                 {{ contextLabel(item) }}
               </span>
             </div>
@@ -34,7 +34,7 @@
 
         <template v-if="item.entry_type === 'manual' && item.document">
           <p class="aira-type-body aira-text-secondary line-clamp-3 mb-3 mt-3 whitespace-pre-wrap">
-            {{ item.body }}
+            {{ markdownSummary(item.body || '') }}
           </p>
           <router-link :to="item.meeting_id && item.project ? { name: 'project-meetings', params: { labUid: item.lab?.uid, projectUid: item.project.uid }, query: { meeting: item.meeting_id } } : { name: 'research-document-detail', params: { documentId: item.document.id } }">
             <n-button type="primary" quaternary>
@@ -71,7 +71,7 @@
           </footer>
         </template>
         <template v-else>
-          <p class="aira-type-body aira-text-secondary mb-0 mt-3">
+          <p v-if="!compact || item.asset?.type !== 'project_work'" class="aira-type-body aira-text-secondary mb-0 mt-3">
             {{ item.asset?.type === "project_work" ? $t(`page.projectWork.events.${item.event_type.replace("work.", "")}` as I18n.I18nKey) : item.summary }}
           </p>
           <footer v-if="assetRoute(item)" class="mt-4 flex justify-end">
@@ -97,11 +97,12 @@ import type {
   ResearchLogTimelineItem,
 } from "@/service/api/research-log"
 import type { RouteLocationRaw } from "vue-router"
+import { markdownSummary } from '@/utils/markdown-summary'
 import { $t } from "@airalogy/shared/locales"
 import { formatDate } from "@airalogy/shared/utils"
 import ResearchLogField from "./research-log-field.vue"
 
-const props = defineProps<{ items: ResearchLogTimelineItem[] }>()
+const props = withDefaults(defineProps<{ items: ResearchLogTimelineItem[], compact?: boolean }>(), { compact: false })
 const emit = defineEmits<{ edit: [entry: ResearchLogManualEntry] }>()
 
 function dateOnly(item: ResearchLogTimelineItem) {
@@ -200,6 +201,27 @@ function assetRoute(item: ResearchLogSystemEvent): RouteLocationRaw | null {
   &:hover
     border-color: #BED7FF
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06)
+
+.research-log-timeline.compact
+  .research-log-card
+    border: 0
+    border-radius: 0
+    padding: 0 0 4px
+    box-shadow: none
+
+  .aira-type-card-title
+    font-size: 14px
+    line-height: 22px
+
+  header > div:first-child > div
+    margin-bottom: 4px
+
+  footer
+    margin-top: 4px
+
+  p
+    margin-top: 6px
+    margin-bottom: 4px
 
 .research-log-field
   span

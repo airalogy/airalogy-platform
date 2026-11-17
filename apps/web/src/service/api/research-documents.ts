@@ -47,6 +47,7 @@ export interface ResearchDocument extends DocumentContent, ResearchLogScopeParam
   updated_at: string
 }
 export interface DocumentSummary {
+  meeting_status?: "held" | "planned" | "cancelled" | null
   id: string
   title: string
   kind: DocumentKind

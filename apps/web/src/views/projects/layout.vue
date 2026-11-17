@@ -1,6 +1,6 @@
 <template>
   <global-layout>
-    <content-layout title="Projects" :tabs="tabs" :title-icon="ProjectIcon">
+    <content-layout :title="$t('breadcrumb.projects')" :tabs="tabs" :title-icon="ProjectIcon">
       <template #suffix>
         <create-project-modal v-if="route.name === 'project-dashboard'" @modal:new-project="handleAddProject" />
       </template>
@@ -31,10 +31,10 @@ interface Props {
   showPadding?: boolean
 }
 
-const tabs: TabPaneProps[] = [
+const tabs = computed<TabPaneProps[]>(() => [
   { name: "project-dashboard", tab: $t("page.project.tab.my") },
   { name: "project-starred", tab: $t("page.project.tab.star") },
-]
+])
 
 const route = useRoute()
 const { routerPushByKey } = useRouterPush()

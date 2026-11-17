@@ -327,7 +327,8 @@ watch([reading, items], async () => {
                   </n-tag>
                 </div>
               </div>
-              <n-tag :type="item.state === 'submitted' ? 'success' : 'default'">
+              <n-tag v-if="item.meeting_status" :type="item.meeting_status === 'held' ? 'success' : 'default'">{{ t(`page.meetings.${item.meeting_status}`) }}</n-tag>
+              <n-tag v-else :type="item.state === 'submitted' ? 'success' : 'default'">
                 {{ t(`page.researchDocuments.${item.state}`) }}
               </n-tag>
             </router-link>

@@ -1,8 +1,9 @@
-import type { ProjectWork } from "./project-work"
+import type { ProjectWork, WorkContent } from "./project-work"
 import { documentRequest } from "./research-documents"
 
 export interface MeetingParticipant {
   user_id: string | null
+  person_id?: string | null
   name: string
   organization: string
   attendance: "attended" | "invited" | "absent" | "unknown"
@@ -65,6 +66,7 @@ export function listMeetings(params: {
   project_id: string
   q?: string
   participant_id?: string
+  person_id?: string
   status?: string
   date_from?: string
   date_to?: string
@@ -121,4 +123,13 @@ export function createMeetingAction(id: string, data: {
   planned_end: string | null
 }) {
   return documentRequest<Meeting>({ url: `/meetings/${id}/actions`, method: "POST", data })
+}
+
+export interface MeetingActionDraft extends WorkContent { id: string }
+export function saveMeetingActions(id: string, requestId: string, revision: number, actions: MeetingActionDraft[], existingWorkIds: string[] = []) {
+  return documentRequest<Meeting>({ url: `/meetings/${id}/actions/batch`, method: "POST", data: { request_id: requestId, expected_revision: revision, actions, existing_work_ids: existingWorkIds } })
+}
+
+export function saveMeetingWithActions(id: string, projectId: string, content: MeetingContent, requestId: string, actions: MeetingActionDraft[]) {
+  return documentRequest<Meeting>({ url: "/meetings/with-actions", method: "POST", data: { meeting: { ...content, id, project_id: projectId }, actions: { request_id: requestId, expected_revision: 1, actions } } })
 }

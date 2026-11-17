@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Meeting, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
+import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
 import type { ProjectWork } from "@/service/api/project-work"
+import PeoplePicker from "@/components/project/people-picker.vue"
 import {
   addMeetingComment,
-  createMeetingAction,
   getMeeting,
   linkMeetingWork,
   listMeetings,
@@ -11,17 +11,21 @@ import {
   meetingContent,
   meetingMembers,
   saveMeeting,
+  saveMeetingWithActions,
 } from "@/service/api/meetings"
+import { listProjectPeople } from "@/service/api/project-people"
 import { listProjectWork } from "@/service/api/project-work"
 import { researchDocumentHistory } from "@/service/api/research-documents"
 import { documentTimeZone, localDocumentDate } from "@/utils/documentBrowse"
 import { preserveVisualFenceMetadata } from "@/utils/recorderMarkdown"
 import { restoreAimdInlineTemplates } from "@airalogy/aimd-core"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
+import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
 import { useDialog } from "naive-ui"
 import { useI18n } from "vue-i18n"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
+import ActionBatch from "./action-batch.vue"
 
 const { t, locale } = useI18n()
 const dialog = useDialog()
@@ -36,12 +40,15 @@ const q = ref("")
 const dateFrom = ref("")
 const dateTo = ref("")
 const participantFilter = ref<string | null>(null)
+const projectPeople = ref<{ id: string, name: string, user_id: string | null, organization: string }[]>([])
+
 const loading = ref(false)
 const busy = ref(false)
 const error = ref("")
 const notice = ref("")
 const canCreate = ref(false)
 const members = ref<MeetingMember[]>([])
+const participantOptions = computed(() => [...members.value.filter(m => !projectPeople.value.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name || m.username })), ...projectPeople.value.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.name}${p.organization ? ` · ${p.organization}` : ""}` }))])
 const selected = ref<Meeting>()
 const form = ref<MeetingContent>()
 const saved = ref("")
@@ -53,9 +60,25 @@ const commentPage = ref(1)
 const commentTotal = ref(0)
 const workOptions = ref<ProjectWork[]>([])
 const workId = ref<string | null>(null)
-const actionTitle = ref("")
-const actionAssignee = ref<string | null>(null)
-const actionEnd = ref("")
+const editing = ref(false)
+const actionDirty = ref(false)
+const draftActions = ref<MeetingActionDraft[]>([])
+let batchRequestId = crypto.randomUUID()
+const draftMeeting = computed<Meeting | undefined>(() => form.value && projectId.value && !selected.value
+  ? {
+      ...form.value,
+      id: creationId.value,
+      project_id: projectId.value,
+      revision: 1,
+      created_at: "",
+      updated_at: "",
+      can_manage: true,
+      can_edit: true,
+      can_comment: true,
+      can_create_work: true,
+    }
+  : undefined)
+const projectPersonToAdd = ref<string | string[] | null>(null)
 const externalName = ref("")
 const externalOrganization = ref("")
 const participantToAdd = ref<string | null>(null)
@@ -63,7 +86,6 @@ const grantToAdd = ref<string | null>(null)
 const history = ref<{ revision: number, change_summary: string, snapshot: { body?: string } }[]>([])
 const showHistory = ref(false)
 let commentKey = crypto.randomUUID()
-let actionKey = crypto.randomUUID()
 let sequence = 0
 const editable = computed(() => !selected.value || selected.value.can_edit)
 const visualSurface = ref<InstanceType<typeof AimdEditor>>()
@@ -180,7 +202,8 @@ async function loadList() {
     const data = await listMeetings({
       project_id: projectId.value,
       q: q.value,
-      participant_id: participantFilter.value || undefined,
+      participant_id: participantFilter.value?.startsWith("user:") ? participantFilter.value.slice(5) : undefined,
+      person_id: participantFilter.value?.startsWith("person:") ? participantFilter.value.slice(7) : undefined,
       date_from: dateFrom.value || undefined,
       date_to: dateTo.value || undefined,
       time_zone: documentTimeZone(),
@@ -213,10 +236,14 @@ async function loadSelected() {
   form.value = undefined
   comments.value = []
   comment.value = ""
-  actionTitle.value = ""
+  editing.value = false
+  actionDirty.value = false
+  draftActions.value = []
+  batchRequestId = crypto.randomUUID()
   if (!id)
     return
   if (id === "new") {
+    editing.value = true
     creationId.value = crypto.randomUUID()
     form.value = {
       title: "",
@@ -269,13 +296,18 @@ async function save() {
   error.value = ""
   notice.value = ""
   try {
-    const result = await saveMeeting(
-      selected.value?.id || creationId.value,
-      projectId.value,
-      form.value,
-      selected.value?.revision,
-    )
+    const result = !selected.value && draftActions.value.length
+      ? await saveMeetingWithActions(creationId.value, projectId.value, form.value, batchRequestId, draftActions.value)
+      : await saveMeeting(
+        selected.value?.id || creationId.value,
+        projectId.value,
+        form.value,
+        selected.value?.revision,
+      )
     accept(result)
+    draftActions.value = []
+    actionDirty.value = false
+    editing.value = false
     notice.value = t("page.meetings.saved")
     if (route.query.meeting === "new") {
       await router.replace({
@@ -361,30 +393,27 @@ async function linkWork() {
     busy.value = false
   }
 }
-async function createAction() {
-  if (!selected.value || !actionTitle.value.trim())
+async function addProjectParticipant() {
+  if (!form.value || typeof projectPersonToAdd.value !== "string" || !projectId.value)
     return
-  busy.value = true
-  error.value = ""
-  try {
-    selected.value = await createMeetingAction(selected.value.id, {
-      id: actionKey,
-      expected_revision: selected.value.revision,
-      title: actionTitle.value,
-      assignee_user_id: actionAssignee.value,
-      planned_end: actionEnd.value || null,
-    })
-    actionKey = crypto.randomUUID()
-    actionTitle.value = ""
-    actionAssignee.value = null
-    actionEnd.value = ""
-    notice.value = t("page.meetings.actionSaved")
+  const value = projectPersonToAdd.value
+  if (value.startsWith("user:")) {
+    participantToAdd.value = value.slice(5)
+    addParticipant()
   }
-  catch (e) {
-    error.value = message(e)
+  else {
+    const person = (await listProjectPeople(projectId.value)).people.find(p => p.id === value.slice(7))
+    if (person && !form.value.participants.some(p => p.person_id === person.id)) {
+      form.value.participants.push({ user_id: null, person_id: person.id, name: person.name, organization: person.organization, attendance: form.value.status === "held" ? "attended" : "invited" })
+    }
   }
-  finally {
-    busy.value = false
+  projectPersonToAdd.value = null
+}
+async function cancelEditing() {
+  if (await guard()) {
+    if (selected.value)
+      accept(selected.value)
+    editing.value = false
   }
 }
 async function loadHistory() {
@@ -400,7 +429,7 @@ async function loadHistory() {
 }
 async function guard() {
   flushVisual()
-  if (!dirty.value)
+  if (!dirty.value && !actionDirty.value && !comment.value.trim())
     return true
   return new Promise<boolean>((resolve) => {
     dialog.warning({
@@ -424,7 +453,7 @@ onBeforeRouteLeave(guard)
 onBeforeRouteUpdate((to, from) => to.query.meeting === from.query.meeting || guard())
 function beforeUnload(e: BeforeUnloadEvent) {
   flushVisual()
-  if (dirty.value) {
+  if (dirty.value || actionDirty.value || comment.value.trim()) {
     e.preventDefault()
     e.returnValue = ""
   }
@@ -441,6 +470,7 @@ watch(
       return
     try {
       members.value = (await meetingMembers(projectId.value)).members
+      projectPeople.value = (await listProjectPeople(projectId.value)).people
       await loadList()
       await loadSelected()
     }
@@ -505,7 +535,7 @@ watch(page, loadList)
         <label class="min-w-48">{{ t("page.meetings.participant")
         }}<n-select
           v-model:value="participantFilter"
-          :options="memberOptions"
+          :options="participantOptions"
           clearable
           filterable
         /></label>
@@ -566,7 +596,7 @@ watch(page, loadList)
                 : t("page.meetings.newDraft")
         }}</span>
         <n-button
-          v-if="editable"
+          v-if="editable && editing"
           type="primary"
           :loading="busy"
           :disabled="!form.title.trim() || (!dirty && !!selected)"
@@ -576,152 +606,157 @@ watch(page, loadList)
           {{ t("common.save") }}
         </n-button>
       </div>
-      <label class="block">{{ t("page.meetings.subject")
-      }}<n-input v-model:value="form.title" :readonly="!editable" data-testid="meeting-title" /></label>
-      <div class="grid gap-4 sm:grid-cols-3">
-        <label>{{ t("page.meetings.status")
-        }}<n-select
-          v-model:value="form.status"
-          :options="statusOptions"
-          :disabled="!editable"
-          data-testid="meeting-status"
-        /></label>
-        <label v-if="form.status === 'held'">{{ t("page.meetings.actualTime")
-        }}<input
-          :value="dateValue(form.occurred_at, form.time_precision)"
-          :type="form.time_precision === 'date' ? 'date' : 'datetime-local'"
-          :disabled="!editable"
-          class="meeting-date"
-          data-testid="meeting-date"
-          @change="setTime('occurred_at', ($event.target as HTMLInputElement).value)"
-        ></label>
-        <label v-else>{{ t("page.meetings.scheduledTime")
-        }}<input
-          :value="dateValue(form.scheduled_at, 'datetime')"
-          type="datetime-local"
-          :disabled="!editable"
-          class="meeting-date"
-          @change="setTime('scheduled_at', ($event.target as HTMLInputElement).value)"
-        ></label>
-        <n-checkbox
-          v-if="form.status === 'held'"
-          :checked="form.time_precision === 'datetime'"
-          :disabled="!editable"
-          @update:checked="form.time_precision = $event ? 'datetime' : 'date'"
-        >
-          {{ t("page.meetings.exactTime") }}
-        </n-checkbox>
+      <div v-if="selected && !editing" class="flex flex-wrap items-center gap-2">
+        <n-button v-if="editable" type="primary" @click="editing = true" data-testid="meeting-edit">{{ t("common.edit") }}</n-button>
+        <a href="#meeting-actions" class="text-primary">{{ t("page.meetings.actions") }} ({{ selected.work?.length || 0 }})</a>
       </div>
-      <details :open="!selected" class="border rounded-lg p-4" data-testid="meeting-people">
-        <summary class="cursor-pointer font-medium">
-          {{ t("page.meetings.peopleAndAccess") }} · {{ form.participants.length }} ·
-          {{ t(`page.meetings.visibility.${form.visibility}`) }}
-        </summary>
-        <div class="mt-4 space-y-4">
-          <p class="text-sm text-gray-500">
-            {{ t("page.meetings.participantHint") }}
-          </p>
-          <div v-if="manageable" class="flex flex-wrap gap-2">
-            <n-select
-              v-model:value="participantToAdd"
-              :options="memberOptions"
-              filterable
-              clearable
-              class="max-w-sm"
-              :placeholder="t('page.meetings.choosePerson')"
-              data-testid="meeting-participant-select"
-            /><n-button @click="addParticipant">
-              {{ t("page.meetings.addParticipant") }}
-            </n-button>
-          </div>
-          <div v-if="manageable" class="flex flex-wrap gap-2">
-            <n-input
-              v-model:value="externalName"
-              class="max-w-xs"
-              :placeholder="t('page.meetings.externalName')"
-            /><n-input
-              v-model:value="externalOrganization"
-              class="max-w-xs"
-              :placeholder="t('page.meetings.organization')"
-            /><n-button @click="addExternal">
-              {{ t("page.meetings.addExternal") }}
-            </n-button>
-          </div>
-          <div
-            v-for="(person, index) in form.participants"
-            :key="index"
-            class="flex flex-wrap items-center gap-3"
-          >
-            <span>{{ person.name }} {{ person.organization }}</span><n-select
-              v-model:value="person.attendance"
-              :options="attendanceOptions"
-              :disabled="!manageable"
-              class="!w-32"
-            /><n-button v-if="manageable" quaternary @click="form.participants.splice(index, 1)">
-              {{ t("common.delete") }}
-            </n-button>
-          </div>
-          <label class="block max-w-sm">{{ t("page.meetings.audience")
+      <n-button v-if="selected && editing" text @click="cancelEditing">{{ t("common.cancel") }}</n-button>
+      <article v-if="selected && !editing" class="space-y-4" data-testid="meeting-reading">
+        <h1 class="m-0 text-2xl font-semibold">{{ selected.title }}</h1>
+        <p class="text-sm text-gray-500">{{ t(`page.meetings.${selected.status}`) }} · {{ dateValue(selected.occurred_at || selected.scheduled_at, selected.time_precision) || t("page.meetings.noDate") }} · {{ t(`page.meetings.visibility.${selected.visibility}`) }}</p>
+        <p v-if="selected.participants.length" class="text-sm">{{ selected.participants.map(p => `${p.name}${p.organization ? `（${p.organization}）` : ''} · ${t(`page.meetings.attendance.${p.attendance}`)}`).join('；') }}</p>
+        <aimd-markdown-preview :content="selected.body" />
+      </article>
+      <template v-if="editing">
+        <label class="block">{{ t("page.meetings.subject")
+        }}<n-input v-model:value="form.title" :readonly="!editable" data-testid="meeting-title" /></label>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <label>{{ t("page.meetings.status")
           }}<n-select
-            v-model:value="form.visibility"
-            :options="accessOptions"
-            :disabled="!manageable"
-            data-testid="meeting-visibility"
+            v-model:value="form.status"
+            :options="statusOptions"
+            :disabled="!editable"
+            data-testid="meeting-status"
           /></label>
-          <p class="text-sm text-gray-500">
-            {{ t("page.meetings.audienceHint") }}
-          </p>
-          <template v-if="manageable">
-            <div class="flex flex-wrap gap-2">
-              <n-select
-                v-model:value="grantToAdd"
-                :options="memberOptions"
-                filterable
-                clearable
-                class="max-w-sm"
-                :placeholder="t('page.meetings.choosePerson')"
-                data-testid="meeting-access-select"
-              /><n-button @click="addGrant">
-                {{ t("page.meetings.grant") }}
+          <label v-if="form.status === 'held'">{{ t("page.meetings.actualTime")
+          }}<input
+            :value="dateValue(form.occurred_at, form.time_precision)"
+            :type="form.time_precision === 'date' ? 'date' : 'datetime-local'"
+            :disabled="!editable"
+            class="meeting-date"
+            data-testid="meeting-date"
+            @change="setTime('occurred_at', ($event.target as HTMLInputElement).value)"
+          ></label>
+          <label v-else>{{ t("page.meetings.scheduledTime")
+          }}<input
+            :value="dateValue(form.scheduled_at, 'datetime')"
+            type="datetime-local"
+            :disabled="!editable"
+            class="meeting-date"
+            @change="setTime('scheduled_at', ($event.target as HTMLInputElement).value)"
+          ></label>
+          <n-checkbox
+            v-if="form.status === 'held'"
+            :checked="form.time_precision === 'datetime'"
+            :disabled="!editable"
+            @update:checked="form.time_precision = $event ? 'datetime' : 'date'"
+          >
+            {{ t("page.meetings.exactTime") }}
+          </n-checkbox>
+        </div>
+        <details :open="!selected" class="border rounded-lg p-4" data-testid="meeting-people">
+          <summary class="cursor-pointer font-medium">
+            {{ t("page.meetings.peopleAndAccess") }} · {{ form.participants.length }} ·
+            {{ t(`page.meetings.visibility.${form.visibility}`) }}
+          </summary>
+          <div class="mt-4 space-y-4">
+            <p class="text-sm text-gray-500">
+              {{ t("page.meetings.participantHint") }}
+            </p>
+            <div v-if="manageable && projectId" class="flex flex-wrap gap-2">
+              <people-picker v-model="projectPersonToAdd" :project-id="projectId" :members="members" class="min-w-60 flex-1" />
+              <n-button :disabled="!projectPersonToAdd" @click="addProjectParticipant">{{ t("page.meetings.addParticipant") }}</n-button>
+            </div>
+            <div v-if="manageable" class="flex flex-wrap gap-2">
+              <n-input
+                v-model:value="externalName"
+                class="max-w-xs"
+                :placeholder="t('page.meetings.externalName')"
+              /><n-input
+                v-model:value="externalOrganization"
+                class="max-w-xs"
+                :placeholder="t('page.meetings.organization')"
+              /><n-button @click="addExternal">
+                {{ t("page.meetings.addExternal") }}
               </n-button>
             </div>
             <div
-              v-for="(grant, index) in form.access"
-              :key="grant.user_id"
+              v-for="(person, index) in form.participants"
+              :key="index"
               class="flex flex-wrap items-center gap-3"
             >
-              <span>{{
-                members.find(m => m.id === grant.user_id)?.name || t("page.meetings.formerMember")
-              }}</span><n-select v-model:value="grant.role" :options="members.find(m => m.id === grant.user_id)?.can_write ? roleOptions : roleOptions.filter(r => r.value === 'viewer')" class="!w-36" /><n-button
-                quaternary
-                @click="form.access.splice(index, 1)"
-              >
+              <span>{{ person.name }} {{ person.organization }}</span><n-select
+                v-model:value="person.attendance"
+                :options="attendanceOptions"
+                :disabled="!manageable"
+                class="!w-32"
+              /><n-button v-if="manageable" quaternary @click="form.participants.splice(index, 1)">
                 {{ t("common.delete") }}
               </n-button>
             </div>
-          </template>
-        </div>
-      </details>
-      <section class="min-w-0 border rounded-lg p-3" data-testid="meeting-minutes">
-        <h2 class="text-lg">
-          {{ t("page.meetings.minutes") }}
-        </h2>
-        <aimd-editor
-          :key="surfaceRevision"
-          ref="visualSurface"
-          :model-value="form.body"
-          :mode="editorMode"
-          :readonly="!editable"
-          :locale="locale"
-          :show-aimd-toolbar="false"
-          :min-height="320"
-          :keep-inactive-editors-mounted="false"
-          @ready="onVisualReady"
-          @input.capture="markInput"
-          @update:model-value="updateBody($event, editorMode === 'wysiwyg')"
-          @update:mode="switchMode"
-        />
-      </section>
+            <label class="block max-w-sm">{{ t("page.meetings.audience")
+            }}<n-select
+              v-model:value="form.visibility"
+              :options="accessOptions"
+              :disabled="!manageable"
+              data-testid="meeting-visibility"
+            /></label>
+            <p class="text-sm text-gray-500">
+              {{ t("page.meetings.audienceHint") }}
+            </p>
+            <template v-if="manageable">
+              <div class="flex flex-wrap gap-2">
+                <n-select
+                  v-model:value="grantToAdd"
+                  :options="memberOptions"
+                  filterable
+                  clearable
+                  class="max-w-sm"
+                  :placeholder="t('page.meetings.choosePerson')"
+                  data-testid="meeting-access-select"
+                /><n-button @click="addGrant">
+                  {{ t("page.meetings.grant") }}
+                </n-button>
+              </div>
+              <div
+                v-for="(grant, index) in form.access"
+                :key="grant.user_id"
+                class="flex flex-wrap items-center gap-3"
+              >
+                <span>{{
+                  members.find(m => m.id === grant.user_id)?.name || t("page.meetings.formerMember")
+                }}</span><n-select v-model:value="grant.role" :options="members.find(m => m.id === grant.user_id)?.can_write ? roleOptions : roleOptions.filter(r => r.value === 'viewer')" class="!w-36" /><n-button
+                  quaternary
+                  @click="form.access.splice(index, 1)"
+                >
+                  {{ t("common.delete") }}
+                </n-button>
+              </div>
+            </template>
+          </div>
+        </details>
+        <section class="min-w-0 border rounded-lg p-3" data-testid="meeting-minutes">
+          <h2 class="text-lg">
+            {{ t("page.meetings.minutes") }}
+          </h2>
+          <aimd-editor
+            :key="surfaceRevision"
+            ref="visualSurface"
+            :model-value="form.body"
+            :mode="editorMode"
+            :readonly="!editable"
+            :locale="locale"
+            :show-aimd-toolbar="false"
+            :min-height="320"
+            :keep-inactive-editors-mounted="false"
+            @ready="onVisualReady"
+            @input.capture="markInput"
+            @update:model-value="updateBody($event, editorMode === 'wysiwyg')"
+            @update:mode="switchMode"
+          />
+        </section>
+      </template>
+      <action-batch v-if="draftMeeting" :key="creationId" :meeting="draftMeeting" :members="members" :disabled="busy" draft @rows="draftActions = $event" @dirty="actionDirty = $event" />
       <div v-if="selected" class="flex flex-wrap items-center gap-3 text-sm text-gray-500">
         <span>{{ t("page.meetings.created") }}
           {{ new Date(selected.created_at).toLocaleString() }}</span><span>{{ t("page.meetings.updated") }}
@@ -735,7 +770,7 @@ watch(page, loadList)
           {{ t("page.meetings.document") }}
         </router-link>
       </div>
-      <section v-if="selected" class="border rounded-lg p-4" data-testid="meeting-work">
+      <section v-if="selected" id="meeting-actions" class="border rounded-lg p-4" data-testid="meeting-work">
         <h2 class="text-lg">
           {{ t("page.meetings.actions") }}
         </h2>
@@ -755,7 +790,8 @@ watch(page, loadList)
               {{ link.item.title }}
             </router-link><span>{{ t(`page.projectWork.states.${link.item.state}`) }} ·
               {{
-                members.find(m => m.id === link.item.assignee_user_id)?.name
+                link.item.people_snapshot?.find(p => p.id === link.item.assignee_person_id)?.name
+                  || members.find(m => m.id === link.item.assignee_user_id)?.name
                   || t("page.projectWork.unassigned")
               }}</span>
           </li>
@@ -776,29 +812,7 @@ watch(page, loadList)
               {{ t("page.meetings.linkWork") }}
             </n-button>
           </div>
-          <form class="grid mt-4 gap-3 sm:grid-cols-2" @submit.prevent="createAction">
-            <label class="sm:col-span-2">{{ t("page.meetings.actionTitle")
-            }}<n-input v-model:value="actionTitle" data-testid="meeting-action-title" /></label>
-            <label>{{ t("page.projectWork.assignee")
-            }}<n-select
-              v-model:value="actionAssignee"
-              :options="memberOptions.filter(o => members.find(m => m.id === o.value)?.can_write)"
-              clearable
-              filterable
-            /></label>
-            <label>{{ t("page.meetings.due")
-            }}<input v-model="actionEnd" type="date" class="meeting-date"></label>
-            <p class="m-0 text-sm text-gray-500 sm:col-span-2">
-              {{ t("page.meetings.actionAudience") }}
-            </p>
-            <n-button
-              attr-type="submit"
-              :disabled="busy || dirty || !actionTitle.trim()"
-              data-testid="meeting-create-action"
-            >
-              {{ t("page.meetings.createAction") }}
-            </n-button>
-          </form>
+          <action-batch v-if="selected.can_create_work" :key="selected.id" :meeting="selected" :members="members" :disabled="busy || dirty" @dirty="actionDirty = $event" @saved="selected = $event; notice = t('page.meetings.actionSaved')" />
         </template>
       </section>
       <section v-if="selected" class="border rounded-lg p-4" data-testid="meeting-comments">

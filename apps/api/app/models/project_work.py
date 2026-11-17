@@ -26,6 +26,14 @@ class ProjectWork(Base):
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
     collaborator_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    assignee_person_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("project_people.id", ondelete="RESTRICT"), index=True
+    )
+    collaborator_person_ids: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    people_snapshot: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    deadline_note: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
     planned_start: Mapped[date | None] = mapped_column(Date)
     planned_end: Mapped[date | None] = mapped_column(Date)
     blocker: Mapped[str] = mapped_column(Text, nullable=False, default="")

@@ -292,6 +292,8 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     meeting_revision = import_module("migrations.versions.0087_project_meetings")
     assert meeting_revision.down_revision == project_work_revision.revision
     later_tables.update({"meetings", "meeting_participants", "meeting_access", "meeting_comments", "meeting_work_links"})
+    # Collaboration tables belong to revision 0088, not the initial schema.
+    later_tables.update({"project_people", "meeting_action_batches"})
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

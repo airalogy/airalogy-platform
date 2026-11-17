@@ -1,6 +1,6 @@
 <template>
   <global-layout>
-    <content-layout :title="projectTitle" :tabs="tabs">
+    <content-layout :title="projectTitle" :tabs="tabs" compact-header>
       <template v-if="authStore.isLogin" #suffix>
         <div class="flex flex-wrap items-center justify-end gap-2">
           <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
@@ -27,24 +27,29 @@
         </div>
       </template>
       <template v-if="showIcon" #title>
-        <div class="mt-5 min-w-0 flex items-start gap-3 sm:items-center">
-          <project-icon class="shrink-0" />
+        <div class="mb-2 mt-2 min-w-0 flex items-start gap-3" data-testid="project-header">
+          <project-icon class="shrink-0 !h-9 !w-9" />
           <template v-if="projectInfo">
-            <div class="min-w-0 flex-1 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-3">
+            <div class="min-w-0 flex-1">
               <router-link
                 v-if="authStore.isLogin && !instanceStore.isSingleLab"
                 :to="{ name: 'lab-projects', params: { labUid: projectInfo.lab_uid } }"
-                class="block break-words text-sm color-text-secondary sm:text-6"
+                class="block break-words text-xs color-text-secondary"
               >
                 {{ projectInfo.lab_name || projectInfo.lab_uid }}
               </router-link>
-              <span v-else-if="!instanceStore.isSingleLab" class="block break-words text-sm color-text-secondary sm:text-6">
+              <span v-else-if="!instanceStore.isSingleLab" class="block break-words text-xs color-text-secondary">
                 {{ projectInfo.lab_name || projectInfo.lab_uid }}
               </span>
-              <span v-if="!instanceStore.isSingleLab" class="hidden select-none text-5 color-text-secondary sm:inline">/</span>
-              <h2 class="m-0 min-w-0 break-words !text-xl sm:!text-6">
+              <h2 class="m-0 min-w-0 break-words !text-xl !leading-8">
                 {{ projectTitle }}
               </h2>
+              <p v-if="description" ref="descriptionElement" class="mb-0 mt-1 text-sm leading-5 color-text-secondary" :class="{ 'line-clamp-2': !descriptionExpanded }" data-testid="project-description">
+                {{ description }}
+              </p>
+              <button v-if="description && (descriptionOverflow || descriptionExpanded)" type="button" class="mt-1 text-xs text-primary" :aria-expanded="descriptionExpanded" @click="descriptionExpanded = !descriptionExpanded">
+                {{ descriptionExpanded ? $t('common.collapse') : $t('common.expand') }}
+              </button>
             </div>
             <span v-if="visibilityLabel" class="inline-flex shrink-0 items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-500" :class="visibilityClass">
               {{ visibilityLabel }}
@@ -52,7 +57,6 @@
           </template>
           <n-skeleton v-else width="20rem" class="mx-4" />
         </div>
-        <global-description v-if="description" :description="description" class="md:w-70%" />
       </template>
     </content-layout>
   </global-layout>
@@ -96,6 +100,16 @@ interface Props {
 }
 
 const route = useRoute()
+const descriptionExpanded = ref(false)
+const descriptionElement = ref<HTMLElement>()
+const descriptionOverflow = ref(false)
+function measureDescription() {
+  const element = descriptionElement.value
+  if (element && !descriptionExpanded.value)
+    descriptionOverflow.value = element.scrollHeight > element.clientHeight + 1
+}
+useResizeObserver(descriptionElement, measureDescription)
+watch(() => route.params.projectUid, () => descriptionExpanded.value = false)
 const instanceStore = useInstanceStore()
 const authStore = useAuthStore()
 const showIcon = computed(
@@ -196,6 +210,8 @@ const { visibilityLabel, visibilityClass } = useProjectVisibility(() => projectI
 const description = computed(() => {
   return projectInfo.value?.description ?? ""
 })
+
+watch(description, measureDescription, { flush: "post" })
 
 const publicProjectSeo = computed(() => {
   const info = projectInfo.value

@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 
 from app.database import DBSession
 from app.models.meeting import (
@@ -16,6 +16,7 @@ from app.models.meeting import (
     MeetingParticipant,
     MeetingWorkLink,
 )
+from app.models.project_person import ProjectPerson
 from app.models.project_work import ProjectWork
 from app.models.research import ResearchTask
 from app.models.research_document import ResearchDocument
@@ -33,7 +34,7 @@ from app.services.meetings import (
     meeting_read_condition,
 )
 from app.services.project_work import project_context, visible_snapshot, work_snapshot
-from app.services.project_work_contracts import WorkCreate
+from app.services.project_work_contracts import EvidenceLink, WorkContent, WorkCreate
 from app.services.research_runtime import has_research_capability
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -60,13 +61,27 @@ class WorkLink(BaseModel):
     expected_revision: int = Field(ge=1)
 
 
-class Action(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class ActionDraft(WorkContent):
     id: UUID
+    evidence: list[EvidenceLink] = Field(default_factory=list, max_length=49)
+
+
+class Action(ActionDraft):
     expected_revision: int = Field(ge=1)
-    title: str = Field(min_length=1, max_length=255)
-    assignee_user_id: UUID | None = None
-    planned_end: date | None = None
+
+
+class ActionBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: UUID
+    expected_revision: int = Field(ge=1)
+    actions: list[ActionDraft] = Field(default_factory=list, max_length=50)
+    existing_work_ids: list[UUID] = Field(default_factory=list, max_length=50)
+
+
+class MeetingWithActions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    meeting: Create
+    actions: ActionBatch
 
 
 async def context(db, user, identity, permission="read", lock=False):
@@ -93,7 +108,7 @@ async def people(db, meeting_id):
         await db.scalars(
             select(MeetingParticipant)
             .where(MeetingParticipant.meeting_id == meeting_id)
-            .order_by(MeetingParticipant.id)
+            .order_by(MeetingParticipant.position, MeetingParticipant.id)
         )
     ).all()
     grants = (
@@ -107,6 +122,7 @@ async def people(db, meeting_id):
         [
             {
                 "user_id": p.user_id,
+                "person_id": str(p.person_id) if p.person_id else None,
                 "name": p.name,
                 "organization": p.organization,
                 "attendance": p.attendance,
@@ -157,8 +173,21 @@ async def set_people(db, user, project, entry, data):
         delete(MeetingParticipant).where(MeetingParticipant.meeting_id == entry.id)
     )
     await db.execute(delete(MeetingAccess).where(MeetingAccess.meeting_id == entry.id))
-    for participant in data.participants:
+    for position, participant in enumerate(data.participants):
         value = participant.model_dump()
+        value["position"] = position
+        if participant.person_id:
+            from app.services.project_people import require_person
+
+            person = await require_person(db, project.id, participant.person_id)
+            previous = next(
+                (p for p in previous_people if p.get("person_id") == str(person.id)),
+                None,
+            )
+            value["name"] = previous["name"] if previous else person.name
+            value["organization"] = (
+                previous["organization"] if previous else person.organization
+            )
         if participant.user_id:
             value["name"] = (
                 names.get(participant.user_id)
@@ -295,6 +324,7 @@ async def list_meetings(
     project_id: UUID,
     q: str = Query("", max_length=200),
     participant_id: UUID | None = None,
+    person_id: UUID | None = None,
     status: Literal["held", "planned", "cancelled"] | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -318,11 +348,26 @@ async def list_meetings(
             ResearchLogEntry.title.icontains(q, autoescape=True)
             | ResearchLogEntry.body.icontains(q, autoescape=True)
         )
+    if person_id:
+        query = query.where(
+            ResearchLogEntry.id.in_(
+                select(MeetingParticipant.meeting_id).where(
+                    MeetingParticipant.person_id == person_id
+                )
+            )
+        )
     if participant_id:
         query = query.where(
             ResearchLogEntry.id.in_(
                 select(MeetingParticipant.meeting_id).where(
-                    MeetingParticipant.user_id == participant_id
+                    or_(
+                        MeetingParticipant.user_id == participant_id,
+                        MeetingParticipant.person_id.in_(
+                            select(ProjectPerson.id).where(
+                                ProjectPerson.user_id == participant_id
+                            )
+                        ),
+                    )
                 )
             )
         )
@@ -358,71 +403,9 @@ async def list_meetings(
 async def create_meeting(
     data: Create, current_user: CurrentUser, db_session: DBSession
 ):
-    project = await project_context(
-        db_session, current_user, data.project_id, write=True, lock=True
-    )
-    digest = canonical_digest(data.model_dump(mode="json"))
-    existing = await db_session.get(Meeting, data.id)
-    if existing:
-        entry, meeting, project = await context(db_session, current_user, data.id)
-        if (
-            entry.created_by_user_id != current_user.id
-            or meeting.create_digest != digest
-        ):
-            raise HTTPException(
-                409, "Meeting creation key belongs to different content"
-            )
-        return await payload(db_session, current_user, entry, meeting, project)
-    if await db_session.get(ResearchLogEntry, data.id):
-        raise HTTPException(409, "Document ID already exists")
-    entry = ResearchLogEntry(
-        id=data.id,
-        scope_type="project",
-        lab_id=project.lab_id,
-        project_id=project.id,
-        kind="meeting",
-        title=data.title,
-        body=data.body,
-        occurred_at=data.occurred_at or data.scheduled_at or datetime.now(UTC),
-        created_by_user_id=current_user.id,
-        revision=1,
-    )
-    db_session.add(entry)
-    await db_session.flush()
-    db_session.add(
-        ResearchDocument(
-            id=entry.id,
-            format_version="aimd.v1",
-            state="draft",
-            record_data={},
-            file_ids=[],
-            tags=[],
-            collection="",
-            origin={},
-        )
-    )
-    await db_session.flush()
-    meeting = Meeting(
-        document_id=entry.id,
-        **{
-            k: getattr(data, k)
-            for k in [
-                "status",
-                "visibility",
-                "scheduled_at",
-                "time_precision",
-                "time_zone",
-            ]
-        },
-        create_digest=digest,
-    )
-    db_session.add(meeting)
-    await db_session.flush()
-    await set_people(db_session, current_user, project, entry, data)
-    await db_session.flush()
-    await revision(db_session, current_user, entry, meeting, "Meeting created")
+    result = await create_meeting_impl(data, current_user, db_session)
     await db_session.commit()
-    return await payload(db_session, current_user, entry, meeting, project)
+    return result
 
 
 @router.get("/{meeting_id}")
@@ -437,34 +420,9 @@ async def get_meeting(
 async def update_meeting(
     meeting_id: UUID, data: Update, current_user: CurrentUser, db_session: DBSession
 ):
-    entry, meeting, project = await context(
-        db_session, current_user, meeting_id, "edit", lock=True
-    )
-    if entry.revision != data.expected_revision:
-        raise HTTPException(409, "Meeting changed. Reload and compare before saving.")
-    if entry.created_by_user_id != current_user.id:
-        current_people, _ = await people(db_session, meeting_id)
-        old = [
-            {**p, "user_id": str(p["user_id"]) if p["user_id"] else None}
-            for p in current_people
-        ]
-        new = [p.model_dump(mode="json") for p in data.participants]
-        if data.visibility != meeting.visibility or data.access or old != new:
-            raise HTTPException(
-                403, "Only the author changes audience and participants"
-            )
-    else:
-        await set_people(db_session, current_user, project, entry, data)
-    entry.title, entry.body = data.title, data.body
-    entry.occurred_at = data.occurred_at or data.scheduled_at or entry.occurred_at
-    entry.revision += 1
-    entry.updated_at = datetime.now(UTC)
-    for key in ["status", "visibility", "scheduled_at", "time_precision", "time_zone"]:
-        setattr(meeting, key, getattr(data, key))
-    await db_session.flush()
-    await revision(db_session, current_user, entry, meeting, "Meeting updated")
+    result = await update_meeting_impl(meeting_id, data, current_user, db_session)
     await db_session.commit()
-    return await payload(db_session, current_user, entry, meeting, project)
+    return result
 
 
 @router.get("/{meeting_id}/comments")
@@ -537,6 +495,126 @@ async def add_comment(
 async def link_work(
     meeting_id: UUID, data: WorkLink, current_user: CurrentUser, db_session: DBSession
 ):
+    result = await link_work_impl(meeting_id, data, current_user, db_session)
+    await db_session.commit()
+    return result
+
+
+@router.post("/{meeting_id}/actions")
+async def create_action(
+    meeting_id: UUID, data: Action, current_user: CurrentUser, db_session: DBSession
+):
+    result = await create_action_impl(meeting_id, data, current_user, db_session)
+    await db_session.commit()
+    return result
+
+
+async def create_meeting_impl(
+    data: Create, current_user: CurrentUser, db_session: DBSession
+):
+    project = await project_context(
+        db_session, current_user, data.project_id, write=True, lock=True
+    )
+    digest = canonical_digest(data.model_dump(mode="json"))
+    existing = await db_session.get(Meeting, data.id)
+    if existing:
+        entry, meeting, project = await context(db_session, current_user, data.id)
+        if (
+            entry.created_by_user_id != current_user.id
+            or meeting.create_digest != digest
+        ):
+            raise HTTPException(
+                409, "Meeting creation key belongs to different content"
+            )
+        return await payload(db_session, current_user, entry, meeting, project)
+    if await db_session.get(ResearchLogEntry, data.id):
+        raise HTTPException(409, "Document ID already exists")
+    entry = ResearchLogEntry(
+        id=data.id,
+        scope_type="project",
+        lab_id=project.lab_id,
+        project_id=project.id,
+        kind="meeting",
+        title=data.title,
+        body=data.body,
+        occurred_at=data.occurred_at or data.scheduled_at or datetime.now(UTC),
+        created_by_user_id=current_user.id,
+        revision=1,
+    )
+    db_session.add(entry)
+    await db_session.flush()
+    db_session.add(
+        ResearchDocument(
+            id=entry.id,
+            format_version="aimd.v1",
+            state="draft",
+            record_data={},
+            file_ids=[],
+            tags=[],
+            collection="",
+            origin={},
+        )
+    )
+    await db_session.flush()
+    meeting = Meeting(
+        document_id=entry.id,
+        **{
+            k: getattr(data, k)
+            for k in [
+                "status",
+                "visibility",
+                "scheduled_at",
+                "time_precision",
+                "time_zone",
+            ]
+        },
+        create_digest=digest,
+    )
+    db_session.add(meeting)
+    await db_session.flush()
+    await set_people(db_session, current_user, project, entry, data)
+    await db_session.flush()
+    await revision(db_session, current_user, entry, meeting, "Meeting created")
+    await db_session.flush()
+    return await payload(db_session, current_user, entry, meeting, project)
+
+
+async def update_meeting_impl(
+    meeting_id: UUID, data: Update, current_user: CurrentUser, db_session: DBSession
+):
+    entry, meeting, project = await context(
+        db_session, current_user, meeting_id, "edit", lock=True
+    )
+    if entry.revision != data.expected_revision:
+        raise HTTPException(409, "Meeting changed. Reload and compare before saving.")
+    if entry.created_by_user_id != current_user.id:
+        current_people, _ = await people(db_session, meeting_id)
+        old = [
+            {**p, "user_id": str(p["user_id"]) if p["user_id"] else None}
+            for p in current_people
+        ]
+        new = [p.model_dump(mode="json") for p in data.participants]
+        if data.visibility != meeting.visibility or data.access or old != new:
+            raise HTTPException(
+                403, "Only the author changes audience and participants"
+            )
+    else:
+        await set_people(db_session, current_user, project, entry, data)
+    entry.title, entry.body = data.title, data.body
+    entry.occurred_at = data.occurred_at or data.scheduled_at or entry.occurred_at
+    entry.revision += 1
+    entry.updated_at = datetime.now(UTC)
+    for key in ["status", "visibility", "scheduled_at", "time_precision", "time_zone"]:
+        setattr(meeting, key, getattr(data, key))
+    await db_session.flush()
+    await revision(db_session, current_user, entry, meeting, "Meeting updated")
+    await db_session.flush()
+    return await payload(db_session, current_user, entry, meeting, project)
+
+
+async def link_work_impl(
+    meeting_id: UUID, data: WorkLink, current_user: CurrentUser, db_session: DBSession
+):
     entry, meeting, project = await context(
         db_session, current_user, meeting_id, "comment", lock=True
     )
@@ -558,84 +636,121 @@ async def link_work(
                 created_by_user_id=current_user.id,
             )
         )
-        await db_session.commit()
+        await db_session.flush()
     return await payload(db_session, current_user, entry, meeting, project)
 
 
-@router.post("/{meeting_id}/actions")
-async def create_action(
+async def create_action_impl(
     meeting_id: UUID, data: Action, current_user: CurrentUser, db_session: DBSession
 ):
-    from app.routers.project_work import append_event, apply_content, validate_content
+    from app.routers.project_work import create_work_impl
 
     entry, meeting, project = await context(
         db_session, current_user, meeting_id, "comment", lock=True
     )
     await project_context(db_session, current_user, project.id, write=True, lock=True)
-    content = WorkCreate(
-        id=data.id,
-        project_id=project.id,
-        title=data.title,
-        assignee_user_id=data.assignee_user_id,
-        planned_end=data.planned_end,
-        evidence=[
-            {
-                "kind": "document",
-                "id": str(meeting_id),
-                "version": str(data.expected_revision),
-            }
-        ],
-    )
-    digest = canonical_digest(content.model_dump(mode="json"))
-    task = await db_session.get(ResearchTask, data.id)
-    if task:
-        work = await db_session.get(ProjectWork, data.id)
-        link = await db_session.get(MeetingWorkLink, (meeting_id, data.id))
-        if (
-            not work
-            or not link
-            or task.created_by_user_id != current_user.id
-            or work.create_digest != digest
-        ):
-            raise HTTPException(409, "Action request ID belongs to different content")
-        return await payload(db_session, current_user, entry, meeting, project)
-    if entry.revision != data.expected_revision:
+    link = await db_session.get(MeetingWorkLink, (meeting_id, data.id))
+    if not link and entry.revision != data.expected_revision:
         raise HTTPException(
             409, "Meeting changed; review the saved minutes before creating an action"
         )
-    await validate_content(db_session, current_user, project, content, data.id)
-    task = ResearchTask(
-        id=data.id,
-        lab_id=project.lab_id,
-        project_id=project.id,
-        title=content.title,
-        goal="",
-        owner_user_id=current_user.id,
-        created_by_user_id=current_user.id,
-        revision=1,
+    values = data.model_dump(exclude={"expected_revision"})
+    source = {
+        "kind": "document",
+        "id": str(meeting_id),
+        "version": str(data.expected_revision),
+    }
+    values["evidence"] = [source, *values["evidence"]]
+    await create_work_impl(
+        WorkCreate(project_id=project.id, **values), current_user, db_session
     )
-    work = ProjectWork(task_id=data.id, create_digest=digest)
-    apply_content(task, work, content)
-    db_session.add(task)
+    if not link:
+        db_session.add(
+            MeetingWorkLink(
+                meeting_id=meeting_id,
+                task_id=data.id,
+                relation="created",
+                source_revision=data.expected_revision,
+                created_by_user_id=current_user.id,
+            )
+        )
     await db_session.flush()
-    db_session.add(work)
-    await db_session.flush()
+    return await payload(db_session, current_user, entry, meeting, project)
+
+
+async def action_batch_impl(meeting_id, data, current_user, db_session):
+    from app.models.meeting import MeetingActionBatch
+
+    entry, meeting, project = await context(
+        db_session, current_user, meeting_id, "comment", lock=True
+    )
+    await project_context(db_session, current_user, project.id, write=True, lock=True)
+    digest = canonical_digest(data.model_dump(mode="json"))
+    receipt = await db_session.get(MeetingActionBatch, data.request_id)
+    if receipt:
+        if (
+            receipt.meeting_id != meeting_id
+            or receipt.actor_id != current_user.id
+            or receipt.digest != digest
+        ):
+            raise HTTPException(409, "Batch request ID belongs to different content")
+        return await payload(db_session, current_user, entry, meeting, project)
+    if entry.revision != data.expected_revision:
+        raise HTTPException(409, "Meeting changed; refresh before creating actions")
+    identities = [a.id for a in data.actions] + data.existing_work_ids
+    if len(identities) != len(set(identities)):
+        raise HTTPException(422, "An action may appear only once in a batch")
+    for action in data.actions:
+        await create_action_impl(
+            meeting_id,
+            Action(**action.model_dump(), expected_revision=data.expected_revision),
+            current_user,
+            db_session,
+        )
+    for identity in data.existing_work_ids:
+        await link_work_impl(
+            meeting_id,
+            WorkLink(task_id=identity, expected_revision=data.expected_revision),
+            current_user,
+            db_session,
+        )
     db_session.add(
-        MeetingWorkLink(
+        MeetingActionBatch(
+            id=data.request_id,
             meeting_id=meeting_id,
-            task_id=task.id,
-            relation="created",
-            source_revision=entry.revision,
-            created_by_user_id=current_user.id,
+            actor_id=current_user.id,
+            digest=digest,
         )
     )
-    await append_event(
-        db_session,
-        current_user,
-        task,
-        "created",
-        {"snapshot": work_snapshot(task, work), "request_digest": digest},
-        data.id,
-    )
-    await db_session.commit()
+    await db_session.flush()
     return await payload(db_session, current_user, entry, meeting, project)
+
+
+@router.post("/{meeting_id}/actions/batch")
+async def action_batch(
+    meeting_id: UUID,
+    data: ActionBatch,
+    current_user: CurrentUser,
+    db_session: DBSession,
+):
+    result = await action_batch_impl(meeting_id, data, current_user, db_session)
+    await db_session.commit()
+    return result
+
+
+async def create_with_actions_impl(data, current_user, db_session):
+    if data.actions.expected_revision != 1:
+        raise HTTPException(422, "A new meeting starts at revision 1")
+    await create_meeting_impl(data.meeting, current_user, db_session)
+    return await action_batch_impl(
+        data.meeting.id, data.actions, current_user, db_session
+    )
+
+
+@router.post("/with-actions")
+async def create_with_actions(
+    data: MeetingWithActions, current_user: CurrentUser, db_session: DBSession
+):
+    result = await create_with_actions_impl(data, current_user, db_session)
+    await db_session.commit()
+    return result

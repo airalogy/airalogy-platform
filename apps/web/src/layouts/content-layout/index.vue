@@ -1,5 +1,5 @@
 <template>
-  <header class="pt-5">
+  <header :class="compactHeader ? 'pt-3' : 'pt-5'">
     <slot name="breadcrumb">
       <global-breadcrumb />
     </slot>
@@ -89,6 +89,7 @@ const props = withDefaults(defineProps<IProps>(), {
 })
 
 interface IProps {
+  compactHeader?: boolean
   title?: string
   tabs?: TabPaneProps[]
   tabsProps?: TabsProps

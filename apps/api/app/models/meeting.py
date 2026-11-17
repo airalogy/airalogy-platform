@@ -55,9 +55,13 @@ class MeetingParticipant(Base):
     user_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
+    person_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("project_people.id", ondelete="RESTRICT"), index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     organization: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     attendance: Mapped[str] = mapped_column(String(16), nullable=False)
+    position: Mapped[int] = mapped_column(nullable=False, default=0)
 
 
 class MeetingAccess(Base):
@@ -100,3 +104,13 @@ class MeetingWorkLink(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class MeetingActionBatch(Base):
+    __tablename__ = "meeting_action_batches"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    meeting_id: Mapped[UUID] = mapped_column(
+        ForeignKey("meetings.document_id", ondelete="RESTRICT"), index=True
+    )
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)

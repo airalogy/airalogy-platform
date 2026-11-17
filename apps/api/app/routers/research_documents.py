@@ -49,19 +49,19 @@ from app.routers.research_materials import (
     material_content_type,
     persist_material,
 )
-from app.services.document_browse import date_bounds
 from app.services.browser_paths import project_browser_path
-from app.services.meetings import (
-    authorize_meeting,
-    meeting_read_condition,
-    require_shareable_meeting_source,
-)
+from app.services.document_browse import date_bounds
 from app.services.knowledge import (
     assert_research_file_upload_quota,
     authorize_research_file,
     canonical_digest,
     resolve_scope,
     snapshot_knowledge,
+)
+from app.services.meetings import (
+    authorize_meeting,
+    meeting_read_condition,
+    require_shareable_meeting_source,
 )
 from app.services.research_document_archive import (
     ARCHIVE_MAX_BYTES,
@@ -397,6 +397,17 @@ async def list_documents(
     except HTTPException:
         can_write = False
     items = []
+    from app.models.meeting import Meeting
+
+    meeting_statuses = dict(
+        (
+            await db_session.execute(
+                select(Meeting.document_id, Meeting.status).where(
+                    Meeting.document_id.in_([entry.id for entry, _ in rows])
+                )
+            )
+        ).all()
+    )
     for entry, doc in rows:
         items.append(
             {
@@ -404,6 +415,7 @@ async def list_documents(
                 "title": entry.title,
                 "kind": entry.kind,
                 "state": doc.state,
+                "meeting_status": meeting_statuses.get(entry.id),
                 "revision": entry.revision,
                 "tags": doc.tags,
                 "collection": doc.collection,

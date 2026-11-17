@@ -1,7 +1,7 @@
 import type { CustomRoute, ProjectsNameKey } from "#/page-route"
 
 export const projectsRoute: CustomRoute<ProjectsNameKey> = {
-  meta: { title: "Projects" },
+  meta: { title: "Projects", i18nKey: "breadcrumb.projects", breadcrumbI18nKey: "breadcrumb.projects" },
   name: "projects",
   path: "/projects",
   redirect: "/projects/my",

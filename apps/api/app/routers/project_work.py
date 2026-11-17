@@ -219,6 +219,11 @@ async def validate_content(db, user, project, data, task_id):
                 422,
                 "Assignees and collaborators must have current Project write access",
             )
+    from app.services.project_people import require_person
+
+    for identity in [data.assignee_person_id, *data.collaborator_person_ids]:
+        if identity:
+            await require_person(db, project.id, identity)
     await validate_evidence(db, user, project, data.evidence)
     rows = (
         await db.execute(
@@ -286,6 +291,8 @@ def apply_content(task, detail, data):
         "kind",
         "priority",
         "assignee_user_id",
+        "assignee_person_id",
+        "deadline_note",
         "planned_start",
         "planned_end",
         "blocker",
@@ -293,6 +300,7 @@ def apply_content(task, detail, data):
     ):
         setattr(detail, key, getattr(data, key))
     detail.collaborator_ids = [str(x) for x in data.collaborator_ids]
+    detail.collaborator_person_ids = [str(x) for x in data.collaborator_person_ids]
     detail.dependency_ids = [str(x) for x in data.dependency_ids]
     detail.evidence = [x.model_dump(mode="json") for x in data.evidence]
 
@@ -357,6 +365,8 @@ async def list_work(
     project_id: UUID | None = None,
     state: WorkState | None = None,
     mine: bool = False,
+    person_id: UUID | None = None,
+    assignee_id: UUID | None = None,
     active_only: bool = False,
     q: str = Query(default="", max_length=255),
     page: int = Query(default=1, ge=1),
@@ -373,8 +383,32 @@ async def list_work(
     else:
         # Home is only an assignment inbox, never a global asset search.
         mine = True
+    from sqlalchemy import or_
+
+    from app.models.project_person import ProjectPerson
+
+    if person_id:
+        conditions.append(ProjectWork.assignee_person_id == person_id)
+    if assignee_id:
+        conditions.append(
+            or_(
+                ProjectWork.assignee_user_id == assignee_id,
+                ProjectWork.assignee_person_id.in_(
+                    select(ProjectPerson.id).where(ProjectPerson.user_id == assignee_id)
+                ),
+            )
+        )
     if mine:
-        conditions.append(ProjectWork.assignee_user_id == current_user.id)
+        conditions.append(
+            or_(
+                ProjectWork.assignee_user_id == current_user.id,
+                ProjectWork.assignee_person_id.in_(
+                    select(ProjectPerson.id).where(
+                        ProjectPerson.user_id == current_user.id
+                    )
+                ),
+            )
+        )
     if active_only:
         conditions.append(ResearchTask.status.not_in(["completed", "cancelled"]))
     if state:
@@ -441,51 +475,9 @@ async def list_work(
 async def create_work(
     data: WorkCreate, current_user: CurrentUser, db_session: DBSession
 ):
-    project = await project_context(
-        db_session, current_user, data.project_id, write=True, lock=True
-    )
-    digest = canonical_digest(data.model_dump(mode="json"))
-    existing = await db_session.get(ResearchTask, data.id)
-    if existing:
-        detail = await db_session.get(ProjectWork, data.id)
-        if (
-            not detail
-            or existing.project_id != project.id
-            or existing.created_by_user_id != current_user.id
-            or detail.create_digest != digest
-        ):
-            raise HTTPException(409, "Work item ID is already in use")
-        return await visible_snapshot(
-            db_session, current_user, project, work_snapshot(existing, detail)
-        )
-    await validate_content(db_session, current_user, project, data, data.id)
-    task = ResearchTask(
-        id=data.id,
-        lab_id=project.lab_id,
-        project_id=project.id,
-        title=data.title,
-        goal=data.goal,
-        owner_user_id=current_user.id,
-        created_by_user_id=current_user.id,
-        revision=1,
-    )
-    detail = ProjectWork(task_id=data.id, create_digest=digest)
-    apply_content(task, detail, data)
-    db_session.add(task)
-    await db_session.flush()
-    db_session.add(detail)
-    await db_session.flush()
-    snapshot = work_snapshot(task, detail)
-    await append_event(
-        db_session,
-        current_user,
-        task,
-        "created",
-        {"snapshot": snapshot, "request_digest": digest},
-        data.id,
-    )
+    result = await create_work_impl(data, current_user, db_session)
     await db_session.commit()
-    return await visible_snapshot(db_session, current_user, project, snapshot)
+    return result
 
 
 @router.get("/{task_id}")
@@ -507,40 +499,9 @@ async def get_work(task_id: UUID, current_user: CurrentUser, db_session: DBSessi
 async def update_work(
     task_id: UUID, data: WorkUpdate, current_user: CurrentUser, db_session: DBSession
 ):
-    task, detail, project = await work_context(
-        db_session, current_user, task_id, write=True
-    )
-    digest = canonical_digest(data.model_dump(mode="json"))
-    if await replay(db_session, current_user, data.request_id, task_id, digest):
-        return await visible_snapshot(
-            db_session, current_user, project, work_snapshot(task, detail)
-        )
-    if task.revision != data.expected_revision:
-        raise HTTPException(
-            409,
-            "Work changed in another window. Your edits were not saved; compare the current version before retrying.",
-        )
-    await validate_content(db_session, current_user, project, data, task_id)
-    state_changed = task.status != STORED_STATES[data.state]
-    apply_content(task, detail, data)
-    task.revision += 1
-    await db_session.flush()
-    snapshot = work_snapshot(task, detail)
-    await append_event(
-        db_session,
-        current_user,
-        task,
-        "updated",
-        {
-            "snapshot": snapshot,
-            "reason": data.change_reason,
-            "state_changed": state_changed,
-            "request_digest": digest,
-        },
-        data.request_id,
-    )
+    result = await update_work_impl(task_id, data, current_user, db_session)
     await db_session.commit()
-    return await visible_snapshot(db_session, current_user, project, snapshot)
+    return result
 
 
 @router.get("/{task_id}/activity")
@@ -645,3 +606,108 @@ async def add_activity(
     )
     await db_session.commit()
     return {"id": str(event.id), "revision": task.revision, "replayed": False}
+
+
+async def create_work_impl(
+    data: WorkCreate, current_user: CurrentUser, db_session: DBSession
+):
+    project = await project_context(
+        db_session, current_user, data.project_id, write=True, lock=True
+    )
+    digest = canonical_digest(data.model_dump(mode="json"))
+    existing = await db_session.get(ResearchTask, data.id)
+    if existing:
+        detail = await db_session.get(ProjectWork, data.id)
+        if (
+            not detail
+            or existing.project_id != project.id
+            or existing.created_by_user_id != current_user.id
+            or detail.create_digest != digest
+        ):
+            raise HTTPException(409, "Work item ID is already in use")
+        return await visible_snapshot(
+            db_session, current_user, project, work_snapshot(existing, detail)
+        )
+    await validate_content(db_session, current_user, project, data, data.id)
+    task = ResearchTask(
+        id=data.id,
+        lab_id=project.lab_id,
+        project_id=project.id,
+        title=data.title,
+        goal=data.goal,
+        owner_user_id=current_user.id,
+        created_by_user_id=current_user.id,
+        revision=1,
+    )
+    detail = ProjectWork(task_id=data.id, create_digest=digest)
+    apply_content(task, detail, data)
+    from app.services.project_people import require_person
+
+    detail.people_snapshot = [
+        {"id": str(p.id), "name": p.name, "organization": p.organization}
+        for identity in [data.assignee_person_id, *data.collaborator_person_ids]
+        if identity
+        for p in [await require_person(db_session, project.id, identity)]
+    ]
+    db_session.add(task)
+    await db_session.flush()
+    db_session.add(detail)
+    await db_session.flush()
+    snapshot = work_snapshot(task, detail)
+    await append_event(
+        db_session,
+        current_user,
+        task,
+        "created",
+        {"snapshot": snapshot, "request_digest": digest},
+        data.id,
+    )
+    await db_session.flush()
+    return await visible_snapshot(db_session, current_user, project, snapshot)
+
+
+async def update_work_impl(
+    task_id: UUID, data: WorkUpdate, current_user: CurrentUser, db_session: DBSession
+):
+    task, detail, project = await work_context(
+        db_session, current_user, task_id, write=True
+    )
+    digest = canonical_digest(data.model_dump(mode="json"))
+    if await replay(db_session, current_user, data.request_id, task_id, digest):
+        return await visible_snapshot(
+            db_session, current_user, project, work_snapshot(task, detail)
+        )
+    if task.revision != data.expected_revision:
+        raise HTTPException(
+            409,
+            "Work changed in another window. Your edits were not saved; compare the current version before retrying.",
+        )
+    await validate_content(db_session, current_user, project, data, task_id)
+    state_changed = task.status != STORED_STATES[data.state]
+    apply_content(task, detail, data)
+    from app.services.project_people import require_person
+
+    detail.people_snapshot = [
+        {"id": str(p.id), "name": p.name, "organization": p.organization}
+        for identity in [data.assignee_person_id, *data.collaborator_person_ids]
+        if identity
+        for p in [await require_person(db_session, project.id, identity)]
+    ]
+    task.revision += 1
+    await db_session.flush()
+    snapshot = work_snapshot(task, detail)
+    await append_event(
+        db_session,
+        current_user,
+        task,
+        "updated",
+        {
+            "snapshot": snapshot,
+            "reason": data.change_reason,
+            "state_changed": state_changed,
+            "request_digest": digest,
+        },
+        data.request_id,
+    )
+    await db_session.flush()
+    return await visible_snapshot(db_session, current_user, project, snapshot)

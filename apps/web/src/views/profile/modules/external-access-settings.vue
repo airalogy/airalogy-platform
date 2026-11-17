@@ -50,6 +50,8 @@ async function removeClient(id: string) {
   catch { message.error($t("externalAccess.failed")) }
 }
 const scopeOptions = computed(() => [
+  { label: $t("externalAccess.readCollaboration"), value: "collaboration:read" },
+  { label: $t("externalAccess.writeCollaboration"), value: "collaboration:write" },
   { label: $t("externalAccess.readProtocols"), value: "protocols:read", disabled: true },
   { label: $t("externalAccess.readRecords"), value: "records:read" },
   { label: $t("externalResearch.exportRecords"), value: "records:export" },

@@ -16,6 +16,7 @@ from app.models.research_log import ResearchLogEntry
 class Participant(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: UUID | None = None
+    person_id: UUID | None = None
     name: str = Field(default="", max_length=255)
     organization: str = Field(default="", max_length=255)
     attendance: Literal["attended", "invited", "absent", "unknown"] = "attended"
@@ -23,7 +24,9 @@ class Participant(BaseModel):
     @model_validator(mode="after")
     def identity(self):
         self.name = self.name.strip()
-        if not self.user_id and not self.name:
+        if self.user_id and self.person_id:
+            raise ValueError("Choose a project person or an account")
+        if not self.user_id and not self.person_id and not self.name:
             raise ValueError("An external participant needs a name")
         return self
 
@@ -69,6 +72,7 @@ class MeetingContent(BaseModel):
         for values in [
             [x.user_id for x in self.participants if x.user_id],
             [x.user_id for x in self.access],
+            [x.person_id for x in self.participants if x.person_id],
         ]:
             if len(set(values)) != len(values):
                 raise ValueError("Do not add an account twice")

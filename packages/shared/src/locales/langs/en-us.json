@@ -64,7 +64,11 @@
     "blockedFieldsHint": "One variable ID per line, for example patient_name. Applies to all Protocols in this Lab.",
     "restrictions": "Attachments, download URLs, reports and complex fields are not exposed. Protocols with blocked or complex variables cannot be imported or revised through this V1 channel; use the Platform UI. Policy changes invalidate pending confirmations.",
     "savePolicy": "Save policy",
-    "saved": "Policy saved"
+    "saved": "Policy saved",
+    "readCollaboration": "Read meetings, work and project people",
+    "writeCollaboration": "Maintain minutes, work and people names",
+    "authorizationReviewed": "I have checked the project, permissions and expiry, and agree to authorize this connection.",
+    "collaborationWriteHint": "Until this authorization expires, this tool can save meetings, work items and people names directly, without a separate confirmation in Platform for each write. Account linking and membership permissions must still be managed in Platform."
   },
   "system": {
     "title": "Airalogy"
@@ -329,7 +333,9 @@
     },
     "my": "My",
     "readMore": "Read more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "theme": {
     "themeSchema": {
@@ -3468,7 +3474,9 @@
         "createSuccess": "Successfully created project {name}",
         "createSuccessWithDiary": "Successfully created project {name} with a diary protocol",
         "projectIdAvailable": "Project ID is available.",
-        "labCreateSuccess": "Successfully created lab {name}"
+        "labCreateSuccess": "Successfully created lab {name}",
+        "advanced": "Project link and parent (optional)",
+        "idHint": "The ID defines the project link and stays fixed after creation. The display name can change. An ID is generated from the name and can be adjusted before creating."
       }
     },
     "protocol": {
@@ -5604,7 +5612,8 @@
       "reasonRequired": "Explain this change before saving a new revision.",
       "backToDetails": "Return to item details",
       "activityEmpty": "No discussions yet. Record an update, question or decision here.",
-      "moreItems": "Load more work items"
+      "moreItems": "Load more work items",
+      "deadlineNote": "Timing note (for example, before the next meeting)"
     },
     "meetings": {
       "title": "Meetings",
@@ -5634,9 +5643,9 @@
       "participantHint": "Attendance is a historical record and does not grant access. External participants can be recorded by name.",
       "choosePerson": "Choose a project member",
       "addParticipant": "Add participant",
-      "externalName": "External participant name",
+      "externalName": "Name (no account needed)",
       "organization": "Organization (optional)",
-      "addExternal": "Add external participant",
+      "addExternal": "Add a name to this meeting only",
       "audience": "Audience",
       "audienceHint": "The author retains access. Selected users must still have project access. Reading, commenting and editing are separate permissions. Attachments retain their own audience.",
       "grant": "Add permission",
@@ -5681,7 +5690,18 @@
       "openMeeting": "Open meeting: participants, discussion, actions and minutes",
       "conflict": "The content changed. Your input is preserved; reload and compare before saving.",
       "unavailable": "This meeting is unavailable or you do not have access.",
-      "invalid": "Check the title, meeting date and members. Held meetings cannot be in the future."
+      "invalid": "Check the title, meeting date and members. Held meetings cannot be in the future.",
+      "batchTitle": "Add action items",
+      "batchLimit": "Add up to 50 items at a time.",
+      "batchFailed": "This batch was not saved. Your rows are preserved for review and retry.",
+      "pasteTitles": "Paste several action items",
+      "onePerLine": "One title per line. Then add people, dates and details to each row.",
+      "addRows": "Create editable rows",
+      "addActionRow": "Add a row",
+      "saveActions": "Save {count} action items",
+      "actionDetails": "Collaborators, goal and acceptance conditions",
+      "noDate": "Time not set",
+      "recordSaved": "Minutes saved"
     },
     "researchActivity": {
       "title": "Research activity",
@@ -5710,6 +5730,20 @@
         "protocol": "Protocol versions",
         "knowledge": "Knowledge and outcomes"
       }
+    },
+    "projectPeople": {
+      "manage": "Add a person / link an account",
+      "hint": "People are shared within this project. An account is optional; linking one does not grant access.",
+      "name": "Name",
+      "organization": "Organization or note (optional, to distinguish people with the same name)",
+      "add": "Add and select",
+      "linked": "Account linked",
+      "unlinked": "No linked account",
+      "adminHint": "A project administrator can link an account",
+      "associate": "Confirm account association",
+      "confirm": "Associate {name} with {account}? This person is responsible for {count} tasks. The linked account will see these in My tasks, subject to project access. Permissions and historical meeting names remain unchanged.",
+      "failed": "People could not be loaded or saved. Refresh and review any changes before retrying.",
+      "disconnectConfirm": "Unlink the account from {name}? The {count} tasks remain assigned to this person but no longer appear in the previous account’s My tasks through this association. Permissions and historical meetings stay unchanged."
     }
   },
   "form": {
@@ -5746,9 +5780,9 @@
     },
     "uid": {
       "length": "{field} must be {min}-{max} characters",
-      "pattern": "Only letters, numbers, and hyphens",
-      "hyphenEdges": "Cannot start or end with a hyphen",
-      "hyphenConsecutive": "No consecutive hyphens",
+      "pattern": "Use lowercase English letters, numbers and underscores (_).",
+      "hyphenEdges": "Cannot start or end with an underscore",
+      "hyphenConsecutive": "Cannot contain consecutive underscores",
       "startLowercase": "Must start with a lowercase letter"
     },
     "displayName": {
@@ -5894,7 +5928,8 @@
     "publicLabs": "Public labs",
     "myProfile": "My profile",
     "allProfile": "Profile",
-    "hubAll": "All protocols"
+    "hubAll": "All protocols",
+    "projects": "Projects"
   },
   "chat": {
     "newChatButton": "New chat",
@@ -6514,7 +6549,7 @@
     "environmentHint": "For Codex, securely set AIRALOGY_PLATFORM_TOKEN in the environment used to start the client, then run the command below and restart the client. Do not paste the token into a conversation or commit it to a file.",
     "otherClients": "Other MCP clients",
     "otherClientsHint": "Use this Streamable HTTP MCP endpoint with Bearer authentication. Keep the token in your client’s protected credential settings. See the guide for supported setup methods.",
-    "tokenVerified": "Token verified. This checks Platform access, not whether your AI client is configured:",
+    "tokenVerified": "Platform authorization verified.",
     "startTask": "Try your first task",
     "firstTask": "Connect to Airalogy, check my authorized project and permissions, and list its Protocols. Tell me what data is available and ask what I want to analyze before exporting or writing anything.",
     "resultsHint": "When your tool submits a report, review it under Pending operations in this project. After confirmation and execution, it appears under Analysis reports. Refresh to see new submissions.",
@@ -6524,7 +6559,9 @@
     "noMatches": "No matching reports in the loaded results.",
     "loadMore": "Load older reports",
     "showHistory": "Show completed operations",
-    "platformAnalysis": "Analyze in Platform"
+    "platformAnalysis": "Analyze in Platform",
+    "collaborate": "Meetings and work",
+    "clientProof": "This checks the platform and authorization only. Confirm the client connection by listing Airalogy tools and completing a call from that client."
   },
   "airaMemory": {
     "title": "Aira personal memory",

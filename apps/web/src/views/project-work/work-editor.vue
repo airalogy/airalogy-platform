@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ProjectWork, WorkContent, WorkEvent } from "@/service/api/project-work"
+import PeoplePicker from "@/components/project/people-picker.vue"
 import { templateError } from "@/service/api/document-templates"
 import {
   addWorkActivity,
@@ -73,9 +74,23 @@ const activityDirty = computed(() => Boolean(
 ))
 const pendingActivityKey = computed(() => `${draftKey.value}:activity`)
 const unsaved = computed(() => dirty.value || activityDirty.value)
-const memberOptions = computed(() =>
-  members.value.map(m => ({ value: m.id, label: `${m.name} (${m.username})` })),
-)
+const assignee = computed({
+  get: () => form.value.assignee_person_id ? `person:${form.value.assignee_person_id}` : form.value.assignee_user_id ? `user:${form.value.assignee_user_id}` : null,
+  set: (value: string | string[] | null) => {
+    const selected = typeof value === "string" ? value : ""
+    form.value.assignee_person_id = selected.startsWith("person:") ? selected.slice(7) : null
+    form.value.assignee_user_id = selected.startsWith("user:") ? selected.slice(5) : null
+  },
+})
+const collaborators = computed({
+  get: () => [...form.value.collaborator_ids.map(id => `user:${id}`), ...form.value.collaborator_person_ids.map(id => `person:${id}`)],
+  set: (value: string | string[] | null) => {
+    const selected = Array.isArray(value) ? value : []
+    form.value.collaborator_ids = selected.filter(v => v.startsWith("user:")).map(v => v.slice(5))
+    form.value.collaborator_person_ids = selected.filter(v => v.startsWith("person:")).map(v => v.slice(7))
+  },
+})
+
 const dependencyMatches = ref<ProjectWork[]>([])
 let dependencySearch = 0
 async function searchDependencies(q = "") {
@@ -510,25 +525,10 @@ async function createPlan() {
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label
                 >{{ t("page.projectWork.assignee")
-                }}<n-select
-                  :disabled="!canWrite || busy"
-                  v-model:value="form.assignee_user_id"
-                  clearable
-                  filterable
-                  :placeholder="t('page.projectWork.unassigned')"
-                  :options="memberOptions"
-                  data-testid="work-assignee"
-                /></label>
+                }}<people-picker v-model="assignee" :project-id="projectId" :members="members" :disabled="!canWrite || busy" data-testid="work-assignee" /></label>
                 <label
                 >{{ t("page.projectWork.collaborators")
-                }}<n-select
-                  :disabled="!canWrite || busy"
-                  v-model:value="form.collaborator_ids"
-                  multiple
-                  clearable
-                  filterable
-                  :options="memberOptions"
-                /></label>
+                }}<people-picker v-model="collaborators" :project-id="projectId" :members="members" multiple :disabled="!canWrite || busy" /></label>
                 <label
                 >{{ t("page.projectWork.start")
                 }}<input v-model="form.planned_start" type="date" class="work-date"
@@ -538,6 +538,7 @@ async function createPlan() {
                 }}<input v-model="form.planned_end" type="date" class="work-date"
                 /></label>
               </div>
+              <label class="block">{{ t("page.projectWork.deadlineNote") }}<n-input v-model:value="form.deadline_note" :maxlength="1000" /></label>
               <label v-if="form.state === 'blocked' || form.blocker" class="block"
               >{{ t("page.projectWork.blocker") }} *<n-input
                 :disabled="!canWrite || busy"

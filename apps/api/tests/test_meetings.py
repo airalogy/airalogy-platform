@@ -461,3 +461,22 @@ def test_private_project_reader_sees_meetings_when_protocol_access_is_denied():
                         assert timeline.json()["items"][0]["id"] == identity
 
     asyncio.run(run())
+
+
+def test_action_reserves_one_evidence_slot_for_its_meeting_source():
+    from app.routers.meetings import Action
+
+    refs = [{"kind": "external", "id": f"https://example.test/{i}"} for i in range(50)]
+    with pytest.raises(ValidationError):
+        Action(id=uuid4(), expected_revision=1, title="Synthetic action", evidence=refs)
+    assert (
+        len(
+            Action(
+                id=uuid4(),
+                expected_revision=1,
+                title="Synthetic action",
+                evidence=refs[:49],
+            ).evidence
+        )
+        == 49
+    )

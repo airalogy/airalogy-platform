@@ -77,11 +77,14 @@ onMounted(load)
         <h3>{{ $t("externalAccess.scopes") }}</h3>
         <ul class="list-disc list-inside">
           <li v-for="scope in info.scopes" :key="scope">
-            {{ scope }}
+            {{ scope === "collaboration:read" ? $t("externalAccess.readCollaboration") : scope === "collaboration:write" ? $t("externalAccess.writeCollaboration") : scope }}
           </li>
         </ul>
+        <p v-if="info.scopes.includes('collaboration:write')" class="text-sm text-gray-600">
+          {{ $t("externalAccess.collaborationWriteHint") }}
+        </p>
         <n-checkbox v-model:checked="reviewed">
-          {{ $t("externalAccess.reviewed") }}
+          {{ $t("externalAccess.authorizationReviewed") }}
         </n-checkbox>
         <div class="flex flex-wrap justify-end gap-3">
           <n-button :disabled="busy" @click="decide(false)">

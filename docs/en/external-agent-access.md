@@ -168,3 +168,13 @@ The test creates its own private synthetic Project and verifies:
 4. Revoked credentials cannot call MCP. Created grants are revoked on both success and ordinary failure.
 
 Only fixture setup and independent assertions use direct HTTP; Codex must use MCP for Platform access. Test-owner approvals are automation for this synthetic fixture, not permission for an external agent to approve real users' writes. The script does not edit global Codex configuration or pass the Platform token into model prompts or shell subprocesses. It keeps synthetic assets available for inspection and prints a private temporary evidence directory containing receipts, redacted client events and browser screenshots. Do not commit that directory. If the process is forcibly terminated, revoke any remaining `Synthetic Codex` grants from the test account before retrying.
+
+## Daily project collaboration
+
+The Meetings and work preset grants `collaboration:read` and `collaboration:write` for the selected project, independently of Protocol scopes or AI availability. Existing grants do not acquire these scopes automatically.
+
+Tools cover authorized-project discovery (`list_projects` returns only the connection's project), project people, meeting and work search/read/create/update. `create_project_person` records a name without an account; `create_meeting_with_actions` atomically saves minutes and actions, while `save_meeting_actions` creates or links batches to a saved meeting revision. Successful writes return saved objects, revisions and browser URLs.
+
+Ordinary collaboration saves execute directly within the explicit grant and current user permissions. Read before updating and supply the expected revision. Reuse stable object and request UUIDs for retries; conflicts require reviewing current data. Account association, audience changes and deletion remain platform operations. Existing Protocol/Record/analysis preview and confirmation gates continue to apply.
+
+The platform's authorization check is not evidence that a client is connected. Verify the client by listing tools and calling `access_context`; it reports the actual project, deployment version, scopes and available collaboration tools.

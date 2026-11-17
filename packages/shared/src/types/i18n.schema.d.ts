@@ -69,6 +69,10 @@ declare namespace I18n {
       restrictions: string
       savePolicy: string
       saved: string
+      readCollaboration: string
+      writeCollaboration: string
+      authorizationReviewed: string
+      collaborationWriteHint: string
     }
     system: {
       title: string
@@ -334,6 +338,8 @@ declare namespace I18n {
       my: string
       readMore: string
       showLess: string
+      expand: string
+      collapse: string
     }
     theme: {
       themeSchema: {
@@ -343,9 +349,9 @@ declare namespace I18n {
         auto: string
       }
       layoutMode: {
-        title: string
-        vertical: string
-        horizontal: string
+        "title": string
+        "vertical": string
+        "horizontal": string
         "vertical-mix": string
         "horizontal-mix": string
       }
@@ -366,14 +372,14 @@ declare namespace I18n {
       page: {
         animate: string
         mode: {
-          title: string
-          fade: string
+          "title": string
+          "fade": string
           "fade-slide": string
           "fade-bottom": string
           "fade-scale": string
           "zoom-fade": string
           "zoom-out": string
-          none: string
+          "none": string
         }
       }
       fixedHeaderAndTab: string
@@ -426,30 +432,30 @@ declare namespace I18n {
       "lab-projects": string
       "labs-my": string
       "labs-public": string
-      login: string
-      home: string
+      "login": string
+      "home": string
       "user-center": string
-      about: string
-      function: string
-      function_tab: string
+      "about": string
+      "function": string
+      "function_tab": string
       "function_multi-tab": string
-      manage: string
-      manage_user: string
+      "manage": string
+      "manage_user": string
       "manage_user-detail": string
-      manage_role: string
-      manage_route: string
-      exception: string
-      exception_403: string
-      exception_404: string
-      exception_500: string
-      activity: string
-      groups: string
-      labs: string
-      log: string
-      projects: string
-      protocol: string
-      user: string
-      profile: string
+      "manage_role": string
+      "manage_route": string
+      "exception": string
+      "exception_403": string
+      "exception_404": string
+      "exception_500": string
+      "activity": string
+      "groups": string
+      "labs": string
+      "log": string
+      "projects": string
+      "protocol": string
+      "user": string
+      "profile": string
     }
     page: {
       documentTemplates: {
@@ -3473,6 +3479,8 @@ declare namespace I18n {
           createSuccessWithDiary: string
           projectIdAvailable: string
           labCreateSuccess: string
+          advanced: string
+          idHint: string
         }
       }
       protocol: {
@@ -5609,6 +5617,7 @@ declare namespace I18n {
         backToDetails: string
         activityEmpty: string
         moreItems: string
+        deadlineNote: string
       }
       meetings: {
         title: string
@@ -5686,6 +5695,17 @@ declare namespace I18n {
         conflict: string
         unavailable: string
         invalid: string
+        batchTitle: string
+        batchLimit: string
+        batchFailed: string
+        pasteTitles: string
+        onePerLine: string
+        addRows: string
+        addActionRow: string
+        saveActions: string
+        actionDetails: string
+        noDate: string
+        recordSaved: string
       }
       researchActivity: {
         title: string
@@ -5714,6 +5734,20 @@ declare namespace I18n {
           protocol: string
           knowledge: string
         }
+      }
+      projectPeople: {
+        manage: string
+        hint: string
+        name: string
+        organization: string
+        add: string
+        linked: string
+        unlinked: string
+        adminHint: string
+        associate: string
+        confirm: string
+        failed: string
+        disconnectConfirm: string
       }
     }
     form: {
@@ -5899,6 +5933,7 @@ declare namespace I18n {
       myProfile: string
       allProfile: string
       hubAll: string
+      projects: string
     }
     chat: {
       newChatButton: string
@@ -6529,48 +6564,50 @@ declare namespace I18n {
       loadMore: string
       showHistory: string
       platformAnalysis: string
+      collaborate: string
+      clientProof: string
     }
     airaMemory: {
-      title: string
-      open: string
-      description: string
-      enabled: string
-      disabled: string
-      language: string
-      detail: string
-      format: string
-      explanation: string
+      "title": string
+      "open": string
+      "description": string
+      "enabled": string
+      "disabled": string
+      "language": string
+      "detail": string
+      "format": string
+      "explanation": string
       "zh-CN": string
       "en-US": string
-      concise: string
-      detailed: string
-      paragraphs: string
-      steps: string
-      accessible: string
-      technical: string
-      notSet: string
-      fromChat: string
-      fromSettings: string
-      save: string
-      undo: string
-      export: string
-      clear: string
-      clearConfirm: string
-      saved: string
-      examples: string
-      activity: string
-      activityHint: string
-      cleared: string
-      updated: string
-      conflict: string
-      failed: string
-      reload: string
-      temporary: string
-      temporaryHint: string
-      used: string
-      notUsed: string
-      unavailable: string
-      close: string
+      "concise": string
+      "detailed": string
+      "paragraphs": string
+      "steps": string
+      "accessible": string
+      "technical": string
+      "notSet": string
+      "fromChat": string
+      "fromSettings": string
+      "save": string
+      "undo": string
+      "export": string
+      "clear": string
+      "clearConfirm": string
+      "saved": string
+      "examples": string
+      "activity": string
+      "activityHint": string
+      "cleared": string
+      "updated": string
+      "conflict": string
+      "failed": string
+      "reload": string
+      "temporary": string
+      "temporaryHint": string
+      "used": string
+      "notUsed": string
+      "unavailable": string
+      "close": string
     }
   }
 }

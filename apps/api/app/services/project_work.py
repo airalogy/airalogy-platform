@@ -189,6 +189,12 @@ def work_snapshot(task, detail):
         if detail.assignee_user_id
         else None,
         "collaborator_ids": detail.collaborator_ids,
+        "assignee_person_id": str(detail.assignee_person_id)
+        if detail.assignee_person_id
+        else None,
+        "collaborator_person_ids": detail.collaborator_person_ids,
+        "people_snapshot": detail.people_snapshot,
+        "deadline_note": detail.deadline_note,
         "planned_start": detail.planned_start.isoformat()
         if detail.planned_start
         else None,
