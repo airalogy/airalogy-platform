@@ -13,15 +13,26 @@ test("researcher coordinates a prototype without a Protocol or AI and retains co
   await page.goto("/login")
   await page.getByTestId("login-email").locator("input").fill("dev.owner@airalogy.dev")
   await page.getByTestId("login-password").locator("input").fill("AiralogyDev123!")
+  const loginResponse = page.waitForResponse(r => r.url().endsWith("/api/signin_by_email"))
   await page.getByTestId("login-submit").click()
+  const login = await loginResponse
+  expect(login.ok()).toBeTruthy()
+  const headers = { "Auth-Token": (await login.json()).token }
   await expect(page).not.toHaveURL(/\/login/)
-  await page.goto(projectPath)
+  // This test owns its project: other meeting tests may associate the owner's
+  // account with a named contact in the shared quickstart project.
+  const source = await page.request.get("/api/projects/by_uid", { headers, params: { lab_uid: "dev_lab", project_uid: "quickstart" } })
+  expect(source.ok()).toBeTruthy()
+  const uid = `work_${Date.now()}`
+  const project = await page.request.post("/api/projects", { headers, data: { lab_id: (await source.json()).lab_id, uid, name: "Synthetic work journey", type: 1 } })
+  expect(project.ok(), await project.text()).toBeTruthy()
+  await page.goto(`/labs/dev_lab/projects/${uid}/work`)
   await page.getByTestId("work-new").click()
   const title = `Synthetic prototype ${Date.now()}`
   const editor = page.getByTestId("work-editor")
   await editor.getByTestId("work-title").locator("input").fill(title)
   await editor.getByTestId("work-acceptance").locator("textarea").fill("Link the measured comparison and review the design")
-  await editor.getByTestId("work-assignee").click()
+  await editor.getByTestId("work-assignee").locator(".n-select").click()
   await page.locator(".n-base-select-option").filter({ hasText: "dev_owner" }).click()
   await editor.locator("input[type=date]").nth(0).fill("2026-11-12")
   await editor.locator("input[type=date]").nth(1).fill("2026-11-20")

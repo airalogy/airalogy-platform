@@ -2,6 +2,12 @@ import { defineConfig, devices } from "@playwright/test"
 
 const webBaseURL = process.env.E2E_WEB_URL || "http://127.0.0.1:3100"
 const apiBaseURL = process.env.E2E_API_URL || "http://127.0.0.1:4100"
+// The parent runner probes local services too; setting this only inside the
+// API child process leaves those probes going through a system HTTP proxy.
+const noProxy = [...new Set([process.env.NO_PROXY, process.env.no_proxy, "127.0.0.1", "localhost", "::1"].filter(Boolean).join(",").split(","))].join(",")
+process.env.NO_PROXY = noProxy
+process.env.no_proxy = noProxy
+
 const outputDir = process.env.E2E_OUTPUT_DIR || "test-results"
 const htmlReportDir = process.env.E2E_HTML_REPORT_DIR || "playwright-report"
 
