@@ -14,7 +14,7 @@ English changelog: [CHANGELOG.md](./CHANGELOG.md)。
 
 ## [未发布]
 
-- 将 Masterbrain Python 核心、客户端与可复用 Vue 组件迁入 Platform 同仓维护，切换本地源码依赖、统一验证及绑定源码的生产镜像；日常 AI 更新不再先发布 Masterbrain，保留 Platform AI 接口与源码来源；Studio 留在原仓库。
+- 将 Masterbrain Python 核心、客户端与可复用 Vue 组件迁入 Platform 同仓维护，切换本地源码依赖、统一验证及绑定源码的生产镜像；日常 AI 更新不再先发布 Masterbrain，保留 Platform AI 接口与源码来源，接口生成校验不受自动格式化影响；Studio 留在原仓库。
 
 - 修复项目/组织知识加载时先显示个人知识标题的闪动，范围确认前不开放操作，过期列表响应不再覆盖当前内容。精简知识页头和研发事项空状态，将活动时区收进日期范围旁可操作的说明入口。
 

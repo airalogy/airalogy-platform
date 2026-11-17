@@ -40,7 +40,16 @@ def main() -> int:
     rendered = render_contract()
 
     if args.check:
-        if not TARGET.exists() or TARGET.read_text(encoding="utf-8") != rendered:
+        try:
+            committed = json.dumps(
+                json.loads(TARGET.read_text(encoding="utf-8")),
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            ) + "\n"
+        except (FileNotFoundError, UnicodeError, json.JSONDecodeError):
+            committed = None
+        if committed != rendered:
             print(
                 "Code-edit contract is stale. Run `pnpm masterbrain:contract:generate`.",
                 file=sys.stderr,
