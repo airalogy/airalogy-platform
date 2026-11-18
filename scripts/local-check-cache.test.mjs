@@ -61,6 +61,13 @@ test("hook repository variables never reach temporary repositories or invalidate
   assert.equal(readFileSync(join(f.root, ".git/config"), "utf8"), config)
 })
 
+test("per-invocation trace identifiers do not invalidate otherwise identical checks", (t) => {
+  const f = fixture(t)
+  f.run({ env: { ...f.env, CODEX_TOOL_CALL_ID: "first-call" } })
+  assert.equal(f.run({ env: { ...f.env, CODEX_TOOL_CALL_ID: "second-call" } }).reused, true)
+  assert.equal(f.count(), 1)
+})
+
 test("failed retry invalidates earlier success instead of falling back", (t) => {
   const f = fixture(t)
   f.run()

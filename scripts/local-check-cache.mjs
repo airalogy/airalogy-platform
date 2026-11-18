@@ -5,7 +5,8 @@ import { delimiter, join, resolve } from "node:path"
 
 const MAX_AGE_MS = 24 * 60 * 60 * 1000
 const digest = value => createHash("sha256").update(value).digest("hex")
-const volatileEnvironment = new Set(["_", "SHLVL", "PWD", "OLDPWD", "GIT_PREFIX"])
+// Per-invocation tracing is not an input to a source check.
+const volatileEnvironment = new Set(["_", "SHLVL", "PWD", "OLDPWD", "GIT_PREFIX", "CODEX_TOOL_CALL_ID"])
 const repositoryEnvironment = new Set(["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX", "GIT_SHALLOW_FILE", "GIT_EXEC_PATH", "GIT_CONFIG", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT", "GIT_IMPLICIT_WORK_TREE", "GIT_GRAFT_FILE", "GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE"])
 
 export function checkEnvironment(env, root = process.cwd()) {
