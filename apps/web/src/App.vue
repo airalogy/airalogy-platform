@@ -17,6 +17,7 @@ import { DEFAULT_LOCALE } from "@/locales"
 import { naiveDateLocales, naiveLocales } from "@/locales/naive"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useThemeStore } from "@airalogy/composables/theme"
 
 defineOptions({
@@ -26,6 +27,11 @@ defineOptions({
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const instanceStore = useInstanceStore()
+const route = useRoute()
+watch(() => [route.params.labUid, authStore.token, instanceStore.isSingleLab] as const, ([uid, token, single]) => {
+  void instanceStore.loadOrganizationAI(!single && token && typeof uid === "string" ? uid : "")
+}, { immediate: true })
 
 const naiveLocale = computed(() => naiveLocales[appStore.locale] || naiveLocales[DEFAULT_LOCALE])
 const naiveDateLocale = computed(() => naiveDateLocales[appStore.locale] || naiveDateLocales[DEFAULT_LOCALE])

@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.libs.ai_scope import active_ai_scope
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -277,12 +279,25 @@ class Settings(BaseSettings):
 
     @property
     def qwen_chat_configured(self) -> bool:
+        scope = active_ai_scope.get()
+        if scope:
+            return scope.enabled and scope.has_key and scope.model.startswith("qwen")
         return bool(self.DASHSCOPE_API_KEY.strip()) or self.external_chat_configured
 
     @property
     def gpt_chat_configured(self) -> bool:
+        scope = active_ai_scope.get()
+        if scope:
+            return scope.enabled and scope.has_key and scope.model.startswith("gpt-")
         return self.ENABLE_GPT_MODEL and (
             bool(self.OPENAI_API_KEY.strip()) or self.external_chat_configured
+        )
+
+    @property
+    def instance_ai_enabled(self) -> bool:
+        return self.AI_ENABLED is not False and bool(
+            self.DASHSCOPE_API_KEY.strip() or self.external_chat_configured
+            or (self.ENABLE_GPT_MODEL and self.OPENAI_API_KEY.strip())
         )
 
     @property

@@ -6,10 +6,17 @@ period. No second identity, grants, or asset migration is introduced here.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import ValidationError
 
+from app.config import config
 from app.database import DBSession
+from app.models.lab import Lab
 from app.models.organization import OrganizationType
+from app.models.organization_ai import OrganizationAI
+from app.services import organization_ai as ai
+from app.services.chat_models import enabled_chat_model_types
+
 from . import labs
 from .depends import CurrentUser, get_current_user
 
@@ -118,3 +125,70 @@ async def remove_member(
     return await labs.delete_user_from_lab(
         organization_id, user_id, current_user, db_session
     )
+
+
+@router.get("/uid/{organization_uid}/ai-capabilities")
+async def ai_capabilities(
+    organization_uid: str, current_user: CurrentUser, db_session: DBSession
+):
+    org = await Lab.find_by(db_session, [Lab.uid == organization_uid])
+    if not org:
+        raise HTTPException(404, "Organization unavailable")
+    labs.require_configured_single_lab(org)
+    await labs.require_lab_membership(db_session, org.id, current_user.id)
+    await ai.bind_organization(db_session, org.id)
+    return {
+        "ai_enabled": config.effective_ai_enabled,
+        "enabled_chat_models": enabled_chat_model_types(),
+    }
+
+
+async def ai_manager(db, org_id, user):
+    org = await db.get(Lab, org_id)
+    if org is None:
+        raise HTTPException(404, "Organization unavailable")
+    labs.require_configured_single_lab(org)
+    await labs.require_lab_manager(db, org_id, user.id)
+
+
+async def key_form(request, cls):
+    # Validation errors from a secret-bearing form must never echo its input.
+    try:
+        return cls.model_validate(await request.json())
+    except (ValidationError, ValueError, UnicodeError):
+        raise HTTPException(422, "Invalid AI settings") from None
+
+
+@router.get("/{organization_id}/ai-settings")
+async def get_ai_settings(
+    organization_id: UUID, current_user: CurrentUser, db_session: DBSession
+):
+    await ai_manager(db_session, organization_id, current_user)
+    return ai.status(await db_session.get(OrganizationAI, organization_id))
+
+
+@router.put("/{organization_id}/ai-settings")
+async def update_ai_settings(
+    organization_id: UUID,
+    request: Request,
+    current_user: CurrentUser,
+    db_session: DBSession,
+):
+    await ai_manager(db_session, organization_id, current_user)
+    return await ai.save_settings(
+        db_session, organization_id, await key_form(request, ai.SettingsInput)
+    )
+
+
+@router.post("/{organization_id}/ai-settings/test")
+async def test_ai_settings(
+    organization_id: UUID,
+    request: Request,
+    current_user: CurrentUser,
+    db_session: DBSession,
+):
+    await ai_manager(db_session, organization_id, current_user)
+    data = await key_form(request, ai.KeyInput)
+    row = await db_session.get(OrganizationAI, organization_id)
+    await db_session.commit()
+    return await ai.test_key(row, data)

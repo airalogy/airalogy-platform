@@ -23,7 +23,11 @@ from masterbrain.configs import (
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
 )
-from masterbrain.providers import DEFAULT_PROVIDER_BASE_URL, ProviderName, detect_model_provider
+from masterbrain.providers import (
+    DEFAULT_PROVIDER_BASE_URL,
+    detect_model_provider,
+)
+from masterbrain.providers.scoped import current_credential
 
 PROXY_ENV_NAMES = (
     "HTTPS_PROXY",
@@ -47,6 +51,8 @@ def required_api_key_env(model_name: str) -> str:
 def missing_api_key_message(model_name: str) -> str | None:
     """Return a user-facing message when the selected provider key is missing."""
 
+    if current_credential(model_name):
+        return None
     provider = detect_model_provider(model_name)
     if provider == "openai" and not OPENAI_API_KEY.strip():
         return (
@@ -307,6 +313,8 @@ def _build_api_connection_detail(
 
 def llm_http_exception(exc: Exception, model_name: str | None = None) -> HTTPException:
     """Map SDK/provider failures into user-facing HTTP errors."""
+    if current_credential():
+        return HTTPException(status_code=502, detail="Organization model request failed")
 
     provider_message = _extract_provider_error_message(exc)
 

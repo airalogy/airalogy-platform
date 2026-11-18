@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 
 from app.config import config
-from app.models.chat import ChatModelType
-
+from app.libs.ai_scope import active_ai_scope
+from app.models.chat import ChatModel, ChatModelType
 
 DEFAULT_CHAT_MODEL_TYPES = (
     ChatModelType.BASIC,
@@ -14,6 +14,10 @@ DEFAULT_CHAT_MODEL_TYPES = (
 def enabled_chat_model_types() -> tuple[ChatModelType, ...]:
     if not config.effective_ai_enabled:
         return ()
+
+    scope = active_ai_scope.get()
+    if scope:
+        return tuple(kind for kind in ChatModelType if ChatModel(model_type=kind).name == scope.model)
 
     enabled_models: tuple[ChatModelType, ...] = ()
     if config.qwen_chat_configured:

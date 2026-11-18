@@ -24,3 +24,10 @@ export MASTERBRAIN_CALL_MODE=external CHAT_API_ENDPOINT=http://127.0.0.1:41999
 export PROTOCOL_DIR="$runtime_dir/protocols" LOG_FILE="$runtime_dir/api.log" LOG_REQUEST_BODIES=false
 export NO_PROXY="${NO_PROXY:+$NO_PROXY,}127.0.0.1,localhost,::1"
 export no_proxy="$NO_PROXY"
+
+# Allow the organization configuration journey against the isolated E2E database.
+if [[ "${E2E_ORGANIZATION_AI_SETTINGS:-0}" == "1" ]]; then
+  unset AI_ENABLED CHAT_API_ENDPOINT DASHSCOPE_API_KEY OPENAI_API_KEY
+  export MASTERBRAIN_CALL_MODE=package
+  export AES_KEY=2424242424242424242424242424242424242424242424242424242424242424
+fi

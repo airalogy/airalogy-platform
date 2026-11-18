@@ -56,6 +56,7 @@ from app.models.research_execution import (
 from app.models.user import User
 from app.services.access_control import resolve_structured_access
 from app.services.model_usage import create_usage_context
+from app.services.organization_ai import bind_organization
 from app.services.persistent_jobs import enqueue_job
 from app.services.research_action_contracts import ProtocolActionDraft
 from app.services.research_assets import research_asset_bundle
@@ -335,6 +336,7 @@ async def require_research_capability(
     if await has_research_capability(
         db_session, user=user, project=project, capability=capability
     ):
+        await bind_organization(db_session, project.lab_id)
         return
     raise HTTPException(status_code=403, detail="Research Task access denied")
 
@@ -5067,6 +5069,7 @@ async def process_research_run_advance(
 
     for _ in range(max_steps):
         run, task, project, lab, rows = await _load_run_context(db_session, run_id)
+        await bind_organization(db_session, project.lab_id)
         if (run.environment_snapshot or {}).get("manual_workflow"):
             return {"status": run.status, "fixed_workflow": True}
         if generation != run.advance_generation:

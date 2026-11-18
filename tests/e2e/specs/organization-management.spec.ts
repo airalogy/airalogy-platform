@@ -86,3 +86,38 @@ test("ordinary members see their member directory instead of administrator contr
     await page.keyboard.press("Escape")
   }
 })
+
+test("organization owner configures an AI model and can remove the saved key", async ({ page }) => {
+  await login(page, "owner")
+  await page.goto("/organization/settings")
+  const card = page.getByTestId("organization-ai-settings")
+  const toggle = card.getByRole("switch")
+  const field = card.locator('input[type="password"]')
+  const save = card.getByRole("button", { name: zh.page.organization.ai.save })
+  const testKey = card.getByRole("button", { name: zh.page.organization.ai.test })
+  await expect(toggle).toBeVisible()
+  if (await toggle.isDisabled()) {
+    await expect(card.getByText(zh.page.organization.ai.blocked)).toBeVisible()
+    await expect(testKey).toBeDisabled()
+    return
+  }
+  // The provider directory alone is simulated. Saving and read-back use the real API.
+  await page.route("**/ai-settings/test", route => route.fulfill({ json: { status: "ok" } }))
+  await field.fill("synthetic-browser-config-only")
+  await testKey.click()
+  await expect(card.getByRole("status")).toHaveText(zh.page.organization.ai.ok)
+  await toggle.click()
+  await save.click()
+  await expect(card.getByRole("status")).toHaveText(zh.page.organization.ai.saved)
+  await page.reload()
+  await expect(toggle).toBeChecked()
+  await expect(field).toHaveValue("")
+  await expect(field).toHaveAttribute("placeholder", zh.page.organization.ai.keepKey)
+  await toggle.click()
+  await card.getByRole("checkbox").click()
+  await save.click()
+  await expect(card.getByRole("status")).toHaveText(zh.page.organization.ai.saved)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(toggle).not.toBeChecked()
+  await expect(field).toHaveAttribute("placeholder", zh.page.organization.ai.enterKey)
+})

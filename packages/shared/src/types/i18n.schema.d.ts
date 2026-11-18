@@ -5333,6 +5333,31 @@ declare namespace I18n {
         replaceFile: string
       }
       organization: {
+        ai: {
+          title: string
+          description: string
+          enable: string
+          loading: string
+          loadError: string
+          reload: string
+          blocked: string
+          inherited: string
+          model: string
+          keepKey: string
+          enterKey: string
+          remove: string
+          test: string
+          save: string
+          saved: string
+          conflict: string
+          ok: string
+          authentication_failed: string
+          permission_denied: string
+          model_unavailable: string
+          rate_limited: string
+          unreachable: string
+          failed: string
+        }
         setupSection: string
         name: string
         uid: string

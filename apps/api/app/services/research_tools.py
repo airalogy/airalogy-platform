@@ -12,6 +12,7 @@ from masterbrain.usage import UsageContext
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.organization_ai import bind_organization
 from app.config import config
 from app.models.knowledge import KnowledgeItem, KnowledgeState, OwnerScope, Visibility
 from app.models.project import Project
@@ -617,6 +618,7 @@ async def process_research_tool_job(
     tool_job_id: UUID,
 ) -> dict[str, Any]:
     task, run, action, tool_job = await _locked_tool_context(db_session, tool_job_id)
+    await bind_organization(db_session, task.lab_id)
     if tool_job.status == ResearchToolJobStatus.COMPLETED.value:
         return tool_job.output
     if (

@@ -24,6 +24,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import sessionmanager
+from app.libs.ai_scope import active_ai_scope
 from app.libs.request_context import request_id_var
 from app.models.model_usage import ModelUsageEvent
 from app.models.research import (
@@ -64,6 +65,9 @@ def create_usage_context(
 ) -> UsageContext:
     """Create metering identity only from authenticated Platform state."""
 
+    scope = active_ai_scope.get()
+    if lab_id is None and project_id is None and scope:
+        lab_id = scope.organization_id
     return UsageContext(
         request_id=request_id_var.get(),
         parent_operation_id=parent_operation_id,

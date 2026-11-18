@@ -6,18 +6,18 @@ import os
 from pathlib import Path
 
 # from enum import Enum
-
 from dotenv import load_dotenv
 
 from masterbrain.providers import (
     AvailableModel,
-    AvailableOpenAIModel,
-    AvailableQwenModel,
+    AvailableOpenAIModel as AvailableOpenAIModel,
+    AvailableQwenModel as AvailableQwenModel,
     LiteLLMOpenAICompatibleClient,
     build_litellm_openai_compatible_client,
     detect_model_provider,
 )
 from masterbrain.providers.registry import EmbeddingModel
+from masterbrain.providers.scoped import current_credential
 
 API_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = API_ROOT / ".env"
@@ -75,6 +75,9 @@ def select_client(model: AvailableModel | EmbeddingModel) -> LiteLLMOpenAICompat
     -------
     None
     """
+    scoped = current_credential(model)
+    if scoped:
+        return build_litellm_openai_compatible_client(provider=scoped.provider, api_key=scoped.key, base_url=scoped.base_url)
     try:
         provider = detect_model_provider(model)
     except ValueError:

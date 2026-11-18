@@ -10,6 +10,7 @@ from app.config import config
 from app.database import DBSession
 from app.models.user import User
 from app.services.account_security import get_auth_version
+from app.services.organization_ai import bind_user_scope
 
 ALGORITHM = "HS256"
 
@@ -53,6 +54,7 @@ async def get_current_user(
         )
     logger.info(f"--- current_user: {user.username}, {user.id} ---")
 
+    await bind_user_scope(db_session, request, user)
     request.state.current_user = user
     return user
 
@@ -84,6 +86,7 @@ async def get_optional_current_user(
         return None
 
     logger.info(f"--- current_user: {user.username}, {user.id} ---")
+    await bind_user_scope(db_session, request, user)
     request.state.current_user = user
     return user
 

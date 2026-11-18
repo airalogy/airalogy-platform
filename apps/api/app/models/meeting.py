@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -31,7 +32,7 @@ class Meeting(Base):
         ),
     )
     document_id: Mapped[UUID] = mapped_column(
-        ForeignKey("research_documents.id", ondelete="RESTRICT"), primary_key=True
+        Uuid(), ForeignKey("research_documents.id", ondelete="RESTRICT"), primary_key=True
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     visibility: Mapped[str] = mapped_column(String(16), nullable=False)

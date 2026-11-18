@@ -31,6 +31,7 @@ MODEL_MODULES = [
     "app.models.instrument_authoring",
     "app.models.model_usage",
     "app.models.oauth",
+    "app.models.organization_ai",
     "app.models.pinned_item",
     "app.models.project",
     "app.models.project_work",

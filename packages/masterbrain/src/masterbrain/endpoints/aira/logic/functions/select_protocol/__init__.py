@@ -3,7 +3,7 @@ __all__ = ["select_protocol"]
 from pathlib import Path
 from string import Template
 
-from masterbrain.configs import DASHSCOPE_CLIENT, DEBUG
+from masterbrain.configs import DEBUG, select_client
 from masterbrain.endpoints.aira.types import DEFAULT_MODEL, WorkflowData
 from masterbrain.endpoints.aira.types.steps import NextProtocolData
 from masterbrain.utils.print import print_with_border
@@ -29,7 +29,7 @@ async def select_protocol(
     if debug:
         print_with_border(f"Prompt:\n{prompt}")
 
-    completion = await DASHSCOPE_CLIENT.chat.completions.create(
+    completion = await select_client(model).chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": prompt},

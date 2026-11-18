@@ -5,20 +5,18 @@ import base64
 import os
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional, get_args
 from urllib.parse import urlparse
-from typing import Any, get_args
 
+import dashscope
 import httpx
 from fastapi import APIRouter, HTTPException
-import dashscope
-
-from masterbrain.configs import select_client, AvailableQwenModel, DASHSCOPE_API_KEY
+from masterbrain.configs import DASHSCOPE_API_KEY, AvailableQwenModel, select_client
+from masterbrain.providers.scoped import current_credential
 from masterbrain.types.error import LlmError
 from masterbrain.usage import UsageCallTracker
 
 from .types import STTRequestBody, STTResponseBody
-
 
 chat_qa_stt_router = APIRouter()
 
@@ -204,6 +202,8 @@ async def transcribe_audio_qwen(
             audio_file_url = f"file://{absolute_path}"
 
         # Transcribe audio using dashscope API
+        scoped = current_credential(model_name)
+
         def call_dashscope_api():
             """Synchronous dashscope API call"""
             messages = [
@@ -211,7 +211,7 @@ async def transcribe_audio_qwen(
                 {"role": "user", "content": [{"audio": audio_file_url}]}
             ]
             response = dashscope.MultiModalConversation.call(
-                api_key=DASHSCOPE_API_KEY,
+                api_key=scoped.key if scoped else DASHSCOPE_API_KEY,
                 model=model_name,
                 messages=messages,
                 result_format="message",

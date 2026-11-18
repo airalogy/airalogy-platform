@@ -24,6 +24,7 @@ from app.models.project import ProjectRole
 from app.models.user import User
 from app.services.account_security import bump_auth_version
 from app.services.chat_models import enabled_chat_model_types
+from app.services.organization_ai import bind_organization
 from app.services.single_lab import (
     add_user_to_single_lab,
     create_account_token,
@@ -83,6 +84,8 @@ class InstanceStatus(BaseModel):
 @router.get("", response_model=InstanceStatus)
 async def get_instance_status(db_session: DBSession):
     lab = await get_single_lab(db_session)
+    if lab:
+        await bind_organization(db_session, lab.id)
     return InstanceStatus(
         single_organization=config.is_single_organization,
         organization=InstanceLabInfo(

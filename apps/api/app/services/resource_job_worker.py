@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.libs.ai_scope import active_ai_scope
 from app.database import sessionmanager
 from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
@@ -496,7 +497,11 @@ async def run_persistent_job_worker(
                     name=f"persistent-job-lease-{job.id}",
                 )
                 try:
-                    result = await process_persistent_job(db_session, job)
+                    token = active_ai_scope.set(None)
+                    try:
+                        result = await process_persistent_job(db_session, job)
+                    finally:
+                        active_ai_scope.reset(token)
                     lease_stop.set()
                     await lease_task
                     await complete_job(

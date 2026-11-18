@@ -63,6 +63,7 @@ from .instrument_surveys import router as instrument_surveys_router
 from .knowledge import router as knowledge_router
 from .labs import router as labs_router
 from .login import router as login_router
+from .meetings import router as meetings_router
 from .oauth import router as oauth_router
 from .organizations import router as organizations_router
 from .pinned_items import router as pinned_items_router
@@ -70,7 +71,6 @@ from .project_analyses import router as project_analyses_router
 from .project_groups import router as project_groups_router
 from .project_people import router as project_people_router
 from .project_work import router as project_work_router
-from .meetings import router as meetings_router
 from .projects import router as projects_router
 from .protocol_folders import router as protocol_folders_router
 from .protocol_ratings import router as protocol_ratings_router
@@ -265,6 +265,7 @@ async def logger_middleware(request: Request, call_next):
     body = ""
     if (
         config.LOG_REQUEST_BODIES
+        and "/ai-settings" not in request.url.path
         and not request.url.path.startswith("/analysis-protocol-drafts")
         and not is_external_path(request.url.path)
         and request.headers.get("content-type", "").startswith("application/json")

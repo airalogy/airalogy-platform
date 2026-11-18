@@ -135,6 +135,8 @@ PostgreSQL、Redis 和 MinIO API 不映射到公网；MinIO console 只绑定 `1
 
 启动前，`preflight.sh` 和后端会分别执行配置校验。生产环境会拒绝占位密钥、无效 AES key、弱 MinIO 凭据、远程 HTTP 地址、请求正文日志、错误 API prefix 和非单实验室 profile。即使绕过脚本直接启动，错误配置也不会静默进入运行状态。
 
+组织所有者和管理员可以在组织设置的 **组织 AI** 中选择文本模型、测试连接并保存组织自己的 API Key。测试读取服务商的模型目录，实际调用费用计入 Key 对应的服务商账户。组织设置立即对新的调用生效。沿用实例设置时，继续使用下方部署配置。希望组织自行启用时，请将 `AI_ENABLED` 留空。部署端显式设置为 `false` 会同时禁止组织启用和测试连接。密钥加密保存在数据库中，恢复时需要保留原部署的 `AES_KEY`。
+
 AI 功能是可选项。实例会根据可用的模型供应商配置自动判断 AI 能力；设置 `AI_ENABLED=false` 可明确隐藏全部 AI 入口并拒绝 AI 请求。关闭 AI 不影响 Protocol / Record 基础流程；设置 `AI_ENABLED=true` 时仍须配置至少一个可用供应商。GPT 默认关闭，不会出现在模型选择器中，后端也会拒绝 GPT 请求。启用时需同时设置 `OPENAI_API_KEY` 和 `ENABLE_GPT_MODEL=true`；使用旧的外部 Masterbrain 服务时，可改为配置 `MASTERBRAIN_CALL_MODE=external` 与 `CHAT_API_ENDPOINT`。修改后只需重启 API 容器，无需重新构建 Web 镜像。
 
 Research 工作与审批请求始终进入产品内的私有待处理通知。邮件提醒默认关闭；如需启用，应配置 `SMTP_HOST`、`SMTP_PORT`、`SMTP_FROM_ADDRESS`、可选但必须成对设置的 `SMTP_USERNAME`/`SMTP_PASSWORD`，以及 `SMTP_SECURITY=starttls` 或 `ssl`，再设置 `RESEARCH_EMAIL_NOTIFICATIONS_ENABLED=true` 并重启 API。远程生产部署拒绝无加密 SMTP。邮件由持久化工作器最多尝试五次；失败会在站内显示，但绝不阻塞原 Research Task。邮件中的同源任务链接来自 `SITE_URL`。

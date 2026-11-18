@@ -105,6 +105,7 @@
     </n-form>
 
     <template v-if="labInfo">
+      <organization-ai-settings v-if="canManageLab" :key="labInfo.id" :lab-id="labInfo.id" :uid="labInfo.uid" class="my-6" />
       <kit-catalog :lab-id="labInfo.id" class="my-6" />
 
       <!-- Danger Zone -->
@@ -292,12 +293,13 @@ import KitCatalog from "@/views/scenario-kits/kit-catalog.vue"
 import { useClosableMessage } from "@airalogy/composables"
 import { useOrProvideLabInfoStore } from "./hooks/useLabsInfoStore"
 import ExternalAccessPolicy from "./modules/external-access-policy.vue"
+import OrganizationAiSettings from "./modules/organization-ai-settings.vue"
 
 const { t: $t } = useOrganizationTranslation()
 
 const { labInfo, fetchLabInfoById } = useOrProvideLabInfoStore(null)
 const { routerPushByKey } = useRouterPush()
-const { canDeleteLab } = useLabPermissions(labInfo)
+const { canDeleteLab, canManageLab } = useLabPermissions(labInfo)
 const message = useClosableMessage()
 const instanceStore = useInstanceStore()
 const organizationTypes = computed(() => (["company", "institution", "laboratory", "other"] as const)

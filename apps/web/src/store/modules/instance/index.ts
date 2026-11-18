@@ -1,5 +1,7 @@
 import { SetupStoreId } from "@/enum"
 import { fetchInstanceStatus, type InstanceStatus } from "@/service/api/instance"
+import { request } from "@/service/request"
+import { organizationUid } from "@/service/request/organization"
 import { defineStore } from "pinia"
 
 function fallbackStatus(): InstanceStatus {
@@ -42,10 +44,26 @@ export const useInstanceStore = defineStore(SetupStoreId.INSTANCE, () => {
   const documentationProfile = computed(() => status.value.documentation_profile)
   const documentationUrl = computed(() => status.value.documentation_url)
   const supportUrl = computed(() => status.value.support_url)
-  const aiEnabled = computed(() => status.value.ai_enabled)
+  type Capabilities = Pick<InstanceStatus, "ai_enabled" | "enabled_chat_models">
+  const scoped = ref<Capabilities | null>(null)
+  let sequence = 0
+  async function loadOrganizationAI(uid: string) {
+    const id = ++sequence
+    organizationUid.value = uid
+    scoped.value = uid ? { ai_enabled: false, enabled_chat_models: [] } : null
+    if (!uid)
+      return
+    const { data } = await request<Capabilities>({
+      url: `/organizations/uid/${encodeURIComponent(uid)}/ai-capabilities`,
+      metadata: { showError: false },
+    })
+    if (id === sequence && data)
+      scoped.value = data
+  }
+  const aiEnabled = computed(() => scoped.value?.ai_enabled ?? status.value.ai_enabled)
   const smsLoginEnabled = computed(() => status.value.sms_login_enabled === true)
   const smsSignupRequired = computed(() => status.value.sms_signup_required === true)
-  const enabledChatModels = computed(() => status.value.enabled_chat_models ?? [])
+  const enabledChatModels = computed(() => scoped.value?.enabled_chat_models ?? status.value.enabled_chat_models ?? [])
 
   async function load() {
     loaded.value = false
@@ -92,6 +110,7 @@ export const useInstanceStore = defineStore(SetupStoreId.INSTANCE, () => {
     smsLoginEnabled,
     smsSignupRequired,
     enabledChatModels,
+    loadOrganizationAI,
     load,
   }
 })

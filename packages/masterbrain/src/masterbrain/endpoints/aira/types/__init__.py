@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from .steps import AddStep
 from .workflow_data import WorkflowData
 
-SupportedModels = Literal["qwen3.5-flash", "qwen3.5-plus", "qwen3-max"]
+SupportedModels = Literal["qwen3.5-flash", "qwen3.5-plus", "qwen3-max", "gpt-4.1"]
 DEFAULT_MODEL = "qwen3.5-flash"
 
 

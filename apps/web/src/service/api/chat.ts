@@ -1,5 +1,6 @@
 import type { ChatModel } from "@/enum/model"
 import type { ChatEvent, ChatResponse } from "@airalogy/components/chat/utils/api"
+import { organizationHeaders } from "@/service/request/organization"
 import { streamRequest } from "@/service/request/stream"
 import { chatModelToConfig, createChatContext, createUserMessage } from "@/utils/chat"
 import { localStg } from "@/utils/storage"
@@ -232,6 +233,7 @@ export async function* postNewChat(payload: {
       url,
       method: "POST",
       headers: {
+        ...organizationHeaders(),
         "Auth-Token": token || "",
       },
       data: formData,

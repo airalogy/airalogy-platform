@@ -11,8 +11,10 @@ from app.libs.embedding_config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL
 from app.models.chat import Chat
 from app.services.aira_memory import context_for_usage
 from app.services.model_usage import configure_embedded_masterbrain_app
+from app.services.organization_ai import provider_dispatch
 from fastapi import FastAPI, HTTPException
 from masterbrain.embeddings import EmbeddingRequest, EmbeddingResponse
+from masterbrain.providers.scoped import current_credential
 from masterbrain.usage import UsageContext, bind_usage_context
 
 MASTERBRAIN_MODEL_NAME_MAP = {
@@ -52,7 +54,7 @@ def _get_masterbrain_app() -> FastAPI:
 
 
 def _use_external_masterbrain_api() -> bool:
-    return config.MASTERBRAIN_CALL_MODE.strip().lower() == "external" and bool(
+    return current_credential() is None and config.MASTERBRAIN_CALL_MODE.strip().lower() == "external" and bool(
         config.CHAT_API_ENDPOINT.strip()
     )
 
@@ -80,6 +82,8 @@ async def _masterbrain_client() -> AsyncIterator[httpx.AsyncClient]:
 
 
 def _chat_api_error(response: httpx.Response) -> HTTPException:
+    if current_credential():
+        return HTTPException(502, "Organization model request failed")
     detail: object = "Chat API error"
     try:
         response_body = response.json()
@@ -113,29 +117,30 @@ async def stream_request(
     # print("~~~~~~~~stream chat request params:")
     # print(json.dumps(json, ensure_ascii=False))
 
-    request_target = _masterbrain_request_target(path)
     usage_scope = (
         bind_usage_context(usage_context)
         if usage_context is not None
         else nullcontext()
     )
     with usage_scope:
-        async with (
-            _masterbrain_client() as client,
-            client.stream(
-                method,
-                request_target,
-                json=json_body,
-                headers=_usage_headers(usage_context),
-                timeout=300.0,
-            ) as response,
-        ):
-            if response.status_code != 200:
-                await response.aread()
-                raise _chat_api_error(response)
+        async with provider_dispatch(path, json_body, usage_context) as json_body:
+            request_target = _masterbrain_request_target(path)
+            async with (
+                _masterbrain_client() as client,
+                client.stream(
+                    method,
+                    request_target,
+                    json=json_body,
+                    headers=_usage_headers(usage_context),
+                    timeout=300.0,
+                ) as response,
+            ):
+                if response.status_code != 200:
+                    await response.aread()
+                    raise _chat_api_error(response)
 
-            async for chunk in response.aiter_text():
-                yield chunk
+                async for chunk in response.aiter_text():
+                    yield chunk
 
 
 async def json_request(
@@ -148,24 +153,25 @@ async def json_request(
 ):
     # print("~~~~~~~~json request params:")
     # print(json.dumps(json_body, ensure_ascii=False))
-    request_target = _masterbrain_request_target(path)
     usage_scope = (
         bind_usage_context(usage_context)
         if usage_context is not None
         else nullcontext()
     )
     with usage_scope:
-        async with _masterbrain_client() as client:
-            response = await client.request(
-                method,
-                request_target,
-                json=json_body,
-                headers=_usage_headers(usage_context),
-                timeout=timeout,
-            )
-            if response.status_code != 200:
-                raise _chat_api_error(response)
-            return response.json()
+        async with provider_dispatch(path, json_body, usage_context) as json_body:
+            request_target = _masterbrain_request_target(path)
+            async with _masterbrain_client() as client:
+                response = await client.request(
+                    method,
+                    request_target,
+                    json=json_body,
+                    headers=_usage_headers(usage_context),
+                    timeout=timeout,
+                )
+                if response.status_code != 200:
+                    raise _chat_api_error(response)
+                return response.json()
 
 
 async def text_embeddings(

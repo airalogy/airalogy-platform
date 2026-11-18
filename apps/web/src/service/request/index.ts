@@ -4,6 +4,7 @@ import { createFlatRequest } from "@/utils/axios"
 import { localStg } from "@/utils/storage"
 import { renderMessageContent } from "@airalogy/composables"
 import { baseURL } from "./config"
+import { organizationHeaders } from "./organization"
 
 export { baseURL } from "./config"
 
@@ -18,7 +19,7 @@ export const request = createFlatRequest<App.Service.Response>(
 
       // set token
       const token = localStg.get("token")
-      Object.assign(headers, { "Auth-Token": token })
+      Object.assign(headers, { "Auth-Token": token }, organizationHeaders())
 
       return config
     },

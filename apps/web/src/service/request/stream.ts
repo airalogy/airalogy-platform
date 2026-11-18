@@ -4,6 +4,7 @@ import { createStreamRequest } from "@/utils/axios"
 import { localStg } from "@/utils/storage"
 import { renderMessageContent } from "@airalogy/composables/useClosableMessage"
 import { baseURL } from "./config"
+import { organizationHeaders } from "./organization"
 
 const decoder = new TextDecoder("utf-8")
 /**
@@ -21,7 +22,7 @@ export const streamRequest = createStreamRequest<ReadableStream>(
 
       // set token
       const token = localStg.get("token")
-      Object.assign(headers, { "Auth-Token": token })
+      Object.assign(headers, { "Auth-Token": token }, organizationHeaders())
 
       return config
     },

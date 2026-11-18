@@ -186,6 +186,7 @@
 import type { RecorderTurn } from "@airalogy/components/chat/providers/recorderTurn"
 import { postAddAttachments } from "@/service/api/attachments"
 import { baseURL } from "@/service/request"
+import { organizationHeaders } from "@/service/request/organization"
 import { useAuthStore } from "@/store/modules/auth"
 import { useAudioRecorder, VoiceInputStatus } from "@airalogy/components"
 import { useClosableMessage } from "@airalogy/composables"
@@ -297,6 +298,7 @@ async function handleSubmit() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...organizationHeaders(),
         "Auth-Token": authStore.token || "",
       },
       body: JSON.stringify({
@@ -549,6 +551,7 @@ async function handleVoiceInput() {
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
+            ...organizationHeaders(),
             "Auth-Token": authStore.token || "",
           },
           body: formData,

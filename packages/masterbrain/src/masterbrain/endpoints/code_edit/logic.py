@@ -7,8 +7,8 @@ __all__ = [
     "shutdown_code_edit_runtime_manager",
 ]
 
-import asyncio
 import ast
+import asyncio
 import hashlib
 import json
 import logging
@@ -16,13 +16,13 @@ import os
 import shutil
 import socket
 import tempfile
-import tomllib
 from contextlib import asynccontextmanager, closing, suppress
 from dataclasses import dataclass
 from difflib import unified_diff
 from pathlib import Path, PurePosixPath
 
 import httpx
+import tomllib
 
 from masterbrain.configs import (
     DASHSCOPE_API_KEY,
@@ -36,8 +36,12 @@ from masterbrain.endpoints.code_edit.types import (
     CodeEditOutput,
     CodeEditRisk,
 )
+from masterbrain.protocol_authoring import (
+    ASSIGNER_RUNTIME_POLICY,
+    assigner_host_context,
+)
+from masterbrain.providers.scoped import current_credential
 from masterbrain.usage import UsageCallTracker, to_usage_mapping
-from masterbrain.protocol_authoring import ASSIGNER_RUNTIME_POLICY, assigner_host_context
 from masterbrain.utils.llm import ensure_model_api_key
 from masterbrain.utils.opencode import missing_opencode_message, resolve_opencode_binary
 
@@ -289,8 +293,9 @@ def _build_provider_config(
     *,
     require_api_key: bool = True,
 ) -> ProviderConfig:
+    scoped = current_credential(model_name)
     if model_name.startswith("qwen"):
-        if require_api_key and not DASHSCOPE_API_KEY:
+        if require_api_key and not scoped and not DASHSCOPE_API_KEY:
             raise RuntimeError(
                 "DASHSCOPE_API_KEY is required for OpenCode-backed Qwen editing."
             )
@@ -308,7 +313,7 @@ def _build_provider_config(
                         "npm": "@ai-sdk/openai-compatible",
                         "name": "DashScope",
                         "options": {
-                            "baseURL": DASHSCOPE_BASE_URL
+                            "baseURL": scoped.base_url if scoped else DASHSCOPE_BASE_URL
                             or "https://dashscope.aliyuncs.com/compatible-mode/v1",
                             "apiKey": "{env:DASHSCOPE_API_KEY}",
                         },
@@ -332,7 +337,7 @@ def _build_provider_config(
         )
 
     if model_name.startswith("gpt-"):
-        if require_api_key and not OPENAI_API_KEY:
+        if require_api_key and not scoped and not OPENAI_API_KEY:
             raise RuntimeError(
                 "OPENAI_API_KEY is required for OpenCode-backed GPT editing."
             )
@@ -350,7 +355,7 @@ def _build_provider_config(
                         "npm": "@ai-sdk/openai-compatible",
                         "name": "OpenAI",
                         "options": {
-                            "baseURL": OPENAI_BASE_URL or "https://api.openai.com/v1",
+                            "baseURL": scoped.base_url if scoped else OPENAI_BASE_URL or "https://api.openai.com/v1",
                             "apiKey": "{env:OPENAI_API_KEY}",
                         },
                         "models": {
@@ -642,6 +647,20 @@ async def _start_opencode_server(
 
     port = _find_free_port()
     env = os.environ.copy()
+    scoped = current_credential()
+    if scoped:
+        # Only pass runtime essentials to the short-lived organization worker.
+        env = {name: value for name, value in env.items() if name in {
+            "PATH", "LANG", "LC_ALL", "TMPDIR", "SSL_CERT_FILE", "SSL_CERT_DIR",
+            "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
+        }}
+        # The temporary project directory is removed by the caller at the end of the operation.
+        home = workspace_dir.parent / "opencode-home"
+        home.mkdir(mode=0o700, exist_ok=True)
+        env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / "config"),
+                   XDG_CACHE_HOME=str(home / "cache"), XDG_DATA_HOME=str(home / "data"))
+        env["OPENAI_API_KEY" if scoped.provider == "openai" else "DASHSCOPE_API_KEY"] = scoped.key
+        config = {**config, "permission": {"*": "deny", "read": "allow", "edit": "allow", "glob": "allow", "grep": "allow", "external_directory": "deny"}}
     env["OPENCODE_CONFIG_CONTENT"] = json.dumps(config)
 
     process = await asyncio.create_subprocess_exec(
@@ -1153,7 +1172,7 @@ async def generate_code_edit_result(
         f"Selected provider {provider.provider_id}/{provider.model_id}.",
     )
 
-    if runtime is None and code_edit_input.workspace_id:
+    if runtime is None and code_edit_input.workspace_id and not current_credential():
         (
             run_result,
             before_state,
@@ -1173,6 +1192,9 @@ async def generate_code_edit_result(
         runtime = runtime or OpenCodeRuntime()
         with tempfile.TemporaryDirectory(prefix="masterbrain-opencode-") as tmp_dir:
             workspace_dir = Path(tmp_dir)
+            if current_credential():
+                workspace_dir = workspace_dir / "project"
+                workspace_dir.mkdir()
             before_state = _sync_workspace(workspace_dir, code_edit_input)
             _record_execution(
                 execution_log,

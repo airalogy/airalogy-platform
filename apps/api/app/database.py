@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.config import config
+from app.libs.ai_scope import active_ai_scope
 
 
 class DatabaseSessionManager:
@@ -63,8 +64,12 @@ sessionmanager = DatabaseSessionManager(
 
 
 async def get_db_session():
-    async with sessionmanager.session() as session:
-        yield session
+    token = active_ai_scope.set(None)
+    try:
+        async with sessionmanager.session() as session:
+            yield session
+    finally:
+        active_ai_scope.reset(token)
 
 
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
