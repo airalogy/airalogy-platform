@@ -55,7 +55,10 @@ async function send() {
   <aside class="aira-panel" data-testid="project-aira-panel" :aria-label="t('page.projectAira.panel')">
     <header class="flex items-start justify-between gap-2">
       <div>
-        <h2 class="m-0 text-lg font-semibold">Aira</h2>
+        <h2 class="m-0 flex items-center gap-2 text-lg font-semibold">
+          <n-icon :size="24" aria-hidden="true"><icon-shared-airalogy-chat /></n-icon>
+          Aira
+        </h2>
         <p class="m-0 text-sm color-text-secondary">{{ projectName }}</p>
       </div>
       <div class="flex items-center gap-1">

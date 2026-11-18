@@ -14,9 +14,11 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project documents keep standalone notes in the default list and open matching formal minutes directly in Meetings. Meeting search keeps participant and date filters in a compact expandable row.
+
 - Organization owners and managers can enable AI, select a text model, test a provider connection and manage an encrypted organization API key. AI calls use the organization’s settings and the instance-wide shutdown remains available.
 
-- Add a project Aira side panel for reviewing meeting minutes and actions before saving, and compact the activity filters.
+- Add a project Aira side panel for reviewing meeting minutes and actions before saving, and compact the activity filters. The panel header uses the same robot avatar as Aira chat.
 
 - Project overviews show recent activity and day details first, group actions created together from a visible meeting, and preview three active work items.
 

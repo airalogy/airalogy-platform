@@ -47,6 +47,7 @@ export interface ResearchDocument extends DocumentContent, ResearchLogScopeParam
   updated_at: string
 }
 export interface DocumentSummary {
+  meeting_url?: string | null
   meeting_status?: "held" | "planned" | "cancelled" | null
   id: string
   title: string
@@ -104,7 +105,7 @@ export function listResearchDocuments(
   scope: ResearchLogScopeParams,
   params: DocumentBrowseParams = {},
 ) {
-  return documentRequest<{ items: DocumentSummary[], total_count: number, can_write: boolean }>({
+  return documentRequest<{ items: DocumentSummary[], total_count: number, has_searchable_items: boolean, can_write: boolean }>({
     url: "/research-documents",
     params: { ...scope, ...params },
   })

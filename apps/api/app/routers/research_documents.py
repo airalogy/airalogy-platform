@@ -27,6 +27,7 @@ from app.models.knowledge import (
     ResearchFileBlob,
 )
 from app.models.lab import Lab
+from app.models.meeting import Meeting
 from app.models.project import Project
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolVersion
@@ -201,8 +202,6 @@ async def _files(db, user, entry, ids):
 
 async def _payload(db, user, entry, doc):
     can_edit = False
-    from app.models.meeting import Meeting
-
     meeting = await db.get(Meeting, entry.id)
     if entry.created_by_user_id == user.id or meeting:
         try:
@@ -280,6 +279,13 @@ def browse_query(scope, q, kind, date_from, date_to, time_zone, user_id=None):
     ]
     if user_id is not None:
         filters.append(meeting_read_condition(user_id))
+    q = q.strip()
+    if scope.project and not q and kind != "meeting":
+        filters.append(
+            ~select(Meeting.document_id)
+            .where(Meeting.document_id == ResearchLogEntry.id)
+            .exists()
+        )
     if q:
         filters.append(
             or_(
@@ -397,8 +403,6 @@ async def list_documents(
     except HTTPException:
         can_write = False
     items = []
-    from app.models.meeting import Meeting
-
     meeting_statuses = dict(
         (
             await db_session.execute(
@@ -408,6 +412,11 @@ async def list_documents(
             )
         ).all()
     )
+    meeting_path = (
+        project_browser_path(scope.lab.uid, scope.project.uid) + "/meetings"
+        if scope.project and meeting_statuses
+        else None
+    )
     for entry, doc in rows:
         items.append(
             {
@@ -416,6 +425,9 @@ async def list_documents(
                 "kind": entry.kind,
                 "state": doc.state,
                 "meeting_status": meeting_statuses.get(entry.id),
+                "meeting_url": f"{meeting_path}?meeting={entry.id}"
+                if entry.id in meeting_statuses
+                else None,
                 "revision": entry.revision,
                 "tags": doc.tags,
                 "collection": doc.collection,
@@ -424,7 +436,21 @@ async def list_documents(
                 "excerpt": entry.body[:240],
             }
         )
-    return {"items": items, "total_count": total, "can_write": can_write}
+    # A project containing only meetings still needs a usable document search.
+    has_searchable_items = bool(total)
+    if not total and scope.project and not (q.strip() or kind or date_from or date_to):
+        visible_meetings = browse_query(
+            scope, "", "meeting", None, None, time_zone, current_user.id
+        )
+        has_searchable_items = bool(
+            await db_session.scalar(select(visible_meetings.exists()))
+        )
+    return {
+        "items": items,
+        "total_count": total,
+        "has_searchable_items": has_searchable_items,
+        "can_write": can_write,
+    }
 
 
 @router.get("/recent")
@@ -843,13 +869,11 @@ async def update_document(
     db_session: DBSession,
 ):
     entry, doc = await _context(db_session, current_user, document_id, write=True)
-    from app.models.meeting import Meeting
-
-    if await db_session.get(Meeting, document_id):
-        if params.kind != "meeting" or (
-            params.occurred_at and params.occurred_at != entry.occurred_at
-        ):
-            raise HTTPException(422, "Change meeting type/time in the meeting page")
+    if await db_session.get(Meeting, document_id) and (
+        params.kind != "meeting"
+        or (params.occurred_at and params.occurred_at != entry.occurred_at)
+    ):
+        raise HTTPException(422, "Change meeting type/time in the meeting page")
     _assert_revision(entry, params.expected_revision)
     preview = await asyncio.to_thread(_update_preview, entry, doc, params)
     if (
@@ -897,8 +921,6 @@ async def restore_document(
     db_session: DBSession,
 ):
     entry, doc = await _context(db_session, current_user, document_id, write=True)
-    from app.models.meeting import Meeting
-
     if await db_session.get(Meeting, document_id):
         raise HTTPException(
             422,

@@ -155,6 +155,41 @@ def test_meeting_acl_all_entrypoints_timezone_and_atomic_action():
                         time_zone="Asia/Shanghai",
                     )
                 ).json()["days"] == []
+                doc_scope = {
+                    "scope_type": "project",
+                    "project_id": str(seed.project.id),
+                }
+                default = (await get("/research-documents", **doc_scope)).json()
+                assert default["items"] == [] and default["has_searchable_items"]
+                for who in [owner, analyst]:
+                    found = (
+                        await get(
+                            "/research-documents",
+                            who,
+                            q="Private discussion",
+                            **doc_scope,
+                        )
+                    ).json()
+                    days = (
+                        await get(
+                            "/research-documents/calendar",
+                            who,
+                            q="Private discussion",
+                            month="2020-03-01",
+                            **doc_scope,
+                        )
+                    ).json()["days"]
+                    if who == owner:
+                        assert found["total_count"] == 1
+                        assert found["items"][0]["meeting_url"].endswith(
+                            f"/meetings?meeting={identity}"
+                        )
+                        assert days == [{"date": "2020-03-15", "count": 1}]
+                    else:
+                        assert found["items"] == [] and not days
+                assert not (
+                    await get("/research-documents", analyst, **doc_scope)
+                ).json()["has_searchable_items"]
                 assert (
                     await get(
                         "/project-work/sources",

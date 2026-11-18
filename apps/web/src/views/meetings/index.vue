@@ -21,6 +21,8 @@ import { preserveVisualFenceMetadata } from "@/utils/recorderMarkdown"
 import { restoreAimdInlineTemplates } from "@airalogy/aimd-core"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
 import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
+import FilterIcon from "~icons/tabler/filter"
+import SearchIcon from "~icons/tabler/search"
 import { useDialog } from "naive-ui"
 import { useI18n } from "vue-i18n"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
@@ -38,6 +40,8 @@ const items = ref<Meeting[]>([])
 const total = ref(0)
 const page = ref(1)
 const q = ref("")
+const appliedQuery = ref("")
+const filtersOpen = ref(false)
 const dateFrom = ref("")
 const dateTo = ref("")
 const participantFilter = ref<string | null>(null)
@@ -50,6 +54,11 @@ const notice = ref("")
 const canCreate = ref(false)
 const members = ref<MeetingMember[]>([])
 const participantOptions = computed(() => [...members.value.filter(m => !projectPeople.value.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name || m.username })), ...projectPeople.value.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.name}${p.organization ? ` · ${p.organization}` : ""}` }))])
+const filterSummary = computed(() => [
+  participantOptions.value.find(option => option.value === participantFilter.value)?.label,
+  dateFrom.value && `${t("page.meetings.from")} ${dateFrom.value}`,
+  dateTo.value && `${t("page.meetings.to")} ${dateTo.value}`,
+].filter(Boolean).join(" · "))
 const selected = ref<Meeting>()
 const form = ref<MeetingContent>()
 const saved = ref("")
@@ -192,8 +201,20 @@ function setTime(key: "occurred_at" | "scheduled_at", value: string) {
   form.value.time_zone = documentTimeZone()
 }
 function filterList() {
-  page.value = 1
-  void loadList()
+  if (page.value === 1)
+    void loadList()
+  else
+    page.value = 1
+}
+function searchMeetings(value = q.value) {
+  appliedQuery.value = value.trim()
+  filterList()
+}
+function clearMeetingFilters() {
+  participantFilter.value = null
+  dateFrom.value = ""
+  dateTo.value = ""
+  filterList()
 }
 async function loadList() {
   if (!projectId.value)
@@ -204,7 +225,7 @@ async function loadList() {
   try {
     const data = await listMeetings({
       project_id: projectId.value,
-      q: q.value,
+      q: appliedQuery.value,
       participant_id: participantFilter.value?.startsWith("user:") ? participantFilter.value.slice(5) : undefined,
       person_id: participantFilter.value?.startsWith("person:") ? participantFilter.value.slice(7) : undefined,
       date_from: dateFrom.value || undefined,
@@ -547,24 +568,42 @@ watch(page, loadList)
       {{ notice }}
     </n-alert>
     <template v-if="!form">
-      <form
-        class="flex flex-wrap items-end gap-3"
-        @submit.prevent="filterList"
-      >
-        <label>{{ t("page.meetings.search") }}<n-input v-model:value="q" data-testid="meeting-search" /></label>
-        <label class="min-w-48">{{ t("page.meetings.participant")
-        }}<n-select
-          v-model:value="participantFilter"
-          :options="participantOptions"
-          clearable
-          filterable
-        /></label>
-        <label>{{ t("page.meetings.from") }}<input v-model="dateFrom" type="date" class="meeting-date"></label>
-        <label>{{ t("page.meetings.to") }}<input v-model="dateTo" type="date" class="meeting-date"></label>
-        <n-button attr-type="submit">
-          {{ t("page.meetings.filter") }}
-        </n-button>
-      </form>
+      <div class="meeting-filters">
+        <form class="meeting-search-row" role="search" @submit.prevent="searchMeetings()">
+          <n-input
+            v-model:value="q" clearable size="small" data-testid="meeting-search"
+            :placeholder="t('page.meetings.search')" :input-props="{ 'aria-label': t('page.meetings.search') }"
+            @clear="searchMeetings('')"
+          >
+            <template #suffix>
+              <button type="submit" class="meeting-search-submit" :aria-label="t('common.search')">
+                <n-icon :component="SearchIcon" :size="16" />
+              </button>
+            </template>
+          </n-input>
+          <n-button
+            size="small" :type="filterSummary ? 'primary' : 'default'" :ghost="Boolean(filterSummary)"
+            :aria-expanded="filtersOpen" aria-controls="meeting-filter-fields"
+            data-testid="meeting-filters-toggle" @click="filtersOpen = !filtersOpen"
+          >
+            <template #icon><n-icon :component="FilterIcon" /></template>
+            {{ t("page.documentUx.filters") }}
+          </n-button>
+        </form>
+        <div v-show="filtersOpen" id="meeting-filter-fields" class="meeting-filter-fields">
+          <label>{{ t("page.meetings.participant") }}
+            <n-select v-model:value="participantFilter" size="small" :options="participantOptions" clearable filterable @update:value="filterList" />
+          </label>
+          <label>{{ t("page.meetings.from") }}<input v-model="dateFrom" type="date" :max="dateTo || undefined" class="meeting-date" @change="filterList"></label>
+          <label>{{ t("page.meetings.to") }}<input v-model="dateTo" type="date" :min="dateFrom || undefined" class="meeting-date" @change="filterList"></label>
+        </div>
+        <div v-if="filterSummary" class="flex flex-wrap items-center gap-2 text-sm" data-testid="meeting-filter-summary">
+          <span>{{ filterSummary }}</span>
+          <n-button text size="small" @click="clearMeetingFilters">
+            {{ t("page.documentUx.clearFilters") }}
+          </n-button>
+        </div>
+      </div>
       <n-spin :show="loading">
         <p v-if="!loading && !items.length" class="py-8 text-gray-500">
           {{ t("page.meetings.empty") }}
@@ -884,6 +923,23 @@ watch(page, loadList)
 </template>
 
 <style scoped>
+.meeting-filters { display: grid; gap: 8px; }
+.meeting-search-row { display: flex; align-items: center; gap: 8px; }
+.meeting-search-row .n-input { min-width: 0; max-width: 20rem; }
+.meeting-search-row :is(.n-input, .n-button) { --n-height: 34px !important; }
+.meeting-search-submit { display: grid; place-items: center; width: 28px; height: 30px; }
+.meeting-filter-fields { display: flex; align-items: end; flex-wrap: wrap; gap: 8px 12px; }
+.meeting-filter-fields label { display: grid; gap: 3px; min-width: 0; font-size: 13px; }
+.meeting-filter-fields label:first-child { width: 14rem; }
+.meeting-filter-fields .meeting-date { width: 10rem; }
+@media (max-width: 600px) {
+  .meeting-search-row .n-input { max-width: none; }
+  .meeting-search-row :is(.n-input, .n-button), .meeting-filter-fields .n-select { --n-height: 40px !important; }
+  .meeting-search-submit { width: 36px; height: 36px; }
+  .meeting-filter-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .meeting-filter-fields label:first-child { grid-column: 1 / -1; width: auto; }
+  .meeting-filter-fields .meeting-date { width: 100%; min-width: 0; min-height: 40px; }
+}
 .meeting-date {
   display: block;
   width: 100%;

@@ -28,6 +28,7 @@ const router = useRouter()
 const route = useRoute()
 const items = ref<DocumentSummary[]>([])
 const total = ref(0)
+const hasSearchableItems = ref(false)
 const page = computed(() => Math.min(100000, Math.max(1, Number.parseInt(queryText(route.query.page), 10) || 1)))
 const q = ref("")
 const kind = ref("")
@@ -56,7 +57,7 @@ const listElement = ref<HTMLElement>()
 
 const canWrite = ref(false)
 const hasQuery = computed(() => ["q", "kind", "from", "to"].some(key => queryText(route.query[key])) || page.value > 1)
-const showBrowseTools = computed(() => !props.compact && (total.value > 0 || hasQuery.value))
+const showBrowseTools = computed(() => !props.compact && (hasSearchableItems.value || hasQuery.value))
 const moreOptions = computed(() => [
   { key: "templates", label: t("page.documentTemplates.library") },
   ...(canWrite.value ? [{ key: "import", label: t("page.documentUx.importArchive"), disabled: busy.value }] : []),
@@ -126,6 +127,11 @@ function params(targetPage = page.value) {
 function browseTo(id: string, targetPage = page.value) {
   return { name: route.name === "project-documents" ? "project-documents" as const : "research-documents" as const, params: route.params, query: { ...route.query, page: String(targetPage), read: id || undefined } }
 }
+function resultTo(item: DocumentSummary, targetPage = page.value) {
+  if (item.meeting_url)
+    return item.meeting_url
+  return props.compact ? { name: "research-document-detail" as const, params: { documentId: item.id } } : browseTo(item.id, targetPage)
+}
 async function search() {
   if (from.value && to.value && from.value > to.value) {
     error.value = t("page.documentBrowse.invalidRange")
@@ -144,7 +150,7 @@ async function move(delta: number) {
     return
   const item = items.value[selectedIndex.value + delta]
   if (item) {
-    await router.replace(browseTo(item.id))
+    await router.replace(resultTo(item))
     return
   }
   const targetPage = page.value + delta
@@ -155,7 +161,7 @@ async function move(delta: number) {
   try {
     const result = await listResearchDocuments(props.scope, params(targetPage))
     if (route.fullPath === context && result.items.length)
-      await router.replace(browseTo(delta > 0 ? result.items[0].id : result.items[result.items.length - 1].id, targetPage))
+      await router.replace(resultTo(delta > 0 ? result.items[0] : result.items[result.items.length - 1], targetPage))
   }
   catch { error.value = t("page.researchDocuments.failed") }
   finally { moving.value = false }
@@ -173,6 +179,7 @@ async function load() {
       return
     items.value = result.items
     total.value = result.total_count
+    hasSearchableItems.value = result.has_searchable_items || result.total_count > 0
     canWrite.value = result.can_write
     if (route.query.create === "document") {
       showCreate.value = result.can_write
@@ -307,13 +314,13 @@ watch([reading, items], async () => {
             <h3 v-if="!compact && order === 'recorded' && (index === 0 || localDocumentDate(item.occurred_at) !== localDocumentDate(items[index - 1].occurred_at))" class="aira-type-section-title m-0 pt-2" data-testid="document-day-heading">
               {{ localDocumentDate(item.occurred_at) }}
             </h3>
-            <router-link :to="compact ? { name: 'research-document-detail', params: { documentId: item.id } } : browseTo(item.id)" class="document-row" :class="{ 'document-row--active': reading === item.id }" :aria-current="reading === item.id ? 'true' : undefined" data-testid="research-document-link">
+            <router-link :to="resultTo(item)" class="document-row" :class="{ 'document-row--active': reading === item.id }" :aria-current="reading === item.id ? 'true' : undefined" data-testid="research-document-link">
               <div class="min-w-0 flex-1">
                 <h3 class="aira-type-card-title m-0 break-words">
                   {{ item.title }}
                 </h3>
                 <p class="aira-type-meta my-1">
-                  {{ t(`page.researchDocuments.${item.kind}`) }} · {{ t('page.documentBrowse.recordedDate') }} {{ localDocumentDate(item.occurred_at) }}
+                  {{ item.meeting_url ? t('page.meetings.minutes') : t(`page.researchDocuments.${item.kind}`) }} · {{ t('page.documentBrowse.recordedDate') }} {{ localDocumentDate(item.occurred_at) }}
                 </p>
                 <p class="aira-type-meta my-1">
                   {{ t('page.documentBrowse.updated') }} {{ new Date(item.updated_at).toLocaleString() }}
