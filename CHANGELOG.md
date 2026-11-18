@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- The project Team tab follows Meetings and lists accounts with project access separately from participants recorded by name.
+
 - Project documents keep standalone notes in the default list and open matching formal minutes directly in Meetings. Meeting search keeps participant and date filters in a compact expandable row.
 
 - Organization owners and managers can enable AI, select a text model, test a provider connection and manage an encrypted organization API key. AI calls use the organization’s settings and the instance-wide shutdown remains available.

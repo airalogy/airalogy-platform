@@ -77,6 +77,16 @@ def test_name_then_admin_account_link_populates_my_tasks_without_granting_access
                         "/project-people", headers=analyst, json=person_data
                     )
                 ).json()["id"] == person["id"]
+                team_url = f"/project-people/team?project_id={seed.project.id}"
+                roster = (await http.get(team_url, headers=owner)).json()
+                assert {p["id"] for p in roster["participants"]} == {
+                    person["id"],
+                    same_name.json()["id"],
+                }
+                assert not roster["additional_members"]
+                assert (
+                    await http.get(team_url, headers=browser(seed.outsider))
+                ).status_code == 403
                 meeting_id = str(uuid4())
                 meeting_response = await http.post(
                     "/meetings",
@@ -88,11 +98,16 @@ def test_name_then_admin_account_link_populates_my_tasks_without_granting_access
                         "occurred_at": "2020-01-02T00:00:00Z",
                         "visibility": "selected",
                         "participants": [
-                            {"person_id": person["id"], "attendance": "attended"}
+                            {"person_id": person["id"], "attendance": "attended"},
+                            {
+                                "name": "Private meeting-only name",
+                                "attendance": "attended",
+                            },
                         ],
                     },
                 )
                 assert meeting_response.status_code == 200, meeting_response.text
+                assert (await http.get(team_url, headers=analyst)).json() == roster
                 work = {
                     "id": str(uuid4()),
                     "project_id": str(seed.project.id),
@@ -138,8 +153,16 @@ def test_name_then_admin_account_link_populates_my_tasks_without_granting_access
                 saved_meeting = (
                     await http.get(f"/meetings/{meeting_id}", headers=owner)
                 ).json()
-                assert saved_meeting["participants"][0]["name"] == person["name"]
-                assert saved_meeting["participants"][0]["user_id"] is None
+                attendee = next(
+                    p
+                    for p in saved_meeting["participants"]
+                    if p["name"] == person["name"]
+                )
+                assert attendee["user_id"] is None
+                updated_team = (await http.get(team_url, headers=owner)).json()
+                assert [p["id"] for p in updated_team["participants"]] == [
+                    same_name.json()["id"]
+                ]
                 assert (
                     await http.get(f"/meetings/{meeting_id}", headers=analyst)
                 ).status_code == 404
@@ -176,6 +199,20 @@ def test_name_then_admin_account_link_populates_my_tasks_without_granting_access
                 assert work["id"] not in [
                     item["id"] for item in after_revocation.json()["items"]
                 ]
+
+                async with sessions() as db:
+                    await db.execute(
+                        delete(ProjectUser).where(
+                            ProjectUser.project_id == seed.project.id,
+                            ProjectUser.user_id == seed.owner.id,
+                        )
+                    )
+                    await db.commit()
+                inherited = (await http.get(team_url, headers=owner)).json()
+                assert [m["id"] for m in inherited["additional_members"]] == [
+                    str(seed.owner.id)
+                ]
+                assert (await http.get(team_url, headers=analyst)).status_code == 403
 
     asyncio.run(run())
 

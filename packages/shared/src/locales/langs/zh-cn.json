@@ -3311,12 +3311,12 @@
         "my": "我的项目",
         "star": "收藏项目",
         "protocols": "协议",
-        "members": "协作者",
+        "members": "团队",
         "membersHint": "项目协作者仅作用于当前项目，设置不会影响该实验室下其他项目的访问权限。",
         "diary": "项目日志",
         "settings": "设置"
       },
-      "members": "协作者",
+      "members": "团队",
       "protocols": "项目协议",
       "protocolsSearchPlaceholder": "搜索项目内的协议",
       "protocolsFilter": {
@@ -5770,6 +5770,16 @@
         "protocol": "Protocol 版本",
         "knowledge": "知识与成果"
       }
+    },
+    "projectTeam": {
+      "loading": "正在加载团队…",
+      "accessMembers": "有项目权限的成员",
+      "namedParticipants": "按姓名登记的参与人员",
+      "namedHint": "来自项目共享名单。登记姓名不会授予项目访问权限。",
+      "otherAccess": "通过其他授权访问",
+      "noMembers": "暂无有项目权限的成员",
+      "noParticipants": "暂无按姓名登记的参与人员",
+      "loadFailed": "无法加载团队名单"
     },
     "projectPeople": {
       "manage": "添加姓名 / 关联账号",

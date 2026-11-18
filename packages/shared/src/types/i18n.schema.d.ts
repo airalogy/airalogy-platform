@@ -5775,6 +5775,16 @@ declare namespace I18n {
           knowledge: string
         }
       }
+      projectTeam: {
+        loading: string
+        accessMembers: string
+        namedParticipants: string
+        namedHint: string
+        otherAccess: string
+        noMembers: string
+        noParticipants: string
+        loadFailed: string
+      }
       projectPeople: {
         manage: string
         hint: string

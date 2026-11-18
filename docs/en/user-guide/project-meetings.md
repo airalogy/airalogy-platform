@@ -2,6 +2,8 @@
 
 Project Documents lists standalone documents by default, including manually written meeting notes. Searching titles or text, or selecting the meeting type, also finds accessible formal minutes and opens the corresponding meeting directly. In Meetings, expand Filters to narrow results by participant or dates.
 
+Open Team next to Meetings to view accounts with project access and participants recorded by name. The second list includes unlinked contacts from the shared project directory. Names entered for a single meeting stay in that meeting.
+
 Open Meetings in a Project to record a completed meeting. Enter its actual date; exact time is optional. Backdated minutes remain on the occurrence date. You may prepare an agenda before the meeting, with an optional scheduled time. Planned and cancelled meetings are excluded from occurred activity.
 
 ## Participants and access

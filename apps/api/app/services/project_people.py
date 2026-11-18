@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
+from app.models.lab import LabUser
+from app.models.project import ProjectUser
 from app.models.project_person import ProjectPerson
 from app.models.user import User
 from app.services.knowledge import canonical_digest
@@ -121,6 +123,39 @@ async def list_people(db, user, project_id):
                 )
             ).all()
         ],
+    }
+
+
+async def team_roster(db, user, project_id):
+    project = await project_context(db, user, project_id)
+    # Direct project roles have their own paginated, editable list.
+    direct_member = (
+        select(ProjectUser.id)
+        .where(ProjectUser.project_id == project_id, ProjectUser.user_id == User.id)
+        .exists()
+    )
+    candidates = await db.scalars(
+        select(User)
+        .join(LabUser, LabUser.user_id == User.id)
+        .where(LabUser.lab_id == project.lab_id, ~direct_member)
+        .order_by(User.name, User.username, User.id)
+    )
+    additional_members = []
+    for account in candidates.unique():
+        if await has_research_capability(
+            db, user=account, project=project, capability="research.read"
+        ):
+            additional_members.append(
+                {"id": account.id, "name": account.name, "username": account.username}
+            )
+    participants = await db.execute(
+        select(ProjectPerson.id, ProjectPerson.name, ProjectPerson.organization)
+        .where(ProjectPerson.project_id == project_id, ProjectPerson.user_id.is_(None))
+        .order_by(ProjectPerson.name, ProjectPerson.id)
+    )
+    return {
+        "additional_members": additional_members,
+        "participants": participants.mappings().all(),
     }
 
 

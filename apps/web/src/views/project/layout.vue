@@ -18,15 +18,6 @@
                 :show-select="false"
                 @modal:new-protocol="handleAddProtocol"
               />
-              <global-add-member-table-modal
-                v-if="route.name === 'project-members' && projectInfo?.id && canShowSettings "
-                :id="projectInfo?.id"
-                show-icon
-                :trigger="$t('common.addMember')"
-                type="project"
-                :is-private="projectInfo.type === ProjectType.PRIVATE"
-                @modal:new-member="handleAddMember"
-              />
             </div>
           </template>
           <template v-if="showIcon" #title>
@@ -90,11 +81,9 @@ import { useRouteStore } from "@/store/modules/route"
 import { buildPublicProjectPath, buildSeoUrl } from "@/utils/seo"
 import { $t } from "@airalogy/shared/locales"
 import { useMediaQuery } from "@vueuse/core"
-import { computed, h, onMounted } from "vue"
-import TabHintLabel from "../../components/common/tab-hint-label.vue"
+import { computed, onMounted } from "vue"
 
 import { LAB_OWNER_AND_MANAGER } from "../../composables/useLabPermissions"
-import { ProjectType } from "../../enum"
 import { meetingHandoffKey } from "../meetings/aira-handoff"
 import AiraPanel from "../meetings/aira-panel.vue"
 import { useProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
@@ -218,11 +207,8 @@ async function reviewProposal(proposal: MeetingProposal) {
     hasOpened.value = false
   }
 }
-const membersHint = computed(() => $t("page.project.tab.membersHint"))
 
 const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => {
-  const hintTab = (label: string, hint: string) =>
-    () => h(TabHintLabel, { label, hint })
   const tabs: (TabPaneProps & { name: App.Global.TabKey })[] = [
     { name: "project-protocols", tab: $t("page.project.tab.protocols") },
   ]
@@ -232,6 +218,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
     tabs.push(
       { name: "project-work", tab: $t("page.projectWork.title") },
       { name: "project-meetings", tab: $t("page.meetings.title") },
+      { name: "project-members", tab: $t("page.project.members") },
       { name: "project-documents", tab: $t("page.documentUx.documents") },
       { name: "project-materials", tab: $t("page.researchDocuments.materials") },
       { name: "project-knowledge", tab: $t("page.knowledge.title") },
@@ -242,7 +229,6 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
       { name: "project-workflows", tab: $t("page.workflowDefinitions.title") },
       { name: "project-scenarios", tab: $t("page.scenarioKits.workbench") },
       { name: "project-records", tab: $t("page.recordDiary.tab") },
-      { name: "project-members", tab: hintTab($t("page.project.tab.members"), membersHint.value) },
       ...(canShowSettings.value ? [{ name: "project-settings", tab: $t("page.project.tab.settings") }] : []),
     ]
     const selected = additional.find(item => item.name === route.name)
@@ -264,10 +250,11 @@ const workspaceNavigation = computed(() => [
     { key: "project-workflows", label: $t("page.workflowDefinitions.title") },
     { key: "external-access", label: $t("externalResearch.connectProject") },
   ] },
-  { key: "management", type: "group", label: $t("page.researchDocuments.manage"), children: [
-    { key: "project-members", label: $t("page.project.members") },
-    ...(canShowSettings.value ? [{ key: "project-settings", label: $t("page.project.tab.settings") }] : []),
-  ] },
+  ...(canShowSettings.value
+    ? [{ key: "management", type: "group", label: $t("page.researchDocuments.manage"), children: [
+        { key: "project-settings", label: $t("page.project.tab.settings") },
+      ] }]
+    : []),
 ])
 function navigateWorkspace(name: string) {
   if (name === "external-access") {
@@ -351,9 +338,6 @@ function handleAddProtocol(payload: {
       projectUid,
     },
   })
-}
-async function handleAddMember() {
-  await reloadPage(500)
 }
 
 const routerStore = useRouteStore()
@@ -512,27 +496,6 @@ onUnmounted(() => {
   setDynamicBreadcrumbs([])
 })
 </script>
-
-<style scoped lang="sass">
-:deep(.project-members-tab .n-tabs-tab__label)
-  display: inline-flex
-  align-items: center
-  gap: 6px
-
-:deep(.project-members-tab .n-tabs-tab__label::after)
-  content: "?"
-  display: inline-flex
-  align-items: center
-  justify-content: center
-  width: 14px
-  height: 14px
-  border: 1px solid #A1A4AF
-  border-radius: 9999px
-  font-size: 10px
-  line-height: 1
-  color: #A1A4AF
-  transform: translateY(-1px)
-</style>
 
 <style scoped>
 .project-assistant { position: sticky; top: 16px; width: 100%; min-width: 0; max-width: none; max-height: none; padding: 0; margin: 0; border: 0; background: white; }

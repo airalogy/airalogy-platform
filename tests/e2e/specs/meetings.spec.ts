@@ -4,7 +4,7 @@ import { localDate } from "./meetings-test-date"
 
 // Each writable journey owns its project so saved meetings, activity pages and
 // named-person associations from another run cannot change its expectations.
-async function meetingProject(api: APIRequestContext) {
+async function createMeetingProject(api: APIRequestContext) {
   const login = await api.post("/api/signin_by_email", { data: { email: "dev.owner@airalogy.dev", password: "AiralogyDev123!" } })
   expect(login.ok()).toBeTruthy()
   const headers = { "Auth-Token": (await login.json()).token }
@@ -13,7 +13,11 @@ async function meetingProject(api: APIRequestContext) {
   const uid = `meeting_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`
   const created = await api.post("/api/projects", { headers, data: { lab_id: (await source.json()).lab_id, uid, name: "Synthetic meeting journey", description: "Isolated meeting and activity acceptance", type: 1 } })
   expect(created.ok(), await created.text()).toBeTruthy()
-  return `/labs/dev_lab/projects/${uid}`
+  return { path: `/labs/dev_lab/projects/${uid}`, projectId: (await created.json()).id, headers }
+}
+
+async function meetingProject(api: APIRequestContext) {
+  return (await createMeetingProject(api)).path
 }
 
 test("project meeting, participants, comments, shared action and activity day survive reload", async ({
@@ -326,4 +330,55 @@ test("project Aira reviews a temporary meeting draft before saving minutes and a
   const meeting = await response.json()
   expect(meeting.work.map((link: { item: { title: string } }) => link.item.title).sort()).toEqual(draft.actions)
   await expect(page.getByTestId("meeting-reading")).toContainText(draft.body)
+})
+
+test("project team follows meetings and separates accounts from named participants", async ({ page }, testInfo) => {
+  const { headers, projectId, path } = await createMeetingProject(page.request)
+  const name = "Synthetic partner"
+  const people = [crypto.randomUUID(), crypto.randomUUID()]
+  for (const [index, id] of people.entries()) {
+    const saved = await page.request.post("/api/project-people", { headers, data: {
+      project_id: projectId,
+      id,
+      name,
+      organization: `Synthetic organization ${index + 1}`,
+    } })
+    expect(saved.ok(), await saved.text()).toBeTruthy()
+  }
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+  const errors: string[] = []
+  page.on("pageerror", e => errors.push(e.message))
+  const accounts = page.getByTestId("team-accounts")
+  const participants = page.getByTestId("team-participants")
+  for (const width of [1440, 876, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 983 })
+    await page.goto(`${path}/meetings`)
+    const team = page.locator('.n-tabs-tab[data-name="project-members"]')
+    await expect(team).toHaveText("团队")
+    const tabs = await page.locator(".n-tabs-tab").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-name")))
+    expect(tabs.slice(tabs.indexOf("project-meetings"), tabs.indexOf("project-meetings") + 3))
+      .toEqual(["project-meetings", "project-members", "project-documents"])
+    await team.click()
+    await expect(page).toHaveURL(/\/members$/)
+    await expect(accounts).toContainText("Dev Owner")
+    await expect(accounts).not.toContainText(name)
+    await expect(participants.getByText(name, { exact: true })).toHaveCount(2)
+    await expect(participants).toContainText("Synthetic organization 2")
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`project-team-${width}.png`) })
+  }
+  const direct = await page.request.get(`/api/projects/${projectId}/users`, { headers })
+  expect(direct.ok()).toBeTruthy()
+  const userId = (await direct.json()).users.find((u: { username: string }) => u.username === "dev_owner").id
+  const linked = await page.request.put(`/api/project-people/${people[0]}`, { headers, data: {
+    name,
+    user_id: userId,
+    expected_revision: 1,
+  } })
+  expect(linked.ok(), await linked.text()).toBeTruthy()
+  await page.reload()
+  await expect(participants.getByText(name, { exact: true })).toHaveCount(1)
+  await expect(participants).toContainText("Synthetic organization 2")
+  await expect(accounts.getByText("Dev Owner", { exact: true })).toHaveCount(1)
+  expect(errors).toEqual([])
 })

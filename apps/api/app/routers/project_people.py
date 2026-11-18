@@ -18,6 +18,11 @@ async def list_people(
     return await service.list_people(db_session, current_user, project_id)
 
 
+@router.get("/team")
+async def team(project_id: UUID, current_user: CurrentUser, db_session: DBSession):
+    return await service.team_roster(db_session, current_user, project_id)
+
+
 @router.post("")
 async def create_person(
     data: service.PersonCreate, current_user: CurrentUser, db_session: DBSession

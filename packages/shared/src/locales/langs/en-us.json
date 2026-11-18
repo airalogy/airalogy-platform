@@ -3311,12 +3311,12 @@
         "my": "My projects",
         "star": "Starred projects",
         "protocols": "Protocols",
-        "members": "Collaborators",
+        "members": "Team",
         "membersHint": "Project collaborators are scoped to this project; changes here won't affect access to other projects in this lab.",
         "diary": "Diary",
         "settings": "Settings"
       },
-      "members": "Collaborators",
+      "members": "Team",
       "protocols": "Protocols",
       "protocolsSearchPlaceholder": "Search protocols in this project",
       "protocolsFilter": {
@@ -5770,6 +5770,16 @@
         "protocol": "Protocol versions",
         "knowledge": "Knowledge and outcomes"
       }
+    },
+    "projectTeam": {
+      "loading": "Loading team…",
+      "accessMembers": "Members with project access",
+      "namedParticipants": "Participants recorded by name",
+      "namedHint": "From the shared project directory. Recording a name does not grant project access.",
+      "otherAccess": "Access via other grants",
+      "noMembers": "No members with project access",
+      "noParticipants": "No participants recorded by name",
+      "loadFailed": "Could not load the team directory"
     },
     "projectPeople": {
       "manage": "Add a person / link an account",

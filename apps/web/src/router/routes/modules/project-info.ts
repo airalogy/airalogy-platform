@@ -84,7 +84,7 @@ export const projectInfoRoute: CustomRoute<ProjectInfoNameKey> = {
     {
       path: "members",
       name: "project-members",
-      meta: { ...createProjectMeta("Project Members", "page.project.members"), allowGuest: false },
+      meta: { ...createProjectMeta("Project Team", "page.project.members"), allowGuest: false },
       component: () => import("@/views/project/members.vue"),
     },
     {
