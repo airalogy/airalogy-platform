@@ -146,6 +146,14 @@ SMS login and mandatory phone verification at signup are disabled by default wit
 
 `COMPONENT_BUILD_MEMORY_MB` and `WEB_BUILD_MEMORY_MB` control the Node.js heap limits used only while building the web image. Keep the generated defaults unless the host has a deliberately different Docker memory allocation.
 
+### Historical research activity times
+
+Migration `0090_activity_instants` adds a nullable instant to Records and Protocol versions. The API captures it for each new submission or revision. Log ordering and calendar dates use this instant. Upgrading preserves the original timestamps and leaves the new column empty on existing rows.
+
+For legacy rows, the default retains the previous PostgreSQL session timezone interpretation. If you can establish the timezone of the API processes that originally wrote those rows, set `LEGACY_ACTIVITY_TIME_ZONE` in the API environment to that IANA name (for example, `Asia/Shanghai`) and restart the API. Check known events on either side of midnight against independent evidence in a restored database first. Changing the setting affects the display of legacy rows. Viewers choose calendar dates in their own timezone.
+
+If writer zones varied or a repeated daylight-saving hour is ambiguous, leave the setting unset until the affected periods can be reconciled from evidence. Roll back the application against the compatible schema if needed. A schema downgrade is blocked once exact instants have been saved, because it would discard them.
+
 ## Operations
 
 Check status and logs:

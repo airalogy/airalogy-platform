@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Annotated, BinaryIO, Literal
 from uuid import UUID
 
@@ -14,6 +13,7 @@ from app.libs.file_storage import (
     upload_file,
 )
 
+from .activity_time import ActivityCreationTime
 from .base import Base
 
 
@@ -50,7 +50,7 @@ class ProtocolMetadata(BaseModel):
     license: str | None = None
 
 
-class ProtocolVersion(Base):
+class ProtocolVersion(ActivityCreationTime, Base):
     __tablename__ = "protocol_versions"
 
     id: Mapped[UUID] = mapped_column(
@@ -67,7 +67,6 @@ class ProtocolVersion(Base):
     assigners: Mapped[dict] = mapped_column(JSON)
     fields: Mapped[dict] = mapped_column(JSON)
     aimd: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now)
     version: Mapped[str] = mapped_column(nullable=False, default="0.0.1")
     assigner_graph: Mapped[dict] = mapped_column(JSON)
     compatibility_report: Mapped[dict | None] = mapped_column(JSON, nullable=True)

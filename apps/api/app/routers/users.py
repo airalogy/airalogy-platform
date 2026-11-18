@@ -22,6 +22,7 @@ from sqlalchemy.orm import aliased, selectinload
 
 from app.config import config
 from app.database import DBSession
+from app.models.activity_time import activity_instant
 from app.models.attachment import Attachment
 from app.models.group import Group, GroupProject, GroupUser
 from app.models.lab import Lab, LabUser
@@ -44,6 +45,7 @@ from app.routers.depends import CurrentUser, create_access_token, get_current_us
 from app.routers.permission import get_user_project_role, get_user_protocol_role
 from app.routers.utils import UidStr, check_sms_verify_code, send_sms_verify_code
 from app.services.account_security import bump_auth_version
+from app.services.document_browse import date_bounds
 
 router = APIRouter(
     prefix="/users", tags=["users"], dependencies=[Depends(get_current_user)]
@@ -241,6 +243,7 @@ class UserRecordQueryParams(BaseModel):
     submitter: Literal["all", "me"] = "all"
     date_from: date | None = None
     date_to: date | None = None
+    time_zone: str | None = None
 
 
 def _get_user_own_project_ids(
@@ -592,7 +595,8 @@ def serialize_user_record_history_item(
     project: Project,
     lab: Lab,
     submit_user: User,
-    init_record: Record,
+    submitted_at: datetime,
+    initial_submitted_at: datetime,
 ):
     protocol.lab_uid = lab.uid
     protocol.project_uid = project.uid
@@ -611,10 +615,10 @@ def serialize_user_record_history_item(
             "protocol_id": protocol.uid,
             "protocol_uuid": record.protocol_id,
             "protocol_version": record.protocol_version,
-            "record_current_version_submission_time": record.created_at,
+            "record_current_version_submission_time": submitted_at,
             "record_current_version_submission_user_id": str(submit_user.id),
             "record_current_version_submission_username": submit_user.username,
-            "record_initial_version_submission_time": init_record.created_at,
+            "record_initial_version_submission_time": initial_submitted_at,
             "record_initial_version_submission_user_id": str(submit_user.id),
             "record_initial_version_submission_username": submit_user.username,
             "lab_id": lab.uid,
@@ -845,20 +849,19 @@ def build_user_record_history_conditions(
 
 
 def build_user_record_history_date_conditions(
-    record_alias,
+    submitted_at,
     params: UserRecordQueryParams,
 ):
     conditions = []
-    if params.date_from:
-        conditions.append(
-            record_alias.created_at
-            >= datetime.combine(params.date_from, datetime.min.time())
-        )
-    if params.date_to:
-        conditions.append(
-            record_alias.created_at
-            < datetime.combine(params.date_to + timedelta(days=1), datetime.min.time())
-        )
+    start, end = date_bounds(params.date_from, params.date_to, params.time_zone or "UTC")
+    # Older clients request wall-clock date bounds without an explicit timezone.
+    if params.time_zone is None:
+        start = start.replace(tzinfo=None) if start else None
+        end = end.replace(tzinfo=None) if end else None
+    if start:
+        conditions.append(submitted_at >= start)
+    if end:
+        conditions.append(submitted_at < end)
 
     return conditions
 
@@ -896,7 +899,9 @@ def build_latest_user_record_metadata_subquery(
             Record.protocol_id.label("protocol_id"),
             Record.protocol_version.label("protocol_version"),
             Record.user_id.label("user_id"),
-            Record.created_at.label("created_at"),
+            (activity_instant(Record) if params.time_zone else Record.created_at).label(
+                "created_at"
+            ),
             Record.number.label("number"),
             Record.hash.label("hash"),
             func.row_number()
@@ -929,7 +934,10 @@ async def get_visible_user_record_history(
     )
     LatestRecord = aliased(Record, latest_records_subquery)
     readable_condition = build_record_readable_condition(current_user.id, LatestRecord)
-    date_conditions = build_user_record_history_date_conditions(LatestRecord, params)
+    submitted_at = (
+        activity_instant(LatestRecord) if params.time_zone else LatestRecord.created_at
+    )
+    date_conditions = build_user_record_history_date_conditions(submitted_at, params)
 
     visible_record_ids_query = (
         select(LatestRecord.id)
@@ -953,6 +961,7 @@ async def get_visible_user_record_history(
             Project,
             Lab,
             User,
+            submitted_at,
         )
         .join(Protocol, Protocol.id == LatestRecord.protocol_id)
         .join(Project, Project.id == Protocol.project_id)
@@ -964,24 +973,23 @@ async def get_visible_user_record_history(
             readable_condition,
             *date_conditions,
         )
-        .order_by(LatestRecord.created_at.desc(), LatestRecord.number.desc())
+        .order_by(submitted_at.desc(), LatestRecord.number.desc(), LatestRecord.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
 
     result = (await db_session.execute(query)).all()
     records = []
-    for record, protocol, project, lab, submit_user in result:
+    for record, protocol, project, lab, submit_user, current_time in result:
+        initial_time = current_time
         if record.version > 1:
-            init_record = await Record.find_by(
-                db_session,
-                [
-                    Record.id == record.id,
-                    Record.version == 1,
-                ],
+            initial_time = (
+                await db_session.scalar(
+                    select(activity_instant(Record) if params.time_zone else Record.created_at)
+                    .where(Record.id == record.id, Record.version == 1)
+                )
+                or current_time
             )
-        else:
-            init_record = record
 
         if submit_user.avatar:
             await submit_user.load_avatar_attachment()
@@ -993,7 +1001,8 @@ async def get_visible_user_record_history(
                 project=project,
                 lab=lab,
                 submit_user=submit_user,
-                init_record=init_record or record,
+                submitted_at=current_time,
+                initial_submitted_at=initial_time,
             )
         )
 
@@ -1016,8 +1025,14 @@ async def get_visible_user_record_summary(
     )
     LatestRecord = latest_records_subquery.c
     readable_condition = build_record_readable_condition(current_user.id, LatestRecord)
-    date_conditions = build_user_record_history_date_conditions(LatestRecord, params)
-    day_expr = cast(func.date(LatestRecord.created_at), String)
+    date_conditions = build_user_record_history_date_conditions(
+        LatestRecord.created_at, params
+    )
+    local_time = (
+        func.timezone(params.time_zone, LatestRecord.created_at)
+        if params.time_zone else LatestRecord.created_at
+    )
+    day_expr = cast(func.date(local_time), String)
 
     query = (
         select(
@@ -1063,7 +1078,9 @@ async def get_visible_user_record_events(
     )
     LatestRecord = latest_records_subquery.c
     readable_condition = build_record_readable_condition(current_user.id, LatestRecord)
-    date_conditions = build_user_record_history_date_conditions(LatestRecord, params)
+    date_conditions = build_user_record_history_date_conditions(
+        LatestRecord.created_at, params
+    )
 
     query = (
         select(
@@ -1090,7 +1107,7 @@ async def get_visible_user_record_events(
             readable_condition,
             *date_conditions,
         )
-        .order_by(LatestRecord.created_at.asc(), LatestRecord.number.asc())
+        .order_by(LatestRecord.created_at.asc(), LatestRecord.number.asc(), LatestRecord.id)
         .limit(limit + 1)
     )
 

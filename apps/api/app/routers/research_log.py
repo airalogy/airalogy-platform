@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import Date, String, case, cast, func, literal, or_, select, union_all
+from sqlalchemy import Date, Integer, String, case, cast, func, literal, or_, select, union_all
 
 from app.database import DBSession
 from app.models.knowledge import KnowledgeItem, KnowledgeState
@@ -17,6 +17,7 @@ from app.models.lab import Lab, LabRole, LabUser
 from app.models.project import Project
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolVersion
+from app.models.activity_time import activity_instant
 from app.models.record import Record
 from app.models.meeting import Meeting, MeetingWorkLink
 from app.services.meetings import authorize_meeting, meeting_read_condition
@@ -472,7 +473,7 @@ def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=F
             cast(Record.id, String),
             literal("record"),
             case((Record.version > 1, "record.revised"), else_="record.submitted"),
-            Record.created_at,
+            activity_instant(Record),
             Record.user_id,
             cast(Record.version, String),
             Project.lab_id,
@@ -505,7 +506,7 @@ def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=F
             cast(ProtocolVersion.id, String),
             literal("protocol"),
             literal("protocol.version_created"),
-            ProtocolVersion.created_at,
+            activity_instant(ProtocolVersion),
             Protocol.user_id,
             ProtocolVersion.version,
             Project.lab_id,
@@ -1046,7 +1047,15 @@ async def get_research_log_timeline(
                 select(event_union)
                 .where(*conditions)
                 .order_by(
-                    event_union.c.occurred_at.desc(), event_union.c.source_id.desc()
+                    event_union.c.occurred_at.desc(),
+                    event_union.c.source_id.desc(),
+                    event_union.c.source_type,
+                    case(
+                        (
+                            event_union.c.source_type == "record",
+                            cast(event_union.c.source_version, Integer),
+                        )
+                    ).desc(),
                 )
                 .offset((page - 1) * page_size)
                 .limit(page_size)

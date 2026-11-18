@@ -18,6 +18,7 @@ uv --directory apps/api run --no-sync python -m alembic upgrade head
 export RESEARCH_INTEGRATION_TEST=1 RESOURCE_TEST_DATABASE_URL="$DATABASE_URL" AI_ENABLED=false
 export PYTHONPATH="$repository_root/apps/compute-runner/src${PYTHONPATH:+:$PYTHONPATH}"
 test_files=(
+  tests/test_activity_time_postgres.py
   tests/test_collaboration_usability.py
   tests/test_project_people_migration_postgres.py
   tests/test_meetings.py

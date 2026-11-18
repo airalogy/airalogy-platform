@@ -1,4 +1,5 @@
 import type { ProtocolModels } from "@airalogy/shared/types"
+import { documentTimeZone } from "@/utils/documentBrowse"
 import { formatPydanticErrors } from "@airalogy/shared/utils/errorFormatter.js"
 import { request } from "../request"
 
@@ -265,6 +266,7 @@ function buildRecordDiaryParams(payload: AccessibleRecordDiaryQueryPayload) {
     project_uid: projectUid || undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
+    time_zone: documentTimeZone(),
     submitter,
     limit,
   }

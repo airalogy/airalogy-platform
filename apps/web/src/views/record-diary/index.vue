@@ -288,6 +288,7 @@ import { fetchProjectList } from "@/service/api/projects"
 import { fetchResearchLogTimeline } from "@/service/api/research-log"
 import { fetchAccessibleRecordDiary, fetchUserLabs, fetchUserProjects, fetchUserRecordDiary } from "@/service/api/users"
 import { useAuthStore } from "@/store/modules/auth"
+import { documentTimeZone } from "@/utils/documentBrowse"
 import { useOrProvideLabInfoStore } from "@/views/labs/hooks/useLabsInfoStore"
 import { useProfileStore } from "@/views/profile/hooks/useProfileStore"
 import { useOrProvideProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
@@ -598,6 +599,7 @@ async function fetcher(payload: FetchPayload): Promise<FetchData> {
         : undefined,
       date_from: selectedDate.value,
       date_to: selectedDate.value,
+      time_zone: documentTimeZone(),
       page: payload.currentPage,
       page_size: payload.currentPageSize,
     })

@@ -147,6 +147,14 @@ Single-Lab 默认设置 `SMS_LOGIN_ENABLED=false` 和 `SMS_SIGNUP_REQUIRED=false
 
 `COMPONENT_BUILD_MEMORY_MB` 和 `WEB_BUILD_MEMORY_MB` 只用于控制 Web 镜像构建时的 Node.js heap 上限。除非主机的 Docker 内存配额有明确差异，应保留生成配置中的默认值。
 
+### 历史研究活动的时区
+
+迁移 `0090_activity_instants` 为 Record 和 Protocol 版本增加可为空的时间字段。API 在新提交或修订时记录准确时刻，供日志排序和日历使用。升级保留历史时间原值，旧行的新字段留空。
+
+默认沿用 PostgreSQL 会话此前对旧时间的解释。如果能核实历史 API 写入进程使用的时区，可以在 API 环境中把 `LEGACY_ACTIVITY_TIME_ZONE` 设为其 IANA 名称（例如 `Asia/Shanghai`），然后重启 API。先在恢复副本中选择午夜前后的已知事件，与独立依据核对。调整设置会改变旧记录的显示时间。查看者仍按自己的时区选择日期。
+
+若历史写入进程使用过不同时区，或夏令时回拨使同一时间出现两次，应先保留默认设置，按时段查明依据。需要回退应用时可继续使用兼容的新表结构。写入准确时刻后，数据库会阻止删除这些字段的降级操作。
+
 ## 日常运维
 
 查看状态和日志：

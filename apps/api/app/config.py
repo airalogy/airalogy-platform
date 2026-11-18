@@ -2,8 +2,9 @@ import os
 import re
 from typing import Literal
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.libs.ai_scope import active_ai_scope
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
 
     APP_ENV: str = "development"
     DATABASE_URL: str
+    LEGACY_ACTIVITY_TIME_ZONE: str | None = None
     SECRET_KEY: str
     AES_KEY: str
     AIRALOGY_ENDPOINT: str
@@ -311,6 +313,16 @@ class Settings(BaseSettings):
         # Existing indexes use Qwen v4. An OpenAI chat key does not authorize
         # switching vector spaces; keyword search remains available instead.
         return self.effective_ai_enabled and self.qwen_chat_configured
+
+    @field_validator("LEGACY_ACTIVITY_TIME_ZONE")
+    @classmethod
+    def validate_activity_zone(cls, zone):
+        if zone is not None:
+            try:
+                ZoneInfo(zone)
+            except (ValueError, ZoneInfoNotFoundError):
+                raise ValueError("Use an IANA zone for LEGACY_ACTIVITY_TIME_ZONE") from None
+        return zone
 
     @model_validator(mode="before")
     @classmethod

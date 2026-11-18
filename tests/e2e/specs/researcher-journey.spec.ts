@@ -145,8 +145,6 @@ test("My Log is reachable and a progress entry survives reloading", async ({ pag
   await page.goto("/home")
   await page.getByRole("link", { name: "Log", exact: true }).click()
   await expect(page.getByRole("heading", { name: "My Log", exact: true })).toBeVisible()
-  // Persistence does not imply first-page position in a mixed activity feed.
-  await selectLogEntries()
   await page.getByRole("button", { name: "New Log entry", exact: true }).click()
   const dialog = page.getByRole("dialog")
   await dialog.getByRole("textbox").nth(1).fill(title)
@@ -163,8 +161,8 @@ test("My Log is reachable and a progress entry survives reloading", async ({ pag
   await expect(entry.getByRole("heading", { name: title, exact: true })).toBeVisible()
   await expect(entry.getByText(body, { exact: true })).toBeVisible()
   await page.reload()
-  await selectLogEntries()
   await expect(entry.getByRole("heading", { name: title, exact: true })).toBeVisible()
+  await selectLogEntries()
   await expect(entry.getByText(body, { exact: true })).toBeVisible()
 })
 

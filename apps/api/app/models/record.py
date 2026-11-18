@@ -4,10 +4,11 @@ from uuid import UUID
 from sqlalchemy import JSON, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from .activity_time import ActivityCreationTime
 from .base import Base
 
 
-class Record(Base):
+class Record(ActivityCreationTime, Base):
     __tablename__ = "records"
 
     id: Mapped[UUID] = mapped_column(
@@ -24,7 +25,6 @@ class Record(Base):
     user_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
     data: Mapped[dict] = mapped_column(JSON)
     report: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now)
     number: Mapped[int] = mapped_column(nullable=False, default=1)
     hash: Mapped[str] = mapped_column(nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(nullable=True)
