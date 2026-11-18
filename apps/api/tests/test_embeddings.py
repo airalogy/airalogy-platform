@@ -285,6 +285,13 @@ def test_published_masterbrain_endpoint_uses_platform_metering_without_network(
     from masterbrain.utils import llm
     from openai.resources.embeddings import AsyncEmbeddings
 
+    from app.services.organization_ai import sessionmanager
+
+    @asynccontextmanager
+    async def inherited_policy():
+        yield SimpleNamespace(get=AsyncMock(return_value=None))
+
+    monkeypatch.setattr(sessionmanager, "session", inherited_policy)
     enable_embeddings(monkeypatch)
     monkeypatch.setattr(llm, "DASHSCOPE_API_KEY", "synthetic-key")
     monkeypatch.setattr(

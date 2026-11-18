@@ -5069,7 +5069,6 @@ async def process_research_run_advance(
 
     for _ in range(max_steps):
         run, task, project, lab, rows = await _load_run_context(db_session, run_id)
-        await bind_organization(db_session, project.lab_id)
         if (run.environment_snapshot or {}).get("manual_workflow"):
             return {"status": run.status, "fixed_workflow": True}
         if generation != run.advance_generation:
@@ -5082,6 +5081,7 @@ async def process_research_run_advance(
             ResearchRunStatus.WAITING_FOR_EVENT.value,
         }:
             return {"status": run.status}
+        await bind_organization(db_session, task.lab_id)
         operational_limit = await reached_operational_limit(db_session, task=task)
         if operational_limit is not None:
             limit_kind, limit_snapshot = operational_limit
