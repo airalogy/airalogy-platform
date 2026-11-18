@@ -567,3 +567,63 @@ def test_activity_groups_only_same_transaction_for_meeting_readers():
                 assert summary.json()["total_count"] == visible["total_count"]
 
     asyncio.run(run())
+
+
+@integration
+def test_aira_meeting_draft_checks_writer_and_instance_and_only_returns_proposal(
+    monkeypatch,
+):
+    calls = []
+
+    async def fake_model(prompt, model, *, usage_context, max_response_bytes):
+        calls.append(usage_context)
+        assert "Synthetic discussion" in prompt
+        return {
+            "message": "Review your draft",
+            "draft": {
+                "title": "Synthetic draft",
+                "body": "Decision pending.",
+                "actions": ["Check fit"],
+            },
+        }
+
+    from app.services import meeting_drafts
+
+    monkeypatch.setattr(meeting_drafts, "aira_structured_proposal", fake_model)
+    monkeypatch.setattr(meetings.config, "DASHSCOPE_API_KEY", "synthetic-unused")
+    monkeypatch.setattr(meetings.config, "AI_ENABLED", False)
+
+    async def run():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions)
+            project_id = str(seed.project.id)
+            owner = {"Auth-Token": create_access_token(seed.owner)}
+            outsider = {"Auth-Token": create_access_token(seed.outsider)}
+            data = {"project_id": project_id, "message": "Synthetic discussion"}
+            async with client(sessions) as http:
+                endpoint = "/meetings/aira/draft"
+                assert (
+                    await http.post(endpoint, headers=owner, json=data)
+                ).status_code == 503
+                monkeypatch.setattr(meetings.config, "AI_ENABLED", True)
+                assert (
+                    await http.post(endpoint, headers=outsider, json=data)
+                ).status_code == 403
+                assert not calls
+                availability = await http.get(
+                    "/meetings/aira/availability",
+                    headers=owner,
+                    params={"project_id": project_id},
+                )
+                assert availability.json() == {"available": True}
+                response = await http.post(endpoint, headers=owner, json=data)
+                assert response.status_code == 200, response.text
+                assert response.json()["draft"]["occurred_on"] is None
+                assert calls[0].project_id == project_id
+                assert calls[0].tenant_id == str(seed.project.lab_id)
+                listed = await http.get(
+                    "/meetings", headers=owner, params={"project_id": project_id}
+                )
+                assert listed.json()["total"] == 0
+
+    asyncio.run(run())

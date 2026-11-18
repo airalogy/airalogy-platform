@@ -5703,6 +5703,19 @@
       "noDate": "Time not set",
       "recordSaved": "Minutes saved"
     },
+    "projectAira": {
+      "restart": "New chat",
+      "restartHint": "Starting a new chat clears this unsaved draft and conversation.",
+      "panel": "Project Aira",
+      "hint": "Paste the discussion or ask for a revision. Review the minutes and actions together before saving them to this project.",
+      "input": "Discussion notes or revision request",
+      "send": "Send",
+      "review": "Review minutes and actions",
+      "failed": "Aira could not generate the draft. Your input is ready to retry.",
+      "unavailable": "No AI model is available.",
+      "expired": "This temporary draft has expired. Open Aira again or create a meeting manually.",
+      "limit": "This draft has reached its conversation limit. Continue editing in the meeting form."
+    },
     "researchActivity": {
       "title": "Research activity",
       "timeZoneDetails": "View activity date timezone",

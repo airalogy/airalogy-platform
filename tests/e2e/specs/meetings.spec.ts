@@ -238,3 +238,53 @@ test("meeting and two detailed actions save together, and an administrator links
     await page.screenshot({ path: testInfo.outputPath(`compact-project-${width}.png`), fullPage: true })
   }
 })
+
+test("project Aira reviews a temporary meeting draft before saving minutes and actions together", async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+  const root = await meetingProject(page.request)
+  await page.route("**/api/instance", async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({ response, json: { ...await response.json(), ai_enabled: true } })
+  })
+  await page.route("**/api/meetings/aira/availability?*", route => route.fulfill({ json: { available: true } }))
+  const title = "Synthetic Aira meeting"
+  const draft = { title, body: "Synthetic decision to review fit.", occurred_on: null, actions: ["Check fit", "Review notes"] }
+  let draftCalls = 0
+  await page.route("**/api/meetings/aira/draft", async (route) => {
+    const input = route.request().postDataJSON()
+    if (draftCalls++)
+      expect(input.previous).toEqual(draft)
+    await route.fulfill({ json: { message: "请核对纪要", draft } })
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${root}/records`)
+  const filters = page.getByTestId("activity-type")
+  expect((await filters.boundingBox())!.height).toBeLessThanOrEqual(36)
+  await page.getByTestId("project-aira").click()
+  const panel = page.getByTestId("project-aira-panel")
+  await expect(panel).toBeVisible()
+  expect((await panel.boundingBox())!.x).toBeGreaterThan((await filters.boundingBox())!.x)
+  await panel.locator("textarea").fill("Synthetic transcript for a new meeting")
+  await panel.getByRole("button", { name: "发送" }).click()
+  await expect(panel.getByTestId("aira-proposal")).toContainText(title)
+  await expect(page.getByTestId("research-activity").locator(".n-spin-body")).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath("aira-desktop.png") })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(panel).toBeVisible()
+  expect((await panel.boundingBox())!.width).toBeGreaterThanOrEqual(385)
+  await page.screenshot({ path: testInfo.outputPath("aira-phone.png") })
+  await panel.locator("textarea").fill("Keep the two actions")
+  await panel.getByRole("button", { name: "发送" }).click()
+  await panel.getByRole("button", { name: "核对纪要与待办" }).click()
+  await expect(page.getByTestId("meeting-title").locator("input")).toHaveValue(title)
+  await expect(page.getByTestId("meeting-action-row-1")).toContainText("2")
+  await expect(page.getByTestId("meeting-save")).toBeDisabled()
+  await page.getByTestId("meeting-date").fill("2020-03-15")
+  const saved = page.waitForResponse(r => r.url().endsWith("/api/meetings/with-actions") && r.request().method() === "POST")
+  await page.getByTestId("meeting-save").click()
+  const response = await saved
+  expect(response.ok(), await response.text()).toBeTruthy()
+  const meeting = await response.json()
+  expect(meeting.work.map((link: { item: { title: string } }) => link.item.title).sort()).toEqual(draft.actions)
+  await expect(page.getByTestId("meeting-reading")).toContainText(draft.body)
+})

@@ -5707,6 +5707,19 @@ declare namespace I18n {
         noDate: string
         recordSaved: string
       }
+      projectAira: {
+        restart: string
+        restartHint: string
+        panel: string
+        hint: string
+        input: string
+        send: string
+        review: string
+        failed: string
+        unavailable: string
+        expired: string
+        limit: string
+      }
       researchActivity: {
         title: string
         timeZoneDetails: string

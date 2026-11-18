@@ -8,6 +8,10 @@ Select project accounts or record external participants by name and organization
 
 Meeting lists, document reads/history/browsing, activity counts and work evidence enforce the same meeting access. Minutes share one document and revision history. Attachments retain their own scope: meeting access does not make a project file participant-only or grant access to an otherwise private file. External-account invitations and guest sharing are not part of this delivery.
 
+## Meeting drafts with Aira
+
+When AI is available, project writers can open Aira on the right, paste their discussion, and request revisions. Only the text supplied in the conversation and the current proposal are sent. Choose **Review minutes and actions** to open the meeting form. Confirm the date, audience, and any tasks or assignments, then save. The draft stays in the current page session until saved.
+
 ## Minutes, comments and actions
 
 Record discussion, decisions/rationale, open questions and next steps. Save and check the feedback. Conflicting revisions are rejected with input retained; compare the latest version before merging. Leaving with unsaved input prompts a warning. Comments are appended with author/time, independently of the minutes.
@@ -20,7 +24,7 @@ Project Overview displays a recent 90-day heatmap and activity list. Select a da
 
 A meeting is counted once on its actual occurrence date. Editing minutes or attendance does not add activity. Date boundaries and counts share the browser timezone, available from the information button beside the date range; unreadable activity is excluded before aggregation. Counts support recall, not productivity scoring. Existing documents, work, Protocols and Records retain their own save/submission events; ordinary comments and title edits are not work progress.
 
-Recurring schedules, reminders, real-time text collaboration, transcription and AI summaries remain future work. Ordinary meetings require no Protocol; structured reviews/tests may link existing Protocols and Records.
+Recurring schedules, reminders, real-time text collaboration, and transcription remain future work. Ordinary meetings require no Protocol; structured reviews/tests may link existing Protocols and Records.
 
 ## Names, accounts and action batches
 

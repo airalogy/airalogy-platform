@@ -26,6 +26,7 @@ import { useI18n } from "vue-i18n"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import ActionBatch from "./action-batch.vue"
+import { meetingHandoffKey } from "./aira-handoff"
 
 const { t, locale } = useI18n()
 const dialog = useDialog()
@@ -53,6 +54,8 @@ const selected = ref<Meeting>()
 const form = ref<MeetingContent>()
 const saved = ref("")
 const creationId = ref("")
+const handoff = inject(meetingHandoffKey, null)
+const initialActionTitles = ref<string[]>([])
 const editorMode = ref<"wysiwyg" | "source">("wysiwyg")
 const comment = ref("")
 const comments = ref<MeetingComment[]>([])
@@ -240,6 +243,7 @@ async function loadSelected() {
   actionDirty.value = false
   draftActions.value = []
   batchRequestId = crypto.randomUUID()
+  initialActionTitles.value = []
   if (!id)
     return
   if (id === "new") {
@@ -258,6 +262,20 @@ async function loadSelected() {
       access: [],
     }
     saved.value = JSON.stringify(form.value)
+    if (route.query.draft) {
+      const seed = handoff?.value
+      if (seed?.projectId === projectId.value && seed.key === route.query.draft) {
+        const proposal = seed.proposal
+        form.value.title = proposal.title
+        form.value.body = proposal.body
+        setTime("occurred_at", proposal.occurred_on || "")
+        initialActionTitles.value = [...proposal.actions]
+      }
+      else {
+        form.value = undefined
+        error.value = t("page.projectAira.expired")
+      }
+    }
     return
   }
   busy.value = true
@@ -313,9 +331,11 @@ async function save() {
       await router.replace({
         name: "project-meetings",
         params: route.params,
-        query: { ...route.query, meeting: result.id },
+        query: { meeting: result.id },
       })
     }
+    if (handoff)
+      handoff.value = null
     await loadList()
   }
   catch (e) {
@@ -450,7 +470,7 @@ async function reload() {
 }
 
 onBeforeRouteLeave(guard)
-onBeforeRouteUpdate((to, from) => to.query.meeting === from.query.meeting || guard())
+onBeforeRouteUpdate((to, from) => (to.query.meeting === from.query.meeting && to.query.draft === from.query.draft) || guard())
 function beforeUnload(e: BeforeUnloadEvent) {
   flushVisual()
   if (dirty.value || actionDirty.value || comment.value.trim()) {
@@ -480,7 +500,7 @@ watch(
   },
   { immediate: true },
 )
-watch(() => route.query.meeting, loadSelected)
+watch([() => route.query.meeting, () => route.query.draft], loadSelected)
 watch(page, loadList)
 </script>
 
@@ -599,7 +619,7 @@ watch(page, loadList)
           v-if="editable && editing"
           type="primary"
           :loading="busy"
-          :disabled="!form.title.trim() || (!dirty && !!selected)"
+          :disabled="!form.title.trim() || (form.status === 'held' && !form.occurred_at) || (!dirty && !!selected)"
           data-testid="meeting-save"
           @click="save"
         >
@@ -756,7 +776,7 @@ watch(page, loadList)
           />
         </section>
       </template>
-      <action-batch v-if="draftMeeting" :key="creationId" :meeting="draftMeeting" :members="members" :disabled="busy" draft @rows="draftActions = $event" @dirty="actionDirty = $event" />
+      <action-batch v-if="draftMeeting" :key="creationId" :meeting="draftMeeting" :members="members" :disabled="busy" draft :initial-titles="initialActionTitles" @rows="draftActions = $event" @dirty="actionDirty = $event" />
       <div v-if="selected" class="flex flex-wrap items-center gap-3 text-sm text-gray-500">
         <span>{{ t("page.meetings.created") }}
           {{ new Date(selected.created_at).toLocaleString() }}</span><span>{{ t("page.meetings.updated") }}

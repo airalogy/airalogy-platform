@@ -5,17 +5,17 @@ import { saveMeetingActions } from "@/service/api/meetings"
 import { blankWork } from "@/service/api/project-work"
 import { useI18n } from "vue-i18n"
 
-const props = defineProps<{ meeting: Meeting, members: MeetingMember[], disabled: boolean, draft?: boolean }>()
+const props = defineProps<{ meeting: Meeting, members: MeetingMember[], disabled: boolean, draft?: boolean, initialTitles?: string[] }>()
 const emit = defineEmits<{ saved: [meeting: Meeting], dirty: [value: boolean], rows: [value: MeetingActionDraft[]] }>()
 const { t } = useI18n()
-const rows = ref<MeetingActionDraft[]>([])
+const rows = ref<MeetingActionDraft[]>((props.initialTitles ?? []).map(title => ({ ...blankWork(), id: crypto.randomUUID(), title })))
 const titles = ref("")
 const busy = ref(false)
 const error = ref("")
 let requestId = crypto.randomUUID()
 const dirty = computed(() => rows.value.length > 0 || Boolean(titles.value.trim()))
 watch(dirty, value => emit("dirty", value), { immediate: true })
-watch(rows, value => emit("rows", value), { deep: true })
+watch(rows, value => emit("rows", value), { deep: true, immediate: true })
 function add(title = "") {
   if (rows.value.length < 50)
     rows.value.push({ ...blankWork(), id: crypto.randomUUID(), title })

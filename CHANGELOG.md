@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Add a project Aira side panel for reviewing meeting minutes and actions before saving, and compact the activity filters.
+
 - Project overviews show recent activity and day details first, group actions created together from a visible meeting, and preview three active work items.
 
 - Reuse fresh, verified local source-check results for the same clean commit and environment; invalidate failed retries and changed evidence, retain fresh CI/artifact/recovery checks, and avoid unrelated frontend type builds for browser-test-only or Python AI edits. Limit hosted push checks to main while preserving affected PR/manual and formal release gates, and cancel superseded research/network runs.

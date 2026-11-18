@@ -1,88 +1,102 @@
 <template>
   <global-layout>
-    <content-layout :title="projectTitle" :tabs="tabs" compact-header>
-      <template v-if="authStore.isLogin" #suffix>
-        <div class="flex flex-wrap items-center justify-end gap-2">
-          <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
-            <n-button>{{ $t('common.more') }}</n-button>
-          </n-dropdown>
-          <add-protocol-modal
-            v-if="route.name === 'project-protocols' && canCreateProtocol"
-            :compact="false"
-            show-icon
-            :trigger="$t('common.newProtocol')"
-            :project="projectInfo"
-            :show-select="false"
-            @modal:new-protocol="handleAddProtocol"
-          />
-          <global-add-member-table-modal
-            v-if="route.name === 'project-members' && projectInfo?.id && canShowSettings "
-            :id="projectInfo?.id"
-            show-icon
-            :trigger="$t('common.addMember')"
-            type="project"
-            :is-private="projectInfo.type === ProjectType.PRIVATE"
-            @modal:new-member="handleAddMember"
-          />
-        </div>
-      </template>
-      <template v-if="showIcon" #title>
-        <div class="mb-2 mt-2 min-w-0 flex items-start gap-3" data-testid="project-header">
-          <project-icon class="shrink-0 !h-9 !w-9" />
-          <template v-if="projectInfo">
-            <div class="min-w-0 flex-1">
-              <router-link
-                v-if="authStore.isLogin && !instanceStore.isSingleLab"
-                :to="{ name: 'lab-projects', params: { labUid: projectInfo.lab_uid } }"
-                class="block break-words text-xs color-text-secondary"
-              >
-                {{ projectInfo.lab_name || projectInfo.lab_uid }}
-              </router-link>
-              <span v-else-if="!instanceStore.isSingleLab" class="block break-words text-xs color-text-secondary">
-                {{ projectInfo.lab_name || projectInfo.lab_uid }}
-              </span>
-              <h2 class="m-0 min-w-0 break-words !text-xl !leading-8">
-                {{ projectTitle }}
-              </h2>
-              <p v-if="description" ref="descriptionElement" class="mb-0 mt-1 text-sm leading-5 color-text-secondary" :class="{ 'line-clamp-2': !descriptionExpanded }" data-testid="project-description">
-                {{ description }}
-              </p>
-              <button v-if="description && (descriptionOverflow || descriptionExpanded)" type="button" class="mt-1 text-xs text-primary" :aria-expanded="descriptionExpanded" @click="descriptionExpanded = !descriptionExpanded">
-                {{ descriptionExpanded ? $t('common.collapse') : $t('common.expand') }}
-              </button>
+    <div class="project-shell" :class="{ 'with-assistant': assistantOpen && assistantAvailable }">
+      <div class="min-w-0">
+        <content-layout :title="projectTitle" :tabs="tabs" compact-header>
+          <template v-if="authStore.isLogin" #suffix>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="assistantOpen = !assistantOpen">Aira</n-button>
+              <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
+                <n-button>{{ $t('common.more') }}</n-button>
+              </n-dropdown>
+              <add-protocol-modal
+                v-if="route.name === 'project-protocols' && canCreateProtocol"
+                :compact="false"
+                show-icon
+                :trigger="$t('common.newProtocol')"
+                :project="projectInfo"
+                :show-select="false"
+                @modal:new-protocol="handleAddProtocol"
+              />
+              <global-add-member-table-modal
+                v-if="route.name === 'project-members' && projectInfo?.id && canShowSettings "
+                :id="projectInfo?.id"
+                show-icon
+                :trigger="$t('common.addMember')"
+                type="project"
+                :is-private="projectInfo.type === ProjectType.PRIVATE"
+                @modal:new-member="handleAddMember"
+              />
             </div>
-            <span v-if="visibilityLabel" class="inline-flex shrink-0 items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-500" :class="visibilityClass">
-              {{ visibilityLabel }}
-            </span>
           </template>
-          <n-skeleton v-else width="20rem" class="mx-4" />
-        </div>
-      </template>
-    </content-layout>
+          <template v-if="showIcon" #title>
+            <div class="mb-2 mt-2 min-w-0 flex items-start gap-3" data-testid="project-header">
+              <project-icon class="shrink-0 !h-9 !w-9" />
+              <template v-if="projectInfo">
+                <div class="min-w-0 flex-1">
+                  <router-link
+                    v-if="authStore.isLogin && !instanceStore.isSingleLab"
+                    :to="{ name: 'lab-projects', params: { labUid: projectInfo.lab_uid } }"
+                    class="block break-words text-xs color-text-secondary"
+                  >
+                    {{ projectInfo.lab_name || projectInfo.lab_uid }}
+                  </router-link>
+                  <span v-else-if="!instanceStore.isSingleLab" class="block break-words text-xs color-text-secondary">
+                    {{ projectInfo.lab_name || projectInfo.lab_uid }}
+                  </span>
+                  <h2 class="m-0 min-w-0 break-words !text-xl !leading-8">
+                    {{ projectTitle }}
+                  </h2>
+                  <p v-if="description" ref="descriptionElement" class="mb-0 mt-1 text-sm leading-5 color-text-secondary" :class="{ 'line-clamp-2': !descriptionExpanded }" data-testid="project-description">
+                    {{ description }}
+                  </p>
+                  <button v-if="description && (descriptionOverflow || descriptionExpanded)" type="button" class="mt-1 text-xs text-primary" :aria-expanded="descriptionExpanded" @click="descriptionExpanded = !descriptionExpanded">
+                    {{ descriptionExpanded ? $t('common.collapse') : $t('common.expand') }}
+                  </button>
+                </div>
+                <span v-if="visibilityLabel" class="inline-flex shrink-0 items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-500" :class="visibilityClass">
+                  {{ visibilityLabel }}
+                </span>
+              </template>
+              <n-skeleton v-else width="20rem" class="mx-4" />
+            </div>
+          </template>
+        </content-layout>
+      </div>
+      <dialog v-if="assistantAvailable && hasOpened && projectInfo" ref="assistantDialog" class="project-assistant" :aria-label="$t('page.projectAira.panel')" @cancel.prevent="closeAssistant">
+        <aira-panel :key="assistantScope" :project-id="projectInfo.id" :project-name="projectTitle" @close="closeAssistant" @review="reviewProposal" />
+      </dialog>
+    </div>
   </global-layout>
 </template>
 
 <script setup lang="ts">
 import type { ProjectInfoNameKey } from "#/page-route"
+import type { MeetingProposal } from "@/service/api/meetings"
 import type { TabPaneProps } from "naive-ui/es/tabs"
+import type { MeetingHandoff } from "../meetings/aira-handoff"
 import { useProjectPermissions } from "@/composables"
 import { useProjectVisibility } from "@/composables/useProjectVisibility"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
 import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
+import { meetingDraftAvailability } from "@/service/api/meetings"
 import { useAppStore } from "@/store/modules/app"
-
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { useRouteStore } from "@/store/modules/route"
+
 import { buildPublicProjectPath, buildSeoUrl } from "@/utils/seo"
 import { $t } from "@airalogy/shared/locales"
-
+import { useMediaQuery } from "@vueuse/core"
 import { computed, h, onMounted } from "vue"
 import TabHintLabel from "../../components/common/tab-hint-label.vue"
+
 import { LAB_OWNER_AND_MANAGER } from "../../composables/useLabPermissions"
 import { ProjectType } from "../../enum"
+import { meetingHandoffKey } from "../meetings/aira-handoff"
+import AiraPanel from "../meetings/aira-panel.vue"
 import { useProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import AddProtocolModal from "../project-protocols/modules/add-protocol-modal.vue"
 
@@ -140,6 +154,70 @@ const canShowSettings = computed(() =>
   canShowProjectSettings.value || LAB_OWNER_AND_MANAGER.includes(projectInfo.value?.user_lab_role),
 )
 
+const router = useRouter()
+const narrow = useMediaQuery("(max-width: 899px)")
+const assistantOpen = ref(false)
+const hasOpened = ref(false)
+const assistantDialog = ref<HTMLDialogElement>()
+const assistantTrigger = ref<{ $el: HTMLElement }>()
+const pendingProposal = ref<MeetingHandoff | null>(null)
+provide(meetingHandoffKey, pendingProposal)
+const assistantScope = computed(() => JSON.stringify([authStore.userInfo.id, route.params.labUid, route.params.projectUid]))
+const assistantAvailable = ref(false)
+watch(() => [assistantScope.value, projectInfo.value?.id, instanceStore.aiEnabled, authStore.isLogin] as const, async (_, __, cleanup) => {
+  let current = true
+  cleanup(() => {
+    current = false
+  })
+  assistantAvailable.value = false
+  const project = projectInfo.value
+  const organizationUid = route.params.labUid || instanceStore.organization?.uid
+  if (!authStore.isLogin || !instanceStore.aiEnabled || !project || project.uid !== route.params.projectUid || project.lab_uid !== organizationUid)
+    return
+  try {
+    const status = await meetingDraftAvailability(project.id)
+    if (current)
+      assistantAvailable.value = status.available
+  }
+  catch {
+    // Opening the project does not require access to meeting drafting.
+  }
+}, { immediate: true })
+watch(assistantScope, () => {
+  assistantOpen.value = false
+  hasOpened.value = false
+  pendingProposal.value = null
+})
+watch(assistantOpen, (open) => {
+  if (open)
+    hasOpened.value = true
+})
+watch([assistantDialog, assistantOpen, narrow], ([element, open, modal]) => {
+  if (!element)
+    return
+  if (element.open)
+    element.close()
+  if (open) {
+    if (modal)
+      element.showModal()
+    else element.show()
+  }
+}, { flush: "post" })
+function closeAssistant() {
+  assistantOpen.value = false
+  nextTick(() => assistantTrigger.value?.$el.focus())
+}
+async function reviewProposal(proposal: MeetingProposal) {
+  if (!projectInfo.value)
+    return
+  const key = crypto.randomUUID()
+  pendingProposal.value = { key, projectId: projectInfo.value.id, proposal }
+  const failed = await router.push({ name: "project-meetings", params: route.params, query: { meeting: "new", draft: key } })
+  if (!failed) {
+    assistantOpen.value = false
+    hasOpened.value = false
+  }
+}
 const membersHint = computed(() => $t("page.project.tab.membersHint"))
 
 const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => {
@@ -454,4 +532,16 @@ onUnmounted(() => {
   line-height: 1
   color: #A1A4AF
   transform: translateY(-1px)
+</style>
+
+<style scoped>
+.project-assistant { position: sticky; top: 16px; width: 100%; min-width: 0; max-width: none; max-height: none; padding: 0; margin: 0; border: 0; background: white; }
+@media (max-width: 899px) {
+  .project-assistant { position: fixed; inset: 0 0 0 auto; width: min(420px, 100%); height: 100dvh; }
+  .project-assistant::backdrop { background: rgb(20 30 48 / 25%); }
+}
+@media (max-width: 599px) { .project-assistant { width: 100%; } }
+@media (min-width: 900px) {
+  .project-shell.with-assistant { display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 30vw, 440px); align-items: start; gap: 20px; }
+}
 </style>

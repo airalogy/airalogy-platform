@@ -1,14 +1,18 @@
 """Project meeting workflows with one document and one identity per action item."""
 
+import asyncio
 from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
+import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, func, or_, select
 
+from app.config import config
 from app.database import DBSession
+from app.models.chat import ChatModel, ChatModelType
 from app.models.meeting import (
     Meeting,
     MeetingAccess,
@@ -28,6 +32,9 @@ from app.models.user import User
 from app.routers.depends import CurrentUser
 from app.services.document_browse import date_bounds
 from app.services.knowledge import canonical_digest
+from app.services.chat_models import require_ai_enabled
+from app.services.meeting_drafts import DraftReply, DraftTurn, draft_meeting
+from app.services.model_usage import create_usage_context
 from app.services.meetings import (
     MeetingContent,
     authorize_meeting,
@@ -397,6 +404,49 @@ async def list_meetings(
             db_session, user=current_user, project=project, capability="log.write"
         ),
     }
+
+
+@router.get("/aira/availability")
+async def meeting_draft_availability(
+    project_id: UUID, current_user: CurrentUser, db_session: DBSession
+):
+    project = await project_context(db_session, current_user, project_id)
+    return {
+        "available": config.effective_ai_enabled
+        and await has_research_capability(
+            db_session, user=current_user, project=project, capability="log.write"
+        )
+    }
+
+
+@router.post("/aira/draft", response_model=DraftReply)
+async def prepare_meeting_draft(
+    data: DraftTurn, current_user: CurrentUser, db_session: DBSession
+):
+    project = await project_context(
+        db_session, current_user, data.project_id, write=True
+    )
+    require_ai_enabled()
+    usage = create_usage_context(
+        feature="meeting.draft",
+        user_id=current_user.id,
+        lab_id=project.lab_id,
+        project_id=project.id,
+    )
+    model = (
+        config.CHAT_MODEL_ACCURATE
+        if config.qwen_chat_configured
+        else ChatModel(model_type=ChatModelType.GPT).name
+    )
+    await db_session.commit()
+    try:
+        async with asyncio.timeout(90):
+            reply = await draft_meeting(data, model, usage)
+    except (TimeoutError, ValueError, httpx.HTTPError, HTTPException) as exc:
+        raise HTTPException(502, "Aira could not prepare a meeting draft") from exc
+    await project_context(db_session, current_user, data.project_id, write=True)
+    require_ai_enabled()
+    return reply
 
 
 @router.post("")

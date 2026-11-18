@@ -133,3 +133,23 @@ export function saveMeetingActions(id: string, requestId: string, revision: numb
 export function saveMeetingWithActions(id: string, projectId: string, content: MeetingContent, requestId: string, actions: MeetingActionDraft[]) {
   return documentRequest<Meeting>({ url: "/meetings/with-actions", method: "POST", data: { meeting: { ...content, id, project_id: projectId }, actions: { request_id: requestId, expected_revision: 1, actions } } })
 }
+
+export interface MeetingProposal {
+  title: string
+  body: string
+  occurred_on: string | null
+  actions: string[]
+}
+
+export function meetingDraftAvailability(projectId: string) {
+  return documentRequest<{ available: boolean }>({ url: "/meetings/aira/availability", params: { project_id: projectId } })
+}
+
+export function requestMeetingDraft(projectId: string, message: string, history: { user: string, reply: string }[], previous: MeetingProposal | null) {
+  return documentRequest<{ message: string, draft: MeetingProposal | null }>({
+    url: "/meetings/aira/draft",
+    timeout: 100_000,
+    method: "POST",
+    data: { project_id: projectId, message, history, previous },
+  })
+}

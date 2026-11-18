@@ -181,11 +181,12 @@ onBeforeUnmount(() => requestId++)
         @saved="load"
       />
     </header>
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="activity-filters flex flex-wrap items-center gap-2 text-sm">
       <n-select
         v-model:value="source"
         :options="options"
-        class="!w-44"
+        size="small"
+        class="!w-32"
         data-testid="activity-type"
         @update:value="reset"
       />
@@ -195,7 +196,8 @@ onBeforeUnmount(() => requestId++)
         :min="1900"
         :max="new Date().getFullYear()"
         :show-button="false"
-        class="!w-28"
+        size="small"
+        class="!w-20"
         @update:value="reset"
       /></label>
       <div class="flex items-center gap-1 text-xs text-gray-500">
@@ -315,7 +317,7 @@ onBeforeUnmount(() => requestId++)
 .activity-calendar-frame { width: max-content; max-width: 100%; }
 .activity-months { display: grid; gap: 4px; margin: 0 0 6px 38px; font-size: 11px; color: #64748b; }
 .activity-months span { white-space: nowrap; }
-.activity-weekdays { display: grid; grid-template-rows: repeat(7, 13px); gap: 4px; width: 30px; font-size: 10px; line-height: 13px; color: #64748b; }
+.activity-weekdays { flex: 0 0 30px; white-space: nowrap; display: grid; grid-template-rows: repeat(7, 13px); gap: 4px; width: 30px; font-size: 10px; line-height: 13px; color: #64748b; }
 .activity-calendar {
   display: grid;
   grid-template-rows: repeat(7, 13px);

@@ -5703,6 +5703,19 @@
       "noDate": "时间未定",
       "recordSaved": "纪要已保存"
     },
+    "projectAira": {
+      "restart": "新对话",
+      "restartHint": "开始新对话会清除本次未保存的草稿和对话。",
+      "panel": "项目 Aira",
+      "hint": "粘贴讨论内容，或说明想怎么修改草稿。确认后可将纪要和待办一起保存到本项目。",
+      "input": "输入讨论内容或修改要求",
+      "send": "发送",
+      "review": "核对纪要与待办",
+      "failed": "未能生成草稿，输入已保留，可重试。",
+      "unavailable": "当前没有可用的 AI 模型。",
+      "expired": "这份临时草稿已失效。请重新打开 Aira，或手动新建会议。",
+      "limit": "已达到本次草稿的对话上限，请在会议表单中继续编辑。"
+    },
     "researchActivity": {
       "title": "研究活动",
       "timeZoneDetails": "查看日期统计时区",
