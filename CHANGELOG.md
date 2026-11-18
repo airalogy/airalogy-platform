@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Reuse fresh, verified local source-check results for the same clean commit and environment; invalidate failed retries and changed evidence, retain fresh CI/artifact/recovery checks, and avoid unrelated frontend type builds for browser-test-only or Python AI edits. Limit hosted push checks to main while preserving affected PR/manual and formal release gates, and cancel superseded research/network runs.
+
 - Maintain Masterbrain Python core, client and reusable Vue components in the Platform repository; use local source dependencies, shared verification and source-bound production images without a prerequisite Masterbrain publication. Preserve upstream provenance and Platform AI contracts; compare generated schemas independently of formatting. Studio stays in its original repository.
 
 - Make project headers compact, localize project navigation and ID validation, open saved meetings in reading mode, and improve activity previews, calendar labels and loading feedback. Add reusable project people with administrator-controlled account association, permission-aware My tasks, detailed atomic meeting/action batches, and project-scoped collaboration MCP tools with revision/idempotency checks. Preserve participant order and add migration 0088 without inferring or rewriting existing business data.

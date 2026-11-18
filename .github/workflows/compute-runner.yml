@@ -3,6 +3,7 @@ name: Compute Runner
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - "apps/compute-runner/**"
       - "scripts/compute-runner-integration.mjs"

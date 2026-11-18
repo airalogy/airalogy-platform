@@ -3,6 +3,7 @@ name: Browser E2E
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - "apps/api/**"
       - "apps/web/**"

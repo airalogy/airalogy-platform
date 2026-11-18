@@ -18,6 +18,12 @@ Omit executor reuse to rebuild it. The tool exports only selected images and com
 
 Review the actual deployed-to-candidate diff and run applicable version/lock, unit/type, permission and browser checks. The delivery tool tests are `python3 -m unittest discover -s tests/deployment`. Reuse successful results for the same exact candidate; changing the commit invalidates receipts. Record real reviewed commands:
 
+For local source checks, use the shared runner, for example `node scripts/pre-push.mjs --check types` and `node scripts/pre-push.mjs --check api-tests`. The runner and pre-push reuse the most recent successful result for at most 24 hours, only for the same clean commit, working directory, command, environment, tool binaries and installed dependency metadata. Logs are bound by SHA256 under ignored `.cache/local-checks/`; environment values and credentials are not written to receipts. Dirty/untracked source, changed configuration, a failed/interrupted retry, missing or altered logs, or expired evidence require a real run. Use `--fresh` to force one. Commands run directly outside this runner do not produce reusable receipts.
+
+This cache is local feedback, not release certification or a cache of build artifacts. CI, live image availability, real database integration, browser/artifact acceptance and recovery checks are never reused through it. No cache is used when `CI`, `GITHUB_ACTIONS` or `RESOURCE_TEST_DATABASE_URL` is set. Internal artifact/migration/recovery receipts below remain separate requirements.
+
+Hosted checks run for affected pull requests and pushes to `main`, with manual dispatch retained. Development-branch pushes no longer launch a duplicate copy of the PR suite. A merged main revision is still independently checked; unchanged job names and formal release gates remain in place. Superseded research/network validation runs are cancelled, while release publication is not. Internal deployments do not wait for all hosted workflows; public releases still require the exact-commit source CI evidence defined in `scripts/release-ci.mjs`.
+
 ```bash
 python3 deploy/internal/platform-internal.py check --bundle /private/ops/candidate --name source -- bash /private/ops/check-source.sh
 python3 deploy/internal/platform-internal.py check --bundle /private/ops/candidate --name artifact-acceptance -- bash /private/ops/check-artifacts.sh

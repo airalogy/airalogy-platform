@@ -1,8 +1,9 @@
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { checkNodeRuntime } from "./check-node-runtime.mjs"
+import { executeLocalCheck } from "./local-check-cache.mjs"
 
 const ZERO_SHA = "0".repeat(40)
 const AI_E2E_SPEC = "tests/e2e/specs/ai-protocol-editor.spec.ts"
@@ -249,7 +250,7 @@ export function buildCheckPlan(files, fullRequested = false, hostPlatform = proc
   if (storageChanged)
     plan.push(checks.storage, checks.researchIntegration, checks.fullE2e)
   const toolingChanged = files.some(file => file.startsWith(".github/")
-    || /^scripts\/(?:check-node-runtime|check-image-availability|release-ci|actionlint|prepare-instrument-ci|prepare-object-storage|object-storage|pre-push|e2e-(?:runner|matrix))/.test(file)
+    || /^scripts\/(?:check-node-runtime|check-image-availability|release-ci|local-check-cache|actionlint|prepare-instrument-ci|prepare-object-storage|object-storage|pre-push|e2e-(?:runner|matrix))/.test(file)
     || file.startsWith("deploy/object-storage/")
     || file.startsWith(".husky/")
     || [".node-version", "package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml"].includes(file))
@@ -392,7 +393,7 @@ export function buildLocalCheckPlan(files, hostPlatform = process.platform) {
 
   const slow = new Set(["object-storage", "research-integration", "gateway-sandbox", "interface-demo", "native-build-tests", "compute-engine", "build", "ai-e2e", "full-e2e"])
   const plan = affected.filter(check => !slow.has(check.id))
-  const web = files.some(file => /^(?:apps\/web\/|packages\/|tests\/e2e\/)/.test(file)
+  const web = files.some(file => /^(?:apps\/web\/|packages\/(?:components|composables|shared|masterbrain-client|masterbrain-vue)\/)/.test(file)
     || /^(?:package\.json|pnpm-|tsconfig|uno\.|eslint\.|playwright\.|\.node-version)/.test(file))
   const backend = files.some(file => file.startsWith("apps/api/") || file.startsWith("packages/masterbrain/") || file === ".node-version")
   const result = plan.filter(check => (check.id !== "types" || web)
@@ -462,13 +463,12 @@ function readPushInput() {
   return readFileSync(0, "utf8")
 }
 
-export function runCheck(check) {
+export function runCheck(check, options = {}) {
   console.log(`\n[pre-push] ${check.label}`)
   const started = performance.now()
-  const result = spawnSync(check.command, check.args, {
-    cwd: process.cwd(),
+  const result = executeLocalCheck(check, {
+    ...options,
     env: { ...process.env, RUN_INTERFACE_NATIVE_TESTS: "0", RUN_INTERFACE_NATIVE_BUILD_TESTS: "0", RUN_INSTRUMENT_NATIVE_JOB_TESTS: "0", ...check.env },
-    stdio: "inherit",
   })
 
   if (result.error) {
@@ -486,14 +486,14 @@ function main() {
   // guessing a diff. Unknown identifiers/flags fail rather than silently skip.
   if (process.argv[2] === "--check") {
     const check = Object.values(checks).find(item => item.id === process.argv[3])
-    if (!check || process.argv.length !== 4)
-      throw new Error("Specify one registered check ID after --check")
-    runCheck(check)
+    if (!check || (process.argv.length !== 4 && !(process.argv.length === 5 && process.argv[4] === "--fresh")))
+      throw new Error("Specify one registered check ID after --check, optionally followed by --fresh")
+    runCheck(check, { fresh: process.argv.includes("--fresh") })
     return
   }
-  if (process.argv.slice(2).some(arg => !["--full", "--affected", "--plan"].includes(arg))
+  if (process.argv.slice(2).some(arg => !["--full", "--affected", "--plan", "--fresh"].includes(arg))
     || (process.argv.includes("--full") && process.argv.includes("--affected"))) {
-    throw new Error("Usage: pre-push.mjs [--full | --affected] [--plan], or --check <id>")
+    throw new Error("Usage: pre-push.mjs [--full | --affected] [--plan] [--fresh], or --check <id> [--fresh]")
   }
   const input = readPushInput()
   const files = input.trim() ? filesFromPushInput(input) : filesFromUpstream()
@@ -512,7 +512,7 @@ function main() {
   if (process.argv.includes("--plan"))
     return
   for (const check of plan) {
-    runCheck(check)
+    runCheck(check, { fresh: process.argv.includes("--fresh") })
   }
 }
 

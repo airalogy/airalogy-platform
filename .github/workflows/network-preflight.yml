@@ -1,6 +1,7 @@
 name: Network Preflight
 on:
   push:
+    branches: [main]
     paths:
       - "deploy/single-lab/**"
       - "tests/deployment/**"
@@ -13,6 +14,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: network-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   regression:
     runs-on: ubuntu-latest

@@ -268,11 +268,35 @@ test("CI invokes shared check IDs instead of duplicating their commands", () => 
 })
 
 test("unknown check IDs and misspelled flags cannot silently pass", () => {
-  for (const args of [["--check", "unknown"], ["--check"], ["--ful"]]) {
+  for (const args of [["--check", "unknown"], ["--check"], ["--ful"], ["--check", "version", "--frehs"]]) {
     const result = spawnSync(process.execPath, ["scripts/pre-push.mjs", ...args], { encoding: "utf8", timeout: 5000 })
     assert.equal(result.error, undefined)
     assert.notEqual(result.status, 0)
   }
+})
+
+test("test-only and Python-only edits avoid unrelated frontend type builds", () => {
+  for (const file of ["tests/e2e/specs/meetings.spec.ts", "packages/masterbrain/src/masterbrain/config.py"]) {
+    const local = buildLocalCheckPlan([file]).map(check => check.id)
+    assert.ok(!local.includes("types"), file)
+    assert.ok(local.includes("version"), file)
+  }
+  assert.ok(ids(["tests/e2e/specs/meetings.spec.ts"]).includes("full-e2e"))
+  assert.ok(buildLocalCheckPlan(["packages/masterbrain-client/src/index.ts"]).some(check => check.id === "types"))
+  assert.ok(buildLocalCheckPlan(["scripts/local-check-cache.mjs"]).some(check => check.id === "ci-config"))
+})
+
+test("feature pushes do not duplicate PR checks; main, manual and release gates remain", () => {
+  for (const file of ["backend-smoke", "frontend-lint", "ci-preflight", "compute-runner", "instrument-gateway", "instrument-interface", "e2e", "research-integration", "network-preflight"]) {
+    const workflow = load(readFileSync(`.github/workflows/${file}.yml`, "utf8"))
+    assert.deepEqual(workflow.on.push.branches, ["main"], file)
+    assert.ok(workflow.on.pull_request.paths.length > 0, file)
+    assert.ok(Object.hasOwn(workflow.on, "workflow_dispatch"), file)
+    assert.equal(workflow.concurrency["cancel-in-progress"], true, file)
+  }
+  const release = load(readFileSync(".github/workflows/release.yml", "utf8"))
+  assert.equal(release.concurrency["cancel-in-progress"], false)
+  assert.ok(release.on.push.tags.length > 0)
 })
 
 test("a failing gate stops the runner and preserves its exit code", () => {

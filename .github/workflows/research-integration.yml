@@ -59,6 +59,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: research-integration-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   postgres-runtime:
     runs-on: ubuntu-latest

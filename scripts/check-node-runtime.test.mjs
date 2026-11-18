@@ -41,7 +41,7 @@ test("Python-only CI gates start without a frontend node_modules installation", 
   const directory = mkdtempSync(join(tmpdir(), "platform-node-guard-"))
   t.after(() => rmSync(directory, { recursive: true, force: true }))
   mkdirSync(join(directory, "scripts"))
-  for (const file of [".node-version", "package.json", "scripts/pre-push.mjs", "scripts/check-node-runtime.mjs"])
+  for (const file of [".node-version", "package.json", "scripts/pre-push.mjs", "scripts/check-node-runtime.mjs", "scripts/local-check-cache.mjs"])
     copyFileSync(new URL(`../${file}`, import.meta.url), join(directory, file))
   const result = spawnSync(process.execPath, ["scripts/pre-push.mjs", "--check", "unknown-check"], { cwd: directory, encoding: "utf8" })
   assert.equal(result.status, 1)
