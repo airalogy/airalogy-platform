@@ -136,7 +136,7 @@ const showIcon = computed(
 )
 
 const { routerPushByKey, routerPush } = useRouterPush()
-const { refetchProjectInfo, projectInfo } = useProvideProjectInfoStore(null)
+const { fetchProjectInfo, refetchProjectInfo, projectInfo } = useProvideProjectInfoStore(null)
 
 const { canShowSettings: canShowProjectSettings, canCreateProtocol } = useProjectPermissions(projectInfo)
 const canShowSettings = computed(() =>
@@ -452,41 +452,31 @@ async function handleEditProject() {
   })
 }
 
-async function loadProjectInfo() {
-  const { name } = route
-  const { setDynamicBreadcrumbs } = routerStore
-
-  if (name === "project-dashboard" || name === "labs-public") {
-    setDynamicBreadcrumbs([])
-    return
-  }
-
-  const { labUid, projectUid } = route.params
-  const currProjectInfo = await refetchProjectInfo(0, {
-    labUid: labUid as string,
-    projectUid: projectUid as string,
-  })
-
-  if (currProjectInfo) {
-    await setBreadcrumbs(currProjectInfo)
-  }
-  else {
-    routerPushByKey("project-not-found")
-  }
-}
-
+// Moving between tabs cancels requests belonging to the previous route. Until the
+// project has loaded, each new tab must be able to finish its own lookup.
 watch(
-  [() => route.params.labUid, () => route.params.projectUid],
-  async ([labUid, projectUid], [prevLabUid, prevProjectUid]) => {
-    if (!labUid || !projectUid) {
+  [() => route.params.labUid, () => route.params.projectUid, () => route.name],
+  async ([labUid, projectUid], _, onCleanup) => {
+    if (typeof labUid !== "string" || typeof projectUid !== "string")
       return
-    }
-
-    if (labUid === prevLabUid && projectUid === prevProjectUid) {
+    if (projectInfo.value?.lab_uid === labUid && projectInfo.value.uid === projectUid)
       return
-    }
 
-    await loadProjectInfo()
+    let current = true
+    onCleanup(() => {
+      current = false
+    })
+    projectInfo.value = null
+    const info = await fetchProjectInfo({ labUid, projectUid })
+    if (!current)
+      return
+    if (info) {
+      projectInfo.value = info
+      await setBreadcrumbs(info)
+    }
+    else {
+      await routerPushByKey("project-not-found")
+    }
   },
   { immediate: true },
 )

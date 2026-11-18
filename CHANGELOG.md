@@ -14,7 +14,7 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
-- The project Team tab follows Meetings and lists accounts with project access separately from participants recorded by name.
+- The project Team tab follows Meetings and lists accounts with project access separately from participants recorded by name. Switching tabs while the project loads keeps the requested destination.
 
 - Project documents keep standalone notes in the default list and open matching formal minutes directly in Meetings. Meeting search keeps participant and date filters in a compact expandable row.
 
