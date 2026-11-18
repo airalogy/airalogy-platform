@@ -51,7 +51,8 @@ test("hook repository variables never reach temporary repositories or invalidate
   const f = fixture(t)
   const before = f.git("rev-parse", "HEAD").toString()
   const config = readFileSync(join(f.root, ".git/config"), "utf8")
-  const hookEnv = { ...f.env, GIT_DIR: join(f.root, ".git"), GIT_WORK_TREE: f.root, GIT_INDEX_FILE: join(f.root, ".git/index"), PATH: `node_modules/.bin:${f.env.PATH}` }
+  const gitHelpers = f.git("--exec-path").toString().trim()
+  const hookEnv = { ...f.env, GIT_DIR: join(f.root, ".git"), GIT_WORK_TREE: f.root, GIT_INDEX_FILE: join(f.root, ".git/index"), PATH: `node_modules/.bin:${gitHelpers}:${f.env.PATH}` }
   assert.deepEqual(checkEnvironment(f.env, f.root), checkEnvironment(hookEnv, f.root))
   f.run()
   assert.equal(f.run({ env: hookEnv }).reused, true)

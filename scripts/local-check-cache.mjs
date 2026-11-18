@@ -11,9 +11,16 @@ const repositoryEnvironment = new Set(["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_D
 
 export function checkEnvironment(env, root = process.cwd()) {
   const result = Object.fromEntries(Object.entries(env).filter(([key]) => !repositoryEnvironment.has(key) && !/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(key)))
+  let gitHelpers = []
+  try {
+    // Git prepends this directory when invoking hooks. Give direct checks the
+    // same helpers instead of treating the hook's automatic PATH as a change.
+    gitHelpers = [execFileSync("git", ["--exec-path"], { cwd: root, env: result, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim()]
+  }
+  catch { /* Missing Git also makes source identity unavailable. */ }
   // Husky prepends a relative node_modules/.bin. Give direct checks the same
   // executable search order, and never leak a parent repository into fixtures.
-  result.PATH = [...new Set([join(root, "node_modules/.bin"), ...(env.PATH || "").split(delimiter)].map(path => resolve(root, path)))].join(delimiter)
+  result.PATH = [...new Set([join(root, "node_modules/.bin"), ...gitHelpers, ...(env.PATH || "").split(delimiter)].map(path => resolve(root, path)))].join(delimiter)
   return result
 }
 
