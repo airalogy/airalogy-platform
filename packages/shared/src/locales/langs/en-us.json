@@ -5716,6 +5716,8 @@
       "events": "activities",
       "less": "Less",
       "more": "More",
+      "batchCreated": "Created {count} meeting actions",
+      "viewDay": "View all {count} activities for this day",
       "dayEvents": "Activity on this day",
       "recent": "Recent activity",
       "clearDate": "Clear date",

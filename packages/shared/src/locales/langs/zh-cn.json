@@ -5716,6 +5716,8 @@
       "events": "条活动",
       "less": "少",
       "more": "多",
+      "batchCreated": "从会议创建了 {count} 项待办",
+      "viewDay": "查看当天全部 {count} 条活动",
       "dayEvents": "当天活动",
       "recent": "近期活动",
       "clearDate": "清除日期",

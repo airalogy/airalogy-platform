@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project overviews show recent activity and day details first, group actions created together from a visible meeting, and preview three active work items.
+
 - Reuse fresh, verified local source-check results for the same clean commit and environment; invalidate failed retries and changed evidence, retain fresh CI/artifact/recovery checks, and avoid unrelated frontend type builds for browser-test-only or Python AI edits. Limit hosted push checks to main while preserving affected PR/manual and formal release gates, and cancel superseded research/network runs.
 
 - Maintain Masterbrain Python core, client and reusable Vue components in the Platform repository; use local source dependencies, shared verification and source-bound production images without a prerequisite Masterbrain publication. Preserve upstream provenance and Platform AI contracts; compare generated schemas independently of formatting. Studio stays in its original repository.

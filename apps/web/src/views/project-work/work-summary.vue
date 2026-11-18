@@ -26,7 +26,8 @@ async function load(append = false) {
     const result = await listProjectWork({
       project_id: props.projectId,
       page: nextPage,
-      page_size: 6,
+      page_size: props.projectId ? 3 : 6,
+      overview_order: Boolean(props.projectId),
       active_only: true,
       mine: !props.projectId,
     })
@@ -58,7 +59,7 @@ watch(() => props.projectId, () => load(), { immediate: true })
       t(projectId ? "page.projectWork.title" : "page.projectWork.myWork")
     }}</h2
     ><div v-if="projectId" class="flex flex-wrap items-center gap-3">
-      <router-link :to="{ name: 'project-work' }" class="text-primary">{{ t("page.projectWork.open") }} →</router-link>
+      <router-link :to="{ name: 'project-work' }" class="text-primary">{{ t("page.projectWork.open") }}<span v-if="total"> ({{ total }})</span> →</router-link>
       <n-button v-if="canWrite" type="primary" size="small" data-testid="overview-new-work" @click="router.push({ name: 'project-work', query: { create: '1' } })">{{ t("page.projectWork.new") }}</n-button>
     </div>
     </div>
@@ -90,6 +91,6 @@ watch(() => props.projectId, () => load(), { immediate: true })
       </li>
     </ul>
     <n-button v-if="!projectId && items.length > 0 && total > items.length" class="mt-3" :loading="loading" :disabled="loading" data-testid="work-summary-more" @click="load(true)">{{ t("page.projectWork.moreItems") }}</n-button>
-    <p v-if="!loading && !failed && total > items.length" class="mb-0 text-sm text-gray-500">{{ t("page.projectWork.summaryCount", { shown: items.length, total }) }}</p>
+    <p v-if="!projectId && !loading && !failed && total > items.length" class="mb-0 text-sm text-gray-500">{{ t("page.projectWork.summaryCount", { shown: items.length, total }) }}</p>
   </section>
 </template>

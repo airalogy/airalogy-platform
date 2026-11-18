@@ -480,3 +480,90 @@ def test_action_reserves_one_evidence_slot_for_its_meeting_source():
         )
         == 49
     )
+
+
+@integration
+def test_activity_groups_only_same_transaction_for_meeting_readers():
+    async def run():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions, public=False)
+            owner = {"Auth-Token": create_access_token(seed.owner)}
+            viewer = {"Auth-Token": create_access_token(seed.analyst)}
+            meeting_id = str(uuid4())
+            project = str(seed.project.id)
+            async with client(sessions) as http:
+                meeting = await http.post(
+                    "/meetings",
+                    headers=owner,
+                    json={
+                        "id": meeting_id,
+                        "project_id": project,
+                        "title": "Private prototype review",
+                        "visibility": "selected",
+                        "occurred_at": "2020-01-02T00:00:00Z",
+                    },
+                )
+                assert meeting.status_code == 200, meeting.text
+                task_ids = set()
+                for size in [4, 2]:
+                    actions = [
+                        {"id": str(uuid4()), "title": f"Follow-up {n}"}
+                        for n in range(size)
+                    ]
+                    task_ids.update(a["id"] for a in actions)
+                    batch = {
+                        "request_id": str(uuid4()),
+                        "expected_revision": 1,
+                        "actions": actions,
+                    }
+                    for _ in range(2):
+                        saved = await http.post(
+                            f"/meetings/{meeting_id}/actions/batch",
+                            headers=owner,
+                            json=batch,
+                        )
+                        assert saved.status_code == 200, saved.text
+                params = {
+                    "scope_type": "project",
+                    "project_id": project,
+                    "source": "research",
+                    "group_meeting_actions": True,
+                }
+
+                async def timeline(headers, **options):
+                    r = await http.get(
+                        "/research-log/timeline",
+                        headers=headers,
+                        params={**params, **options},
+                    )
+                    assert r.status_code == 200, r.text
+                    return r.json()
+
+                visible = await timeline(owner, page_size=100)
+                groups = [
+                    row
+                    for row in visible["items"]
+                    if row["event_type"] == "work.meeting_batch"
+                ]
+                assert [row["payload"]["count"] for row in groups] == [2, 4]
+                assert all(row["asset"]["id"] == meeting_id for row in groups)
+                individual = await timeline(
+                    owner, group_meeting_actions=False, page_size=100
+                )
+                assert individual["total_count"] == visible["total_count"] + 4
+                hidden = await timeline(viewer, page_size=100)
+                assert all(
+                    row["event_type"] != "work.meeting_batch" for row in hidden["items"]
+                )
+                assert meeting_id not in str(
+                    hidden
+                ) and "Private prototype review" not in str(hidden)
+                assert task_ids <= {
+                    row.get("asset", {}).get("id") for row in hidden["items"]
+                }
+                summary = await http.get(
+                    "/research-log/summary", headers=owner, params=params
+                )
+                assert summary.json()["total_count"] == visible["total_count"]
+
+    asyncio.run(run())

@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from app.database import DBSession
 from app.models.lab import Lab, LabUser
@@ -368,6 +368,7 @@ async def list_work(
     person_id: UUID | None = None,
     assignee_id: UUID | None = None,
     active_only: bool = False,
+    overview_order: bool = False,
     q: str = Query(default="", max_length=255),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=40, ge=1, le=100),
@@ -442,11 +443,16 @@ async def list_work(
     total = await db_session.scalar(
         select(func.count()).select_from(base_query.subquery())
     )
+    order = [ResearchTask.updated_at.desc(), ResearchTask.id]
+    if overview_order:
+        order = [
+            case((ResearchTask.status == STORED_STATES["in_progress"], 0), else_=1),
+            ProjectWork.planned_end.asc().nulls_last(),
+            *order,
+        ]
     rows = (
         await db_session.execute(
-            base_query.order_by(ResearchTask.updated_at.desc(), ResearchTask.id)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            base_query.order_by(*order).offset((page - 1) * page_size).limit(page_size)
         )
     ).all()
     result = []

@@ -18,7 +18,7 @@ from app.models.project import Project
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
-from app.models.meeting import Meeting
+from app.models.meeting import Meeting, MeetingWorkLink
 from app.services.meetings import authorize_meeting, meeting_read_condition
 from app.services.document_browse import date_bounds
 from app.models.research import ResearchEvent, ResearchTask
@@ -405,7 +405,35 @@ async def list_research_log_revisions(
     return {"revisions": [item.as_dict() for item in revisions]}
 
 
-def _event_selects(scope: LogScopeContext, user_id=None):
+def _meeting_action_groups(scope, user_id):
+    """A meeting batch is committed in one transaction. PostgreSQL now() on
+    each created link is its transaction timestamp, including for older batches.
+    Exclude discussed links and meetings this viewer cannot open.
+    """
+    link = MeetingWorkLink
+    partition = [link.meeting_id, link.created_by_user_id, link.created_at]
+    return (
+        select(
+            link.task_id,
+            link.meeting_id,
+            link.created_at,
+            func.count().over(partition_by=partition).label("size"),
+            func.row_number()
+            .over(partition_by=partition, order_by=link.task_id)
+            .label("position"),
+        )
+        .join(ResearchLogEntry, ResearchLogEntry.id == link.meeting_id)
+        .where(
+            link.relation == "created",
+            ResearchLogEntry.project_id == scope.project_id,
+            ResearchLogEntry.archived_at.is_(None),
+            meeting_read_condition(user_id),
+        )
+        .subquery("meeting_action_groups")
+    )
+
+
+def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=False):
     columns = (
         "source_id",
         "source_type",
@@ -521,14 +549,32 @@ def _event_selects(scope: LogScopeContext, user_id=None):
         if scope.scope_type == ResearchLogScope.PROJECT
         else ResearchTask.lab_id == scope.lab_id
     )
+    groups = None
+    event_type, event_time, event_version = (
+        ResearchEvent.kind,
+        ResearchEvent.created_at,
+        literal(""),
+    )
+    if (
+        group_meeting_actions
+        and user_id
+        and scope.scope_type == ResearchLogScope.PROJECT
+    ):
+        groups = _meeting_action_groups(scope, user_id)
+        multiple = groups.c.size > 1
+        event_type = case((multiple, "work.meeting_batch"), else_=ResearchEvent.kind)
+        event_time = case(
+            (multiple, groups.c.created_at), else_=ResearchEvent.created_at
+        )
+        event_version = case((multiple, cast(groups.c.size, String)), else_=literal(""))
     research = (
         select(
             cast(ResearchEvent.id, String),
             literal("research"),
-            ResearchEvent.kind,
-            ResearchEvent.created_at,
+            event_type,
+            event_time,
             ResearchEvent.actor_user_id,
-            literal(""),
+            event_version,
             ResearchTask.lab_id,
             ResearchTask.project_id,
         )
@@ -550,6 +596,12 @@ def _event_selects(scope: LogScopeContext, user_id=None):
             ),
         )
     )
+    if groups is not None:
+        research = research.outerjoin(
+            groups,
+            (groups.c.task_id == ResearchEvent.task_id)
+            & (ResearchEvent.kind == "work.created"),
+        ).where(or_(groups.c.position.is_(None), groups.c.position == 1))
     return [manual, record, protocol, knowledge_created, knowledge_reviewed, research]
 
 
@@ -655,6 +707,30 @@ async def _system_event_payload(
                 if error.status_code in {403, 404}:
                     return None
                 raise
+            if row.event_type == "work.meeting_batch":
+                meeting_entry = await db_session.scalar(
+                    select(ResearchLogEntry)
+                    .join(
+                        MeetingWorkLink,
+                        MeetingWorkLink.meeting_id == ResearchLogEntry.id,
+                    )
+                    .where(
+                        MeetingWorkLink.task_id == task.id,
+                        MeetingWorkLink.relation == "created",
+                        ResearchLogEntry.project_id == task.project_id,
+                        ResearchLogEntry.archived_at.is_(None),
+                        meeting_read_condition(current_user.id),
+                    )
+                )
+                if meeting_entry is None:
+                    return None
+                return {
+                    **base,
+                    "title": meeting_entry.title,
+                    "summary": "",
+                    "payload": {"count": int(row.source_version)},
+                    "asset": {"type": "meeting", "id": str(meeting_entry.id)},
+                }
             # The Log links to authoritative work history. It does not duplicate
             # private evidence labels, request receipts or mutable document bodies.
             return {
@@ -737,15 +813,16 @@ async def activity_query(
     date_from=None,
     date_to=None,
     time_zone="UTC",
+    group_meeting_actions=False,
 ):
     """One authorization/date predicate for calendar counts and paginated detail."""
     from app.routers.permission import check_user_permission
     from app.services.knowledge import authorize_knowledge_item
     from app.services.research_runtime import has_research_capability
 
-    events = union_all(*_event_selects(scope, current_user.id)).subquery(
-        "research_log_events"
-    )
+    events = union_all(
+        *_event_selects(scope, current_user.id, group_meeting_actions)
+    ).subquery("research_log_events")
     conditions = []
     if scope.scope_type != ResearchLogScope.PERSONAL:
         projects = (
@@ -878,6 +955,7 @@ async def research_activity_summary(
     date_from: date | None = None,
     date_to: date | None = None,
     time_zone: str = "UTC",
+    group_meeting_actions: bool = False,
 ):
     scope = await _scope_context(
         db_session,
@@ -896,6 +974,7 @@ async def research_activity_summary(
         date_from,
         date_to,
         time_zone,
+        group_meeting_actions,
     )
     day = cast(func.timezone(time_zone, events.c.occurred_at), Date)
     rows = (
@@ -937,6 +1016,7 @@ async def get_research_log_timeline(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     time_zone: str = "UTC",
+    group_meeting_actions: bool = False,
 ):
     scope = await _scope_context(
         db_session,
@@ -955,6 +1035,7 @@ async def get_research_log_timeline(
         date_from,
         date_to,
         time_zone,
+        group_meeting_actions,
     )
     total_count = await db_session.scalar(
         select(func.count()).select_from(event_union).where(*conditions)

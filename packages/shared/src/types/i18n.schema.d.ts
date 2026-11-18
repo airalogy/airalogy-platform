@@ -5720,6 +5720,8 @@ declare namespace I18n {
         events: string
         less: string
         more: string
+        batchCreated: string
+        viewDay: string
         dayEvents: string
         recent: string
         clearDate: string

@@ -26,7 +26,7 @@ const busy = ref(false)
 const error = ref("")
 const canWrite = ref(false)
 const logModal = ref<InstanceType<typeof ResearchLogEntryModal>>()
-const pageSize = computed(() => (props.compact ? 6 : 20))
+const pageSize = computed(() => (props.compact ? 3 : 20))
 let requestId = 0
 const bounds = computed(() => {
   const today = new Date()
@@ -62,7 +62,7 @@ const options = computed(() =>
   })),
 )
 const monthLabels = computed(() => {
-  let previous = ''
+  let previous = ""
   return cells.value.flatMap((cell, index) => {
     if (cell.disabled)
       return []
@@ -70,12 +70,12 @@ const monthLabels = computed(() => {
     if (month === previous)
       return []
     previous = month
-    return [{ column: Math.floor(index / 7) + 1, label: new Intl.DateTimeFormat(locale.value, { month: 'short' }).format(new Date(`${cell.date}T12:00:00`)) }]
+    return [{ column: Math.floor(index / 7) + 1, label: new Intl.DateTimeFormat(locale.value, { month: "short" }).format(new Date(`${cell.date}T12:00:00`)) }]
   })
 })
 const weekdays = computed(() => [0, 2, 4].map(day => ({
   row: day + 1,
-  label: new Intl.DateTimeFormat(locale.value, { weekday: 'short' }).format(new Date(2026, 0, 5 + day)),
+  label: new Intl.DateTimeFormat(locale.value, { weekday: "short" }).format(new Date(2026, 0, 5 + day)),
 })))
 const rangeLabel = computed(
   () => `${localDocumentDate(bounds.value.start)} — ${localDocumentDate(bounds.value.end)}`,
@@ -97,7 +97,7 @@ async function load() {
   error.value = ""
   items.value = []
   total.value = 0
-  const params = { ...props.scope, source: source.value, time_zone: documentTimeZone() }
+  const params = { ...props.scope, group_meeting_actions: props.scope.scope_type === "project", source: source.value, time_zone: documentTimeZone() }
   try {
     const [summary, timeline] = await Promise.all([
       fetchResearchActivitySummary({
@@ -138,14 +138,18 @@ function reset() {
   page.value = 1
 }
 watch(
-  [() => JSON.stringify(props.scope), source, year],
+  [() => JSON.stringify(props.scope), () => route.query.day, () => route.query.source],
   () => {
-    reset()
-    void load()
+    const day = route.query.day
+    const validDay = !props.compact && typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(day))
+    selected.value = validDay ? day : ""
+    year.value = validDay ? Number(day.slice(0, 4)) : new Date().getFullYear()
+    source.value = (options.value.find(option => option.value === route.query.source)?.value ?? "all") as ResearchLogSource
+    page.value = 1
   },
   { immediate: true },
 )
-watch([selected, page], load)
+watch([() => JSON.stringify(props.scope), selected, source, year, page], load, { immediate: true })
 onBeforeUnmount(() => requestId++)
 </script>
 
@@ -158,7 +162,7 @@ onBeforeUnmount(() => requestId++)
       <div>
         <h2 class="m-0 text-xl font-semibold">
           {{ t("page.researchActivity.title") }}
-        </h2><p class="mb-0 mt-1 text-sm text-gray-500">
+        </h2><p v-if="!compact" class="mb-0 mt-1 text-sm text-gray-500">
           {{ t("page.researchActivity.hint") }}
         </p>
       </div>
@@ -183,6 +187,7 @@ onBeforeUnmount(() => requestId++)
         :options="options"
         class="!w-44"
         data-testid="activity-type"
+        @update:value="reset"
       />
       <label v-if="!compact" class="flex items-center gap-2">{{ t("page.researchActivity.year")
       }}<n-input-number
@@ -191,13 +196,18 @@ onBeforeUnmount(() => requestId++)
         :max="new Date().getFullYear()"
         :show-button="false"
         class="!w-28"
+        @update:value="reset"
       /></label>
       <div class="flex items-center gap-1 text-xs text-gray-500">
         <span>{{ rangeLabel }}</span>
         <n-popover trigger="click" placement="bottom">
           <template #trigger>
             <n-button quaternary circle size="tiny" :aria-label="t('page.researchActivity.timeZoneDetails')" data-testid="activity-timezone-info">
-              <template #icon><n-icon :size="15"><icon-tabler-info-circle /></n-icon></template>
+              <template #icon>
+                <n-icon :size="15">
+                  <icon-tabler-info-circle />
+                </n-icon>
+              </template>
             </n-button>
           </template>
           <span data-testid="activity-timezone-details">{{ t('page.researchActivity.timeZoneHint', { timeZone: documentTimeZone() }) }}</span>
@@ -211,79 +221,93 @@ onBeforeUnmount(() => requestId++)
       </n-button>
     </n-alert>
     <n-spin :show="busy">
-      <div class="activity-calendar-frame">
-        <div class="activity-calendar-scroll" :aria-label="t('page.researchActivity.calendar')">
-          <div class="activity-months" :style="{ gridTemplateColumns: `repeat(${Math.ceil(cells.length / 7)}, 13px)` }" aria-hidden="true">
-            <span v-for="month in monthLabels" :key="month.column" :style="{ gridColumn: month.column }">{{ month.label }}</span>
+      <div :class="{ 'overview-activity-grid': compact }">
+        <div class="activity-calendar-frame">
+          <div class="activity-calendar-scroll" :aria-label="t('page.researchActivity.calendar')">
+            <div class="activity-months" :style="{ gridTemplateColumns: `repeat(${Math.ceil(cells.length / 7)}, 13px)` }" aria-hidden="true">
+              <span v-for="month in monthLabels" :key="month.column" :style="{ gridColumn: month.column }">{{ month.label }}</span>
+            </div>
+            <div class="flex gap-2">
+              <div class="activity-weekdays" aria-hidden="true">
+                <span v-for="day in weekdays" :key="day.row" :style="{ gridRow: day.row }">{{ day.label }}</span>
+              </div>
+              <div class="activity-calendar" data-testid="activity-heatmap">
+                <button
+                  v-for="cell in cells"
+                  :key="cell.date"
+                  type="button"
+                  class="activity-day"
+                  :class="{ selected: selected === cell.date }"
+                  :style="{
+                    background: color(cell.count),
+                    visibility: cell.disabled ? 'hidden' : 'visible',
+                  }"
+                  :disabled="cell.disabled || busy"
+                  :title="`${cell.date} · ${cell.count} ${t('page.researchActivity.events')}`"
+                  :aria-label="`${cell.date}: ${cell.count} ${t('page.researchActivity.events')}`"
+                  :aria-pressed="selected === cell.date"
+                  :data-date="cell.date"
+                  :data-count="cell.count"
+                  @click="selectDay(cell.date)"
+                />
+              </div>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <div class="activity-weekdays" aria-hidden="true">
-              <span v-for="day in weekdays" :key="day.row" :style="{ gridRow: day.row }">{{ day.label }}</span>
-            </div>
-            <div class="activity-calendar" data-testid="activity-heatmap">
-              <button
-                v-for="cell in cells"
-                :key="cell.date"
-                type="button"
-                class="activity-day"
-                :class="{ selected: selected === cell.date }"
-                :style="{
-                  background: color(cell.count),
-                  visibility: cell.disabled ? 'hidden' : 'visible',
-                }"
-                :disabled="cell.disabled || busy"
-                :title="`${cell.date} · ${cell.count} ${t('page.researchActivity.events')}`"
-                :aria-label="`${cell.date}: ${cell.count} ${t('page.researchActivity.events')}`"
-                :aria-pressed="selected === cell.date"
-                :data-date="cell.date"
-                :data-count="cell.count"
-                @click="selectDay(cell.date)"
-              />
-            </div>
+          <div class="mt-2 flex items-center justify-end gap-1 text-xs text-gray-500">
+            <span>{{ t("page.researchActivity.less") }}</span><i
+              v-for="count in [0, 1, 3, 6, 10]"
+              :key="count"
+              class="h-3 w-3 rounded-sm"
+              :style="{ background: color(count) }"
+            /><span>{{ t("page.researchActivity.more") }}</span>
           </div>
         </div>
-        <div class="mt-2 flex items-center justify-end gap-1 text-xs text-gray-500">
-          <span>{{ t("page.researchActivity.less") }}</span><i
-            v-for="count in [0, 1, 3, 6, 10]"
-            :key="count"
-            class="h-3 w-3 rounded-sm"
-            :style="{ background: color(count) }"
-          /><span>{{ t("page.researchActivity.more") }}</span>
+        <div class="min-w-0">
+          <div :class="compact ? 'mb-1' : 'mb-3 mt-5'" class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="m-0 text-base font-medium" data-testid="activity-list-title">
+              {{
+                selected
+                  ? `${selected} · ${t("page.researchActivity.dayEvents")}`
+                  : t("page.researchActivity.recent")
+              }}
+              <span v-if="!busy" class="text-gray-500">({{ total }})</span>
+            </h3>
+            <n-button v-if="selected" size="small" data-testid="activity-clear-date" @click="reset">
+              {{ t("page.researchActivity.clearDate") }}
+            </n-button>
+          </div>
+          <p
+            v-if="!busy && !error && !items.length"
+            class="py-6 text-center text-gray-500"
+            data-testid="activity-empty"
+          >
+            {{ selected ? t("page.researchActivity.emptyDay") : t("page.researchActivity.empty") }}
+          </p>
+          <research-log-list v-else-if="!error && !busy" :items="items" :compact="compact" @edit="logModal?.open($event)" />
+          <n-pagination
+            v-if="!compact && total > pageSize"
+            v-model:page="page"
+            :item-count="total"
+            :page-size="pageSize"
+            class="mt-4"
+          />
+          <router-link
+            v-if="compact && selected && total > pageSize" class="text-sm text-primary" data-testid="view-day"
+            :to="{ name: 'project-records', params: route.params, query: { day: selected, source } }"
+          >
+            {{ t('page.researchActivity.viewDay', { count: total }) }} →
+          </router-link>
         </div>
       </div>
-      <div class="mb-3 mt-5 flex flex-wrap items-center justify-between gap-3">
-        <h3 class="m-0 text-base font-medium" data-testid="activity-list-title">
-          {{
-            selected
-              ? `${selected} · ${t("page.researchActivity.dayEvents")}`
-              : t("page.researchActivity.recent")
-          }}
-          <span v-if="!busy" class="text-gray-500">({{ total }})</span>
-        </h3>
-        <n-button v-if="selected" size="small" data-testid="activity-clear-date" @click="reset">
-          {{ t("page.researchActivity.clearDate") }}
-        </n-button>
-      </div>
-      <p
-        v-if="!busy && !error && !items.length"
-        class="py-6 text-center text-gray-500"
-        data-testid="activity-empty"
-      >
-        {{ selected ? t("page.researchActivity.emptyDay") : t("page.researchActivity.empty") }}
-      </p>
-      <research-log-list v-else-if="!error && !busy" :items="items" :compact="compact" @edit="logModal?.open($event)" />
-      <n-pagination
-        v-if="total > pageSize"
-        v-model:page="page"
-        :item-count="total"
-        :page-size="pageSize"
-        class="mt-4"
-      />
     </n-spin>
   </section>
 </template>
 
 <style scoped>
+.overview-activity-grid { display: grid; gap: 14px 24px; align-items: start; }
+@media (min-width: 700px) {
+  .overview-activity-grid { grid-template-columns: max-content minmax(0, 1fr); }
+}
 .activity-calendar-scroll {
   overflow-x: auto;
   padding: 5px 3px;
