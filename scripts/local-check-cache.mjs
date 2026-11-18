@@ -6,6 +6,15 @@ import { delimiter, join, resolve } from "node:path"
 const MAX_AGE_MS = 24 * 60 * 60 * 1000
 const digest = value => createHash("sha256").update(value).digest("hex")
 const volatileEnvironment = new Set(["_", "SHLVL", "PWD", "OLDPWD", "GIT_PREFIX"])
+const repositoryEnvironment = new Set(["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX", "GIT_SHALLOW_FILE", "GIT_EXEC_PATH", "GIT_CONFIG", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT", "GIT_IMPLICIT_WORK_TREE", "GIT_GRAFT_FILE", "GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE"])
+
+export function checkEnvironment(env, root = process.cwd()) {
+  const result = Object.fromEntries(Object.entries(env).filter(([key]) => !repositoryEnvironment.has(key) && !/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(key)))
+  // Husky prepends a relative node_modules/.bin. Give direct checks the same
+  // executable search order, and never leak a parent repository into fixtures.
+  result.PATH = [...new Set([join(root, "node_modules/.bin"), ...(env.PATH || "").split(delimiter)].map(path => resolve(root, path)))].join(delimiter)
+  return result
+}
 
 // Local feedback only: live services, image availability, installed artifacts,
 // recovery and browser acceptance always execute. CI never trusts this cache.
@@ -30,8 +39,8 @@ export const reusableChecks = new Set([
   "docs",
 ])
 
-function git(root, args) {
-  return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim()
+function git(root, args, env) {
+  return execFileSync("git", args, { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim()
 }
 
 function runtimeInputs(root, env) {
@@ -84,13 +93,14 @@ function runtimeInputs(root, env) {
 }
 
 export function checkIdentity(root, check, env) {
+  env = checkEnvironment(env, root)
   if (env.CI || env.GITHUB_ACTIONS || env.RESOURCE_TEST_DATABASE_URL)
     return null
   try {
     // Untracked source files matter too; ignored caches/private operations do not.
-    if (git(root, ["status", "--porcelain", "--untracked-files=normal"]))
+    if (git(root, ["status", "--porcelain", "--untracked-files=normal"], env))
       return null
-    const commit = git(root, ["rev-parse", "HEAD"])
+    const commit = git(root, ["rev-parse", "HEAD"], env)
     const environment = Object.fromEntries(Object.entries(env).filter(([key]) => !volatileEnvironment.has(key)).sort(([a], [b]) => a.localeCompare(b)))
     const context = { root: realpathSync(root), commit, platform: process.platform, arch: process.arch, node: process.version, executable: process.execPath, command: check.command, args: check.args, environment, runtime: runtimeInputs(root, env) }
     // Never persist credentials or environment values in a receipt.
@@ -110,6 +120,7 @@ export function validReceipt(receipt, identity, log, now = Date.now()) {
 }
 
 export function executeLocalCheck(check, { root = process.cwd(), env = process.env, fresh = false, cacheable = reusableChecks.has(check.id) } = {}) {
+  env = checkEnvironment(env, root)
   const directory = resolve(root, ".cache/local-checks")
   const receiptPath = join(directory, `${check.id}.json`)
   const attempt = randomUUID()

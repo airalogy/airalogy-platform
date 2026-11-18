@@ -1,16 +1,20 @@
 /* eslint-disable test/no-import-node-test */
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { checkIdentity, executeLocalCheck, reusableChecks } from "./local-check-cache.mjs"
+import { fileURLToPath } from "node:url"
+import { checkEnvironment, checkIdentity, executeLocalCheck, reusableChecks } from "./local-check-cache.mjs"
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "platform-check-cache-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" })
+  const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")))
+  gitEnv.GIT_CONFIG_GLOBAL = "/dev/null"
+  gitEnv.GIT_CONFIG_NOSYSTEM = "1"
+  const git = (...args) => execFileSync("git", args, { cwd: root, env: gitEnv, stdio: "pipe" })
   git("init", "-q")
   git("config", "user.name", "Synthetic check")
   git("config", "user.email", "check@example.invalid")
@@ -41,6 +45,20 @@ test("same clean commit and runtime reuse a real successful command; fresh rerun
   assert.equal(f.count(), 1)
   assert.equal(f.run({ fresh: true }).status, 0)
   assert.equal(f.count(), 2)
+})
+
+test("hook repository variables never reach temporary repositories or invalidate direct-check reuse", (t) => {
+  const f = fixture(t)
+  const before = f.git("rev-parse", "HEAD").toString()
+  const config = readFileSync(join(f.root, ".git/config"), "utf8")
+  const hookEnv = { ...f.env, GIT_DIR: join(f.root, ".git"), GIT_WORK_TREE: f.root, GIT_INDEX_FILE: join(f.root, ".git/index"), PATH: `node_modules/.bin:${f.env.PATH}` }
+  assert.deepEqual(checkEnvironment(f.env, f.root), checkEnvironment(hookEnv, f.root))
+  f.run()
+  assert.equal(f.run({ env: hookEnv }).reused, true)
+  const child = spawnSync(process.execPath, ["--test", "--test-name-pattern=same clean commit", fileURLToPath(import.meta.url)], { env: { ...process.env, ...hookEnv }, encoding: "utf8", timeout: 10000 })
+  assert.equal(child.status, 0, child.stderr + child.stdout)
+  assert.equal(f.git("rev-parse", "HEAD").toString(), before)
+  assert.equal(readFileSync(join(f.root, ".git/config"), "utf8"), config)
 })
 
 test("failed retry invalidates earlier success instead of falling back", (t) => {
