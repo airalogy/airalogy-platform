@@ -8,7 +8,14 @@ def test_overdue_drilldown_uses_only_payments_received_by_the_selected_day():
         return {"id": key, "status": "verified", "kind": kind, "data": data}
 
     entries = [
-        row("contract", "contract", state="signed", gross=5000000, net=5000000),
+        row(
+            "contract",
+            "contract",
+            state="signed",
+            signed_date="2026-11-01",
+            gross=5000000,
+            net=5000000,
+        ),
         row(
             "term",
             "installment",
@@ -51,3 +58,8 @@ def test_overdue_drilldown_uses_only_payments_received_by_the_selected_day():
         assert result["sources"]["overdue"] == sources
         assert result["received"] == 5000000
         assert result["installments"]["term"]["balance"] == 0
+
+    entries[0]["data"]["signed_date"] = "2026-11-12"
+    result = summarize(entries, date(2026, 11, 11))
+    assert result["overdue"] == 0
+    assert result["sources"]["overdue"] == []

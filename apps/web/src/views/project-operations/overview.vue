@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Metric, PortfolioRow } from "@/service/api/project-operations"
 import { money, readOps } from "@/service/api/project-operations"
+import { localDocumentDate } from "@/utils/documentBrowse"
 import { useOrProvideLabInfoStore } from "../labs/hooks/useLabsInfoStore"
 import { useOpsText } from "./fields"
 
@@ -13,7 +14,7 @@ const ready = ref(false)
 const who = ref("")
 const flag = ref("")
 const expanded = ref("")
-const asOf = ref("")
+const asOf = ref(localDocumentDate())
 const metrics: Metric[] = ["gross", "received", "paid", "net_cash", "overdue", "direct", "profit"]
 watch(
   [org, asOf],
@@ -31,7 +32,7 @@ watch(
     try {
       const result = await readOps<{ projects: PortfolioRow[] }>(
         `/organizations/${id}/overview`,
-        day ? { as_of: day } : {},
+        { as_of: day || localDocumentDate() },
       )
       if (active) {
         rows.value = result.projects

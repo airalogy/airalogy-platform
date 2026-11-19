@@ -49,6 +49,7 @@ def summarize(records, today: date):
     )
     profit = total(signed.values(), "net") - direct - remaining if known else None
     by_term = {}
+    cutoff = today.isoformat()
     overdue_ids = []
     overdue = 0
     for i, r in dues.items():
@@ -57,10 +58,11 @@ def summarize(records, today: date):
         balance = data["amount"] - total(matched, "amount")
         past = (
             data["contract_id"] in signed
+            and signed[data["contract_id"]]["data"]["signed_date"] <= cutoff
             and data["due"]
-            and data["due"] < today.isoformat()
+            and data["due"] < cutoff
         )
-        matched_on_date = [c for c in matched if c["data"]["day"] <= today.isoformat()]
+        matched_on_date = [c for c in matched if c["data"]["day"] <= cutoff]
         open_on_date = data["amount"] - total(matched_on_date, "amount")
         late = max(open_on_date, 0) if past else 0
         if late:

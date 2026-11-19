@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.models.knowledge import ResearchFile
-from app.models.lab import Lab, LabRole
+from app.models.lab import Lab, LabRole, LabUser
 from app.models.project import Project, ProjectRole, ProjectUser
 from app.models.project_operations import (
     OperationsBook,
@@ -22,6 +22,7 @@ from app.models.user import User
 from app.routers.labs import require_configured_single_lab, require_lab_membership
 from app.services.knowledge import authorize_research_file, canonical_digest
 from app.services.operations_contracts import Change
+from app.services.project_people import organization_display_name
 from app.services.project_work import evidence_view
 from app.services.research_runtime import has_research_capability
 
@@ -94,22 +95,27 @@ async def records(db, pid):
 
 
 async def owner(db, project):
-    row = (
-        await db.execute(
-            select(User.id, User.name, User.username)
-            .join(ProjectUser, ProjectUser.user_id == User.id)
+    owner_id = (
+        await db.scalar(
+            select(ProjectUser.user_id)
             .where(
                 ProjectUser.project_id == project.id,
                 ProjectUser.role == ProjectRole.OWNER,
             )
-            .order_by(ProjectUser.created_at, User.id)
+            .order_by(ProjectUser.created_at, ProjectUser.id)
             .limit(1)
         )
-    ).first()
-    if not row:
-        u = await db.get(User, project.create_user_id)
-        return {"id": str(u.id), "name": u.name or u.username} if u else None
-    return {"id": str(row.id), "name": row.name or row.username}
+        or project.create_user_id
+    )
+    name = await db.scalar(
+        select(organization_display_name())
+        .select_from(User)
+        .outerjoin(
+            LabUser, (LabUser.user_id == User.id) & (LabUser.lab_id == project.lab_id)
+        )
+        .where(User.id == owner_id)
+    )
+    return {"id": str(owner_id), "name": name} if name is not None else None
 
 
 def check_links(rows):

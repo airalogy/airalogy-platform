@@ -40,12 +40,16 @@ class PersonUpdate(PersonContent):
     expected_revision: int = Field(ge=1)
 
 
-def organization_accounts(lab_id):
-    display_name = func.coalesce(
+def organization_display_name():
+    return func.coalesce(
         func.nullif(func.trim(LabUser.alias), ""),
         func.nullif(User.name, ""),
         User.username,
     ).label("display_name")
+
+
+def organization_accounts(lab_id):
+    display_name = organization_display_name()
     return (
         select(User, display_name)
         .join(LabUser, LabUser.user_id == User.id)

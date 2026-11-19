@@ -30,6 +30,7 @@ from app.services.browser_paths import project_browser_path
 from app.services.knowledge import authorize_research_file
 from app.services.operations_contracts import Change, Form, Role
 from app.services.operations_totals import summarize
+from app.services.project_people import organization_accounts, organization_display_name
 from app.services.project_work import evidence_view
 from app.services.research_runtime import has_research_capability
 
@@ -126,17 +127,10 @@ async def book_settings(pid: UUID, current_user: CurrentUser, db_session: DBSess
     project, book, _, _, _ = await ops.project_access(
         db_session, current_user, pid, management=True
     )
-    users = (
-        await db_session.scalars(
-            select(User)
-            .join(LabUser, LabUser.user_id == User.id)
-            .where(LabUser.lab_id == project.lab_id)
-            .order_by(User.name, User.username)
-        )
-    ).all()
+    users = await db_session.execute(organization_accounts(project.lab_id))
     eligible = [
-        {"id": str(u.id), "name": u.name or u.username, "username": u.username}
-        for u in users
+        {"id": str(u.id), "name": name, "username": u.username}
+        for u, name in users
         if await has_research_capability(
             db_session, user=u, project=project, capability="research.read"
         )
@@ -254,7 +248,10 @@ async def ledger(
         select(OperationsEvent.entry_id, OperationsEvent.actor_id, OperationsEvent.at)
         .distinct(OperationsEvent.entry_id)
         .where(OperationsEvent.project_id == pid)
-        .order_by(OperationsEvent.entry_id, OperationsEvent.after["revision"].as_integer().desc())
+        .order_by(
+            OperationsEvent.entry_id,
+            OperationsEvent.after["revision"].as_integer().desc(),
+        )
     )
     updates = {str(entry_id): (str(actor), at) for entry_id, actor, at in latest}
     for row in rows:
@@ -266,8 +263,15 @@ async def ledger(
         if row[key]
     }
     people = {
-        str(u.id): u.name or u.username
-        for u in await db_session.scalars(select(User).where(User.id.in_(actors)))
+        str(uid): name
+        for uid, name in await db_session.execute(
+            select(User.id, organization_display_name())
+            .outerjoin(
+                LabUser,
+                (LabUser.user_id == User.id) & (LabUser.lab_id == project.lab_id),
+            )
+            .where(User.id.in_(actors))
+        )
     }
     return {
         "role": role,
@@ -295,24 +299,27 @@ async def post_change(
 async def history(
     pid: UUID, eid: UUID, current_user: CurrentUser, db_session: DBSession
 ):
-    await ops.project_access(db_session, current_user, pid)
+    project, *_ = await ops.project_access(db_session, current_user, pid)
     rows = await db_session.execute(
-        select(OperationsEvent, User)
+        select(OperationsEvent, organization_display_name())
         .join(User, User.id == OperationsEvent.actor_id)
+        .outerjoin(
+            LabUser, (LabUser.user_id == User.id) & (LabUser.lab_id == project.lab_id)
+        )
         .where(OperationsEvent.project_id == pid, OperationsEvent.entry_id == eid)
         .order_by(OperationsEvent.after["revision"].as_integer())
     )
     return {
         "events": [
             {
-                "actor": u.name or u.username,
-                "actor_id": u.id,
+                "actor": name,
+                "actor_id": e.actor_id,
                 "at": e.at,
                 "reason": e.reason,
                 "before": e.before,
                 "after": e.after,
             }
-            for e, u in rows
+            for e, name in rows
         ]
     }
 

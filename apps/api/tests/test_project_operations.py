@@ -12,6 +12,7 @@ from app.models.lab import LabRole, LabUser
 from app.models.project import Project, ProjectRole, ProjectUser
 from app.routers import knowledge, project_operations, project_work, research_documents
 from fastapi import FastAPI
+from sqlalchemy import update
 
 from tests.test_external_access_postgres import browser
 from tests.test_record_analysis_postgres import database, seed_analysis
@@ -39,6 +40,12 @@ async def instrument_case():
         )
         async with sessions() as db:
             await db.merge(seed.project)
+            for user, alias in ((seed.owner, "项目负责人"), (seed.recorder, "核账员")):
+                await db.execute(
+                    update(LabUser)
+                    .where(LabUser.lab_id == seed.lab.id, LabUser.user_id == user.id)
+                    .values(alias=alias)
+                )
             db.add(
                 LabUser(
                     lab_id=seed.lab.id,
@@ -145,6 +152,14 @@ async def instrument_case():
                 ceo,
                 {"enabled": True, "expected_revision": 0, "grants": grants},
             )
+            people = (await call("GET", book + "/settings", ceo))["people"]
+            assert (
+                next(u["name"] for u in people if u["id"] == str(seed.recorder.id))
+                == "核账员"
+            )
+            assert (await call("GET", org + "/overview", ceo))["projects"][0]["owner"][
+                "name"
+            ] == "项目负责人"
             cost = {
                 "title": "采集设备",
                 "day": "2026-10-30",
@@ -166,6 +181,13 @@ async def instrument_case():
             )
             await write(lead, "cost", cost, eid=c, rev=2, reason="补充完成")
             await write(finance, "cost", None, eid=c, rev=3, action="verify")
+            assert (await call("GET", book, ceo))["people"][
+                str(seed.recorder.id)
+            ] == "核账员"
+            events = (await call("GET", book + "/entries/" + c + "/history", ceo))[
+                "events"
+            ]
+            assert events[-1]["actor"] == "核账员"
             payment = {
                 "title": "设备首付",
                 "day": "2026-10-30",

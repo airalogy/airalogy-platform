@@ -2,6 +2,7 @@
 import type { Book, Entry, Kind, Metric, Revision, Value } from "@/service/api/project-operations"
 import { money, readOps } from "@/service/api/project-operations"
 import { request } from "@/service/request"
+import { localDocumentDate } from "@/utils/documentBrowse"
 import { useOrProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import EntryEditor from "./entry-editor.vue"
 import { amountFields, enums, fields, useOpsText } from "./fields"
@@ -16,7 +17,7 @@ const error = ref("")
 const notice = ref("")
 const loading = ref(false)
 const selected = ref("")
-const asOf = ref(String(route.query.as_of || ""))
+const asOf = ref(String(route.query.as_of || localDocumentDate()))
 const filter = ref("")
 const query = ref("")
 const history = ref<Revision[]>([])
@@ -32,7 +33,7 @@ async function load() {
   loading.value = true
   error.value = ""
   try {
-    const b = await readOps<Book>(`/projects/${id}`, asOf.value ? { as_of: asOf.value } : {})
+    const b = await readOps<Book>(`/projects/${id}`, { as_of: asOf.value || localDocumentDate() })
     if (token === requestNumber)
       book.value = b
   }
@@ -63,6 +64,7 @@ watch(asOf, load)
 watch(
   () => route.query,
   (q) => {
+    asOf.value = String(q.as_of || localDocumentDate())
     filter.value = String(q.metric || "")
     selected.value = String(q.entry || "")
   },
