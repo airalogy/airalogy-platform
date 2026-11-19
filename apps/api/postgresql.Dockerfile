@@ -14,7 +14,7 @@ ARG APT_POSTGRES_MIRROR=http://apt.postgresql.org/pub/repos/apt
 # Set the environment variable to handle non-interactive installations
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies for building zhparser. pgvector is installed from PGDG packages.
+# Build zhparser with matching server headers and stage the PGDG pgvector extension separately.
 # postgresql-server-dev is downloaded and unpacked for headers only, avoiding its heavy LLVM dependency chain.
 RUN set -eux; \
     find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
@@ -27,12 +27,14 @@ RUN set -eux; \
     && apt-get install -y --no-install-recommends \
         build-essential \
         git \
-        postgresql-${PG_MAJOR}-pgvector \
         pkg-config \
         binutils \
         automake \
         libtool \
         ca-certificates \
+    && apt-get download postgresql-${PG_MAJOR}-pgvector \
+    && dpkg-deb -x postgresql-${PG_MAJOR}-pgvector_*.deb /opt/pgvector \
+    && rm postgresql-${PG_MAJOR}-pgvector_*.deb \
     && apt-get download postgresql-server-dev-${PG_MAJOR}=${POSTGRES_SERVER_DEV_VERSION} \
     && dpkg-deb -x postgresql-server-dev-${PG_MAJOR}_${POSTGRES_SERVER_DEV_VERSION}_*.deb / \
     && rm postgresql-server-dev-${PG_MAJOR}_${POSTGRES_SERVER_DEV_VERSION}_*.deb \
@@ -48,7 +50,7 @@ RUN git clone --branch 1.2.3 --single-branch --depth 1 https://github.com/hightm
 # Build and install zhparser
 RUN git clone --branch master --single-branch --depth 1 https://github.com/amutu/zhparser.git && \
     cd zhparser && \
-    make install with_llvm=no
+    make install with_llvm=no DESTDIR=/opt/zhparser
 
 # Final stage for the PostgreSQL image
 FROM postgres:${POSTGRES_IMAGE_VERSION}-bookworm
@@ -64,9 +66,8 @@ LABEL org.opencontainers.image.title="Airalogy Platform PostgreSQL" \
       org.opencontainers.image.version="$PLATFORM_VERSION" \
       org.opencontainers.image.revision="$GIT_COMMIT"
 
-
-# Copy files from the builder stage
+# Keep PostgreSQL's built-in modules paired with the server in the runtime image.
 COPY --from=builder /usr/local/lib/libscws.* /usr/local/lib/
-COPY --from=builder /usr/lib/postgresql/${PG_MAJOR}/lib/* /usr/lib/postgresql/${PG_MAJOR}/lib/
-COPY --from=builder /usr/share/postgresql/${PG_MAJOR}/extension/* /usr/share/postgresql/${PG_MAJOR}/extension/
-COPY --from=builder /usr/share/postgresql/${PG_MAJOR}/tsearch_data/*.utf8.* /usr/share/postgresql/${PG_MAJOR}/tsearch_data/
+COPY --from=builder /opt/pgvector/usr/lib/postgresql/${PG_MAJOR}/lib/ /usr/lib/postgresql/${PG_MAJOR}/lib/
+COPY --from=builder /opt/pgvector/usr/share/postgresql/${PG_MAJOR}/extension/ /usr/share/postgresql/${PG_MAJOR}/extension/
+COPY --from=builder /opt/zhparser/ /

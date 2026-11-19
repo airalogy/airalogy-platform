@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- The PostgreSQL image installs pgvector and zhparser separately, preserving the built-in modules shipped with its server version so fresh databases can initialize after PGDG package updates.
+
 - Mixed research activity now orders newly submitted Records, Protocol versions and manual logs by their actual instants. The diary calendar, heatmap and day details use the viewer’s timezone. Existing timestamps can be interpreted using the verified historical writer timezone.
 
 - The project Team tab follows Meetings and lists accounts with project access separately from participants recorded by name. Switching tabs while the project loads keeps the requested destination.
