@@ -465,6 +465,7 @@ export function useChatHandlers({ state, mutations, stream, scrollToBottom, navi
       ...branchMessage,
       parentIndex,
       text: editedText,
+      memorySummary: undefined,
       requestOptions: { prompt: editedText, options: { model: selectedModel.value } },
     }
 

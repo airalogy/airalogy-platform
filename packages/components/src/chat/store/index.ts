@@ -8,6 +8,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from "vue"
 // Add router import for navigation
 import { useRouter } from "vue-router"
 import { createUserMessage } from "../composables/utils"
+import { localizeMemoryTitle, restoreCachedMemorySummaries } from "../utils/memory-history"
 import { chatAccountId, chatStorage } from "../utils/storage"
 import { defaultConfig, defaultState, getLocalState, setLocalState } from "./helper"
 
@@ -18,6 +19,8 @@ function setupChatStore(accountId: string) {
 
   // state
   const state = ref<Chat.ChatState>(getLocalState(accountId))
+
+  state.value.session.forEach(restoreCachedMemorySummaries)
 
   const context = ref<Record<string, Chat.ChatContext[]>>(
     Object.fromEntries(state.value.session.filter(chat => chat.context != null).map(chat => [chat.uuid, chat.context!])),
@@ -51,6 +54,11 @@ function setupChatStore(accountId: string) {
 
   function findHistory(uuid: string): Chat.ChatHistory | null {
     return state.value.history.find(item => item.uuid === uuid) || null
+  }
+
+  function displayHistoryTitle(history: Chat.ChatHistory) {
+    const first = history.isEdit ? undefined : findSessionByUUID(history.uuid)?.data.find(m => m.inversion)
+    return localizeMemoryTitle(history.title, first?.memorySummary === "request" && first.text === history.title)
   }
 
   function findHistoryIndex(uuid?: string): number {
@@ -249,6 +257,7 @@ function setupChatStore(accountId: string) {
       const item = legacy.history.find(h => h.uuid === session.uuid)
       if (!item)
         continue
+      restoreCachedMemorySummaries(session)
       state.value.session.push(session)
       state.value.history.push(item)
       if (session.context)
@@ -442,8 +451,11 @@ function setupChatStore(accountId: string) {
   }
 
   function applyServerMessages(session: Chat.ChatSession, data: ChatModels.ChatResponse) {
-    const visible = data.messages.filter(item =>
-      (item.role === "user" || item.role === "assistant") && (item.content || item.files?.length))
+    const visible = data.messages.flatMap((item, index) =>
+      (item.role === "user" || item.role === "assistant") && (item.content || item.files?.length)
+        ? [{ ...item, memorySummary: data.memory_summaries?.[index] }]
+        : [])
+    session.memorySummariesResolved = true
     session.serverId = data.id
     session.memoryDisabled = Boolean(data.context?.memory_disabled)
     session.rootBranchIndex = 0
@@ -451,8 +463,9 @@ function setupChatStore(accountId: string) {
     session.data = visible.map((item, i): Chat.ChatMessage => ({
       dateTime: 0,
       text: item.content || "",
+      memorySummary: item.memorySummary,
       inversion: item.role === "user",
-      attachments: item.files?.map((file: { id: string, file_name: string }) => ({
+      attachments: item.files?.map(file => ({
         id: file.id,
         serverId: file.id,
         name: file.file_name,
@@ -489,7 +502,8 @@ function setupChatStore(accountId: string) {
     if (history) {
       history.serverId = data.id
       history.time = new Date(data.updated_at).getTime()
-      history.title = visible.find(item => item.role === "user")?.content?.slice(0, 120) || history.title
+      if (!history.isEdit)
+        history.title = visible.find(item => item.role === "user")?.content?.slice(0, 120) || history.title
     }
     setActive(data.id)
     recordState()
@@ -1125,6 +1139,7 @@ function setupChatStore(accountId: string) {
     // actions
     findSessionByUUID,
     findHistory,
+    displayHistoryTitle,
     addHistory,
     updateHistory,
     deleteHistory,

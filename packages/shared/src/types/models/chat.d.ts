@@ -6,6 +6,7 @@ export type { ChatModelConfig, ChatModelType }
 export interface ChatResponse {
   created_at: string
   messages: History[]
+  memory_summaries?: Record<number, "request" | "handled">
   id: string
   protocol_id: string
   updated_at: string
@@ -28,6 +29,7 @@ export interface ChatResponse {
 
 export interface History {
   content: null | string
+  files?: { id: string, file_name: string }[] | null
   role: string
   tool_calls?: ToolCall[]
   parent_id?: string

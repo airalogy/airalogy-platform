@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Personal memory summaries and automatic titles in existing Aira conversations now follow the interface language when switching languages or reopening history.
+
 - Aira keeps conversation memory options in the header on Home and All chats. Explicit future preferences can be saved and undone. Repeated style requests offer a choice before saving.
 
 - The workspace header groups project navigation on the left and creation, Aira, and account actions on the right. Aira opens in context and language selection is available in the account menu. Language options support direct taps in the account menu.

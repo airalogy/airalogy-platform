@@ -21,6 +21,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import sessionmanager
 from app.models.aira_memory import AiraMemory, AiraMemoryEvent
 
+# The legacy wire text also keeps forgotten preferences out of model history.
+MEMORY_REQUEST = {"role": "user", "content": "[Personal memory management request]"}
+MEMORY_HANDLED = {
+    "role": "assistant",
+    "content": "[Memory management handled by Platform; no research data changed.]",
+}
+
+
+def is_memory_turn(messages: list[dict], index: int) -> bool:
+    return (
+        0 <= index < len(messages) - 1
+        and messages[index] == MEMORY_REQUEST
+        and messages[index + 1] == MEMORY_HANDLED
+    )
+
+
 OPTIONS = {
     "language": {"zh-CN": "Use Chinese", "en-US": "Use English"},
     "detail": {"concise": "Be concise", "detailed": "Explain in detail"},

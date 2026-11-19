@@ -2,11 +2,16 @@
 import { type AccountChatSummary, getAccountChatHistory, getChatConversation } from "@/service/api/chat"
 import { useChatInfoStore } from "@airalogy/components/chat/composables/useChatInfoStore"
 import { useChatStore } from "@airalogy/components/chat/store"
+import { localizeMemoryTitle } from "@airalogy/components/chat/utils/memory-history"
 
 const emit = defineEmits<{ opened: [] }>()
 const store = useChatStore()
 const { loading: responding } = useChatInfoStore()!
 const items = ref<AccountChatSummary[]>([])
+const displayItems = computed(() => items.value.map(item => ({
+  id: item.id,
+  title: localizeMemoryTitle(item.title, item.title_is_memory_request),
+})))
 const page = ref(1)
 const more = ref(false)
 const busy = ref(false)
@@ -62,13 +67,21 @@ onBeforeUnmount(() => sequence++)
 
 <template>
   <section data-testid="account-chat-history" class="min-h-0 flex flex-col gap-1 overflow-auto px-2">
-    <n-button v-for="item in items" :key="item.id" :data-chat-id="item.id" :disabled="responding" quaternary class="!justify-start" :title="item.title" @click="select(item.id)">
+    <n-button v-for="item in displayItems" :key="item.id" :data-chat-id="item.id" :disabled="responding" quaternary class="!justify-start" :title="item.title" @click="select(item.id)">
       <span class="block truncate">{{ item.title || $t('chat.newChatButton') }}</span>
     </n-button>
-    <p v-if="openError" role="alert">{{ $t("chat.historyUnavailable") }}</p>
+    <p v-if="openError" role="alert">
+      {{ $t("chat.historyUnavailable") }}
+    </p>
     <n-spin v-if="busy" size="small" />
-    <n-button v-else-if="failed" size="small" @click="load(items.length > 0)">{{ $t("common.retry") }}</n-button>
-    <n-button v-else-if="more" size="small" @click="load(true)">{{ $t("page.home.loadMore") }}</n-button>
-    <p v-else-if="!items.length" class="aira-text-muted p-2">{{ $t("chat.noAccountHistory") }}</p>
+    <n-button v-else-if="failed" size="small" @click="load(items.length > 0)">
+      {{ $t("common.retry") }}
+    </n-button>
+    <n-button v-else-if="more" size="small" @click="load(true)">
+      {{ $t("page.home.loadMore") }}
+    </n-button>
+    <p v-else-if="!items.length" class="aira-text-muted p-2">
+      {{ $t("chat.noAccountHistory") }}
+    </p>
   </section>
 </template>

@@ -157,7 +157,7 @@ const treeData = computed<TreeOption[]>(() => {
 
   return sortedHistory.value.map(item => ({
     key: item.uuid,
-    label: item.title,
+    label: chatStore.displayHistoryTitle(item),
     uuid: item.uuid,
     time: item.time,
     isLeaf: true,
@@ -204,7 +204,7 @@ async function handleDelete(uuid: string) {
 
 function handleStartEdit(item: Chat.ChatHistory) {
   editingId.value = item.uuid
-  editingTitle.value = item.title
+  editingTitle.value = chatStore.displayHistoryTitle(item)
   nextTick(() => {
     inputRef.value?.focus()
   })
@@ -212,6 +212,11 @@ function handleStartEdit(item: Chat.ChatHistory) {
 
 async function handleSaveTitle(uuid: string) {
   const title = editingTitle.value.trim()
+  const item = chatStore.findHistory(uuid)
+  if (item && title === chatStore.displayHistoryTitle(item)) {
+    editingId.value = null
+    return
+  }
   if (title) {
     try {
       startLoading()
@@ -331,7 +336,7 @@ function renderTreeLabel(node: TreeRenderProps) {
   return h(NEllipsis, {
     class: "w-full",
   }, {
-    default: () => item.title,
+    default: () => label,
   })
 }
 

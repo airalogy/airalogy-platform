@@ -23,6 +23,8 @@ from app.models.protocol import Protocol
 from app.routers.depends import CurrentUser, get_current_user
 from app.routers.permission import check_user_permission
 from app.services.aira_memory import (
+    MEMORY_HANDLED,
+    MEMORY_REQUEST,
     MemoryUpdate,
     load_for_inference,
     observe_style,
@@ -252,19 +254,11 @@ async def send_qa_chat_message(
         # The visible response may be descriptive; the stored history is neutral.
         chat.messages.extend(
             [
-                {
-                    "role": "user",
-                    "content": text
-                    if style_only
-                    else "[Personal memory management request]",
-                },
-                {
-                    "role": "assistant",
-                    "content": reply
-                    if style_only
-                    else "[Memory management handled by Platform; no research data changed.]",
-                },
+                {"role": "user", "content": text},
+                {"role": "assistant", "content": reply},
             ]
+            if style_only
+            else [MEMORY_REQUEST.copy(), MEMORY_HANDLED.copy()]
         )
         await db_session.commit()
 

@@ -18,6 +18,8 @@ Platform processes these commands deterministically without a model. Unsupported
 
 Preferences guide ordinary chat, explanatory prose in Protocol generation, and explanations of computed analysis results. They cannot change field IDs, units, types, validation or calculations. Recorder conversational filling does not yet receive these preferences: it retains its strict requirement for actual values supplied in the current message.
 
+When you reopen a conversation in **All chats**, memory actions appear as short summaries in the current interface language. Automatic titles for conversations that start with a memory request also follow that language. Ordinary messages and titles you edit keep their original wording.
+
 ## Turn off or forget
 
 - **Turn memory off and save** to keep preferences without reading them or accepting chat memory writes. You can enable it again.

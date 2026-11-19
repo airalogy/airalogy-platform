@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { expect, test } from "@playwright/test"
-import { loadFixtures, mockAIEnabled } from "./fixtures"
+import { changeAccountLanguage, loadFixtures, mockAIEnabled } from "./fixtures"
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
@@ -101,7 +101,13 @@ test("Home Aira account history opens the same conversation on a fresh phone", a
   await link.click()
   const popup = await popupPromise
   await expect(popup.getByTestId("account-chat-history")).toBeVisible()
-  await expect(popup.getByText("[Personal memory management request]", { exact: true }).last()).toBeVisible()
+  await expect(popup.getByText("个人记忆请求", { exact: true }).last()).toBeVisible()
+  const desktopTitle = popup.getByTestId("account-chat-history").locator(`[data-chat-id="${id}"]`)
+  await expect(desktopTitle).toHaveText("个人记忆请求")
+  await expect(popup.getByText("平台已处理这次个人记忆请求，科研数据未变更。", { exact: true })).toBeVisible()
+  await changeAccountLanguage(popup, "English")
+  await expect(desktopTitle).toHaveText("Personal memory request")
+  await expect(popup.getByText("Platform handled this personal memory request. Research data was unchanged.", { exact: true })).toBeVisible()
   await popup.close()
 
   const phone = await browser.newContext({ storageState: "tests/e2e/.auth/owner.json", viewport: { width: 390, height: 844 } })
@@ -114,9 +120,11 @@ test("Home Aira account history opens the same conversation on a fresh phone", a
     await fresh.goto("/chat")
     await fresh.getByRole("button", { name: "聊天记录", exact: true }).click()
     const history = fresh.getByTestId("account-chat-history")
-    await history.locator(`[data-chat-id="${id}"]`).click()
+    const mobileTitle = history.locator(`[data-chat-id="${id}"]`)
+    await expect(mobileTitle).toHaveText("个人记忆请求")
+    await mobileTitle.click()
     await expect(fresh).toHaveURL(new RegExp(String(id)))
-    await expect(fresh.getByText("[Memory management handled by Platform; no research data changed.]", { exact: true })).toBeVisible()
+    await expect(fresh.getByText("平台已处理这次个人记忆请求，科研数据未变更。", { exact: true })).toBeVisible()
     const input = fresh.getByTestId("chat-input").locator("[contenteditable=true]")
     await input.fill("记住：合成验收其他未支持偏好")
     const request = fresh.waitForRequest(r => r.url().endsWith("/chats/qa/message"))
@@ -130,7 +138,11 @@ test("Home Aira account history opens the same conversation on a fresh phone", a
       const key = Object.keys(localStorage).find(name => name.startsWith("chatStorage:"))
       return !!key && JSON.parse(localStorage.getItem(key)!).data.legacyOwnershipChecked
     })).toBe(true)
-    await expect(fresh.getByText("[Memory management handled by Platform; no research data changed.]", { exact: true })).toHaveCount(2)
+    await expect(fresh.getByText("平台已处理这次个人记忆请求，科研数据未变更。", { exact: true })).toHaveCount(2)
+    await changeAccountLanguage(fresh, "English")
+    await expect(fresh.getByText("Platform handled this personal memory request. Research data was unchanged.", { exact: true })).toHaveCount(2)
+    await expect(fresh.getByText("Personal memory request", { exact: true }).first()).toBeVisible()
+    expect(await fresh.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
   }
   finally { await phone.close() }
 })

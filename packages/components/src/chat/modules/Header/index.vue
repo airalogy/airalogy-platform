@@ -7,7 +7,7 @@
         class="flex-1 cursor-pointer select-none overflow-hidden text-ellipsis whitespace-nowrap px-4 pr-6"
         @dblclick="onScrollToTop"
       >
-        {{ currentChatHistory?.title ?? "" }}
+        {{ currentChatHistory ? chatStore.displayHistoryTitle(currentChatHistory) : "" }}
       </h1>
       <div class="flex items-center space-x-2">
         <n-button class="h-10 w-10 !p-0" @click="handleExport">

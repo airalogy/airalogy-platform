@@ -6810,6 +6810,8 @@ declare namespace I18n {
       clientProof: string
     }
     airaMemory: {
+      "historyRequest": string
+      "historyHandled": string
       "title": string
       "open": string
       "description": string

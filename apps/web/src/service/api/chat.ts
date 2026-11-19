@@ -60,6 +60,7 @@ export async function verifyOwnedChatIds(ids: string[]) {
 }
 
 export interface AccountChatSummary {
+  title_is_memory_request?: boolean
   id: string
   title: string
   updated_at: string

@@ -6806,6 +6806,8 @@
     "clientProof": "This checks the platform and authorization only. Confirm the client connection by listing Airalogy tools and completing a call from that client."
   },
   "airaMemory": {
+    "historyRequest": "Personal memory request",
+    "historyHandled": "Platform handled this personal memory request. Research data was unchanged.",
     "title": "Aira personal memory",
     "open": "Personal memory",
     "description": "Only communication preferences you explicitly choose are saved, privately for your account in this instance. They guide conversations, Protocol generation and analysis explanations. Your current request takes priority. Research data is never remembered or used to fill Records.",

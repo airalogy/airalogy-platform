@@ -57,6 +57,7 @@ declare global {
       type: ContextProviderType
     }
     export interface ChatMessage {
+      memorySummary?: "request" | "handled"
       dateTime: number
       text: string
       /**
@@ -172,6 +173,7 @@ declare global {
     export type ChatContext = ChatRecordContext | ChatProtocolContext | ChatDocumentContext
 
     export interface ChatSession {
+      memorySummariesResolved?: boolean
       memoryDisabled?: boolean
       memoryStatus?: { status: string, keys: string[], revision: number }
       memoryChangedAt?: number

@@ -49,7 +49,7 @@
         ref="textRef"
         :inversion="props.message.inversion"
         :error="props.message.error"
-        :text="wholeContentRef[AnswerType.ANSWER].content"
+        :text="memorySummary ?? wholeContentRef[AnswerType.ANSWER].content"
         :loading="props.message.loading"
         :as-raw-text="asRawText"
         :editing="props.message.editing"
@@ -202,6 +202,14 @@ const message = useClosableMessage()
 
 const textRef = ref<HTMLElement>()
 
+const memorySummary = computed(() => {
+  if (props.message.memorySummary === "request")
+    return $t("airaMemory.historyRequest")
+  if (props.message.memorySummary === "handled")
+    return $t("airaMemory.historyHandled")
+  return undefined
+})
+
 const asRawText = ref(false)
 
 const messageRef = ref<HTMLElement>()
@@ -293,7 +301,7 @@ const { loadingState, startTargetLoading, endTargetLoading } = useLoading()
 async function handleCopy() {
   try {
     startTargetLoading("copy")
-    await copyToClip(props.message?.text || "")
+    await copyToClip(memorySummary.value ?? props.message.text)
     message.success($t("chat.copied"))
   }
   catch {

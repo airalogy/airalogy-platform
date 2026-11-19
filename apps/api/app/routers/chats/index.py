@@ -12,6 +12,7 @@ from app.models.chat import (
 )
 from app.routers.chats.utils import UsageLimit
 from app.routers.depends import CurrentUser, get_current_user
+from app.services.aira_memory import is_memory_turn
 from app.services.chat_models import enabled_chat_model_types
 
 router = APIRouter(
@@ -78,11 +79,17 @@ async def list_account_conversations(
     )).all()
     items = []
     for chat_id, updated_at, messages in rows[:page_size]:
-        first = next((m for m in messages if m.get("role") == "user"), {})
+        first_index = next((i for i, m in enumerate(messages) if m.get("role") == "user"), -1)
+        first = messages[first_index] if first_index >= 0 else {}
         title = first.get("content") or next(
             (f.get("file_name") for f in (first.get("files") or []) if f.get("file_name")), ""
         )
-        items.append({"id": chat_id, "title": str(title)[:120], "updated_at": updated_at})
+        items.append({
+            "id": chat_id,
+            "title": str(title)[:120],
+            "title_is_memory_request": is_memory_turn(messages, first_index),
+            "updated_at": updated_at,
+        })
     return {"items": items, "has_more": len(rows) > page_size}
 
 
@@ -93,7 +100,16 @@ async def get_chat(chat_id: UUID, db_session: DBSession, current_user: CurrentUs
     )
     if chat is None:
         raise HTTPException(status_code=404, detail="Conversation unavailable")
-    return chat
+    detail = chat.as_dict()
+    if chat.type == ChatType.QA:
+        summaries = {}
+        for i in range(len(chat.messages) - 1):
+            if is_memory_turn(chat.messages, i):
+                summaries[i] = "request"
+                summaries[i + 1] = "handled"
+        if summaries:
+            detail["memory_summaries"] = summaries
+    return detail
 
 
 @router.get("/")

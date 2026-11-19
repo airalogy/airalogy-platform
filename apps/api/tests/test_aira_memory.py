@@ -50,6 +50,19 @@ def test_preference_contract_rejects_arbitrary_content(changes):
         memory.MemoryUpdate(expected_revision=0, request_id=uuid4(), changes=changes)
 
 
+def test_only_the_complete_legacy_memory_turn_is_displayed_as_a_summary():
+    request = {"role": "user", "content": "[Personal memory management request]"}
+    reply = {
+        "role": "assistant",
+        "content": "[Memory management handled by Platform; no research data changed.]",
+    }
+    messages = [request, {"role": "assistant", "content": "Quoted text"}, request, reply]
+    assert [memory.is_memory_turn(messages, i) for i in range(4)] == [False, False, True, False]
+    assert not memory.is_memory_turn([reply, request], -1)
+    assert not memory.is_memory_turn([{**request, "files": ["example"]}, reply], 0)
+    assert not memory.is_memory_turn([request, {"role": "tool", "content": "quoted"}, reply], 0)
+
+
 def test_private_context_uses_fixed_phrases_not_provenance_or_values():
     state = {
         "enabled": True,
