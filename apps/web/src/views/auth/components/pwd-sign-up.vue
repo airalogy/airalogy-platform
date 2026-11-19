@@ -10,7 +10,7 @@
       <n-input
         v-model:value="model.email"
         class="form__input"
-        :readonly="Boolean(invitation)"
+        :readonly="Boolean(invitation?.email)"
         :placeholder="$t('page.login.common.emailPlaceholder')"
       />
     </n-form-item>
@@ -100,7 +100,7 @@
       <n-button
         quaternary
         class="mt-4 underline !hover:text-primary"
-        @click="routerPushByKey('login')"
+        @click="signIn"
       >
         {{ $t("page.login.emailLogin.confirm") }}
       </n-button>
@@ -112,13 +112,12 @@
 import type { FormItemRule } from "naive-ui"
 import { createPasswordValidator, useFormRules, useNaiveForm } from "@/composables/useForm"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
-import { useRouterPush } from "@/composables/useRouterPush"
-import { fetchInvitation, type InvitationInfo } from "@/service/api/instance"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import EyeOffOutline from "~icons/ion/eye-off-outline"
 import EyeOutline from "~icons/ion/eye-outline"
 import { reactive } from "vue"
+import { useSignupInvitation } from "./useSignupInvitation"
 
 defineOptions({
   name: "PwdSignUp",
@@ -132,7 +131,6 @@ const { formRef, validate } = useNaiveForm()
 const {
   formRules: { user: userFormRules },
 } = useFormRules()
-const { routerPushByKey } = useRouterPush()
 const usernameRef = ref<{ restoreValidation: () => void } | null>(null)
 
 interface FormModel {
@@ -155,10 +153,9 @@ const model: FormModel = reactive({
 
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
-const route = useRoute()
-const inviteToken = computed(() => typeof route.query.inviteToken === "string" ? route.query.inviteToken : "")
-const invitation = ref<InvitationInfo | null>(null)
-const invitationLoading = ref(Boolean(inviteToken.value))
+const { inviteToken, invitation, invitationLoading, signIn } = useSignupInvitation((email) => {
+  model.email = email
+})
 const invitationRequired = computed(() => instanceStore.isSingleLab
   && instanceStore.signupMode !== "open"
   && !invitation.value)
@@ -220,27 +217,13 @@ function restoreFormValidation() {
 async function handleSubmit() {
   await validate()
 
-  await authStore.signup("email", {
+  const result = await authStore.signup("email", {
     ...model,
     inviteToken: inviteToken.value || undefined,
   })
-  emits("sign-up:password", model)
+  if (result === true)
+    emits("sign-up:password", model)
 }
-
-async function loadInvitation() {
-  if (!inviteToken.value) {
-    invitationLoading.value = false
-    return
-  }
-  const { data } = await fetchInvitation(inviteToken.value)
-  invitation.value = data || null
-  if (data) {
-    model.email = data.email
-  }
-  invitationLoading.value = false
-}
-
-onMounted(loadInvitation)
 </script>
 
 <style scoped lang="sass">

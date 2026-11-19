@@ -111,7 +111,8 @@ export async function fetchInvitation(token: string) {
 }
 
 export async function postInvitation(payload: {
-  email: string
+  email?: string
+  note?: string
   labRole: Api.Lab.LabRole
   projectRole: Api.Project.ProjectRole
 }) {
@@ -126,10 +127,29 @@ export async function postInvitation(payload: {
     method: "POST",
     data: {
       email: payload.email,
+      note: payload.note,
       lab_role: payload.labRole,
       project_role: payload.projectRole,
     },
   })
+}
+
+export interface InvitationRecord {
+  id: string
+  note: string | null
+  email: string
+  expires_at: string
+  status: "pending" | "claimed" | "expired" | "revoked" | "closed"
+  claimed_by: string | null
+  can_revoke: boolean
+}
+
+export function listInvitations(page: number) {
+  return request<{ items: InvitationRecord[], total: number }>({ url: "/instance/invitations", params: { page } })
+}
+
+export function revokeInvitation(id: string) {
+  return request<{ success: boolean }>({ url: `/instance/invitations/${id}/revoke`, method: "POST" })
 }
 
 export async function acceptInvitation(token: string) {

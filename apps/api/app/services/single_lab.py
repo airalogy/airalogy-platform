@@ -1,10 +1,10 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 from uuid import UUID
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import case, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
@@ -16,7 +16,7 @@ from app.models.user import User
 
 def utcnow() -> datetime:
     # Existing schema stores naive UTC-compatible timestamps.
-    return datetime.utcnow()
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def normalize_email(email: str) -> str:
@@ -116,21 +116,25 @@ async def add_user_to_single_lab(
     created_by_user_id: UUID,
     lab_role: LabRole = LabRole.MEMBER,
     project_role: ProjectRole = ProjectRole.RECORDER,
-) -> None:
-    membership = await LabUser.find_by(
-        db_session,
-        [LabUser.lab_id == lab.id, LabUser.user_id == user.id],
+) -> bool:
+    # Serialize joins from distinct invitations before checking membership and updating the count.
+    await db_session.execute(
+        select(Lab.id).where(Lab.id == lab.id).with_for_update(key_share=True)
     )
-    if membership is None:
-        db_session.add(
-            LabUser(
-                lab_id=lab.id,
-                user_id=user.id,
-                role=lab_role,
-                create_user_id=created_by_user_id,
-            )
+    membership = await LabUser.find_by(
+        db_session, [LabUser.lab_id == lab.id, LabUser.user_id == user.id]
+    )
+    if membership is not None:
+        return False
+    db_session.add(
+        LabUser(
+            lab_id=lab.id,
+            user_id=user.id,
+            role=lab_role,
+            create_user_id=created_by_user_id,
         )
-        await db_session.flush()
+    )
+    await db_session.flush()
 
     default_project = await Project.find_by(
         db_session,
@@ -159,6 +163,7 @@ async def add_user_to_single_lab(
             )
 
     lab.users_count = await LabUser.count(db_session, [LabUser.lab_id == lab.id])
+    return True
 
 
 async def create_account_token(
@@ -168,34 +173,38 @@ async def create_account_token(
     created_by_user_id: UUID | None,
     expires_in: timedelta,
     email: str = "",
+    invitation_note: str | None = None,
     lab_id: UUID | None = None,
     user_id: UUID | None = None,
     lab_role: LabRole | None = None,
     project_role: ProjectRole | None = None,
 ) -> tuple[AccountToken, str]:
     normalized_email = normalize_email(email) if email else ""
-    invalidation_conditions = [
+    invalidation = update(AccountToken).where(
         AccountToken.token_type == token_type.value,
         AccountToken.consumed_at.is_(None),
-    ]
-    if token_type == AccountTokenType.INVITATION:
-        invalidation_conditions.extend(
-            [AccountToken.lab_id == lab_id, AccountToken.email == normalized_email]
-        )
-    else:
-        invalidation_conditions.append(AccountToken.user_id == user_id)
-
-    await db_session.execute(
-        update(AccountToken)
-        .where(*invalidation_conditions)
-        .values(consumed_at=utcnow())
     )
+    if token_type == AccountTokenType.PASSWORD_RESET:
+        await db_session.execute(
+            invalidation.where(AccountToken.user_id == user_id).values(
+                consumed_at=utcnow()
+            )
+        )
+    elif normalized_email:
+        await db_session.execute(
+            invalidation.where(
+                AccountToken.lab_id == lab_id,
+                AccountToken.email == normalized_email,
+                AccountToken.expires_at > utcnow(),
+            ).values(consumed_at=utcnow(), invitation_outcome="revoked")
+        )
 
     raw_token = secrets.token_urlsafe(32)
     token = AccountToken(
         token_hash=hash_account_token(raw_token),
         token_type=token_type.value,
         email=normalized_email,
+        invitation_note=invitation_note,
         lab_id=lab_id,
         user_id=user_id,
         lab_role=lab_role.value if lab_role is not None else None,
@@ -227,8 +236,18 @@ async def revoke_lab_account_tokens(
             AccountToken.lab_id == lab_id,
             AccountToken.consumed_at.is_(None),
             ownership_condition,
+            AccountToken.expires_at > utcnow(),
         )
-        .values(consumed_at=utcnow())
+        .values(
+            consumed_at=utcnow(),
+            invitation_outcome=case(
+                (
+                    AccountToken.token_type == AccountTokenType.INVITATION.value,
+                    "revoked",
+                ),
+                else_=AccountToken.invitation_outcome,
+            ),
+        )
     )
 
 

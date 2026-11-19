@@ -9,6 +9,9 @@
         <n-button type="primary" :loading="loading" @click="handleAction">
           {{ actionLabel }}
         </n-button>
+        <n-button v-if="!authStore.isLogin && invitation && !invitation.email" class="ml-2" @click="signIn">
+          {{ $t("page.instance.signInToJoin") }}
+        </n-button>
       </template>
     </n-result>
   </n-card>
@@ -50,31 +53,34 @@ const actionLabel = computed(() => {
       ? $t("page.instance.signInToJoin")
       : $t("page.login.register.confirm")
   }
-  return $t("page.instance.joining")
+  return $t("page.instance.confirmJoin", { account: authStore.userInfo.username })
 })
 
 async function loadInvitation() {
+  const requested = token.value
+  invitation.value = null
+  loading.value = true
   if (!token.value) {
     failed.value = true
     loading.value = false
     return
   }
   const { data } = await fetchInvitation(token.value)
+  if (requested !== token.value)
+    return
   invitation.value = data || null
   failed.value = !data
   loading.value = false
-
-  if (data && authStore.isLogin) {
-    await acceptCurrentInvitation()
-  }
 }
 
 async function acceptCurrentInvitation() {
+  if (loading.value)
+    return
   loading.value = true
   try {
     const { data } = await acceptInvitation(token.value)
     if (!data) {
-      failed.value = true
+      await loadInvitation()
       return
     }
     await instanceStore.load()
@@ -96,10 +102,7 @@ async function handleAction() {
     return
   }
   if (invitation.value.existing_account) {
-    await router.push({
-      name: "login",
-      query: { redirect: route.fullPath },
-    })
+    await signIn()
   }
   else {
     await router.push({
@@ -109,5 +112,8 @@ async function handleAction() {
   }
 }
 
-onMounted(loadInvitation)
+function signIn() {
+  return router.push({ name: "login", query: { redirect: route.fullPath } })
+}
+watch(token, loadInvitation, { immediate: true })
 </script>

@@ -19,18 +19,18 @@ from app.models.lab import Lab, LabRole, LabUser
 from app.models.project import ProjectRole
 from app.models.user import User
 from app.services.account_security import get_auth_version
+from app.services.signup_verification import (
+    SIGNUP_VERIFICATION_TTL_SECONDS,
+    consume_signup_verification,
+    get_signup_verification,
+    issue_signup_verification,
+)
 from app.services.single_lab import (
     add_user_to_single_lab,
     find_valid_account_token,
     get_single_lab,
     normalize_email,
     utcnow,
-)
-from app.services.signup_verification import (
-    SIGNUP_VERIFICATION_TTL_SECONDS,
-    consume_signup_verification,
-    get_signup_verification,
-    issue_signup_verification,
 )
 
 from .depends import create_access_token
@@ -210,7 +210,13 @@ async def signup(params: SignUpParams, db_session: DBSession):
                     status_code=400,
                     detail="Invitation is invalid or expired",
                 )
-            if invitation.lab_id != single_lab.id or invitation.email != email:
+            if invitation.user_id is not None:
+                raise HTTPException(
+                    status_code=409, detail="Sign in to accept this invitation"
+                )
+            if invitation.lab_id != single_lab.id or (
+                invitation.email and invitation.email != email
+            ):
                 raise HTTPException(
                     status_code=403,
                     detail="Invitation does not match this email or Lab",
@@ -295,8 +301,7 @@ async def signup(params: SignUpParams, db_session: DBSession):
             ),
         )
         if invitation is not None:
-            invitation.user_id = user.id
-            invitation.consumed_at = utcnow()
+            invitation.claim_invitation(user.id, utcnow())
     else:
         lab = Lab(
             uid=user.username,

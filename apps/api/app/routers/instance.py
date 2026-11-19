@@ -1,10 +1,10 @@
 import os
 import secrets
-from datetime import timedelta
+from datetime import UTC, timedelta
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import (
     BaseModel,
     EmailStr,
@@ -17,7 +17,7 @@ from sqlalchemy import func, select, text
 
 from app.config import config
 from app.database import DBSession
-from app.models.account_token import AccountTokenType
+from app.models.account_token import AccountToken, AccountTokenType
 from app.models.chat import ChatModelType
 from app.models.lab import Lab, LabRole, LabUser, OrganizationType
 from app.models.project import ProjectRole
@@ -250,7 +250,8 @@ async def bootstrap_single_lab(params: BootstrapParams, db_session: DBSession):
 
 
 class CreateInvitationParams(BaseModel):
-    email: EmailStr
+    email: EmailStr | None = None
+    note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] = ""
     lab_role: LabRole = LabRole.MEMBER
     project_role: ProjectRole = Field(
         default_factory=lambda: ProjectRole(config.default_invitation_project_role)
@@ -291,8 +292,15 @@ async def create_invitation(
             detail="Managers can only invite Lab members",
         )
 
-    email = normalize_email(str(params.email))
-    existing_user = await User.find_by(db_session, [User.email == email])
+    if not params.email and (
+        params.lab_role == LabRole.MANAGER or params.project_role == ProjectRole.MANAGER
+    ):
+        raise HTTPException(422, "Administrator invitations require a designated email")
+
+    email = normalize_email(str(params.email)) if params.email else ""
+    existing_user = (
+        await User.find_by(db_session, [User.email == email]) if email else None
+    )
     if existing_user is not None:
         existing_membership = await LabUser.find_by(
             db_session,
@@ -304,6 +312,7 @@ async def create_invitation(
     token, raw_token = await create_account_token(
         db_session,
         token_type=AccountTokenType.INVITATION,
+        invitation_note=params.note or None,
         created_by_user_id=current_user.id,
         expires_in=timedelta(hours=config.INVITATION_TTL_HOURS),
         email=email,
@@ -316,10 +325,80 @@ async def create_invitation(
     return {
         "id": token.id,
         "email": email,
-        "expires_at": token.expires_at,
+        "expires_at": token.expires_at.replace(tzinfo=UTC),
         "existing_account": existing_user is not None,
         "url": invitation_url(raw_token),
     }
+
+
+@router.get("/invitations")
+async def list_invitations(
+    current_user: CurrentUser, db_session: DBSession, page: int = Query(1, ge=1)
+):
+    ensure_single_lab_mode()
+    lab, role = await require_single_lab_manager(db_session, current_user)
+    conditions = (
+        AccountToken.lab_id == lab.id,
+        AccountToken.token_type == AccountTokenType.INVITATION,
+    )
+    total = await db_session.scalar(
+        select(func.count()).select_from(AccountToken).where(*conditions)
+    )
+    rows = await db_session.execute(
+        select(AccountToken, User.username)
+        .outerjoin(User, User.id == AccountToken.user_id)
+        .where(*conditions)
+        .order_by(AccountToken.created_at.desc(), AccountToken.id.desc())
+        .offset((page - 1) * 20)
+        .limit(20)
+    )
+    items = []
+    now = utcnow()
+    for invite, username in rows:
+        status = invite.invitation_status(now)
+        items.append(
+            {
+                "id": invite.id,
+                "note": invite.invitation_note,
+                "email": invite.email,
+                "status": status,
+                "expires_at": invite.expires_at.replace(tzinfo=UTC),
+                "claimed_by": username if status == "claimed" else None,
+                "can_revoke": status == "pending"
+                and (role == LabRole.OWNER or invite.lab_role == LabRole.MEMBER),
+            }
+        )
+    return {"items": items, "total": total}
+
+
+@router.post("/invitations/{invitation_id}/revoke")
+async def revoke_invitation(
+    invitation_id: UUID, current_user: CurrentUser, db_session: DBSession
+):
+    ensure_single_lab_mode()
+    lab, role = await require_single_lab_manager(db_session, current_user)
+    invite = await db_session.scalar(
+        select(AccountToken)
+        .where(
+            AccountToken.id == invitation_id,
+            AccountToken.lab_id == lab.id,
+            AccountToken.token_type == AccountTokenType.INVITATION,
+        )
+        .with_for_update()
+    )
+    if invite is None:
+        raise HTTPException(404, "Invitation not found")
+    if role != LabRole.OWNER and invite.lab_role != LabRole.MEMBER:
+        raise HTTPException(403, "Only the owner can revoke administrator invitations")
+    now = utcnow()
+    status = invite.invitation_status(now)
+    if status == "pending":
+        invite.consumed_at = now
+        invite.invitation_outcome = "revoked"
+        await db_session.commit()
+    elif status != "revoked":
+        raise HTTPException(409, "Invitation is no longer pending")
+    return {"success": True}
 
 
 @router.get("/invitations/{raw_token}")
@@ -335,7 +414,7 @@ async def get_invitation(raw_token: str, db_session: DBSession):
     lab = await Lab.find(db_session, token.lab_id)
     return {
         "email": token.email,
-        "expires_at": token.expires_at,
+        "expires_at": token.expires_at.replace(tzinfo=UTC),
         "lab": InstanceLabInfo(
             id=lab.id,
             uid=lab.uid,
@@ -361,13 +440,17 @@ async def accept_invitation(
     )
     if token is None:
         raise HTTPException(status_code=404, detail="Invitation is invalid or expired")
-    if normalize_email(current_user.email) != token.email:
+    if (token.user_id and token.user_id != current_user.id) or (
+        token.email and normalize_email(current_user.email or "") != token.email
+    ):
         raise HTTPException(
             status_code=403,
             detail="Invitation email does not match the signed-in account",
         )
-    lab = await Lab.find(db_session, token.lab_id)
-    await add_user_to_single_lab(
+    lab = await get_single_lab(db_session)
+    if lab is None or lab.id != token.lab_id:
+        raise HTTPException(404, "Invitation not found")
+    joined = await add_user_to_single_lab(
         db_session,
         lab=lab,
         user=current_user,
@@ -375,8 +458,9 @@ async def accept_invitation(
         lab_role=LabRole(token.lab_role or LabRole.MEMBER),
         project_role=ProjectRole(token.project_role or ProjectRole.RECORDER),
     )
-    token.user_id = current_user.id
-    token.consumed_at = utcnow()
+    if not joined:
+        raise HTTPException(409, "Account is already a member")
+    token.claim_invitation(current_user.id, utcnow())
     await db_session.commit()
     return {
         "success": True,

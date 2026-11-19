@@ -863,6 +863,24 @@ declare namespace I18n {
         resetSuccess: string
         resetAction: string
         backToLogin: string
+        inviteNote: string
+        privateInvite: string
+        privateInviteHint: string
+        bindInviteEmail: string
+        privilegedInviteEmail: string
+        inviteHistory: string
+        noInvites: string
+        reloadInvites: string
+        revokeInvite: string
+        confirmRevoke: string
+        confirmJoin: string
+        inviteStates: {
+          pending: string
+          claimed: string
+          expired: string
+          revoked: string
+          closed: string
+        }
         inviteMember: string
         inviteDescription: string
         createInvite: string

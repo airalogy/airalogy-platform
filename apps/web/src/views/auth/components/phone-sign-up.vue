@@ -24,7 +24,7 @@
       <account-credentials-step
         v-model="stepAccountData"
         show-back
-        :email-readonly="Boolean(invitation)"
+        :email-readonly="Boolean(invitation?.email)"
         @next="handleAccountCredentialsComplete"
         @back="currentStep = 1"
       />
@@ -50,7 +50,7 @@
       <n-button
         quaternary
         class="mt-4 underline !hover:text-primary"
-        @click="routerPushByKey('login')"
+        @click="signIn"
       >
         {{ $t("page.login.emailLogin.confirm") }}
       </n-button>
@@ -60,14 +60,13 @@
 
 <script setup lang="ts">
 import type { CountryData } from "@airalogy/shared/constants/country-code"
-import { useRouterPush } from "@/composables/useRouterPush"
-import { fetchInvitation, type InvitationInfo } from "@/service/api/instance"
 import { useAuthStore } from "@/store/modules/auth"
 import { useClosableMessage } from "@airalogy/composables"
 import { countryData } from "@airalogy/shared/constants/country-code"
 import { $t } from "@airalogy/shared/locales"
 import AccountCredentialsStep from "./account-credentials-step.vue"
 import UserInfoStep from "./user-info-step.vue"
+import { useSignupInvitation } from "./useSignupInvitation"
 import VerifyPhoneStep from "./verify-phone-step.vue"
 
 interface AccountData {
@@ -105,8 +104,6 @@ const emit = defineEmits<{
   (e: "sign-up:password", val: CompleteFormModel): void
 }>()
 
-const { routerPushByKey } = useRouterPush()
-const route = useRoute()
 const authStore = useAuthStore()
 const message = useClosableMessage()
 
@@ -126,9 +123,9 @@ const stepPhoneData = ref<PhoneData>({
   phone: "",
   country: countryData.find(country => country.isoCode === "CN") || null,
 })
-const inviteToken = computed(() => typeof route.query.inviteToken === "string" ? route.query.inviteToken : "")
-const invitation = ref<InvitationInfo | null>(null)
-const invitationLoading = ref(Boolean(inviteToken.value))
+const { inviteToken, invitation, invitationLoading, signIn } = useSignupInvitation((email) => {
+  stepAccountData.value.email = email
+})
 const verifiedPhoneLabel = computed(() => {
   const dialCode = verifiedCountryCode.value ? `+${verifiedCountryCode.value}` : ""
   return `${dialCode} ${stepPhoneData.value.phone}`.trim()
@@ -170,21 +167,6 @@ async function handleSignupComplete(data: ProfileData) {
     currentStep.value = 1
   }
 }
-
-async function loadInvitation() {
-  if (!inviteToken.value) {
-    invitationLoading.value = false
-    return
-  }
-  const { data } = await fetchInvitation(inviteToken.value)
-  invitation.value = data || null
-  if (data) {
-    stepAccountData.value.email = data.email
-  }
-  invitationLoading.value = false
-}
-
-onMounted(loadInvitation)
 </script>
 
 <style scoped lang="sass">

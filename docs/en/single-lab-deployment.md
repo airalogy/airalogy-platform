@@ -93,7 +93,7 @@ The API serializes bootstrap requests and refuses setup if any user or Lab alrea
 
 ## Members And Accounts
 
-The owner and Lab managers can create single-use invitation URLs from the Lab member view. New users register through the URL; existing users sign in and accept it. Invitations are bound to an email address, expire, and are stored only as SHA-256 hashes.
+From Members, the owner or a manager can create a one-time link with an optional private note and send it directly to a member. New users choose their username and email. Existing users sign in and confirm which account will join. Opening a link leaves it available. An invitation can be restricted to an email and must be restricted for organization or default project managers. Invitation history shows pending, claimed, expired and revoked links, and the account that claimed each new invitation. Managers can revoke unused links within their authority. Earlier closed invitations have no recorded outcome. Links expire and only their hashes are stored.
 
 The owner or a manager can also create a one-time password-reset URL for an eligible member. Managers can manage ordinary members but not the owner or other managers. Changing or resetting a password revokes previously issued login tokens.
 

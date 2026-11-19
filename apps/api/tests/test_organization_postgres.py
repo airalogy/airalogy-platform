@@ -10,20 +10,20 @@ import httpx
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from fastapi import FastAPI
-from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from app.config import config
 from app.database import get_db_session
 from app.models.base import Base
 from app.models.lab import Lab, LabUser
 from app.models.project import Project
 from app.models.user import User
-from app.services.single_lab import ensure_default_project
 from app.routers import instance, labs, organizations
 from app.routers.depends import create_access_token
+from app.services.single_lab import ensure_default_project
+from fastapi import FastAPI
 from migrations.model_registry import import_models
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
 from tests.test_record_analysis_postgres import database, seed_analysis
 
 import_models()
@@ -339,5 +339,118 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
             async with admin.begin() as db:
                 await db.execute(text(f"DROP SCHEMA {schema} CASCADE"))
             await admin.dispose()
+
+    asyncio.run(run())
+
+
+def test_private_invitations_claim_history_and_revocation(monkeypatch):
+    from datetime import timedelta
+    from urllib.parse import parse_qs, urlsplit
+    from uuid import UUID
+
+    from app.models.account_token import AccountToken
+    from app.models.lab import LabRole
+    from app.services.single_lab import utcnow
+
+    async def run():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions)
+            monkeypatch.setattr(config, "DEPLOYMENT_MODE", "single_organization")
+            monkeypatch.setattr(config, "SINGLE_LAB_UID", seed.lab.uid)
+            monkeypatch.setattr(
+                config, "SINGLE_LAB_DEFAULT_PROJECT_UID", seed.project.uid
+            )
+            owner = {"Auth-Token": create_access_token(seed.owner)}
+            recipient = {"Auth-Token": create_access_token(seed.outsider)}
+            member = {"Auth-Token": create_access_token(seed.analyst)}
+            async with client(sessions) as http:
+                base = "/instance/invitations"
+
+                async def issue(**fields):
+                    result = await http.post(base, headers=owner, json=fields)
+                    assert result.status_code == 200, result.text
+                    invite = result.json()
+                    token = parse_qs(urlsplit(invite["url"]).query)["token"][0]
+                    return invite["id"], base + "/" + token
+
+                first, first_url = await issue(note="Private admin note")
+                second, second_url = await issue()
+                old, old_url = await issue(email="future@example.org")
+                await issue(email="future@example.org")
+                expired, expired_url = await issue()
+                legacy, _ = await issue()
+                async with sessions() as db:
+                    (await db.get(AccountToken, UUID(expired))).expires_at = (
+                        utcnow() - timedelta(seconds=1)
+                    )
+                    (await db.get(AccountToken, UUID(legacy))).consumed_at = utcnow()
+                    await db.commit()
+
+                for fields in [{"lab_role": 2}, {"project_role": 20}]:
+                    assert (
+                        await http.post(base, headers=owner, json=fields)
+                    ).status_code == 422
+                elevated, elevated_url = await issue(
+                    lab_role=2, email="lead@example.org"
+                )
+                assert (
+                    await http.post(elevated_url + "/accept", headers=recipient)
+                ).status_code == 403
+                assert (await http.get(base, headers=member)).status_code == 403
+                assert (
+                    await http.post(base + "/" + second + "/revoke", headers=member)
+                ).status_code == 403
+                for _ in range(2):
+                    preview = await http.get(first_url)
+                    assert (
+                        preview.status_code == 200
+                        and "Private admin note" not in preview.text
+                    )
+                assert (
+                    await http.post(first_url + "/accept", headers=owner)
+                ).status_code == 409
+                claims = await asyncio.gather(
+                    *(
+                        http.post(first_url + "/accept", headers=recipient)
+                        for _ in range(2)
+                    )
+                )
+                assert sorted(r.status_code for r in claims) == [200, 404]
+                assert (await http.get(second_url)).status_code == 200
+                assert (await http.get(old_url)).status_code == 404
+                assert (await http.get(expired_url)).status_code == 404
+                async with sessions() as db:
+                    lab_member = await LabUser.find_by(
+                        db,
+                        [
+                            LabUser.user_id == seed.analyst.id,
+                            LabUser.lab_id == seed.lab.id,
+                        ],
+                    )
+                    lab_member.role = LabRole.MANAGER
+                    await db.commit()
+                assert (
+                    await http.post(base + "/" + elevated + "/revoke", headers=member)
+                ).status_code == 403
+                for _ in range(2):
+                    assert (
+                        await http.post(base + "/" + second + "/revoke", headers=member)
+                    ).status_code == 200
+                assert (await http.get(second_url)).status_code == 404
+                assert (
+                    await http.post(second_url + "/accept", headers=recipient)
+                ).status_code == 404
+                rows = (await http.get(base, headers=owner)).json()["items"]
+                history = {r["id"]: r for r in rows}
+                assert history[first]["status"] == "claimed"
+                assert history[first]["claimed_by"] == seed.outsider.username
+                assert history[first]["note"] == "Private admin note"
+                assert history[old]["status"] == history[second]["status"] == "revoked"
+                assert history[expired]["status"] == "expired"
+                assert (
+                    history[legacy]["status"] == "closed"
+                    and history[legacy]["claimed_by"] is None
+                )
+                assert all("url" not in row and "token_hash" not in row for row in rows)
 
     asyncio.run(run())

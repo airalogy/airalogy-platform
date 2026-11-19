@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Single-organization owners and managers can privately invite members without knowing their email, review redemptions and revoke unused invitations. Administrator invitations remain email-bound.
+
 - Weekly meeting preparation can select unfinished items from a previous meeting, review their current owner, blocker and next step, and discuss the original work again.
 
 - Manual Record entry preserves a selected sample when the search field loses focus and includes seconds in date-time values for schema validation.
