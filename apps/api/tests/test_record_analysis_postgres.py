@@ -14,6 +14,7 @@ import threading
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -22,6 +23,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import config
+from app.database import sessionmanager
 from app.models.analysis import AnalysisPipelineRevision, AnalysisPreview, AnalysisRun
 from app.models.lab import Lab, LabRole, LabUser
 from app.models.project import (
@@ -61,7 +63,10 @@ def legacy_role_mode(monkeypatch):
 async def database():
     engine = create_async_engine(DATABASE_URL)
     try:
-        yield async_sessionmaker(engine, expire_on_commit=False)
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        # Personal memory opens a separate session while preparing a model request.
+        with patch.object(sessionmanager, "session", sessions):
+            yield sessions
     finally:
         await engine.dispose()
 

@@ -69,7 +69,7 @@
                          field-display="compact" :field-meta="nativeMeta" :field-state="nativeState" :validation-schema="nativeSchema"
                          :resource-resolvers="resourceResolvers" :field-adapters="hostAdapters" :wrap-field="wrapDrawerField"
                          :upload-file="uploadNativeFile" :resolve-file-info="resolveNativeFile"
-                         @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
+                         @mousedown.capture="keepResourceSearchFocus" @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
                          @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })" />
           <n-button v-for="field in outlineFields" :key="field.key" text class="block py-1"
                     @click="focusNativeField(field.key)">{{ field.label }}</n-button>
@@ -201,7 +201,7 @@
             @fields-change="handleNativeFields" @update:model-value="handleNativeSnapshot"
             @table-add-row="({ tableName }) => writeNativeTable(tableName)"
             @table-remove-row="({ tableName }) => writeNativeTable(tableName)"
-            @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
+            @mousedown.capture="keepResourceSearchFocus" @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
             @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })"
           />
         </div>
@@ -1525,6 +1525,11 @@ function writeNativeTable(id: string) {
   if (Array.isArray(rows) && !isEqual(nativeRecord.value.var[id], rows))
     void handleFieldChange({ prop: id, scope: "research_variable", value: rows })
 }
+function keepResourceSearchFocus(event: MouseEvent) {
+  // Blurring the search box refreshes its results before the option receives its click.
+  if (event.button === 0 && event.target instanceof Element && event.target.closest(".aimd-rec-entity-ref__option"))
+    event.preventDefault()
+}
 function handleNativeField({ section, fieldKey, value, rowIndex, column }: FieldEventPayload) {
   if (props.readonly)
     return
@@ -1540,10 +1545,16 @@ function handleNativeField({ section, fieldKey, value, rowIndex, column }: Field
     return
   }
   const field = _get(fieldModel, [scope, id])
-  if (section === "step" || section === "check")
+  if (section === "step" || section === "check") {
     value = lastSnapshot?.[section][id] ?? value
-  else if (typeof value === "number" && ["number", "float", "integer"].includes(field?.type))
+  }
+  else if (typeof value === "number" && ["number", "float", "integer"].includes(field?.type)) {
     value = { type: field.type, value, displayedValue: String(value) }
+  }
+  else if (section === "var" && nativeMeta.value[`var:${id}`]?.inputType === "datetime" && typeof value === "string") {
+    // datetime-local supplies minutes. JSON Schema date-time also requires seconds.
+    value = value.replace(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(Z|[+-]\d{2}:\d{2})$/, "$1:00$2")
+  }
   void handleFieldChange({ scope, prop: id, value: value as any })
 }
 

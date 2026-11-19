@@ -80,6 +80,7 @@ test("bundled kit connects real samples, strict CSV import and grouped analysis 
   const sampleOption = page.locator(".aimd-rec-entity-ref__option").filter({ hasText: "Synthetic kit control" })
   await expect(sampleOption).toBeVisible()
   await sampleOption.click()
+  await expect(page.locator(".aimd-rec-entity-ref__chip").first()).toContainText(sample.id)
   for (const [field, value] of Object.entries({ method: "manual-method", metric: "concentration", value: "8", unit: "mg/L", measured_at: "2026-01-02T12:00" })) {
     const input = page.locator(`#form-research_variable-${field} input, #form-research_variable-${field} textarea`).first()
     await input.fill(value)

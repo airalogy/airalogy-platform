@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Manual Record entry preserves a selected sample when the search field loses focus and includes seconds in date-time values for schema validation.
+
 - Project journals again offer authorized Record export, including the selected day. Record entry keeps its CSV preview when resizing, and opening the Protocol drafting assistant waits for the active organization’s AI settings.
 
 - Scenario kits can be installed on compatible alpha, beta and release candidate versions of Platform. Their declared lower and upper version bounds apply to prereleases as well.
