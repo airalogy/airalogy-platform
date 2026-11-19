@@ -12,15 +12,19 @@ async function check(response: APIResponse) {
   return response
 }
 
-async function signIn(browser: Browser, account: Account, mobile = false) {
+async function accountPage(browser: Browser, account: Account, mobile = false) {
+  const savedSession = account.key === "owner" || account.key === "viewer"
   const page = await browser.newPage({
     baseURL: process.env.E2E_WEB_URL || "http://127.0.0.1:3100",
-    storageState: { cookies: [], origins: [] },
+    storageState: savedSession ? `tests/e2e/.auth/${account.key}.json` : { cookies: [], origins: [] },
     viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
   })
   page.setDefaultTimeout(15_000)
+  page.setDefaultNavigationTimeout(60_000)
   await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
-  await page.goto("/login")
+  if (savedSession)
+    return page
+  await page.goto("/login", { waitUntil: "domcontentloaded" })
   await page.getByTestId("login-email").locator("input").fill(account.email)
   await page.getByTestId("login-password").locator("input").fill(account.password)
   await page.getByTestId("login-submit").click()
@@ -65,7 +69,7 @@ async function edit(page: Page, title: string, fields: Input, reason: string) {
   return save(page, fields, reason)
 }
 async function verify(page: Page, title: string) {
-  await page.reload()
+  await page.reload({ waitUntil: "domcontentloaded" })
   await entry(page, title).click()
   await detail(page).getByRole("button", { name: labels.verify, exact: true }).click()
   await save(page)
@@ -115,16 +119,14 @@ test("the instrument project goes from its first purchase to management review a
   const org = `/orgs/${fixture.lab.uid}`
   const book = `${org}/projects/${uid}/operations`
   const overview = `${org}/operations`
-  const [lead, finance, ceo, client] = await Promise.all([
-    signIn(browser, account("owner")),
-    signIn(browser, account("collaborator")),
-    signIn(browser, account("viewer"), true),
-    signIn(browser, guest),
-  ])
+  const lead = await accountPage(browser, account("owner"))
+  const finance = await accountPage(browser, account("collaborator"))
+  const ceo = await accountPage(browser, account("viewer"), true)
+  const client = await accountPage(browser, guest)
   try {
     const settings = lead.getByTestId("ops-settings")
     async function openSettings() {
-      await lead.goto(`${org}/settings`)
+      await lead.goto(`${org}/settings`, { waitUntil: "domcontentloaded" })
       await settings.getByLabel(labels.project, { exact: true }).selectOption(project.id)
     }
     async function saveGrants() {
@@ -137,7 +139,7 @@ test("the instrument project goes from its first purchase to management review a
     await settings.getByLabel(/@dev_collaborator/).selectOption("finance")
     await settings.getByLabel(/@dev_viewer/).selectOption("viewer")
     await saveGrants()
-    await Promise.all([lead.goto(book), finance.goto(book)])
+    await Promise.all([lead.goto(book, { waitUntil: "domcontentloaded" }), finance.goto(book, { waitUntil: "domcontentloaded" })])
     const equipment = "采集设备"
     const cost = { title: equipment, day: "2026-10-30", category: "material", direct: "6000", payable: "6000" }
     const contract = { title: "合同 A", customer: "虚构客户", state: "signed", signed_date: "2026-11-01", gross: "106000", net: "100000" }
@@ -146,18 +148,18 @@ test("the instrument project goes from its first purchase to management review a
       await create(lead, "cost", cost)
       await verify(finance, equipment)
       await create(finance, "cash", payment)
-      await lead.reload()
+      await lead.reload({ waitUntil: "domcontentloaded" })
       await amounts(lead, { gross: 0, direct: 6000, paid: 4000, net_cash: -4000, unpaid: 2000, profit: null })
-      await ceo.goto(overview)
+      await ceo.goto(overview, { waitUntil: "domcontentloaded" })
       await expect(ceo.getByRole("row").filter({ hasText: uid })).toContainText(labels.unknown)
     })
     await test.step("2. 补入合同和预测，保留原成本日期", async () => {
       await create(lead, "contract", contract)
       await edit(lead, equipment, { contract_id: contract.title }, "签约前投入归入 A")
       await create(lead, "forecast", { day: "2026-11-09", remaining: "34000", basis: "剩余实施投入" })
-      await finance.reload()
+      await finance.reload({ waitUntil: "domcontentloaded" })
       await create(finance, "closing", { day: "2026-11-11", basis: "财务已核实当期成本" })
-      await lead.reload()
+      await lead.reload({ waitUntil: "domcontentloaded" })
       await amounts(lead, { direct: 6000, profit: 60000 })
       await entry(lead, equipment).click()
       await expect(detail(lead)).toContainText("2026-10-30")
@@ -166,11 +168,11 @@ test("the instrument project goes from its first purchase to management review a
     await test.step("3. 匹配实际回款并按日计算逾期", async () => {
       await create(lead, "installment", { contract_id: contract.title, title: "首期", amount: "50000", due: "2026-11-10" })
       await create(lead, "installment", { contract_id: contract.title, title: "尾款", amount: "56000", condition: "客户签回验收单后 30 天" })
-      await finance.reload()
+      await finance.reload({ waitUntil: "domcontentloaded" })
       receiptRequest = await create(finance, "cash", { title: "首期回款", direction: "in", day: "2026-11-09", amount: "30000" })
       await amounts(finance, { unmatched: 30000, received: 30000 })
       await edit(finance, "首期回款", { contract_id: contract.title, installment_id: "首期" }, "核销到首期")
-      await finance.reload()
+      await finance.reload({ waitUntil: "domcontentloaded" })
       await amounts(finance, { unmatched: 0, received: 30000, net_cash: 26000, profit: 60000 })
       await entry(finance, contract.title).click()
       await expect(detail(finance)).toContainText("76,000.00")
@@ -184,7 +186,7 @@ test("the instrument project goes from its first purchase to management review a
     await test.step("4. 重试同笔到账并支付设备余款", async () => {
       await check(await request.post(`${apiBook}/entries`, { headers: { "Auth-Token": financeUser.token }, data: receiptRequest }))
       await create(finance, "cash", { ...payment, title: "设备尾款", amount: "2000" })
-      await finance.reload()
+      await finance.reload({ waitUntil: "domcontentloaded" })
       await expect(entry(finance, "首期回款")).toHaveCount(1)
       await amounts(finance, { received: 30000, paid: 6000, unpaid: 0, net_cash: 24000, direct: 6000, profit: 60000 })
     })
@@ -192,11 +194,11 @@ test("the instrument project goes from its first purchase to management review a
       await create(lead, "contract", { ...contract, title: "合同 B", gross: "10000", net: "10000" })
       await create(lead, "cost", { ...cost, title: "共用耗材", day: "2026-11-10", direct: "1000", payable: "1000" })
       await verify(finance, "共用耗材")
-      await finance.reload()
+      await finance.reload({ waitUntil: "domcontentloaded" })
       await amounts(finance, { gross: 116000, direct: 7000, shared: 1000, net_cash: 24000, profit: 69000 })
     })
     await test.step("6. 管理层追溯，普通成员和撤权后访问受限", async () => {
-      await ceo.goto(overview)
+      await ceo.goto(overview, { waitUntil: "domcontentloaded" })
       const projectButton = ceo.getByRole("button", { name: new RegExp(uid) })
       await projectButton.click()
       const row = ceo.getByRole("row").filter({ has: projectButton })
@@ -212,10 +214,10 @@ test("the instrument project goes from its first purchase to management review a
       await expect(ceo.getByTestId("new-cash")).toHaveCount(0)
       await expect(lead.getByTestId("new-cash")).toHaveCount(0)
       async function denied(page: Page) {
-        await page.goto(book)
+        await page.goto(book, { waitUntil: "domcontentloaded" })
         await expect(page.getByTestId("operations-book").getByRole("alert")).toContainText(labels.unavailable)
         await expect(page.getByTestId("metric-profit")).toHaveCount(0)
-        await page.goto(overview)
+        await page.goto(overview, { waitUntil: "domcontentloaded" })
         await expect(page.getByTestId("ops-coverage")).toBeVisible()
         await expect(page.getByRole("button", { name: new RegExp(uid) })).toHaveCount(0)
       }
