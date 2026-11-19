@@ -81,6 +81,7 @@ const chineseSidebar = [
       { text: "研究记录与资料", link: "/zh/user-guide/research-documents" },
       { text: "会议与项目研究活动", link: "/zh/user-guide/project-meetings" },
       { text: "研发工作台", link: "/zh/user-guide/rd-workbench" },
+      { text: "项目经营与经营总览", link: "/zh/user-guide/project-operations" },
       { text: "科研自动化", link: "/zh/user-guide/research-automation" },
       { text: "Aira 个人记忆", link: "/zh/user-guide/personal-memory" },
       { text: "协作", link: "/zh/user-guide/collaboration" },
