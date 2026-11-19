@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useProvideChatConfigStore } from "@/composables"
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { useProvideChatProvider } from "@airalogy/components/chat/providers/useChatProvider"
 import { useChatStore } from "@airalogy/components/chat/store"
 
@@ -14,29 +15,12 @@ const chatConfig = useProvideChatConfigStore()
 chatConfig.mode.value = "embedded"
 useProvideChatProvider(chatConfig)
 
-const opened = ref(false)
-const visible = ref(false)
-const trigger = ref<{ $el: HTMLButtonElement }>()
-
-function open() {
-  opened.value = true
-  visible.value = true
-}
-function restoreFocus() {
-  if (!visible.value)
-    trigger.value?.$el.focus({ preventScroll: true })
-}
+const { visible, restoreFocus } = useWorkspaceAira()!
 </script>
 
 <template>
-  <n-button
-    ref="trigger" secondary type="primary" data-testid="home-aira" aria-haspopup="dialog"
-    :aria-expanded="visible" @click="open"
-  >
-    {{ $t('page.home.workspace.askAira') }}
-  </n-button>
   <n-drawer
-    v-if="opened" v-model:show="visible" placement="right" width="min(100%, 460px)"
+    v-model:show="visible" placement="right" width="min(100%, 460px)"
     display-directive="show" aria-labelledby="home-aira-title" @after-leave="restoreFocus"
   >
     <section class="h-full min-h-0 flex flex-col" data-testid="home-aira-panel">

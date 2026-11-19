@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { expect, test } from "@playwright/test"
+import { changeAccountLanguage } from "./fixtures"
 
 const zh = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/zh-cn.json", import.meta.url), "utf8"))
 const en = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/en-us.json", import.meta.url), "utf8"))
@@ -41,8 +42,7 @@ test("project menu translates immediately and keeps custom names and project con
   await expect(menu).not.toContainText("Project protocols")
   await page.screenshot({ path: testInfo.outputPath("project-menu-zh-755.png"), fullPage: true })
   await page.locator("h2").filter({ hasText: projectName }).click()
-  await page.getByTestId("app-shell-header").getByRole("button", { name: "中文", exact: true }).click()
-  await page.locator(".n-dropdown-menu:visible").last().getByText("English", { exact: true }).click()
+  await changeAccountLanguage(page, "中文", "English")
   await trigger.click()
   await expect(menu).toContainText(en.page.project.protocols)
   await expect(menu).toContainText(en.page.workflowDefinitions.title)

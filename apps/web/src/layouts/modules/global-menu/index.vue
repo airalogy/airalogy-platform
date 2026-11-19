@@ -2,7 +2,7 @@
   <nav :aria-label="$t('common.workspaceNavigation')" :class="{ 'workspace-nav--wide': wide }" class="workspace-nav" data-testid="workspace-navigation">
     <div v-if="wide" class="workspace-nav__links">
       <router-link
-        v-for="item in items" :key="item.name" :to="destination(item.name)"
+        v-for="item in primaryItems" :key="item.name" :to="destination(item.name)"
         class="workspace-nav__link" :class="{ 'workspace-nav__link--active': activeName === item.name }"
         :aria-current="activeName === item.name ? 'page' : undefined"
       >
@@ -33,6 +33,7 @@
         >
           {{ item.label }}
         </router-link>
+        <slot name="extra" />
       </div>
     </n-popover>
   </nav>
@@ -54,12 +55,15 @@ const instance = useInstanceStore()
 const desktop = useMediaQuery("(min-width: 1280px)")
 const wide = computed(() => desktop.value && !props.compact)
 const expanded = ref(false)
-const items = computed<Array<{ name: App.Global.RouteNameKey, label: string }>>(() => [
+const primaryItems = computed<Array<{ name: App.Global.RouteNameKey, label: string }>>(() => [
   { name: "home", label: $t("route.home") },
-  { name: "protocols-my", label: $t("common.protocolsLabel") },
   { name: "project-dashboard", label: $t("common.projectsLabel") },
+  { name: "protocols-my", label: $t("common.protocolsLabel") },
   { name: "research-documents", label: $t("page.documentUx.documents") },
   { name: "knowledge-home", label: $t("page.knowledge.title") },
+])
+const items = computed<Array<{ name: App.Global.RouteNameKey, label: string }>>(() => [
+  ...primaryItems.value,
   { name: "research-tasks", label: $t("page.research.title") },
   { name: "profile-records", label: $t("page.recordDiary.tab") },
   ...(!instance.isSingleLab ? [{ name: "labs-my" as const, label: $t("common.labsLabel") }] : []),

@@ -53,7 +53,11 @@ for (const width of [1440, 876, 390]) {
     await panel.getByRole("button", { name: "关闭" }).click()
     await expect(page).toHaveURL(url)
     if (width === 1440) {
-      await page.getByRole("button", { name: "全部对话", exact: true }).click()
+      await page.getByTestId("header-aira").click()
+      await expect(input).toBeVisible()
+      await expect(panel.getByTestId("open-aira-history")).toHaveAttribute("href", `/chat?chat=${id}`)
+      // The synthetic model response is stored on this device only.
+      await page.goto("/chat")
       await expect(page).toHaveURL(/\/chat(?:\?|$)/)
       await page.getByText("此设备", { exact: true }).click()
       await page.locator(".chat-history-sidebar").getByText(question, { exact: true }).click()
@@ -136,7 +140,7 @@ test("Home Aira respects the organization AI switch", async ({ page }) => {
   await page.goto("/home")
   await expect(page.getByTestId("task-workbench")).toBeVisible()
   await expect(page.getByTestId("home-aira")).toHaveCount(0)
-  await expect(page.getByRole("button", { name: "全部对话" })).toHaveCount(0)
+  await expect(page.getByTestId("header-aira")).toHaveCount(0)
 })
 
 test("project document work resumes directly and pins share the existing project list", async ({ page }, testInfo) => {

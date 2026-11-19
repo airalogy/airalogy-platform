@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer"
 import { randomUUID } from "node:crypto"
 import { expect, test } from "@playwright/test"
-import { loadFixtures, mockAIEnabled } from "./fixtures"
+import { changeAccountLanguage, loadFixtures, mockAIEnabled } from "./fixtures"
 
 test.skip(process.env.E2E_DEPLOYMENT_MODE !== "single_organization", "Uses the isolated company workspace profile")
 test.beforeEach(async ({ page }) => {
@@ -97,13 +97,13 @@ test("narrow navigation shows the full location and marks the active desktop ent
     const header = page.getByTestId("app-shell-header")
     await expect(header.getByTestId("organization-management-entry")).toBeVisible()
     if (label !== "首页")
-      await expect(header.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-current", "page")
+      await expect(header.getByRole("button", { name: label === "全部对话" ? "Aira" : label, exact: true })).toHaveAttribute("aria-current", "page")
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 })
       const current = header.getByTestId("workspace-menu-trigger").locator(".truncate")
       await expect(current).toHaveText(label)
       await expect.poll(() => current.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
-      await expect(header.getByRole("button", { name: "更多", exact: true })).toBeInViewport({ ratio: 1 })
+      await expect(header.getByTestId("account-menu")).toBeInViewport({ ratio: 1 })
     }
   }
 })
@@ -114,8 +114,7 @@ test("English navigation keeps the current section readable on a narrow phone", 
     await page.setViewportSize({ width: 876, height: 844 })
     await page.goto(route)
     const header = page.getByTestId("app-shell-header")
-    await header.getByRole("button", { name: "中文", exact: true }).click()
-    await page.locator(".n-dropdown-menu:visible").last().getByText("English", { exact: true }).click()
+    await changeAccountLanguage(page, "中文", "English")
     await page.setViewportSize({ width: 320, height: 844 })
     const current = header.getByTestId("workspace-menu-trigger").locator(".truncate")
     await expect(current).toHaveText(label)
@@ -262,4 +261,44 @@ test("a company member writes a private document and resumes the same project fr
   expect([403, 404]).toContain(denied.status())
   const update = await page.request.put(`/api/organizations/${f.lab.id}`, { headers, data: { description: "Denied", organization_type: "institution" } })
   expect(update.status()).toBe(403)
+})
+
+test("workspace header separates navigation from creation and opens Aira on the current page", async ({ page }, testInfo) => {
+  await mockAIEnabled(page, () => true)
+  await page.goto("/home")
+  const header = page.getByTestId("app-shell-header")
+  const create = header.getByTestId("global-create-trigger")
+  const account = header.getByTestId("account-menu")
+  for (const width of [1440, 1329, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(create).toBeInViewport({ ratio: 1 })
+    await expect(account).toBeInViewport({ ratio: 1 })
+    expect(await header.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBeTruthy()
+    if (width >= 1280) {
+      const nav = header.getByTestId("workspace-navigation")
+      await expect(nav.getByRole("link")).toHaveText(["首页", "项目", "协议", "文档", "知识"])
+      const more = header.getByTestId("workspace-more")
+      const moreBox = (await more.boundingBox())!
+      expect((await create.boundingBox())!.x - moreBox.x - moreBox.width).toBeGreaterThan(16)
+      await more.click()
+      await page.locator(".n-dropdown-menu:visible").getByText("科研任务", { exact: true }).click()
+      await expect(page).toHaveURL(/\/research\/tasks$/)
+      await header.getByTestId("header-aira").click()
+    }
+    else {
+      await header.getByTestId("workspace-menu-trigger").click()
+      await expect(page.getByRole("link", { name: "日志", exact: true }).last()).toBeVisible()
+      await header.getByTestId("workspace-menu-trigger").click()
+      await account.click()
+      await page.locator(".n-dropdown-menu:visible").getByText("Aira", { exact: true }).click()
+    }
+    const panel = page.getByTestId("home-aira-panel")
+    await expect(panel.getByTestId("open-aira-history")).toHaveAttribute("href", /\/chat/)
+    await page.keyboard.press("Escape")
+    await create.click()
+    await expect(page.getByText("新建协议", { exact: true }).last()).toBeVisible()
+    await create.click()
+    await page.goto("/home")
+    await header.screenshot({ path: testInfo.outputPath(`navigation-${width}.png`) })
+  }
 })

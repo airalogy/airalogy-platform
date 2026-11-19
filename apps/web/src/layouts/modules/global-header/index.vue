@@ -20,90 +20,46 @@
       <span class="truncate text-sm">{{ organizationName }}</span>
     </router-link>
     <template v-if="authStore.isLogin">
-      <global-menu :label="isMobile ? currentSectionLabel : undefined" />
-      <global-add-new />
-      <n-button
-        v-if="!isMobile && instanceStore.aiEnabled"
-        :theme-overrides="buttonThemeOverrides"
-        class="ml-2 h-[36px] rounded-2 px-3"
-        :aria-current="inChat ? 'page' : undefined"
-        @click="routerPushByKey('global-chat')"
-      >
-        {{ $t("common.allChats") }}
-      </n-button>
-      <n-dropdown v-if="!isMobile" trigger="click" :options="discoveryOptions" @select="handleSelect">
-        <n-button :theme-overrides="buttonThemeOverrides" class="ml-2 h-9 rounded-2 px-3">
-          {{ $t("common.more") }}
+      <global-menu :label="currentSectionLabel">
+        <template v-if="isMobile" #extra>
+          <n-dropdown trigger="click" :options="discoveryOptions" @select="handleSelect">
+            <n-button quaternary>{{ $t('common.more') }}</n-button>
+          </n-dropdown>
+        </template>
+      </global-menu>
+      <n-dropdown v-if="!isMobile" trigger="click" :options="moreOptions" @select="handleSelect">
+        <n-button :theme-overrides="buttonThemeOverrides" :aria-current="inMore ? 'page' : undefined" data-testid="workspace-more">
+          {{ $t('common.more') }}
         </n-button>
       </n-dropdown>
-    </template>
-    <n-dropdown v-if="isMobile && !narrowHeader" trigger="click" :options="localeDropdownOptions" @select="handleLocaleSelect">
-      <n-button
-        quaternary
-        :theme-overrides="buttonThemeOverrides"
-        class="ml-auto mr-2"
-        :aria-label="currentLocaleLabel"
-        :title="currentLocaleLabel"
-      >
-        <template #icon>
-          <n-icon>
-            <icon-ion-language />
-          </n-icon>
-        </template>
-      </n-button>
-    </n-dropdown>
-    <n-dropdown v-if="isMobile" trigger="click" :value="mobileSelection" :options="menuOptions" @select="handleSelect">
-      <n-button quaternary class="mobile-menu-trigger ml-auto shrink-0" :theme-overrides="buttonThemeOverrides" :aria-label="$t('common.more')" :title="$t('common.more')">
-        <template #icon>
-          <n-icon>
-            <icon-tabler-menu-2 />
-          </n-icon>
-        </template>
-      </n-button>
-    </n-dropdown>
-    <template v-else>
-      <n-button
-        v-if="showOrganizationManagement"
-        :theme-overrides="buttonThemeOverrides"
-        class="ml-auto mr-2 h-9 rounded-2 px-3"
-        :aria-current="inManagement ? 'page' : undefined"
-        data-testid="organization-management-entry"
-        @click="handleSelect('organization-management')"
-      >
-        {{ $t("page.singleLabWorkspace.management") }}
-      </n-button>
-      <n-dropdown trigger="click" :options="localeDropdownOptions" @select="handleLocaleSelect">
+      <div class="header-actions" data-testid="workspace-actions">
+        <global-add-new />
         <n-button
-          :theme-overrides="buttonThemeOverrides"
-          class="mr-2 h-[36px] rounded-2 px-3"
-          :class="{ 'ml-auto': !showOrganizationManagement }"
-          :aria-label="currentLocaleLabel"
+          v-if="!isMobile && instanceStore.aiEnabled" :theme-overrides="buttonThemeOverrides"
+          :aria-current="inChat ? 'page' : undefined" data-testid="header-aira"
+          @click="openAira($event.currentTarget as HTMLElement)"
         >
-          <template #icon>
-            <n-icon>
-              <icon-ion-language />
-            </n-icon>
-          </template>
-          <span v-if="!compactHeader">{{ currentLocaleLabel }}</span>
+          Aira
+        </n-button>
+        <n-button
+          v-if="!isMobile && showOrganizationManagement" :theme-overrides="buttonThemeOverrides"
+          :aria-current="inManagement ? 'page' : undefined" data-testid="organization-management-entry"
+          @click="handleSelect('organization-management')"
+        >
+          {{ $t('page.singleLabWorkspace.management') }}
+        </n-button>
+        <user-avatar :extra-options="accountOptions" @select-extra="handleSelect" />
+      </div>
+    </template>
+    <div v-else class="header-actions">
+      <n-dropdown trigger="click" :options="appStore.localeOptions" @select="handleLocaleSelect">
+        <n-button :theme-overrides="buttonThemeOverrides" :aria-label="currentLocaleLabel">
+          <template #icon><n-icon><icon-ion-language /></n-icon></template>
         </n-button>
       </n-dropdown>
-      <template v-if="authStore.isLogin">
-        <!-- <global-notification /> -->
-        <user-avatar />
-      </template>
-      <template v-else>
-        <n-button
-          :theme-overrides="buttonThemeOverrides"
-          class="mr-2"
-          @click="routerPushByKey('login')"
-        >
-          {{ $t("common.login") }}
-        </n-button>
-        <n-button v-if="instanceStore.signupMode === 'open'" type="primary" @click="routerPushByKey('sign-up')">
-          {{ $t("common.signup") }}
-        </n-button>
-      </template>
-    </template>
+      <n-button :theme-overrides="buttonThemeOverrides" @click="routerPushByKey('login')">{{ $t('common.login') }}</n-button>
+      <n-button v-if="instanceStore.signupMode === 'open'" type="primary" @click="routerPushByKey('sign-up')">{{ $t('common.signup') }}</n-button>
+    </div>
   </section>
 </template>
 
@@ -114,12 +70,14 @@ import { useOrganizationTranslation } from "@/composables/useOrganizationTransla
 
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSingleLabWorkspace } from "@/composables/useSingleLabWorkspace"
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import GlobalAddNew from "@/layouts/modules/global-add-new/index.vue"
 import GlobalMenu from "@/layouts/modules/global-menu/index.vue"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { singleLabManagementEntries, singleLabManagementRoutes, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
+import { workspaceDestination } from "@/utils/workspaceNavigation"
 import { useMediaQuery } from "@vueuse/core"
 import UserAvatar from "./components/user-avatar.vue"
 import { buttonThemeOverrides } from "./constants"
@@ -135,8 +93,8 @@ const props = withDefaults(defineProps<IProps>(), {
 const { t: $t } = useOrganizationTranslation()
 
 const { isMobile } = useBasicLayout()
-const narrowHeader = useMediaQuery("(max-width: 479px)")
-const compactHeader = useMediaQuery("(max-width: 1535px)")
+const wide = useMediaQuery("(min-width: 1280px)")
+const aira = useWorkspaceAira()
 interface IProps {
   showLogo?: boolean
   showMenu?: boolean
@@ -177,16 +135,12 @@ const currentSectionLabel = computed(() => {
   }
   return undefined
 })
-const mobileSelection = computed(() => {
-  if (inChat.value)
-    return "chat"
-  if (inManagement.value)
-    return canManageLab.value ? "organization-management" : String(route.name)
-  return undefined
-})
-
-async function handleToHelp() {
-  await routerPushByKey("help-center")
+function openAira(trigger?: HTMLElement) {
+  if (inChat.value) {
+    document.querySelector<HTMLElement>('[data-testid="chat-input"] [contenteditable="true"]')?.focus()
+    return
+  }
+  aira?.open(trigger)
 }
 const discoveryOptions = computed<DropdownOption[]>(() => [
   ...(!instanceStore.isSingleLab ? [{ label: $t("common.hub"), key: "hub" }] : []),
@@ -209,36 +163,24 @@ const currentLocaleLabel = computed(() => {
   return appStore.localeOptions.find(option => option.key === appStore.locale)?.label || appStore.locale
 })
 
-const menuOptions = computed<DropdownOption[]>(() => {
-  const language = {
+const secondaryEntries = computed<DropdownOption[]>(() => [
+  { key: "research-tasks", label: $t("page.research.title") },
+  { key: "profile-records", label: $t("page.recordDiary.tab") },
+  ...(!instanceStore.isSingleLab ? [{ key: "labs-my", label: $t("common.labsLabel") }] : []),
+])
+const moreOptions = computed(() => wide.value
+  ? [...secondaryEntries.value, { type: "divider" as const, key: "secondary-divider" }, ...discoveryOptions.value]
+  : discoveryOptions.value)
+const inMore = computed(() => !inManagement.value && wide.value && secondaryEntries.value.some(item => item.key === workspaceDestination(String(route.name))))
+const accountOptions = computed<DropdownOption[]>(() => [
+  ...(isMobile.value && instanceStore.aiEnabled ? [{ label: "Aira", key: "aira" }] : []),
+  ...(isMobile.value && showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
+  {
     label: currentLocaleLabel.value,
     key: "language",
     children: appStore.localeOptions.map(option => ({ label: option.label, key: `language:${option.key}` })),
-  }
-  if (!authStore.isLogin) {
-    return [
-      ...(narrowHeader.value ? [language] : []),
-      { label: $t("common.login"), key: "login" },
-      ...(instanceStore.signupMode === "open"
-        ? [{ label: $t("common.signup"), key: "sign-up" }]
-        : []),
-    ]
-  }
-
-  return [
-    ...(showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
-    ...(instanceStore.aiEnabled ? [{ label: $t("common.allChats"), key: "chat" }] : []),
-    ...discoveryOptions.value,
-    ...(narrowHeader.value ? [language] : []),
-    { label: $t("common.profile"), key: "profile" },
-    ...(authStore.userInfo.roles?.some(role => role === "R_ADMIN" || role === "R_SUPER")
-      ? [{ label: $t("common.adminDashboard"), key: "admin-dashboard" }]
-      : []),
-    { type: "divider", key: "account-divider" },
-    { label: $t("common.logout"), key: "logout" },
-  ]
-})
-
+  },
+])
 async function handleSelect(key: string | number) {
   const locale = appStore.localeOptions.find(option => key === `language:${option.key}`)
   if (locale) {
@@ -256,39 +198,22 @@ async function handleSelect(key: string | number) {
       if (showOrganizationManagement.value && instanceStore.lab)
         await routerPushByKey("lab-members", { params: { labUid: instanceStore.lab.uid } })
       break
-    case "login":
-    case "sign-up":
+    case "research-tasks":
+    case "labs-my":
+    case "hub":
       await routerPushByKey(key)
       break
-    case "hub":
-      await routerPushByKey("hub")
+    case "profile-records":
+      await routerPushByKey(key, { params: { username: authStore.userInfo.username } })
       break
-    case "chat":
-      await routerPushByKey("global-chat")
+    case "aira":
+      openAira(document.querySelector<HTMLElement>('[data-testid="account-menu"]') || undefined)
       break
     case "help":
-      await handleToHelp()
-      break
-    case "profile":
-      await routerPushByKey("user-profile", {
-        params: { username: authStore.userInfo.username, tab: "summary" },
-      })
-      break
-    case "admin-dashboard":
-      await routerPushByKey("admin-dashboard")
-      break
-    case "logout":
-      authStore.logout()
+      await routerPushByKey("help-center")
       break
   }
 }
-
-const localeDropdownOptions = computed<DropdownOption[]>(() => {
-  return appStore.localeOptions.map(option => ({
-    label: option.label,
-    key: option.key,
-  }))
-})
 
 function handleLocaleSelect(key: string | number) {
   appStore.changeLocale(key as I18n.LangType)
@@ -297,6 +222,7 @@ function handleLocaleSelect(key: string | number) {
 
 <style scoped>
 .platform-header { gap: 0.25rem; color: #354962; }
+.header-actions { display: flex; flex: none; align-items: center; gap: 0.5rem; margin-inline-start: auto; padding-inline-start: 0.75rem; }
 .platform-brand { display: inline-flex; align-items: center; min-height: 44px; padding: 0; margin-right: 0.5rem; color: #183453; }
 .platform-brand :deep(svg) { display: block; width: 106px; height: 29px; }
 .organization-identity { max-width: 10rem; border-left: 1px solid #c7d5e4; padding-left: 0.75rem; margin-right: 0.5rem; color: inherit; }
@@ -305,7 +231,7 @@ function handleLocaleSelect(key: string | number) {
 @media (max-width: 639px) {
   .platform-header :deep(.workspace-nav) { flex: 1 1 auto; }
   .platform-header :deep(.workspace-nav__trigger) { width: auto; padding-inline: 4px; }
-  .mobile-menu-trigger { min-width: 44px; }
+  .header-actions { gap: 2px; padding-inline-start: 0; }
   .platform-header { gap: 2px; }
   .platform-brand { margin-right: 2px; }
   .platform-brand :deep(svg) { width: 88px; height: 24px; }

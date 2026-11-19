@@ -60,3 +60,9 @@ export function instrumentWorkspaceUrl(labUid: string, gatewayId: string, resour
     query.set("instrument_resource", resourceId)
   return `/labs/${labUid}/resources/gateways?${query}`
 }
+
+export async function changeAccountLanguage(page: Page, current: string, next: string) {
+  await page.getByTestId("account-menu").click()
+  await page.locator(".n-dropdown-menu:visible").getByText(current, { exact: true }).first().hover()
+  await page.locator(".n-dropdown-menu:visible").last().getByText(next, { exact: true }).click()
+}

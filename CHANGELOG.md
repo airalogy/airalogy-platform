@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- The workspace header groups project navigation on the left and creation, Aira, and account actions on the right. Aira opens in context and language selection is available in the account menu.
+
 - Organization owners and managers can review current project owners, blockers, next steps and open milestones across projects, and select a heatmap day to inspect its authorized source activities.
 
 - The workspace now has a compact mist-blue footer that shares the header palette. The sign-in footer uses the same copyright, filing links and version details.

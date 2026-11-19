@@ -62,6 +62,7 @@ async function send() {
         <p class="m-0 text-sm color-text-secondary">{{ projectName }}</p>
       </div>
       <div class="flex items-center gap-1">
+        <router-link :to="{ name: 'global-chat' }" target="_blank" rel="noopener" class="text-sm text-primary">{{ t("common.allChats") }} ↗</router-link>
         <n-button v-if="turns.length" size="small" quaternary :disabled="busy" @click="confirmRestart = true">{{ t("page.projectAira.restart") }}</n-button>
         <n-button size="small" quaternary :aria-label="t('common.close')" @click="emit('close')">
           <template #icon><n-icon><icon-tabler-x /></n-icon></template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { recentResearchDocuments } from "@/service/api/research-documents"
 import {
   fetchResearchApprovals,
@@ -10,18 +11,17 @@ import {
   type ResearchWorkItemDetail,
   startResearchWorkItem,
 } from "@/service/api/research-tasks"
-import { organizationUid } from "@/service/request/organization"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import WorkSummary from "@/views/project-work/work-summary.vue"
 import ResearchApprovalActions from "@/views/research/components/research-approval-actions.vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
-import HomeAira from "./home-aira.vue"
 import ProjectWorkspaces from "./project-workspaces.vue"
 
 defineProps<{ pins: PinnedItem[], pinningKeys: Set<string> }>()
 const emit = defineEmits<{ togglePin: [payload: { resourceType: PinnedResourceType, resourceId: string }] }>()
+const { open: openAira, visible: airaVisible } = useWorkspaceAira()!
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 const router = useRouter()
@@ -106,7 +106,9 @@ onBeforeUnmount(() => sequence++)
           {{ t('page.home.workspace.description') }}
         </p>
       </div>
-      <home-aira v-if="instanceStore.aiEnabled && authStore.userInfo.id" :key="JSON.stringify([authStore.userInfo.id, organizationUid])" />
+      <n-button v-if="instanceStore.aiEnabled && authStore.userInfo.id" secondary type="primary" data-testid="home-aira" aria-haspopup="dialog" :aria-expanded="airaVisible" @click="openAira($event.currentTarget as HTMLElement)">
+        {{ t('page.home.workspace.askAira') }}
+      </n-button>
     </div>
     <project-workspaces :pins="pins" :pinning-keys="pinningKeys" @toggle-pin="emit('togglePin', $event)" />
     <work-summary />
