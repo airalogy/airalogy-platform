@@ -104,7 +104,8 @@ async function getData<T>(options: Parameters<typeof request<T>>[0]): Promise<T>
 }
 
 export function fetchResearchLogTimeline(params: ResearchLogScopeParams & {
-  organization_overview?: boolean, group_meeting_actions?: boolean
+  organization_overview?: boolean
+  group_meeting_actions?: boolean
   source?: ResearchLogSource
   actor_user_id?: string
   date_from?: string
