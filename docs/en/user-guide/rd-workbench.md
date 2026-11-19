@@ -45,3 +45,9 @@ Open R&D work directly from a Home project card, or create an item from Project 
 Saved items separate details from discussion and progress. Switching between these areas preserves input. Save changed details before posting activity so the activity references the current item revision. Activity recovery includes dates, outcomes and evidence even before body text is entered.
 
 List, board and plan views share search, assignee and state filters. Filter unfinished items or a specific state; clear filters when no results match. Loading is distinct from an empty project. The assigned-work section on Home can load additional pages beyond its first six items.
+
+## Organization research overview
+
+Under organization management, open Research overview to see project owners, blockers, recorded next steps and the next open milestone. Blocked projects appear first. Milestones use the earliest planned end date, falling back to the planned start date. Overdue open milestones remain visible. Follow a link to open the original work item.
+
+Select a day on the 90-day heatmap to see its project activities and sources in your browser time zone. Select it again to return to recent activity. Organization owners and managers can use this page. Source permissions still apply to meetings, records and other research assets.

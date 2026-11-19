@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Organization owners and managers can review current project owners, blockers, next steps and open milestones across projects, and select a heatmap day to inspect its authorized source activities.
+
 - The workspace now has a compact mist-blue footer that shares the header palette. The sign-in footer uses the same copyright, filing links and version details.
 
 - Organization member names can be set or cleared independently of roles and personal notes. Team lists, meeting participants and work assignees show each member’s organization display name. Member role dialogs use the interface language and offer role changes to authorized users. Narrow navigation keeps the current section readable, highlights Chat and Organization Management, and Home translates recent meeting and log destinations. The organization AI switch also announces its disabled state to assistive technology.

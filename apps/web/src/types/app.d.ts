@@ -16,6 +16,7 @@ declare namespace App {
       | "project-dashboard"
       | "project-starred"
       | "lab-records"
+      | "lab-research-overview"
       | "project-meetings" | "project-work"
       | "project-overview"
       | "project-documents"

@@ -10,7 +10,7 @@ import ResearchLogEntryModal from "@/views/record-diary/modules/research-log-ent
 import ResearchLogList from "@/views/record-diary/modules/research-log-list.vue"
 import { useI18n } from "vue-i18n"
 
-const props = withDefaults(defineProps<{ scope: ResearchLogScopeParams, compact?: boolean }>(), {
+const props = withDefaults(defineProps<{ scope: ResearchLogScopeParams, compact?: boolean, organizationOverview?: boolean }>(), {
   compact: false,
 })
 const { t, locale } = useI18n()
@@ -26,7 +26,7 @@ const busy = ref(false)
 const error = ref("")
 const canWrite = ref(false)
 const logModal = ref<InstanceType<typeof ResearchLogEntryModal>>()
-const pageSize = computed(() => (props.compact ? 3 : 20))
+const pageSize = computed(() => props.compact && !(props.organizationOverview && selected.value) ? 3 : 20)
 let requestId = 0
 const bounds = computed(() => {
   const today = new Date()
@@ -97,7 +97,7 @@ async function load() {
   error.value = ""
   items.value = []
   total.value = 0
-  const params = { ...props.scope, group_meeting_actions: props.scope.scope_type === "project", source: source.value, time_zone: documentTimeZone() }
+  const params = { ...props.scope, organization_overview: props.organizationOverview || undefined, group_meeting_actions: props.scope.scope_type === "project" || props.organizationOverview, source: source.value, time_zone: documentTimeZone() }
   try {
     const [summary, timeline] = await Promise.all([
       fetchResearchActivitySummary({
@@ -121,8 +121,11 @@ async function load() {
     canWrite.value = timeline.can_write
   }
   catch (e) {
-    if (id === requestId)
+    if (id === requestId) {
+      days.value = []
+      canWrite.value = false
       error.value = (e as Error).message || t("page.researchActivity.failed")
+    }
   }
   finally {
     if (id === requestId)
@@ -288,16 +291,16 @@ onBeforeUnmount(() => requestId++)
           >
             {{ selected ? t("page.researchActivity.emptyDay") : t("page.researchActivity.empty") }}
           </p>
-          <research-log-list v-else-if="!error && !busy" :items="items" :compact="compact" @edit="logModal?.open($event)" />
+          <research-log-list v-else-if="!error && !busy" :items="items" :compact="compact" :show-project="organizationOverview" @edit="logModal?.open($event)" />
           <n-pagination
-            v-if="!compact && total > pageSize"
+            v-if="(!compact || (organizationOverview && selected)) && total > pageSize"
             v-model:page="page"
             :item-count="total"
             :page-size="pageSize"
             class="mt-4"
           />
           <router-link
-            v-if="compact && selected && total > pageSize" class="text-sm text-primary" data-testid="view-day"
+            v-if="compact && !organizationOverview && selected && total > pageSize" class="text-sm text-primary" data-testid="view-day"
             :to="{ name: 'project-records', params: route.params, query: { day: selected, source } }"
           >
             {{ t('page.researchActivity.viewDay', { count: total }) }} →

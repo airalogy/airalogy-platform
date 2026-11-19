@@ -5518,6 +5518,23 @@
       "administrator": "组织管理员",
       "logPublisher": "组织日志发布者"
     },
+    "orgResearch": {
+      "title": "研发总览",
+      "projects": "项目进展",
+      "owner": "项目负责人",
+      "blockers": "阻塞",
+      "next": "下一步",
+      "milestone": "最近待完成的里程碑",
+      "noOwner": "未指定",
+      "noBlockers": "无已登记阻塞",
+      "noNext": "尚未填写",
+      "noMilestone": "暂无待完成里程碑",
+      "noDate": "日期待定",
+      "more": "另有 {count} 项",
+      "empty": "组织中还没有项目。",
+      "error": "无法读取组织研发总览。请检查访问权限或重试。",
+      "retry": "重试"
+    },
     "projectWork": {
       "title": "研发事项",
       "new": "新建事项",

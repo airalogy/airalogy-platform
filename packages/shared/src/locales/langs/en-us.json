@@ -5518,6 +5518,23 @@
       "administrator": "Organization administrator",
       "logPublisher": "Organization log publisher"
     },
+    "orgResearch": {
+      "title": "Research overview",
+      "projects": "Project progress",
+      "owner": "Project owner",
+      "blockers": "Blockers",
+      "next": "Next step",
+      "milestone": "Next open milestone",
+      "noOwner": "Unassigned",
+      "noBlockers": "No reported blockers",
+      "noNext": "No next step recorded",
+      "noMilestone": "No open milestones",
+      "noDate": "Date pending",
+      "more": "{count} more",
+      "empty": "The organization has no projects yet.",
+      "error": "Unable to load the research overview. Check your access or try again.",
+      "retry": "Try again"
+    },
     "projectWork": {
       "title": "R&D work",
       "new": "New work item",

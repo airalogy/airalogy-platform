@@ -5522,6 +5522,23 @@ declare namespace I18n {
         administrator: string
         logPublisher: string
       }
+      orgResearch: {
+        title: string
+        projects: string
+        owner: string
+        blockers: string
+        next: string
+        milestone: string
+        noOwner: string
+        noBlockers: string
+        noNext: string
+        noMilestone: string
+        noDate: string
+        more: string
+        empty: string
+        error: string
+        retry: string
+      }
       projectWork: {
         title: string
         new: string

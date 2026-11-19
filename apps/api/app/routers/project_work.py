@@ -12,6 +12,7 @@ from app.models.project_work import ProjectWork
 from app.models.research import ResearchEvent, ResearchTask
 from app.models.user import User
 from app.routers.depends import CurrentUser
+from app.services.organization_overview import organization_project_overview
 from app.services.project_people import organization_accounts
 from app.services.knowledge import canonical_digest
 from app.services.project_work import (
@@ -36,6 +37,11 @@ from app.services.research_runtime import (
 )
 
 router = APIRouter(prefix="/project-work", tags=["project-work"])
+
+
+@router.get("/organizations/{lab_id}/overview")
+async def organization_overview(lab_id: UUID, current_user: CurrentUser, db_session: DBSession):
+    return {"projects": await organization_project_overview(db_session, current_user, lab_id)}
 
 
 @router.get("/sources")

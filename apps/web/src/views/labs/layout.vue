@@ -98,7 +98,7 @@ const instanceStore = useInstanceStore()
 const routerStore = useRouteStore()
 const { userInfo } = useAuthStore()
 
-const showIconRoute = ["lab-projects", "lab-knowledge", "lab-records", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings", "project-protocols", "project-records", "project-members"]
+const showIconRoute = ["lab-projects", "lab-knowledge", "lab-records", "lab-research-overview", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings", "project-protocols", "project-records", "project-members"]
 const showIcon = computed(() => typeof route.name === "string" && showIconRoute.includes(route.name))
 
 const { routerPushByKey } = useRouterPush()
@@ -113,7 +113,10 @@ const tabs = computed((): TabPaneProps[] => {
     const entries = singleLabManagementRoutes.has(String(name))
       ? singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value)
       : singleLabSharedEntries
-    return entries.map(entry => ({ name: entry.name, tab: $t(entry.label) }))
+    const result: TabPaneProps[] = entries.map(entry => ({ name: entry.name, tab: $t(entry.label) }))
+    if (name === "lab-research-overview" && !canManageLab.value)
+      result.push({ name, tab: $t("page.orgResearch.title") })
+    return result
   }
   if (name === "labs-my" || name === "labs-public") {
     return [
@@ -122,7 +125,7 @@ const tabs = computed((): TabPaneProps[] => {
     ]
   }
 
-  if (["lab-projects", "lab-knowledge", "lab-records", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
+  if (["lab-projects", "lab-knowledge", "lab-records", "lab-research-overview", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
     const membersHint = $t("page.labs.tab.membersHint")
     const groupsHint = $t("page.labs.tab.groupsHint")
     const hintTab = (label: string, hint: string) =>
@@ -137,6 +140,9 @@ const tabs = computed((): TabPaneProps[] => {
         tab: hintTab($t("page.labs.members"), membersHint),
       },
     ]
+
+    if (canManageLab.value || name === "lab-research-overview")
+      list.unshift({ name: "lab-research-overview", tab: $t("page.orgResearch.title") })
 
     if (!instanceStore.isStructuredLab) {
       list.push({
@@ -192,7 +198,7 @@ const title = computed(() => {
     return "Labs"
   }
 
-  if (["lab-projects", "lab-knowledge", "lab-records", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
+  if (["lab-projects", "lab-knowledge", "lab-records", "lab-research-overview", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
     const { name: labName, uid } = labInfo.value || {}
 
     return labName || uid || "Labs"
