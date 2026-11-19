@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { loadFixtures, selectVisibleOption } from "./fixtures"
+import { loadFixtures, openWorkspaceLog, selectVisibleOption } from "./fixtures"
 
 // Successful writes and capability discovery use the real isolated API.
 // Only failure tests inject unavailable network/storage boundaries.
@@ -143,7 +143,7 @@ test("My Log is reachable and a progress entry survives reloading", async ({ pag
     expect((await loaded).ok()).toBeTruthy()
   }
   await page.goto("/home")
-  await page.getByRole("link", { name: "Log", exact: true }).click()
+  await openWorkspaceLog(page, "Log")
   await expect(page.getByRole("heading", { name: "My Log", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "New Log entry", exact: true }).click()
   const dialog = page.getByRole("dialog")

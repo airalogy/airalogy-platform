@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test"
 import { expect, test } from "@playwright/test"
-import { loadFixtures } from "./fixtures"
+import { loadFixtures, openWorkspaceLog } from "./fixtures"
 
 async function expectConfiguredCompliance(footer: Locator) {
   if (process.env.VITE_CHINA_COMPLIANCE_FOOTER !== "Y")
@@ -85,7 +85,7 @@ test("leaving a Record report restores the footer without a page reload", async 
   await page.goto(`/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}/protocols/${record.protocol_uid}/v${record.source_version}/record/${record.record_id}/v${record.record_version}`)
   await expect(page.getByRole("button", { name: "Revise", exact: true })).toBeVisible()
   await expect(page.getByRole("contentinfo")).toHaveCount(0)
-  await page.getByRole("link", { name: "Log", exact: true }).click()
+  await openWorkspaceLog(page, "Log")
   await expect(page.getByRole("contentinfo")).toContainText("Hangzhou Airalogy Technology Co., Ltd.")
 })
 

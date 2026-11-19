@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test"
 import { expect, test } from "@playwright/test"
-import { loadFixtures, selectVisibleOption } from "./fixtures"
+import { loadFixtures, openWorkspaceLog, selectVisibleOption } from "./fixtures"
 
 test.beforeEach(async ({ page }, testInfo) => {
   await page.addInitScript((language) => {
@@ -51,16 +51,23 @@ test("core navigation is discoverable, keyboard operable and bounded at every br
       await expect(trigger).toHaveText(/Knowledge/)
       await trigger.focus()
       await page.keyboard.press("Enter")
+      const log = page.getByRole("link", { name: "Log", exact: true })
+      await expect(log).toBeVisible()
+      await log.focus()
+      await page.keyboard.press("Enter")
     }
-    const log = page.getByRole("link", { name: "Log", exact: true })
-    await expect(log).toBeVisible()
-    await log.focus()
-    await page.keyboard.press("Enter")
+    else {
+      await header.getByTestId("workspace-more").press("Enter")
+      await expect(page.locator(".n-dropdown-menu:visible").getByText("Log", { exact: true })).toBeVisible()
+      await page.keyboard.press("ArrowDown")
+      await page.keyboard.press("ArrowDown")
+      await page.keyboard.press("Enter")
+    }
     await expect(page).toHaveURL(/\/users\/[^/]+\/records/)
     if (width < 1280)
       await expect(page.getByTestId("workspace-menu-trigger")).toHaveText(/Log/)
     else
-      await expect(page.getByRole("link", { name: "Log", exact: true })).toHaveAttribute("aria-current", "page")
+      await expect(header.getByTestId("workspace-more")).toHaveAttribute("aria-current", "page")
     await expect(page.getByRole("heading", { name: "My Log", exact: true })).toBeVisible()
   }
 })
@@ -189,9 +196,7 @@ test("Chinese navigation and paper dialogs remain readable on small screens", as
     expect((await page.getByTestId("paper-import-source").locator("input").boundingBox())!.width).toBeGreaterThan(220)
     await page.screenshot({ path: testInfo.outputPath(`knowledge-zh-${width}.png`) })
     await dialog.getByRole("button", { name: "取消", exact: true }).click()
-    if (width < 1280)
-      await page.getByTestId("workspace-menu-trigger").click()
-    await page.getByRole("link", { name: "日志", exact: true }).click()
+    await openWorkspaceLog(page, "日志")
     await expect(page.getByRole("heading", { name: "我的日志", exact: true })).toBeVisible()
     await page.getByRole("button", { name: "新建日志", exact: true }).click()
     const logDialog = page.getByRole("dialog")
