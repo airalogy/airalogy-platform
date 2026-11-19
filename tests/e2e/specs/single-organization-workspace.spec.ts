@@ -114,7 +114,7 @@ test("English navigation keeps the current section readable on a narrow phone", 
     await page.setViewportSize({ width: 876, height: 844 })
     await page.goto(route)
     const header = page.getByTestId("app-shell-header")
-    await changeAccountLanguage(page, "中文", "English")
+    await changeAccountLanguage(page, "English")
     await page.setViewportSize({ width: 320, height: 844 })
     const current = header.getByTestId("workspace-menu-trigger").locator(".truncate")
     await expect(current).toHaveText(label)
@@ -301,4 +301,21 @@ test("workspace header separates navigation from creation and opens Aira on the 
     await page.goto("/home")
     await header.screenshot({ path: testInfo.outputPath(`navigation-${width}.png`) })
   }
+})
+
+test.describe("touch navigation", () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
+
+  test("a phone user can switch account language with taps", async ({ page }) => {
+    await page.goto("/home")
+    const account = page.getByTestId("account-menu")
+    const menu = page.locator(".n-dropdown-menu:visible")
+    const create = page.getByTestId("global-create-trigger")
+    await account.tap()
+    await menu.getByText("English", { exact: true }).tap()
+    await expect(create).toHaveAccessibleName("New")
+    await account.tap()
+    await menu.getByText("中文", { exact: true }).tap()
+    await expect(create).toHaveAccessibleName("新建")
+  })
 })

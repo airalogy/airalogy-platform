@@ -75,6 +75,7 @@
   },
   "common": {
     "workspace": "工作空间",
+    "language": "语言",
     "workspaceNavigation": "工作空间导航",
     "operationFailed": "此步骤未能完成",
     "inputPreserved": "已保留你的输入。请检查填写内容和网络连接后重试。",

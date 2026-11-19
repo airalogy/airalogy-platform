@@ -61,8 +61,7 @@ export function instrumentWorkspaceUrl(labUid: string, gatewayId: string, resour
   return `/labs/${labUid}/resources/gateways?${query}`
 }
 
-export async function changeAccountLanguage(page: Page, current: string, next: string) {
+export async function changeAccountLanguage(page: Page, next: string) {
   await page.getByTestId("account-menu").click()
-  await page.locator(".n-dropdown-menu:visible").getByText(current, { exact: true }).first().hover()
-  await page.locator(".n-dropdown-menu:visible").last().getByText(next, { exact: true }).click()
+  await page.locator(".n-dropdown-menu:visible").getByText(next, { exact: true }).click()
 }

@@ -42,7 +42,7 @@ test("project menu translates immediately and keeps custom names and project con
   await expect(menu).not.toContainText("Project protocols")
   await page.screenshot({ path: testInfo.outputPath("project-menu-zh-755.png"), fullPage: true })
   await page.locator("h2").filter({ hasText: projectName }).click()
-  await changeAccountLanguage(page, "中文", "English")
+  await changeAccountLanguage(page, "English")
   await trigger.click()
   await expect(menu).toContainText(en.page.project.protocols)
   await expect(menu).toContainText(en.page.workflowDefinitions.title)

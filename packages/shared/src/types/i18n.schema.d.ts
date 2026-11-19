@@ -79,6 +79,7 @@ declare namespace I18n {
     }
     common: {
       workspace: string
+      language: string
       workspaceNavigation: string
       operationFailed: string
       inputPreserved: string

@@ -75,6 +75,7 @@
   },
   "common": {
     "workspace": "Workspace",
+    "language": "Language",
     "workspaceNavigation": "Workspace navigation",
     "operationFailed": "Could not complete this step",
     "inputPreserved": "Your input is still here. Check the details and your connection, then try again.",

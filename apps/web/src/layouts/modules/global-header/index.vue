@@ -176,9 +176,14 @@ const accountOptions = computed<DropdownOption[]>(() => [
   ...(isMobile.value && instanceStore.aiEnabled ? [{ label: "Aira", key: "aira" }] : []),
   ...(isMobile.value && showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
   {
-    label: currentLocaleLabel.value,
+    type: "group",
+    label: $t("common.language"),
     key: "language",
-    children: appStore.localeOptions.map(option => ({ label: option.label, key: `language:${option.key}` })),
+    children: appStore.localeOptions.map(option => ({
+      label: option.label,
+      key: `language:${option.key}`,
+      disabled: option.key === appStore.locale,
+    })),
   },
 ])
 async function handleSelect(key: string | number) {
