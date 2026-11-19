@@ -1,5 +1,5 @@
 <template>
-  <span v-if="compliance.visible" class="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+  <span v-if="compliance.visible" class="min-w-0 inline-flex flex-wrap items-center gap-x-3 gap-y-1">
     <a
       v-if="compliance.icpRecordNumber"
       :href="compliance.icpRecordUrl"
@@ -40,7 +40,8 @@ a
   text-decoration: none
 
   &:hover
-    color: white
+    color: #165bb7
+    text-decoration: underline
 
 .police-record
   display: inline-flex

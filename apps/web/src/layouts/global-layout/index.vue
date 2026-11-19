@@ -30,8 +30,8 @@
     :float-button-props="props.floatButtonProps"
     :is-container="!route.meta.notContainer"
     :max-width="contentMaxWidth"
-    footer-class="bg-[#2B2B38]"
-    header-class="border-b border-[#d9e4f2] bg-[#f6f9ff]"
+    footer-class="border-t border-[var(--aira-shell-border)] bg-[var(--aira-shell-surface)]"
+    header-class="border-b border-[var(--aira-shell-border)] bg-[var(--aira-shell-surface)]"
   >
     <template #header>
       <global-header

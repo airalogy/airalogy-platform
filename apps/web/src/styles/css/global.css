@@ -10,9 +10,14 @@ body,
   min-height: 100vh;
 }
 
+:root {
+  --aira-shell-surface: #f6f9ff;
+  --aira-shell-border: #d9e4f2;
+}
+
 html,
 body {
-  background: #2b2b38;
+  background: var(--aira-shell-surface);
 }
 
 #app {
