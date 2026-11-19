@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Weekly meeting preparation can select unfinished items from a previous meeting, review their current owner, blocker and next step, and discuss the original work again.
+
 - Manual Record entry preserves a selected sample when the search field loses focus and includes seconds in date-time values for schema validation.
 
 - Project journals again offer authorized Record export, including the selected day. Record entry keeps its CSV preview when resizing, and opening the Protocol drafting assistant waits for the active organization’s AI settings.

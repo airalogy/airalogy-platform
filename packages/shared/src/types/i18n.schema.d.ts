@@ -5645,6 +5645,19 @@ declare namespace I18n {
         deadlineNote: string
       }
       meetings: {
+        reviewPrevious: string
+        previousMeeting: string
+        choosePrevious: string
+        discussionCount: string
+        addDiscussion: string
+        alreadyLinked: string
+        noOpenWork: string
+        noPrevious: string
+        olderMeetings: string
+        retryPrevious: string
+        loadingPrevious: string
+        discussionSaved: string
+        notRecorded: string
         title: string
         new: string
         back: string

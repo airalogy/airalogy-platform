@@ -11,6 +11,7 @@ import {
   meetingContent,
   meetingMembers,
   saveMeeting,
+  saveMeetingActions,
   saveMeetingWithActions,
 } from "@/service/api/meetings"
 import { listProjectPeople } from "@/service/api/project-people"
@@ -29,6 +30,8 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import ActionBatch from "./action-batch.vue"
 import { meetingHandoffKey } from "./aira-handoff"
+import PreviousMeetingWork from "./previous-meeting-work.vue"
+import WorkFollowUpDetails from "./work-follow-up-details.vue"
 
 const { t, locale } = useI18n()
 const dialog = useDialog()
@@ -75,6 +78,7 @@ const workId = ref<string | null>(null)
 const editing = ref(false)
 const actionDirty = ref(false)
 const draftActions = ref<MeetingActionDraft[]>([])
+const discussionIds = ref<string[]>([])
 let batchRequestId = crypto.randomUUID()
 const draftMeeting = computed<Meeting | undefined>(() => form.value && projectId.value && !selected.value
   ? {
@@ -263,6 +267,7 @@ async function loadSelected() {
   editing.value = false
   actionDirty.value = false
   draftActions.value = []
+  discussionIds.value = []
   batchRequestId = crypto.randomUUID()
   initialActionTitles.value = []
   if (!id)
@@ -335,8 +340,8 @@ async function save() {
   error.value = ""
   notice.value = ""
   try {
-    const result = !selected.value && draftActions.value.length
-      ? await saveMeetingWithActions(creationId.value, projectId.value, form.value, batchRequestId, draftActions.value)
+    const result = !selected.value && (draftActions.value.length || discussionIds.value.length)
+      ? await saveMeetingWithActions(creationId.value, projectId.value, form.value, batchRequestId, draftActions.value, discussionIds.value)
       : await saveMeeting(
         selected.value?.id || creationId.value,
         projectId.value,
@@ -344,6 +349,7 @@ async function save() {
         selected.value?.revision,
       )
     accept(result)
+    discussionIds.value = []
     draftActions.value = []
     actionDirty.value = false
     editing.value = false
@@ -418,6 +424,24 @@ async function postComment() {
     busy.value = false
   }
 }
+async function saveDiscussion() {
+  if (!selected.value || !discussionIds.value.length || busy.value)
+    return
+  busy.value = true
+  error.value = ""
+  try {
+    selected.value = await saveMeetingActions(selected.value.id, batchRequestId, selected.value.revision, [], discussionIds.value)
+    discussionIds.value = []
+    batchRequestId = crypto.randomUUID()
+    notice.value = t("page.meetings.discussionSaved")
+  }
+  catch (e) {
+    error.value = message(e)
+  }
+  finally {
+    busy.value = false
+  }
+}
 async function linkWork() {
   if (!selected.value || !workId.value)
     return
@@ -470,7 +494,7 @@ async function loadHistory() {
 }
 async function guard() {
   flushVisual()
-  if (!dirty.value && !actionDirty.value && !comment.value.trim())
+  if (!dirty.value && !actionDirty.value && !discussionIds.value.length && !comment.value.trim())
     return true
   return new Promise<boolean>((resolve) => {
     dialog.warning({
@@ -494,7 +518,7 @@ onBeforeRouteLeave(guard)
 onBeforeRouteUpdate((to, from) => (to.query.meeting === from.query.meeting && to.query.draft === from.query.draft) || guard())
 function beforeUnload(e: BeforeUnloadEvent) {
   flushVisual()
-  if (dirty.value || actionDirty.value || comment.value.trim()) {
+  if (dirty.value || actionDirty.value || discussionIds.value.length || comment.value.trim()) {
     e.preventDefault()
     e.returnValue = ""
   }
@@ -648,7 +672,7 @@ watch(page, loadList)
         <span data-testid="meeting-save-state">{{
           busy
             ? t("page.meetings.saving")
-            : dirty
+            : dirty || discussionIds.length
               ? t("page.meetings.unsaved")
               : selected
                 ? t("page.meetings.saved")
@@ -666,7 +690,7 @@ watch(page, loadList)
         </n-button>
       </div>
       <div v-if="selected && !editing" class="flex flex-wrap items-center gap-2">
-        <n-button v-if="editable" type="primary" @click="editing = true" data-testid="meeting-edit">{{ t("common.edit") }}</n-button>
+        <n-button v-if="editable" type="primary" :disabled="busy || !!discussionIds.length" @click="editing = true" data-testid="meeting-edit">{{ t("common.edit") }}</n-button>
         <a href="#meeting-actions" class="text-primary">{{ t("page.meetings.actions") }} ({{ selected.work?.length || 0 }})</a>
       </div>
       <n-button v-if="selected && editing" text @click="cancelEditing">{{ t("common.cancel") }}</n-button>
@@ -713,6 +737,10 @@ watch(page, loadList)
             {{ t("page.meetings.exactTime") }}
           </n-checkbox>
         </div>
+        <previous-meeting-work
+          v-if="draftMeeting && projectId" :key="creationId" v-model="discussionIds"
+          :project-id="projectId" :meeting-id="creationId" :members="members" :disabled="busy"
+        />
         <details :open="!selected" class="border rounded-lg p-4" data-testid="meeting-people">
           <summary class="cursor-pointer font-medium">
             {{ t("page.meetings.peopleAndAccess") }} · {{ form.participants.length }} ·
@@ -836,23 +864,28 @@ watch(page, loadList)
         <p class="text-sm text-gray-500">
           {{ t("page.meetings.workHint") }}
         </p>
+        <previous-meeting-work
+          v-if="selected.can_comment && selected.can_create_work && !editing && projectId"
+          :key="selected.id" v-model="discussionIds" :project-id="projectId" :meeting-id="selected.id"
+          :members="members" :disabled="busy" :linked="selected.work?.map(link => link.item.id)"
+        >
+          <n-button v-if="discussionIds.length" size="small" type="primary" :loading="busy" @click="saveDiscussion">
+            {{ t('page.meetings.addDiscussion', { count: discussionIds.length }) }}
+          </n-button>
+        </previous-meeting-work>
         <ul class="m-0 list-none p-0">
           <li
             v-for="link in selected.work"
             :key="link.item.id"
-            class="flex flex-wrap items-center justify-between gap-2 border-b py-3"
+            class="border-b py-2 [overflow-wrap:anywhere]"
           >
             <router-link
               class="text-primary"
               :to="{ name: 'project-work', params: route.params, query: { item: link.item.id } }"
             >
               {{ link.item.title }}
-            </router-link><span>{{ t(`page.projectWork.states.${link.item.state}`) }} ·
-              {{
-                link.item.people_snapshot?.find(p => p.id === link.item.assignee_person_id)?.name
-                  || members.find(m => m.id === link.item.assignee_user_id)?.name
-                  || t("page.projectWork.unassigned")
-              }}</span>
+            </router-link>
+            <work-follow-up-details :item="link.item" :members="members" />
           </li>
         </ul>
         <template v-if="selected.can_comment">

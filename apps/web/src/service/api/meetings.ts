@@ -130,8 +130,8 @@ export function saveMeetingActions(id: string, requestId: string, revision: numb
   return documentRequest<Meeting>({ url: `/meetings/${id}/actions/batch`, method: "POST", data: { request_id: requestId, expected_revision: revision, actions, existing_work_ids: existingWorkIds } })
 }
 
-export function saveMeetingWithActions(id: string, projectId: string, content: MeetingContent, requestId: string, actions: MeetingActionDraft[]) {
-  return documentRequest<Meeting>({ url: "/meetings/with-actions", method: "POST", data: { meeting: { ...content, id, project_id: projectId }, actions: { request_id: requestId, expected_revision: 1, actions } } })
+export function saveMeetingWithActions(id: string, projectId: string, content: MeetingContent, requestId: string, actions: MeetingActionDraft[], existingWorkIds: string[] = []) {
+  return documentRequest<Meeting>({ url: "/meetings/with-actions", method: "POST", data: { meeting: { ...content, id, project_id: projectId }, actions: { request_id: requestId, expected_revision: 1, actions, existing_work_ids: existingWorkIds } } })
 }
 
 export interface MeetingProposal {

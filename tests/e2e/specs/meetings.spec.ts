@@ -399,3 +399,75 @@ test("project team follows meetings and separates accounts from named participan
   await expect(accounts.getByText("Dev Owner", { exact: true })).toHaveCount(1)
   expect(errors).toEqual([])
 })
+
+for (const width of [1440, 390]) {
+  test(`weekly follow-up keeps the original work across meetings at ${width}px`, async ({ page }, testInfo) => {
+    const { headers, projectId, path } = await createMeetingProject(page.request)
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+    const person = crypto.randomUUID()
+    const previous = crypto.randomUUID()
+    const blocked = crypto.randomUUID()
+    const other = crypto.randomUUID()
+    const ids = [blocked, other, crypto.randomUUID(), crypto.randomUUID()]
+    const personResult = await page.request.post("/api/project-people", { headers, data: { id: person, project_id: projectId, name: "测试工程师", organization: "测试单位" } })
+    expect(personResult.ok(), await personResult.text()).toBeTruthy()
+    const body = { title: "验证样机", state: "blocked", assignee_person_id: person, blocker: "等待样机", next_step: "收到后测试" }
+    const setup = await page.request.post("/api/meetings/with-actions", { headers, data: {
+      meeting: { id: previous, project_id: projectId, title: "上周研发例会", occurred_at: new Date(Date.now() - 7 * 86400000).toISOString() },
+      actions: { request_id: crypto.randomUUID(), expected_revision: 1, actions: [
+        { id: blocked, ...body }, { id: other, title: "讨论接口" },
+        { id: ids[2], title: "已经完成", state: "done", acceptance: "验证通过" },
+        { id: ids[3], title: "已经取消", state: "cancelled" },
+      ] },
+    } })
+    expect(setup.ok(), await setup.text()).toBeTruthy()
+    await page.goto(`${path}/meetings?meeting=new`)
+    await page.getByTestId("meeting-title").locator("input").fill("本周研发例会")
+    await page.getByTestId("meeting-status").click()
+    await page.locator(".n-base-select-option").filter({ hasText: "会前准备" }).click()
+    const review = page.getByTestId("meeting-follow-up")
+    await review.locator("summary").click()
+    await review.locator("select").selectOption(previous)
+    await expect(review.getByRole("checkbox")).toHaveCount(2)
+    await expect(review).toContainText("测试工程师")
+    await expect(review).toContainText("等待样机")
+    await expect(review).toContainText("收到后测试")
+    await expect(review).toContainText("暂未分配")
+    await review.locator(`input[value="${blocked}"]`).check()
+    await review.scrollIntoViewIfNeeded()
+    const box = await review.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1)
+    await page.screenshot({ path: testInfo.outputPath(`weekly-follow-up-${width}.png`) })
+    const saving = page.waitForResponse(r => r.url().endsWith("/api/meetings/with-actions") && r.request().method() === "POST")
+    await page.getByTestId("meeting-save").click()
+    const response = await saving
+    expect(response.ok(), await response.text()).toBeTruthy()
+    const target = (await response.json()).id
+    const replay = await page.request.post("/api/meetings/with-actions", { headers, data: response.request().postDataJSON() })
+    expect(replay.ok(), await replay.text()).toBeTruthy()
+    await expect(page).toHaveURL(new RegExp(`meeting=${target}`))
+    const original = await (await page.request.get(`/api/meetings/${previous}`, { headers })).json()
+    const item = original.work.find((link: { item: { id: string } }) => link.item.id === blocked).item
+    const updated = await page.request.put(`/api/project-work/${blocked}`, { headers, data: { ...body, evidence: item.evidence.map(({ kind, id, version }: { kind: string, id: string, version: string }) => ({ kind, id, version })), next_step: "更换样机后复测", expected_revision: item.revision, request_id: crypto.randomUUID(), change_reason: "测试跟进" } })
+    expect(updated.ok(), await updated.text()).toBeTruthy()
+    await page.reload()
+    const work = page.getByTestId("meeting-work")
+    await expect(work).toContainText("更换样机后复测")
+    await expect(work.getByRole("link", { name: body.title })).toHaveAttribute("href", new RegExp(blocked))
+    await review.locator("summary").click()
+    await review.locator("select").selectOption(previous)
+    await expect(review.locator(`input[value="${blocked}"]`)).toBeDisabled()
+    await review.locator(`input[value="${other}"]`).check()
+    await review.getByRole("button", { name: "加入本次讨论", exact: false }).click()
+    await expect(work.getByRole("link", { name: "讨论接口" })).toBeVisible()
+    for (const [id, expected] of [[target, [blocked, other]], [previous, ids]] as const) {
+      const meeting = await (await page.request.get(`/api/meetings/${id}`, { headers })).json()
+      expect(meeting.work.map((link: { item: { id: string } }) => link.item.id).sort()).toEqual([...expected].sort())
+      expect(meeting.work.find((link: { item: { id: string } }) => link.item.id === blocked).item.next_step).toBe("更换样机后复测")
+    }
+    const inventory = await (await page.request.get("/api/project-work", { headers, params: { project_id: projectId } })).json()
+    expect(inventory.total).toBe(4)
+  })
+}
