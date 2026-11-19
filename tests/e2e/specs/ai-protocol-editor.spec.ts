@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockAIEnabled } from "./fixtures"
 
 const GENERATED_PROTOCOL = `# 细胞药物处理实验
 
@@ -55,18 +56,7 @@ test("AI-disabled instances keep deterministic Protocol creation available", asy
   await page.addInitScript(() => {
     window.localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null }))
   })
-  await page.route(/\/api\/(?:instance|organizations\/uid\/[^/]+\/ai-capabilities)(?:\?.*)?$/, async (route) => {
-    const response = await route.fetch()
-    const status = await response.json()
-    await route.fulfill({
-      response,
-      json: {
-        ...status,
-        ai_enabled: false,
-        enabled_chat_models: [],
-      },
-    })
-  })
+  await mockAIEnabled(page, () => false)
 
   await page.goto("/labs/dev_lab/projects/quickstart/protocols")
   await page.getByRole("button", { name: "新建协议", exact: true }).click()

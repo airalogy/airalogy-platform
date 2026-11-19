@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { expect, test } from "@playwright/test"
-import { instrumentWorkspaceUrl, loadFixtures, selectVisibleOption } from "./fixtures"
+import { instrumentWorkspaceUrl, loadFixtures, mockAIEnabled, selectVisibleOption } from "./fixtures"
 
 for (const native of [false, true]) {
   test(`exploration UI fixtures ${native ? "native" : "browser"}: private request rejection, reviewed actions, history and AI-off`, async ({ page, request }, testInfo) => {
@@ -32,10 +32,7 @@ for (const native of [false, true]) {
     let ai = true
     let saved: Record<string, any> | null = null
     let writes = 0
-    await page.route("**/api/instance", async (route) => {
-      const response = await route.fetch()
-      await route.fulfill({ response, json: { ...await response.json(), ai_enabled: ai } })
-    })
+    await mockAIEnabled(page, () => ai)
     await page.route(url => url.pathname === "/api/instrument-exploration" || url.pathname.startsWith("/api/instrument-exploration/"), async (route) => {
       const url = new URL(route.request().url())
       if (route.request().method() === "GET") {

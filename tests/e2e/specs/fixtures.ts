@@ -30,6 +30,15 @@ export async function loadFixtures(): Promise<E2EFixtures> {
   ) as E2EFixtures
 }
 
+export async function mockAIEnabled(page: Page, isEnabled: () => boolean) {
+  await page.route(/\/api\/(?:instance|organizations\/uid\/[^/]+\/ai-capabilities)(?:\?.*)?$/, async (route) => {
+    const response = await route.fetch()
+    const status = await response.json()
+    const enabled = isEnabled()
+    await route.fulfill({ response, json: { ...status, ai_enabled: enabled, enabled_chat_models: enabled ? status.enabled_chat_models : [] } })
+  })
+}
+
 export async function selectVisibleOption(page: Page, label: string | RegExp) {
   // Closed menus remain visible during their leave transition. They can contain
   // the same label as the newly opened menu, but must never receive the click.
