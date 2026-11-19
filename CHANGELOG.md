@@ -14,6 +14,14 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- The workspace header groups project navigation on the left and creation, Aira, and account actions on the right. Aira opens in context and language selection is available in the account menu. Language options support direct taps in the account menu.
+
+- Organization owners and managers can review current project owners, blockers, next steps and open milestones across projects, and select a heatmap day to inspect its authorized source activities.
+
+- The workspace now has a compact mist-blue footer that shares the header palette. The sign-in footer uses the same copyright, filing links and version details.
+
+- Organization member names can be set or cleared independently of roles and personal notes. Team lists, meeting participants and work assignees show each member’s organization display name. Member role dialogs use the interface language and offer role changes to authorized users. Narrow navigation keeps the current section readable, highlights Chat and Organization Management, and Home translates recent meeting and log destinations. The organization AI switch also announces its disabled state to assistive technology.
+
 - Ask Aira opens a conversation beside Home, keeps the draft when closed and reopened, and links to All chats. Account history can be reopened and continued on another device. Device-only history is scoped to the signed-in account.
 
 - The workspace header uses a compact pale-blue bar, the Airalogy wordmark and a distinct organization name and logo on private deployments. Selecting a logo in settings uploads it once.

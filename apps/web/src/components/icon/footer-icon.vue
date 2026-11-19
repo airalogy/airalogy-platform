@@ -1,12 +1,12 @@
 <template>
   <n-button
-    class="footer__icon ml-5 h-10 w-10 p-1"
+    class="footer__icon h-11 w-11 p-1"
+    :aria-label="props.name"
     tertiary
-    style="--n-color-focus: rgba(255, 255, 255, 0.6)"
     @click="handleOpenTab"
   >
     <template #icon>
-      <n-icon :size="24" color="white">
+      <n-icon :size="20" color="currentColor">
         <logo-github v-if="props.name === 'github'" />
         <logo-facebook v-else-if="props.name === 'facebook'" />
         <logo-wechat v-else-if="props.name === 'wechat'" />
@@ -44,5 +44,5 @@ function handleOpenTab() {
 .footer__icon
   padding: 5px
   border-radius: 9px
-  background: rgba(255,255,255,0.1)
+  color: #354962
 </style>

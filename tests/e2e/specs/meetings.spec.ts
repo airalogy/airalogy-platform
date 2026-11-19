@@ -300,7 +300,10 @@ test("project Aira reviews a temporary meeting draft before saving minutes and a
   await page.goto(`${root}/records`)
   const filters = page.getByTestId("activity-type")
   expect((await filters.boundingBox())!.height).toBeLessThanOrEqual(36)
-  await page.getByTestId("project-aira").click()
+  const headerAira = page.getByTestId("header-aira")
+  await expect(page.getByTestId("project-aira")).toBeVisible()
+  await headerAira.click()
+  await expect(page.getByTestId("project-aira-panel").getByRole("link", { name: /全部对话/ })).toHaveAttribute("href", "/chat")
   const panel = page.getByTestId("project-aira-panel")
   await expect(panel).toBeVisible()
   const avatar = panel.getByRole("heading", { name: "Aira", exact: true }).locator("svg")
@@ -416,7 +419,8 @@ for (const width of [1440, 390]) {
     const setup = await page.request.post("/api/meetings/with-actions", { headers, data: {
       meeting: { id: previous, project_id: projectId, title: "上周研发例会", occurred_at: new Date(Date.now() - 7 * 86400000).toISOString() },
       actions: { request_id: crypto.randomUUID(), expected_revision: 1, actions: [
-        { id: blocked, ...body }, { id: other, title: "讨论接口" },
+        { id: blocked, ...body },
+        { id: other, title: "讨论接口" },
         { id: ids[2], title: "已经完成", state: "done", acceptance: "验证通过" },
         { id: ids[3], title: "已经取消", state: "cancelled" },
       ] },

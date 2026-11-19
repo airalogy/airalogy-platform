@@ -7,14 +7,14 @@
     :options="options"
     @select="handleDropdown"
   >
-    <button type="button" class="flex-center cursor-pointer border-0 bg-transparent p-0" :aria-label="$t('common.profile')" :aria-expanded="isDropdownShow">
+    <button type="button" data-testid="account-menu" class="flex-center cursor-pointer border-0 bg-transparent p-0" :aria-label="$t('common.profile')" :aria-expanded="isDropdownShow">
       <n-avatar
         round
-        size="large"
+        :size="34"
         :src="authStore.userInfo.avatar_url || '/images/avatar_default.svg'"
         color="white"
       />
-      <dropdown-icon class="mx-2" :style="{ color: props.buttonThemeOverrides.textColor }" :expended="isDropdownShow" />
+      <dropdown-icon class="mx-2 max-sm:hidden" :style="{ color: props.buttonThemeOverrides.textColor }" :expended="isDropdownShow" />
     </button>
   </n-dropdown>
   <template v-else>
@@ -54,7 +54,10 @@ const props = withDefaults(defineProps<IProps>(), {
   buttonThemeOverrides: () => ({ ...buttonThemeOverrides }),
 })
 
+const emit = defineEmits<{ selectExtra: [key: string | number] }>()
+
 interface IProps {
+  extraOptions?: DropdownMixedOption[]
   buttonThemeOverrides?: ButtonProps["themeOverrides"]
 }
 const authStore = useAuthStore()
@@ -62,7 +65,6 @@ const { routerPushByKey } = useRouterPush()
 const isDropdownShow = ref(false)
 
 type DropdownOption = DropdownMixedOption
-type DropdownKey = "header" | "divider" | "user-profile" | "logout" | "admin-dashboard"
 
 function renderCustomHeader() {
   const { avatar_url, username, name } = authStore.userInfo
@@ -118,7 +120,7 @@ const options = computed(() => {
     })
   }
 
-  opts.push(...baseOptions.value)
+  opts.push(...(props.extraOptions ?? []), ...baseOptions.value)
 
   return opts
 })
@@ -135,7 +137,7 @@ function logout() {
   })
 }
 
-async function handleDropdown(key: DropdownKey) {
+async function handleDropdown(key: string | number) {
   if (key === "logout") {
     logout()
   }
@@ -148,9 +150,11 @@ async function handleDropdown(key: DropdownKey) {
     await routerPushByKey("admin-dashboard")
   }
   else if (key !== "header" && key !== "divider") {
-    await routerPushByKey(key)
+    emit("selectExtra", key)
   }
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+button { min-width: 44px; min-height: 44px; }
+</style>

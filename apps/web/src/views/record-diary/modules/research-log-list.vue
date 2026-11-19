@@ -6,6 +6,7 @@
       </router-link>
       <span v-else class="event-title">{{ item.title }}</span>
       <div class="event-meta">
+        <span v-if="showProject && item.project">{{ item.project.name }}</span>
         <span>{{ eventLabel(item) }}</span>
         <span v-if="item.author">{{ item.author.name || item.author.username }}</span>
         <time :datetime="item.occurred_at" :title="formatDate(item.occurred_at, dateOnly(item) ? 'date' : 'date-time')">
@@ -118,7 +119,7 @@ import { formatDate } from "@airalogy/shared/utils"
 import { useI18n } from "vue-i18n"
 import ResearchLogField from "./research-log-field.vue"
 
-const props = withDefaults(defineProps<{ items: ResearchLogTimelineItem[], compact?: boolean }>(), { compact: false })
+const props = withDefaults(defineProps<{ items: ResearchLogTimelineItem[], compact?: boolean, showProject?: boolean }>(), { compact: false })
 const emit = defineEmits<{ edit: [entry: ResearchLogManualEntry] }>()
 
 function dateOnly(item: ResearchLogTimelineItem) {

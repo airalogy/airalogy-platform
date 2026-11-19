@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.models.lab import LabUser
 from app.models.project import ProjectUser
@@ -38,6 +38,27 @@ class PersonCreate(PersonContent):
 
 class PersonUpdate(PersonContent):
     expected_revision: int = Field(ge=1)
+
+
+def organization_accounts(lab_id):
+    display_name = func.coalesce(
+        func.nullif(func.trim(LabUser.alias), ""),
+        func.nullif(User.name, ""),
+        User.username,
+    ).label("display_name")
+    return (
+        select(User, display_name)
+        .join(LabUser, LabUser.user_id == User.id)
+        .where(LabUser.lab_id == lab_id)
+        .order_by(display_name, User.username, User.id)
+    )
+
+
+async def organization_names(db, lab_id, user_ids):
+    if not user_ids:
+        return {}
+    rows = await db.execute(organization_accounts(lab_id).where(User.id.in_(user_ids)))
+    return {user.id: display_name for user, display_name in rows}
 
 
 def person_view(person):
@@ -90,8 +111,6 @@ async def validate_account(db, project, data, person_id):
 
 async def list_people(db, user, project_id):
     project = await project_context(db, user, project_id)
-    from sqlalchemy import func
-
     from app.models.project_work import ProjectWork
     from app.models.research import ResearchTask
 
@@ -108,20 +127,27 @@ async def list_people(db, user, project_id):
             )
         ).all()
     )
+    people = (
+        await db.scalars(
+            select(ProjectPerson)
+            .where(ProjectPerson.project_id == project_id)
+            .order_by(ProjectPerson.name, ProjectPerson.id)
+        )
+    ).all()
+    linked_ids = [p.user_id for p in people if p.user_id]
+    names = await organization_names(db, project.lab_id, linked_ids)
     return {
         "can_manage_accounts": await can_manage_accounts(db, user, project),
         "can_write": await has_research_capability(
             db, user=user, project=project, capability="log.write"
         ),
         "people": [
-            {**person_view(p), "assigned_count": counts.get(p.id, 0)}
-            for p in (
-                await db.scalars(
-                    select(ProjectPerson)
-                    .where(ProjectPerson.project_id == project_id)
-                    .order_by(ProjectPerson.name, ProjectPerson.id)
-                )
-            ).all()
+            {
+                **person_view(p),
+                "display_name": names.get(p.user_id, p.name),
+                "assigned_count": counts.get(p.id, 0),
+            }
+            for p in people
         ],
     }
 
@@ -134,19 +160,21 @@ async def team_roster(db, user, project_id):
         .where(ProjectUser.project_id == project_id, ProjectUser.user_id == User.id)
         .exists()
     )
-    candidates = await db.scalars(
-        select(User)
-        .join(LabUser, LabUser.user_id == User.id)
-        .where(LabUser.lab_id == project.lab_id, ~direct_member)
-        .order_by(User.name, User.username, User.id)
+    candidates = await db.execute(
+        organization_accounts(project.lab_id).where(~direct_member)
     )
     additional_members = []
-    for account in candidates.unique():
+    for account, display_name in candidates.unique():
         if await has_research_capability(
             db, user=account, project=project, capability="research.read"
         ):
             additional_members.append(
-                {"id": account.id, "name": account.name, "username": account.username}
+                {
+                    "id": account.id,
+                    "name": account.name,
+                    "username": account.username,
+                    "display_name": display_name,
+                }
             )
     participants = await db.execute(
         select(ProjectPerson.id, ProjectPerson.name, ProjectPerson.organization)

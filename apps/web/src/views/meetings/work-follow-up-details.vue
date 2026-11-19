@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { MeetingMember } from "@/service/api/meetings"
+import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
 import { useI18n } from "vue-i18n"
 
-const props = defineProps<{ item: ProjectWork, members: MeetingMember[], showEmpty?: boolean }>()
+const props = defineProps<{ item: ProjectWork, members: MeetingMember[], people: ProjectPerson[], showEmpty?: boolean }>()
 const { t } = useI18n()
 const assignee = computed(() => {
   const person = props.item.people_snapshot?.find(p => p.id === props.item.assignee_person_id)
   const member = props.members.find(m => m.id === props.item.assignee_user_id)
-  return person?.name || member?.name || member?.username || t("page.projectWork.unassigned")
+  return props.people.find(p => p.id === props.item.assignee_person_id)?.display_name || person?.name || member?.name || member?.username || t("page.projectWork.unassigned")
 })
 </script>
 

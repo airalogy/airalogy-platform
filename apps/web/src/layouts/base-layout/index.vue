@@ -95,6 +95,7 @@
       <!-- Footer -->
       <template v-if="showFooter">
         <footer
+          ref="footerElement"
           v-show="!fullContent" class="h-fit flex-shrink-0" :class="[
             style['layout-footer'],
             commonClass,
@@ -121,6 +122,7 @@
 <script setup lang="ts">
 import type { AIRALayoutProps } from "../../types/layout"
 import type { Style } from "./utils/layoutType"
+import { useElementSize } from "@vueuse/core"
 import styleRaw from "./utils/layout.module.css"
 import { createLayoutCssVars, LAYOUT_MAX_Z_INDEX, LAYOUT_SCROLL_EL_ID } from "./utils/shared"
 
@@ -182,7 +184,9 @@ interface Slots {
   /** FloatButton */
   floatButton?: SlotFn
 }
-const cssVars = computed(() => createLayoutCssVars(props))
+const footerElement = ref<HTMLElement | null>(null)
+const { height: footerHeight } = useElementSize(footerElement, undefined, { box: "border-box" })
+const cssVars = computed(() => createLayoutCssVars({ ...props, footerHeight: footerHeight.value }))
 const containerStyle = computed(() =>
   props.isContainer && props.maxWidth
     ? { maxWidth: `${props.maxWidth}px` }

@@ -42,6 +42,7 @@ const cases = [
   ["protocol-record-report", "/projects/project/protocols/protocol/v1.2.3/record/record/v2", { protocolUid: "protocol", protocolVersion: "1.2.3", recordId: "record", recordVersion: "2" }],
   ["protocol-editor", "/projects/project/protocol/editor/v1.2.3", { protocolUid: "protocol", protocolVersion: "1.2.3" }],
   ["lab-members", "/organization/members", {}],
+  ["lab-research-overview", "/organization/research-overview", {}],
   ["lab-settings", "/organization/settings", {}],
   ["lab-knowledge", "/organization/knowledge", {}],
   ["lab-resources", "/organization/resources/gateways", { section: "gateways" }],

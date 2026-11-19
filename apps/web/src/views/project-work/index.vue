@@ -41,7 +41,8 @@ const active = computed(() =>
   items.value.filter(item => !["done", "cancelled"].includes(item.state)),
 )
 function owner(item: ProjectWork) {
-  return item.people_snapshot?.find(p => p.id === item.assignee_person_id)?.name
+  return people.value.find(p => p.id === item.assignee_person_id)?.display_name
+    || item.people_snapshot?.find(p => p.id === item.assignee_person_id)?.name
     || members.value.find(m => m.id === item.assignee_user_id)?.name
     || (item.assignee_user_id ? t("page.projectWork.formerMember") : t("page.projectWork.unassigned"))
 }
@@ -198,7 +199,7 @@ onBeforeUnmount(() => sequence++)
         data-testid="work-state-filter"
         @update:value="search"
       />
-      <n-select v-model:value="personFilter" :options="[...people.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.name}${p.organization ? ` · ${p.organization}` : ''}` })), ...members.filter(m => !people.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name }))]" :placeholder="t('page.projectWork.assignee')" filterable clearable class="!w-44" @update:value="search" />
+      <n-select v-model:value="personFilter" :options="[...people.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.display_name || p.name}${p.organization ? ` · ${p.organization}` : ''}` })), ...members.filter(m => !people.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name }))]" :placeholder="t('page.projectWork.assignee')" filterable clearable class="!w-44" @update:value="search" />
       <n-checkbox
         v-model:checked="mine"
         @update:checked="search"
@@ -353,6 +354,7 @@ onBeforeUnmount(() => sequence++)
       :project-name="projectInfo.name"
       :lab-id="projectInfo.lab_id"
       :items="items"
+      :people="people"
       @close="close"
       @saved="saved"
     />

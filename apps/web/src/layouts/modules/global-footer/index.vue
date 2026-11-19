@@ -1,29 +1,24 @@
 <template>
-  <div class="container mx-auto p-6 color-white md:py-8" :style="containerStyle">
-    <div class="flex flex-row flex-wrap lg:flex-nowrap">
-      <global-logo monochrome show-title />
-      <template v-if="props.showLink">
-        <footer-link v-for="item in columns" :key="item.title" :title="item.title" :list="item.list" />
-      </template>
+  <div class="platform-footer container mx-auto" :class="{ 'platform-footer--legal': legalOnly }" :style="containerStyle">
+    <global-logo v-if="!legalOnly" class="platform-footer__brand" aria-label="Airalogy" />
+    <footer-link
+      v-if="!legalOnly && showLink" class="platform-footer__partners"
+      :title="$t('common.footer.partners')" :list="partners"
+    />
+    <div class="platform-footer__legal">
+      <span>© {{ currYear }} {{ $t("common.footer.copyright") }}</span>
+      <china-compliance-footer />
     </div>
-    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-white/30 pt-4 sm:justify-between md:pt-6">
-      <div class="h-fit w-full text-center text-gray-400 sm:w-fit space-x-3 md:text-left">
-        <span>&copy; {{ currYear }}</span>
-        <span>{{ footerText.copyright }}</span>
-        <china-compliance-footer />
-      </div>
-      <div class="text-gray-400">
-        <platform-version />
-      </div>
-      <template v-if="props.showIcon">
-        <footer-icon v-for="item in sns" :key="item.name" :name="item.name" :to="item.to" />
-      </template>
+    <div class="platform-footer__version">
+      <platform-version />
+    </div>
+    <div v-if="showIcon" class="platform-footer__social">
+      <footer-icon v-for="item in sns" :key="item.name" :name="item.name" :to="item.to" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { RouteLocationRaw } from "vue-router"
 import IconAiraXiv from "@/assets/link-icon/airaxiv.svg"
 import ChinaComplianceFooter from "@/components/common/china-compliance-footer.vue"
 import PlatformVersion from "@/components/common/platform-version.vue"
@@ -31,105 +26,16 @@ import { $t } from "@/locales"
 
 defineOptions({ name: "GlobalFooter" })
 
-const props = withDefaults(defineProps<IProps>(), {
-  showLink: true,
-  showIcon: false,
-})
-
-interface IProps {
+const props = withDefaults(defineProps<{
   showLink?: boolean
   showIcon?: boolean
+  legalOnly?: boolean
   maxWidth?: number
-}
+}>(), { showLink: true })
 
-const containerStyle = computed(() =>
-  props.maxWidth ? { maxWidth: `${props.maxWidth}px` } : undefined,
-)
+const containerStyle = computed(() => props.maxWidth ? { maxWidth: `${props.maxWidth}px` } : undefined)
 const currYear = new Date().getFullYear()
-const footerText = computed(() => ({
-  copyright: $t("common.footer.copyright"),
-  partners: $t("common.footer.partners"),
-}))
-
-const columns = computed((): {
-  title: string
-  list: {
-    name: string
-    to: RouteLocationRaw
-    external?: boolean
-    icon?: string
-  }[]
-}[] => [
-  {
-    title: footerText.value.partners,
-    list: [
-      {
-        name: "AiraXiv",
-        to: "https://airaxiv.com",
-        external: true,
-        icon: IconAiraXiv,
-      },
-    ],
-  },
-  // {
-  //   title: "explore",
-  //   list: [
-  //     { name: "labs", to: { name: "root" } },
-  //     { name: "projects", to: { name: "root" } },
-  //     { name: "protocols", to: { name: "root" } },
-  //   ],
-  // },
-  // {
-  //   title: "about",
-  //   list: [
-  //     { name: "Airalogy project", to: { name: "root" } },
-  //     { name: "contribute", to: { name: "root" } },
-  //     { name: "contact", to: "mailto:contact@airalogy.com", external: true },
-  //   ],
-  // },
-  // {
-  //   title: "help",
-  //   list: [
-  //     { name: "getting started", to: { name: "root" } },
-  //     { name: "service status", to: { name: "root" } },
-  //     { name: "FAQs", to: { name: "root" } },
-  //   ],
-  // },
-])
-// const columns: {
-//   title: string;
-//   list: {
-//     name: string;
-//     to: RouteLocationRaw;
-//     external?: boolean;
-//   }[];
-// }[] = [
-//     {
-//       title: "explore",
-//       list: [
-//         { name: "research protocol", to: "/research/protocol" },
-//         { name: "projects", to: "/projects/all" },
-//         { name: "research", to: "/research/all" },
-//       ],
-//     },
-//     {
-//       title: "about",
-//       list: [
-//         { name: "Airalogy project", to: "/about/aira" },
-//         { name: "contribute", to: "/about/contribute" },
-//         { name: "contact", to: "mailto:contact@airalogy.com", external: true },
-//       ],
-//     },
-//     {
-//       title: "help",
-//       list: [
-//         { name: "getting started", to: "/guide" },
-//         { name: "service status", to: "/service-status" },
-//         { name: "FAQs", to: "/faq" },
-//       ],
-//     },
-//   ]
-
+const partners = [{ name: "AiraXiv", to: "https://airaxiv.com", external: true, icon: IconAiraXiv }]
 const sns = [
   { name: "facebook", to: "https://facebook.com" },
   { name: "github", to: "https://github.com" },
@@ -138,6 +44,43 @@ const sns = [
 ] as const
 </script>
 
-<style scoped lang="sass">
-
+<style scoped>
+.platform-footer {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand partners legal version";
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--aira-shell-surface);
+  color: #475b72;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.platform-footer__brand { grid-area: brand; justify-self: start; display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0; color: #183453; }
+.platform-footer__brand :deep(svg) { width: 92px; height: 25px; }
+.platform-footer__partners { grid-area: partners; }
+.platform-footer__legal { grid-area: legal; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0 0.875rem; min-width: 0; overflow-wrap: anywhere; }
+.platform-footer__version { grid-area: version; justify-self: end; min-width: 0; }
+.platform-footer__version :deep(button) { min-height: 2.75rem; font: inherit; }
+.platform-footer__social { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.platform-footer :deep(:focus-visible) { outline: 2px solid #165bb7; outline-offset: 2px; }
+.platform-footer :deep(a:hover), .platform-footer__version :deep(button:enabled:hover) { color: #165bb7; }
+@media (max-width: 63.99rem) {
+  .platform-footer { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand partners" "legal version"; gap: 0 1rem; }
+  .platform-footer__partners { justify-self: end; }
+  .platform-footer__legal { justify-content: flex-start; }
+}
+@media (max-width: 39.99rem) {
+  .platform-footer { grid-template-areas: "brand partners" "legal legal" "version version"; padding: 0.375rem 1rem; }
+  .platform-footer__version { justify-self: start; }
+  .platform-footer__version :deep(button) { padding-inline: 0; }
+}
+.platform-footer--legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 1rem;
+}
+.platform-footer--legal .platform-footer__legal { justify-content: center; text-align: center; }
 </style>

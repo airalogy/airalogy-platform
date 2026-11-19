@@ -30,8 +30,8 @@
     :float-button-props="props.floatButtonProps"
     :is-container="!route.meta.notContainer"
     :max-width="contentMaxWidth"
-    footer-class="bg-[#2B2B38]"
-    header-class="border-b border-[#d9e4f2] bg-[#f6f9ff]"
+    footer-class="border-t border-[var(--aira-shell-border)] bg-[var(--aira-shell-surface)]"
+    header-class="border-b border-[var(--aira-shell-border)] bg-[var(--aira-shell-surface)]"
   >
     <template #header>
       <global-header
@@ -41,6 +41,7 @@
         :class="props.headerClass"
       />
     </template>
+    <workspace-aira v-if="aira.mounted.value" />
     <slot>
       <global-content v-if="appStore.isSpinWrapper" :container-content-class="themeStore.content.containerContentClass" :content-class="themeStore.content.contentClass" :show-spin="true" />
       <global-content v-else />
@@ -58,9 +59,10 @@
 <script setup lang="ts">
 import type { LayoutMode } from "@/types/layout"
 import type { FloatButtonProps } from "naive-ui"
+import { provideWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { PAGE_LAYOUT_MAX_WIDTHS, resolvePageLayoutMaxWidth } from "@/constants/page-layout"
-import AIRALayout from "@/layouts/base-layout/index.vue"
 
+import AIRALayout from "@/layouts/base-layout/index.vue"
 import { LAYOUT_SCROLL_EL_ID } from "@/layouts/base-layout/utils/shared"
 import GlobalHeader from "@/layouts/modules/global-header/index.vue"
 import { useAppStore } from "@/store/modules/app"
@@ -80,6 +82,8 @@ interface IProps {
   contentClass?: string
   headerClass?: string
 }
+const aira = provideWorkspaceAira()
+const WorkspaceAira = defineAsyncComponent(() => import("../modules/global-header/components/workspace-aira.vue"))
 const appStore = useAppStore()
 const themeStore = useThemeStore()
 

@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test"
 import { expect, test } from "@playwright/test"
-import { loadFixtures } from "./fixtures"
+import { loadFixtures, openWorkspaceLog } from "./fixtures"
 
 async function expectConfiguredCompliance(footer: Locator) {
   if (process.env.VITE_CHINA_COMPLIANCE_FOOTER !== "Y")
@@ -37,6 +37,47 @@ for (const width of [390, 1440]) {
   })
 }
 
+test("workspace footer matches the header and remains compact across widths", async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+  await page.goto(process.env.E2E_DEPLOYMENT_MODE === "single_organization" ? "/organization/members" : "/home")
+  const header = page.getByRole("banner")
+  const footer = page.getByRole("contentinfo")
+  const partner = footer.getByRole("link", { name: "AiraXiv", exact: true })
+  const version = footer.getByTestId("platform-version")
+  await expect(footer.getByRole("link", { name: "Airalogy", exact: true })).toBeVisible()
+  await expect(partner).toHaveAttribute("href", "https://airaxiv.com")
+  await expect(footer).toHaveCSS("background-color", "rgb(246, 249, 255)")
+  await expect(header).toHaveCSS("background-color", "rgb(246, 249, 255)")
+  await expectConfiguredCompliance(footer)
+  for (const width of [1440, 755, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await footer.scrollIntoViewIfNeeded()
+    await expect(footer).toBeInViewport({ ratio: 0.99 })
+    await expect(version).toBeInViewport({ ratio: 0.99 })
+    await expect(partner).toBeInViewport({ ratio: 0.99 })
+    expect(await footer.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
+    const box = await footer.boundingBox()
+    expect(box!.height).toBeLessThanOrEqual(width >= 1024 ? 92 : width >= 640 ? 124 : 196)
+    await footer.screenshot({ path: testInfo.outputPath(`workspace-footer-${width}.png`), animations: "disabled" })
+  }
+})
+
+test("a fixed footer reserves its actual height after wrapping", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("themeSettings", JSON.stringify({ data: { footer: { visible: true, fixed: true, height: 400, right: true } }, expire: null }))
+  })
+  await page.goto("/home")
+  const footer = page.getByRole("contentinfo")
+  await expect(footer).toHaveCSS("position", "absolute")
+  for (const width of [1440, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect.poll(() => footer.evaluate((el) => {
+      const spacer = el.nextElementSibling
+      return spacer ? Math.abs(el.getBoundingClientRect().height - spacer.getBoundingClientRect().height) : Infinity
+    })).toBeLessThanOrEqual(1)
+  }
+})
+
 test("leaving a Record report restores the footer without a page reload", async ({ page }) => {
   const fixtures = await loadFixtures()
   const record = fixtures.schema_governance
@@ -44,7 +85,7 @@ test("leaving a Record report restores the footer without a page reload", async 
   await page.goto(`/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}/protocols/${record.protocol_uid}/v${record.source_version}/record/${record.record_id}/v${record.record_version}`)
   await expect(page.getByRole("button", { name: "Revise", exact: true })).toBeVisible()
   await expect(page.getByRole("contentinfo")).toHaveCount(0)
-  await page.getByRole("link", { name: "Log", exact: true }).click()
+  await openWorkspaceLog(page, "Log")
   await expect(page.getByRole("contentinfo")).toContainText("Hangzhou Airalogy Technology Co., Ltd.")
 })
 

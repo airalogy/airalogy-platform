@@ -8,6 +8,12 @@ export const labInfoRoute: CustomRoute<LabInfoNameKey> = {
   children: [
     { path: "operations", name: "lab-operations", meta: { title: "Project operations", i18nKey: "page.operations.overview", allowGuest: false }, component: () => import("@/views/project-operations/overview.vue") },
     {
+      path: "research-overview",
+      name: "lab-research-overview",
+      meta: { title: "Research overview", i18nKey: "page.orgResearch.title", allowGuest: false },
+      component: () => import("@/views/labs/research-overview.vue"),
+    },
+    {
       path: "projects",
       name: "lab-projects",
       meta: {

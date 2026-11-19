@@ -155,11 +155,12 @@ export function saveProjectWork(
     },
   })
 }
-export function projectWorkMembers(projectId: string) {
-  return documentRequest<{ members: { id: string, name: string, username: string }[] }>({
+export async function projectWorkMembers(projectId: string) {
+  const result = await documentRequest<{ members: { id: string, name: string, username: string, display_name?: string }[] }>({
     url: "/project-work/members",
     params: { project_id: projectId },
   })
+  return { members: result.members.map(member => ({ ...member, name: member.display_name || member.name || member.username })) }
 }
 export function projectWorkSources(projectId: string, kind: string, q = "") {
   return documentRequest<{ items: WorkEvidence[], limited: boolean }>({

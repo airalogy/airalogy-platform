@@ -12,7 +12,7 @@
             <span v-if="showAtSymbol">@</span>
             <template v-if="showAlias">
               <span>{{ displayAlias }}</span>
-              <span v-if="baseName" class="text-xs"> ({{ baseName }}) </span>
+              <span v-if="item.username" class="text-xs text-gray-500"> @{{ item.username }}</span>
             </template>
             <span v-else>{{ baseName }}</span>
           </router-link>
@@ -38,6 +38,9 @@
                 {{ baseName }}
               </div>
             </div>
+          </div>
+          <div v-if="userAlias && props.type !== 'group'" class="mt-2 text-xs text-gray-600">
+            {{ $t("common.userAliasLabel") }} · {{ userAlias }}
           </div>
           <div v-if="canSetUserAlias" class="mt-2">
             <n-button size="tiny" quaternary @click.stop="openUserAliasDialog">
@@ -101,7 +104,7 @@ const userAlias = computed(() => {
 
 const displayAlias = computed(() => {
   const item = props.item as Api.Lab.MemberListItem & { alias?: string }
-  return userAlias.value || item.lab_alias || item.alias || ""
+  return props.type === "group" ? userAlias.value || item.alias || "" : item.lab_alias?.trim() || ""
 })
 
 const showAlias = computed(() => {
@@ -140,17 +143,19 @@ function openUserAliasDialog() {
         requiredMessage: $t("common.userAliasRequired"),
         required: false,
       }),
-    positiveText: $t("common.confirm"),
+    positiveText: $t("common.save"),
     negativeText: $t("common.cancel"),
     showIcon: false,
     onPositiveClick: async () => {
       dialogInstance.loading = true
       try {
         const alias = await aliasRef.value?.getAlias()
-        const trimmedAlias = (alias as string || "").trim()
-        await setUserAlias({ target_user_id: props.item.id, alias: trimmedAlias })
+        const trimmedAlias = (alias || "").trim()
+        const { error } = await setUserAlias({ target_user_id: props.item.id, alias: trimmedAlias })
+        if (error)
+          throw new Error($t("common.personalNoteSaveFailed"))
         localUserAlias.value = trimmedAlias
-        message.success("Alias updated successfully")
+        message.success($t("common.personalNoteSaved"))
       }
       catch (e) {
         message.error((e as Error).message)

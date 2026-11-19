@@ -5,7 +5,7 @@
         <content-layout :title="projectTitle" :tabs="tabs" compact-header>
           <template v-if="authStore.isLogin" #suffix>
             <div class="flex flex-wrap items-center justify-end gap-2">
-              <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="assistantOpen = !assistantOpen">Aira</n-button>
+              <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="headerTrigger = undefined; assistantOpen = !assistantOpen">Aira</n-button>
               <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
                 <n-button>{{ $t('common.more') }}</n-button>
               </n-dropdown>
@@ -70,6 +70,7 @@ import { useProjectPermissions } from "@/composables"
 import { useProjectVisibility } from "@/composables/useProjectVisibility"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
+import { projectAiraKey } from "@/composables/useWorkspaceAira"
 import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
 import { meetingDraftAvailability } from "@/service/api/meetings"
@@ -155,6 +156,14 @@ const pendingProposal = ref<MeetingHandoff | null>(null)
 provide(meetingHandoffKey, pendingProposal)
 const assistantScope = computed(() => JSON.stringify([authStore.userInfo.id, route.params.labUid, route.params.projectUid]))
 const assistantAvailable = ref(false)
+let headerTrigger: HTMLElement | undefined
+provide(projectAiraKey, {
+  available: assistantAvailable,
+  open(trigger) {
+    headerTrigger = trigger
+    assistantOpen.value = true
+  },
+})
 watch(() => [assistantScope.value, projectInfo.value?.id, instanceStore.aiEnabled, authStore.isLogin] as const, async (_, __, cleanup) => {
   let current = true
   cleanup(() => {
@@ -196,7 +205,10 @@ watch([assistantDialog, assistantOpen, narrow], ([element, open, modal]) => {
 }, { flush: "post" })
 function closeAssistant() {
   assistantOpen.value = false
-  nextTick(() => assistantTrigger.value?.$el.focus())
+  nextTick(() => {
+    (headerTrigger?.isConnected ? headerTrigger : assistantTrigger.value?.$el)?.focus()
+    headerTrigger = undefined
+  })
 }
 async function reviewProposal(proposal: MeetingProposal) {
   if (!projectInfo.value)

@@ -60,3 +60,20 @@ export function instrumentWorkspaceUrl(labUid: string, gatewayId: string, resour
     query.set("instrument_resource", resourceId)
   return `/labs/${labUid}/resources/gateways?${query}`
 }
+
+export async function changeAccountLanguage(page: Page, next: string) {
+  await page.getByTestId("account-menu").click()
+  await page.locator(".n-dropdown-menu:visible").getByText(next, { exact: true }).click()
+}
+
+export async function openWorkspaceLog(page: Page, label: "Log" | "日志") {
+  const compact = page.getByTestId("workspace-menu-trigger")
+  if (await compact.isVisible()) {
+    await compact.click()
+    await page.getByRole("link", { name: label, exact: true }).click()
+  }
+  else {
+    await page.getByTestId("workspace-more").click()
+    await page.locator(".n-dropdown-menu:visible").getByText(label, { exact: true }).click()
+  }
+}

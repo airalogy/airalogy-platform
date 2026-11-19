@@ -22,6 +22,7 @@ from app.models.record import Record
 from app.models.meeting import Meeting, MeetingWorkLink
 from app.services.meetings import authorize_meeting, meeting_read_condition
 from app.services.document_browse import date_bounds
+from app.services.organization_overview import require_overview_access
 from app.models.research import ResearchEvent, ResearchTask
 from app.models.research_asset import KnowledgeEvidenceLink, ResearchEvidence
 from app.models.research_log import (
@@ -426,7 +427,8 @@ def _meeting_action_groups(scope, user_id):
         .join(ResearchLogEntry, ResearchLogEntry.id == link.meeting_id)
         .where(
             link.relation == "created",
-            ResearchLogEntry.project_id == scope.project_id,
+            (ResearchLogEntry.project_id == scope.project_id if scope.project_id else
+             ResearchLogEntry.lab_id == scope.lab_id),
             ResearchLogEntry.archived_at.is_(None),
             meeting_read_condition(user_id),
         )
@@ -434,7 +436,7 @@ def _meeting_action_groups(scope, user_id):
     )
 
 
-def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=False):
+def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=False, organization_overview=False):
     columns = (
         "source_id",
         "source_type",
@@ -446,6 +448,12 @@ def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=F
         "project_id",
     )
 
+    manual_scope = _scope_conditions(ResearchLogEntry, scope)
+    if organization_overview:
+        manual_scope = [
+            ResearchLogEntry.scope_type == ResearchLogScope.PROJECT.value,
+            ResearchLogEntry.lab_id == scope.lab_id,
+        ]
     manual = select(
         cast(ResearchLogEntry.id, String).label(columns[0]),
         literal("manual").label(columns[1]),
@@ -457,7 +465,7 @@ def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=F
         ResearchLogEntry.project_id.label(columns[7]),
     ).where(
         ResearchLogEntry.archived_at.is_(None),
-        *_scope_conditions(ResearchLogEntry, scope),
+        *manual_scope,
     )
 
     if user_id is not None:
@@ -559,7 +567,7 @@ def _event_selects(scope: LogScopeContext, user_id=None, group_meeting_actions=F
     if (
         group_meeting_actions
         and user_id
-        and scope.scope_type == ResearchLogScope.PROJECT
+        and (scope.scope_type == ResearchLogScope.PROJECT or organization_overview)
     ):
         groups = _meeting_action_groups(scope, user_id)
         multiple = groups.c.size > 1
@@ -815,14 +823,19 @@ async def activity_query(
     date_to=None,
     time_zone="UTC",
     group_meeting_actions=False,
+    organization_overview=False,
 ):
     """One authorization/date predicate for calendar counts and paginated detail."""
     from app.routers.permission import check_user_permission
     from app.services.knowledge import authorize_knowledge_item
     from app.services.research_runtime import has_research_capability
 
+    if organization_overview:
+        if scope.scope_type != ResearchLogScope.LAB:
+            raise HTTPException(422, "Organization overview requires an organization")
+        await require_overview_access(db_session, current_user, scope.lab_id)
     events = union_all(
-        *_event_selects(scope, current_user.id, group_meeting_actions)
+        *_event_selects(scope, current_user.id, group_meeting_actions, organization_overview)
     ).subquery("research_log_events")
     conditions = []
     if scope.scope_type != ResearchLogScope.PERSONAL:
@@ -849,6 +862,8 @@ async def activity_query(
         conditions.append(
             or_(events.c.source_type != "research", events.c.project_id.in_(readable))
         )
+        if organization_overview:
+            conditions.append(events.c.project_id.in_(readable))
         # Protocol-specific restrictions must apply before counts/pagination.
         protocols = (
             await db_session.scalars(
@@ -957,6 +972,7 @@ async def research_activity_summary(
     date_to: date | None = None,
     time_zone: str = "UTC",
     group_meeting_actions: bool = False,
+    organization_overview: bool = False,
 ):
     scope = await _scope_context(
         db_session,
@@ -976,6 +992,7 @@ async def research_activity_summary(
         date_to,
         time_zone,
         group_meeting_actions,
+        organization_overview,
     )
     day = cast(func.timezone(time_zone, events.c.occurred_at), Date)
     rows = (
@@ -1018,6 +1035,7 @@ async def get_research_log_timeline(
     page_size: int = Query(default=20, ge=1, le=100),
     time_zone: str = "UTC",
     group_meeting_actions: bool = False,
+    organization_overview: bool = False,
 ):
     scope = await _scope_context(
         db_session,
@@ -1037,6 +1055,7 @@ async def get_research_log_timeline(
         date_to,
         time_zone,
         group_meeting_actions,
+        organization_overview,
     )
     total_count = await db_session.scalar(
         select(func.count()).select_from(event_union).where(*conditions)

@@ -106,7 +106,7 @@ watch([projectId, page, revision], async ([id, currentPage], _, onCleanup) => {
       <ul v-if="team?.additional_members.length" class="team-list">
         <li v-for="member in team.additional_members" :key="member.id">
           <router-link :to="{ name: 'user-profile', params: { username: member.username } }" class="break-all text-primary">
-            {{ member.name || member.username }}
+            {{ member.display_name || member.name || member.username }}
           </router-link>
           <span class="aira-type-meta">{{ $t("page.projectTeam.otherAccess") }}</span>
         </li>

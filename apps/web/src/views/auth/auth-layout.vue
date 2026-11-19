@@ -28,35 +28,23 @@
         </div>
       </div>
       <router-view />
-      <div class="mt-6 h-fit w-full text-center text-gray-400 md:mt-0">
-        <div class="space-x-3">
-          <span>&copy; {{ currYear }}</span>
-          <span>{{ footerText.copyright }}</span>
-          <china-compliance-footer />
-        </div>
-        <div class="mt-1 text-white lg:text-gray-600">
-          <platform-version />
-        </div>
-      </div>
+      <footer class="auth-footer">
+        <global-footer legal-only />
+      </footer>
     </n-layout>
   </n-layout>
 </template>
 
 <script setup lang="ts">
-import ChinaComplianceFooter from "@/components/common/china-compliance-footer.vue"
-import PlatformVersion from "@/components/common/platform-version.vue"
+import GlobalFooter from "@/layouts/modules/global-footer/index.vue"
 import { $t } from "@/locales"
 import { useAppStore } from "@/store/modules/app"
 import { useWindowSize } from "@vueuse/core"
 
 const appStore = useAppStore()
-const currYear = new Date().getFullYear()
 const { width } = useWindowSize()
 
 const heroTitle = computed(() => $t("page.auth.heroTitle"))
-const footerText = computed(() => ({
-  copyright: $t("common.footer.copyright"),
-}))
 
 const showSider = computed(() => width.value >= 1024)
 const siderWidth = computed(() => {
@@ -69,6 +57,14 @@ const siderWidth = computed(() => {
 </script>
 
 <style scoped lang="sass">
+.auth-footer
+  width: 100%
+  max-width: 620px
+  margin-top: 1rem
+  overflow: hidden
+  border: 1px solid var(--aira-shell-border)
+  border-radius: 0.5rem
+
 .user-layout
   min-height: 100vh
 

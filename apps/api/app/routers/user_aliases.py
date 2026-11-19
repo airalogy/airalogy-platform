@@ -3,12 +3,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from app.database import DBSession
-from app.models.lab import LabUser
+from app.models.lab import Lab, LabUser
 from app.models.user import User
 from app.models.user_alias import UserAlias
 from app.routers.depends import CurrentUser, get_current_user
+from app.routers.labs import require_configured_single_lab, require_lab_membership
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -47,7 +49,7 @@ async def create_user_alias(
             await existing_alias.delete(db)
         else:
             existing_alias.alias = alias_data.alias
-    else:
+    elif alias_data.alias:
         await UserAlias.create(
             db,
             user_id=current_user.id,
@@ -64,26 +66,26 @@ async def get_users_with_aliases(
     db: DBSession,
     current_user: User = Depends(get_current_user),
 ):
-    user_aliases = await UserAlias.all(
-        db,
-        [
-            UserAlias.user_id == current_user.id,
-            UserAlias.target_user_id.in_(params.user_ids),
-        ],
-    )
-    user_aliases_map = {alias.target_user_id: alias.alias for alias in user_aliases}
+    lab_users_map = {}
     if params.lab_id:
-        lab_users = await LabUser.all(
-            db,
-            [
-                LabUser.lab_id == params.lab_id,
+        lab = await Lab.find(db, id=params.lab_id)
+        require_configured_single_lab(lab)
+        await require_lab_membership(db, lab.id, current_user.id)
+        lab_names = await db.execute(
+            select(LabUser.user_id, LabUser.alias).where(
+                LabUser.lab_id == lab.id,
                 LabUser.user_id.in_(params.user_ids),
                 LabUser.alias.isnot(None),
-            ],
+            )
         )
-        lab_users_map = {lab_user.user_id: lab_user.alias for lab_user in lab_users}
-    else:
-        lab_users_map = {}
+        lab_users_map = dict(lab_names.all())
+    notes = await db.execute(
+        select(UserAlias.target_user_id, UserAlias.alias).where(
+            UserAlias.user_id == current_user.id,
+            UserAlias.target_user_id.in_(params.user_ids),
+        )
+    )
+    user_aliases_map = dict(notes.all())
     data = [
         {
             "id": user_id,

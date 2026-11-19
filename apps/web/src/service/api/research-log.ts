@@ -104,6 +104,7 @@ async function getData<T>(options: Parameters<typeof request<T>>[0]): Promise<T>
 }
 
 export function fetchResearchLogTimeline(params: ResearchLogScopeParams & {
+  organization_overview?: boolean
   group_meeting_actions?: boolean
   source?: ResearchLogSource
   actor_user_id?: string
@@ -159,6 +160,6 @@ export function fetchResearchLogRevisions(entryId: string) {
   })
 }
 
-export function fetchResearchActivitySummary(params: ResearchLogScopeParams & { group_meeting_actions?: boolean, source?: ResearchLogSource, date_from?: string, date_to?: string, time_zone: string, actor_user_id?: string }) {
+export function fetchResearchActivitySummary(params: ResearchLogScopeParams & { organization_overview?: boolean, group_meeting_actions?: boolean, source?: ResearchLogSource, date_from?: string, date_to?: string, time_zone: string, actor_user_id?: string }) {
   return getData<{ summary: { date: string, count: number }[], total_count: number, time_zone: string }>({ url: "/research-log/summary", params, metadata: { showError: false } })
 }

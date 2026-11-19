@@ -29,6 +29,8 @@ A deployment may present one fixed Lab or allow users to join several Labs. Proj
 
 The signed-in home page leads with **Your projects**: pinned projects first, followed by your own recent visits. Without visit history, it offers available projects and explains how to start. Another member updating a project does not change your personal recency order.
 
+The desktop header links to Home, Projects, Protocols, Documents, and Knowledge. Open More for research tasks and logs. Use New on the right to create content. On phones, tap the current section to navigate or open the account menu for language settings and Aira when enabled.
+
 Ask Aira on Home opens a side panel. All chats in the panel opens the dedicated chat page in a new tab, keeping the Home draft in place. Account history lists saved general conversations for the signed-in account and lets you continue them on another device. On phones, open Chat history first. Older conversations with verified server ownership appear here. Legacy browser-only data without an identifiable owner is left unassigned.
 
 - Select a project name to open Overview. Project navigation is Overview, Protocols, Documents, Materials, then Knowledge.

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
+import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
 import PeoplePicker from "@/components/project/people-picker.vue"
 import {
@@ -48,7 +49,7 @@ const filtersOpen = ref(false)
 const dateFrom = ref("")
 const dateTo = ref("")
 const participantFilter = ref<string | null>(null)
-const projectPeople = ref<{ id: string, name: string, user_id: string | null, organization: string }[]>([])
+const projectPeople = ref<ProjectPerson[]>([])
 
 const loading = ref(false)
 const busy = ref(false)
@@ -56,7 +57,7 @@ const error = ref("")
 const notice = ref("")
 const canCreate = ref(false)
 const members = ref<MeetingMember[]>([])
-const participantOptions = computed(() => [...members.value.filter(m => !projectPeople.value.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name || m.username })), ...projectPeople.value.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.name}${p.organization ? ` · ${p.organization}` : ""}` }))])
+const participantOptions = computed(() => [...members.value.filter(m => !projectPeople.value.some(p => p.user_id === m.id)).map(m => ({ value: `user:${m.id}`, label: m.name || m.username })), ...projectPeople.value.map(p => ({ value: p.user_id ? `user:${p.user_id}` : `person:${p.id}`, label: `${p.display_name || p.name}${p.organization ? ` · ${p.organization}` : ""}` }))])
 const filterSummary = computed(() => [
   participantOptions.value.find(option => option.value === participantFilter.value)?.label,
   dateFrom.value && `${t("page.meetings.from")} ${dateFrom.value}`,
@@ -469,7 +470,7 @@ async function addProjectParticipant() {
   else {
     const person = (await listProjectPeople(projectId.value)).people.find(p => p.id === value.slice(7))
     if (person && !form.value.participants.some(p => p.person_id === person.id)) {
-      form.value.participants.push({ user_id: null, person_id: person.id, name: person.name, organization: person.organization, attendance: form.value.status === "held" ? "attended" : "invited" })
+      form.value.participants.push({ user_id: null, person_id: person.id, name: person.display_name || person.name, organization: person.organization, attendance: form.value.status === "held" ? "attended" : "invited" })
     }
   }
   projectPersonToAdd.value = null
@@ -739,7 +740,7 @@ watch(page, loadList)
         </div>
         <previous-meeting-work
           v-if="draftMeeting && projectId" :key="creationId" v-model="discussionIds"
-          :project-id="projectId" :meeting-id="creationId" :members="members" :disabled="busy"
+          :project-id="projectId" :meeting-id="creationId" :people="projectPeople" :members="members" :disabled="busy"
         />
         <details :open="!selected" class="border rounded-lg p-4" data-testid="meeting-people">
           <summary class="cursor-pointer font-medium">
@@ -867,7 +868,7 @@ watch(page, loadList)
         <previous-meeting-work
           v-if="selected.can_comment && selected.can_create_work && !editing && projectId"
           :key="selected.id" v-model="discussionIds" :project-id="projectId" :meeting-id="selected.id"
-          :members="members" :disabled="busy" :linked="selected.work?.map(link => link.item.id)"
+          :people="projectPeople" :members="members" :disabled="busy" :linked="selected.work?.map(link => link.item.id)"
         >
           <n-button v-if="discussionIds.length" size="small" type="primary" :loading="busy" @click="saveDiscussion">
             {{ t('page.meetings.addDiscussion', { count: discussionIds.length }) }}
@@ -885,7 +886,7 @@ watch(page, loadList)
             >
               {{ link.item.title }}
             </router-link>
-            <work-follow-up-details :item="link.item" :members="members" />
+            <work-follow-up-details :item="link.item" :members="members" :people="projectPeople" />
           </li>
         </ul>
         <template v-if="selected.can_comment">

@@ -19,10 +19,21 @@ const error = ref("")
 const name = ref("")
 const organization = ref("")
 let requestId = crypto.randomUUID()
-const options = computed(() => [
-  ...people.value.map(p => ({ value: `person:${p.id}`, label: `${p.name}${p.organization ? ` · ${p.organization}` : ""}${p.user_id ? ` · ${t("page.projectPeople.linked")}` : ""}` })),
-  ...props.members.filter(m => !people.value.some(p => p.user_id === m.id) || (Array.isArray(props.modelValue) ? props.modelValue : [props.modelValue]).includes(`user:${m.id}`)).map(m => ({ value: `user:${m.id}`, label: `${m.name || m.username} (@${m.username || m.name})` })),
-])
+const options = computed(() => {
+  const selected = new Set(Array.isArray(props.modelValue) ? props.modelValue : [props.modelValue])
+  const accounts = new Set(props.members.map(m => m.id))
+  const peopleOptions = people.value
+    .filter(p => !p.user_id || !accounts.has(p.user_id) || selected.has(`person:${p.id}`))
+    .map(p => ({
+      value: `person:${p.id}`,
+      label: `${p.display_name || p.name}${p.organization ? ` · ${p.organization}` : ""}${p.user_id ? ` · ${t("page.projectPeople.linked")}` : ""}`,
+    }))
+  const selectedLinkedAccounts = new Set(people.value.filter(p => selected.has(`person:${p.id}`)).map(p => p.user_id))
+  const accountOptions = props.members
+    .filter(m => !selectedLinkedAccounts.has(m.id) || selected.has(`user:${m.id}`))
+    .map(m => ({ value: `user:${m.id}`, label: `${m.name} (@${m.username || m.name})` }))
+  return [...peopleOptions, ...accountOptions]
+})
 async function load() {
   error.value = ""
   try {
@@ -67,8 +78,8 @@ function associate(person: ProjectPerson, userId: string | null) {
       busy.value = true
       try {
         const saved = await associateProjectPerson(person, userId)
-        publish(saved)
         await load()
+        publish(people.value.find(p => p.id === saved.id && p.user_id === saved.user_id) || saved)
       }
       catch {
         error.value = t("page.projectPeople.failed")

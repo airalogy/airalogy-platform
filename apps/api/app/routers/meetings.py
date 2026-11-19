@@ -30,6 +30,7 @@ from app.models.research_log import (
 )
 from app.models.user import User
 from app.routers.depends import CurrentUser
+from app.services.project_people import organization_accounts, organization_names
 from app.services.document_browse import date_bounds
 from app.services.knowledge import canonical_digest
 from app.services.chat_models import require_ai_enabled
@@ -144,6 +145,18 @@ async def set_people(db, user, project, entry, data):
     previous_people, previous_access = await people(db, entry.id)
     names = {p["user_id"]: p["name"] for p in previous_people if p["user_id"]}
     grants = {g["user_id"]: g["role"] for g in previous_access}
+    person_ids = [p.person_id for p in data.participants if p.person_id]
+    linked_people = {}
+    if person_ids:
+        registered = await db.scalars(
+            select(ProjectPerson).where(
+                ProjectPerson.project_id == project.id, ProjectPerson.id.in_(person_ids)
+            )
+        )
+        linked_people = {person.id: person for person in registered}
+    account_ids = {p.user_id for p in data.participants if p.user_id}
+    account_ids.update(p.user_id for p in linked_people.values() if p.user_id)
+    display_names = await organization_names(db, project.lab_id, account_ids)
     members = {}
     for identity in {p.user_id for p in data.participants if p.user_id} | {
         g.user_id for g in data.access
@@ -184,20 +197,25 @@ async def set_people(db, user, project, entry, data):
         value = participant.model_dump()
         value["position"] = position
         if participant.person_id:
-            from app.services.project_people import require_person
-
-            person = await require_person(db, project.id, participant.person_id)
+            person = linked_people.get(participant.person_id)
+            if person is None:
+                raise HTTPException(422, "Person must belong to this project")
             previous = next(
                 (p for p in previous_people if p.get("person_id") == str(person.id)),
                 None,
             )
-            value["name"] = previous["name"] if previous else person.name
+            value["name"] = (
+                previous["name"]
+                if previous
+                else display_names.get(person.user_id, person.name)
+            )
             value["organization"] = (
                 previous["organization"] if previous else person.organization
             )
         if participant.user_id:
             value["name"] = (
                 names.get(participant.user_id)
+                or display_names.get(participant.user_id)
                 or members[participant.user_id].name
                 or members[participant.user_id].username
             )
@@ -295,19 +313,10 @@ async def payload(db, user, entry, meeting, project, detail=True):
 async def meeting_members(
     current_user: CurrentUser, db_session: DBSession, project_id: UUID
 ):
-    from app.models.lab import LabUser
-
     project = await project_context(db_session, current_user, project_id)
-    candidates = (
-        await db_session.scalars(
-            select(User)
-            .join(LabUser, LabUser.user_id == User.id)
-            .where(LabUser.lab_id == project.lab_id)
-            .order_by(User.name, User.id)
-        )
-    ).all()
+    candidates = await db_session.execute(organization_accounts(project.lab_id))
     result = []
-    for user in candidates:
+    for user, display_name in candidates:
         if await has_research_capability(
             db_session, user=user, project=project, capability="log.read"
         ):
@@ -315,6 +324,7 @@ async def meeting_members(
                 {
                     "id": user.id,
                     "name": user.name,
+                    "display_name": display_name,
                     "username": user.username,
                     "can_write": await has_research_capability(
                         db_session, user=user, project=project, capability="log.write"

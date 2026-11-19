@@ -79,11 +79,12 @@ export function listMeetings(params: {
   })
 }
 export const getMeeting = (id: string) => documentRequest<Meeting>({ url: `/meetings/${id}` })
-export function meetingMembers(projectId: string) {
-  return documentRequest<{ members: MeetingMember[] }>({
+export async function meetingMembers(projectId: string) {
+  const result = await documentRequest<{ members: (MeetingMember & { display_name?: string })[] }>({
     url: "/meetings/members",
     params: { project_id: projectId },
   })
+  return { members: result.members.map(member => ({ ...member, name: member.display_name || member.name || member.username })) }
 }
 export function saveMeeting(id: string, projectId: string, content: MeetingContent, revision?: number) {
   return documentRequest<Meeting>({

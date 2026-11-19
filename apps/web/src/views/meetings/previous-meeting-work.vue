@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Meeting, MeetingMember } from "@/service/api/meetings"
+import type { ProjectPerson } from "@/service/api/project-people"
 import { getMeeting, listMeetings } from "@/service/api/meetings"
 import { documentTimeZone, localDocumentDate } from "@/utils/documentBrowse"
 import { useI18n } from "vue-i18n"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
 
-const props = defineProps<{ projectId: string, meetingId: string, members: MeetingMember[], linked?: string[], disabled: boolean }>()
+const props = defineProps<{ projectId: string, meetingId: string, members: MeetingMember[], people: ProjectPerson[], linked?: string[], disabled: boolean }>()
 const checked = defineModel<string[]>({ required: true })
 const { t } = useI18n()
 const opened = ref(false)
@@ -102,7 +103,7 @@ async function readSource() {
               <span>
                 <strong>{{ item.title }}</strong>
                 <small v-if="linked?.includes(item.id)"> · {{ t('page.meetings.alreadyLinked') }}</small>
-                <work-follow-up-details :item="item" :members="members" show-empty />
+                <work-follow-up-details :item="item" :members="members" :people="people" show-empty />
               </span>
             </label>
           </li>
