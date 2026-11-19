@@ -32,6 +32,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 - Mixed research activity now orders newly submitted Records, Protocol versions and manual logs by their actual instants. The diary calendar, heatmap and day details use the viewer’s timezone. Existing timestamps can be interpreted using the verified historical writer timezone.
 
+- Organizations can enable commercial project accounting and grant project-specific roles for contracts, installments, costs, cash movements and forecasts. The portfolio links totals to audited records.
+
 - The project Team tab follows Meetings and lists accounts with project access separately from participants recorded by name. Switching tabs while the project loads keeps the requested destination.
 
 - Project documents keep standalone notes in the default list and open matching formal minutes directly in Meetings. Meeting search keeps participant and date filters in a compact expandable row.

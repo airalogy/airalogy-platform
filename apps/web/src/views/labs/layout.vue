@@ -59,6 +59,7 @@ import { useRouterPush } from "@/composables/useRouterPush"
 import { LabRole } from "@/enum"
 import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
+import { readOps } from "@/service/api/project-operations"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
@@ -98,12 +99,34 @@ const instanceStore = useInstanceStore()
 const routerStore = useRouteStore()
 const { userInfo } = useAuthStore()
 
-const showIconRoute = ["lab-projects", "lab-knowledge", "lab-records", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings", "project-protocols", "project-records", "project-members"]
+const showIconRoute = ["lab-projects", "lab-knowledge", "lab-records", "lab-operations", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings", "project-protocols", "project-records", "project-members"]
 const showIcon = computed(() => typeof route.name === "string" && showIconRoute.includes(route.name))
 
 const { routerPushByKey } = useRouterPush()
 const { fetchLabInfoByUid, labInfo, userLabRole } = useProvideLabInfoStore(null)
 const { canManageLab } = useLabPermissions(labInfo)
+const operationsEnabled = ref(false)
+const operationsRefresh = ref(0)
+function refreshOperations() {
+  operationsRefresh.value++
+}
+onMounted(() => window.addEventListener("operations-settings-changed", refreshOperations))
+onUnmounted(() => window.removeEventListener("operations-settings-changed", refreshOperations))
+watch([() => labInfo.value?.id, operationsRefresh], async ([id], _, cleanup) => {
+  let current = true
+  cleanup(() => {
+    current = false
+  })
+  operationsEnabled.value = false
+  if (!id)
+    return
+  try {
+    const { can_overview } = await readOps<{ can_overview: boolean }>(`/organizations/${id}/access`)
+    if (current)
+      operationsEnabled.value = can_overview
+  }
+  catch { /* Optional in existing organizations. */ }
+}, { immediate: true })
 const projectList = ref<Api.Project.MyProjectInfo[]>([])
 provide("lab-project-list", projectList)
 
@@ -113,7 +136,10 @@ const tabs = computed((): TabPaneProps[] => {
     const entries = singleLabManagementRoutes.has(String(name))
       ? singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value)
       : singleLabSharedEntries
-    return entries.map(entry => ({ name: entry.name, tab: $t(entry.label) }))
+    const result: TabPaneProps[] = entries.map(entry => ({ name: entry.name, tab: $t(entry.label) }))
+    if (operationsEnabled.value || name === "lab-operations")
+      result.push({ name: "lab-operations", tab: $t("page.operations.overview") })
+    return result
   }
   if (name === "labs-my" || name === "labs-public") {
     return [
@@ -122,7 +148,7 @@ const tabs = computed((): TabPaneProps[] => {
     ]
   }
 
-  if (["lab-projects", "lab-knowledge", "lab-records", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
+  if (["lab-projects", "lab-knowledge", "lab-records", "lab-operations", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
     const membersHint = $t("page.labs.tab.membersHint")
     const groupsHint = $t("page.labs.tab.groupsHint")
     const hintTab = (label: string, hint: string) =>
@@ -137,6 +163,9 @@ const tabs = computed((): TabPaneProps[] => {
         tab: hintTab($t("page.labs.members"), membersHint),
       },
     ]
+
+    if (operationsEnabled.value || name === "lab-operations")
+      list.push({ name: "lab-operations", tab: $t("page.operations.overview") })
 
     if (!instanceStore.isStructuredLab) {
       list.push({
@@ -192,7 +221,7 @@ const title = computed(() => {
     return "Labs"
   }
 
-  if (["lab-projects", "lab-knowledge", "lab-records", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
+  if (["lab-projects", "lab-knowledge", "lab-records", "lab-operations", "lab-resources", "lab-members", "lab-groups", "lab-organization", "lab-access", "lab-settings"].includes(String(name))) {
     const { name: labName, uid } = labInfo.value || {}
 
     return labName || uid || "Labs"

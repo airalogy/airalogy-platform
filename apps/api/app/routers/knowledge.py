@@ -859,7 +859,21 @@ async def _research_file_search_access(
                         )
                     )
                 )
+    from app.models.project_operations import OperationsProof
+    from app.services.project_operations import project_access
+
+    accessible_proof = ~exists(select(OperationsProof.file_id).where(OperationsProof.file_id == ResearchFile.id))
+    if scope.project_id:
+        try:
+            await project_access(db_session, current_user, scope.project_id)
+        except HTTPException as error:
+            if error.status_code not in (403, 404):
+                raise
+        else:
+            accessible_proof = True
+
     return and_(
+        accessible_proof,
         *scope_conditions(ResearchFile, scope),
         or_(*restricted_access),
     )

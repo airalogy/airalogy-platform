@@ -31,6 +31,8 @@ function makeRouter(scope) {
 const cases = [
   ["project-overview", "/projects/project/overview", {}],
   ["project-documents", "/projects/project/documents", {}],
+  ["project-operations", "/projects/project/operations", {}],
+  ["lab-operations", "/organization/operations", {}],
   ["project-work", "/projects/project/work", {}],
   ["project-analysis", "/projects/project/analysis", {}],
   ["project-workflows", "/projects/project/workflows", {}],

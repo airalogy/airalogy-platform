@@ -73,6 +73,7 @@ import { useSeoMeta } from "@/composables/useSeoMeta"
 import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
 import { meetingDraftAvailability } from "@/service/api/meetings"
+import { readOps } from "@/service/api/project-operations"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
@@ -131,6 +132,7 @@ const showIcon = computed(
     || route.name === "project-scenarios"
     || route.name === "project-analysis"
     || route.name === "project-records"
+    || route.name === "project-operations"
     || route.name === "project-members"
     || route.name === "project-settings",
 )
@@ -208,6 +210,23 @@ async function reviewProposal(proposal: MeetingProposal) {
   }
 }
 
+const canViewBook = ref(false)
+watch(() => [projectInfo.value?.id, authStore.userInfo.id] as const, async ([id], _, cleanup) => {
+  let current = true
+  cleanup(() => {
+    current = false
+  })
+  canViewBook.value = false
+  if (!id || !authStore.isLogin)
+    return
+  try {
+    const result = await readOps<{ role: string | null }>(`/projects/${id}/access`)
+    if (current)
+      canViewBook.value = Boolean(result.role)
+  }
+  catch { /* Optional books stay hidden without access. */ }
+}, { immediate: true })
+
 const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => {
   const tabs: (TabPaneProps & { name: App.Global.TabKey })[] = [
     { name: "project-protocols", tab: $t("page.project.tab.protocols") },
@@ -224,6 +243,8 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
       { name: "project-knowledge", tab: $t("page.knowledge.title") },
       { name: "project-analysis", tab: $t("page.analysis.title") },
     )
+    if (canViewBook.value || route.name === "project-operations")
+      tabs.push({ name: "project-operations", tab: $t("page.operations.book") })
     const additional = [
       { name: "project-research", tab: $t("page.research.title") },
       { name: "project-workflows", tab: $t("page.workflowDefinitions.title") },

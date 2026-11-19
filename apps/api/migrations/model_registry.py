@@ -35,6 +35,7 @@ MODEL_MODULES = [
     "app.models.pinned_item",
     "app.models.project",
     "app.models.project_work",
+    "app.models.project_operations",
     "app.models.project_person",
     "app.models.meeting",
     "app.models.project_visit",

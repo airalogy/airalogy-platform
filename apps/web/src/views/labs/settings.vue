@@ -187,6 +187,7 @@
         </div>
       </settings-card>
     </template>
+    <operations-settings v-if="labInfo?.id && canManageLab" :org-id="String(labInfo.id)" />
     <external-access-policy v-if="labInfo?.id" :lab-id="String(labInfo.id)" />
 
     <!-- Delete Confirmation Modal -->
@@ -290,6 +291,7 @@ import {
 import { useInstanceStore } from "@/store/modules/instance"
 import KitCatalog from "@/views/scenario-kits/kit-catalog.vue"
 import { useClosableMessage } from "@airalogy/composables"
+import OperationsSettings from "../project-operations/settings.vue"
 import { useOrProvideLabInfoStore } from "./hooks/useLabsInfoStore"
 import ExternalAccessPolicy from "./modules/external-access-policy.vue"
 import OrganizationAiSettings from "./modules/organization-ai-settings.vue"

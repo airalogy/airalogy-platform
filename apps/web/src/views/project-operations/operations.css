@@ -1,0 +1,140 @@
+.ops {
+  color: var(--n-text-color, #273343);
+  min-width: 0;
+}
+.ops h2,
+.ops h3 {
+  font-weight: 600;
+  margin: 0.4rem 0 0.65rem;
+}
+.ops h2 {
+  font-size: 1.25rem;
+}
+.ops h3 {
+  font-size: 1rem;
+}
+.ops-panel {
+  border: 1px solid #dce2e9;
+  border-radius: 9px;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  background: white;
+}
+.ops-line,
+.ops-actions,
+.ops-metrics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+}
+.ops button,
+.ops select,
+.ops input:not([type="checkbox"]),
+.ops textarea {
+  font: inherit;
+  line-height: 1.45;
+  border: 1px solid #cbd3dc;
+  border-radius: 5px;
+  padding: 0.35rem 0.6rem;
+  background: white;
+  max-width: 100%;
+  color: inherit;
+}
+.ops button {
+  cursor: pointer;
+}
+.ops button:hover,
+.ops button:focus-visible {
+  border-color: #4472b7;
+}
+.ops button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.ops .primary {
+  background: #205bab;
+  color: white;
+  border-color: #205bab;
+}
+.ops a,
+.ops .link {
+  color: #205bab;
+}
+.ops .link {
+  border: 0;
+  padding: 0.1rem;
+  background: transparent;
+}
+.ops .loss {
+  color: #a52c27;
+}
+.ops-metrics {
+  align-items: stretch;
+  margin: 0.8rem 0 1rem;
+}
+.ops-metrics button {
+  text-align: left;
+  flex: 1 1 122px;
+  padding: 0.6rem 0.8rem;
+}
+.ops-metrics strong {
+  display: block;
+  font-size: 1.08rem;
+  font-variant-numeric: tabular-nums;
+}
+.ops label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.55rem;
+  align-items: center;
+  margin: 0.25rem 0;
+}
+.ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
+  gap: 0.5rem 0.85rem;
+  margin: 0.75rem 0;
+}
+.ops-grid label {
+  display: grid;
+  align-content: start;
+}
+.ops-scroll {
+  overflow: auto;
+}
+.ops table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.ops th,
+.ops td {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid #e1e6eb;
+  white-space: nowrap;
+}
+.ops details {
+  border-top: 1px solid #e1e6eb;
+  padding: 0.5rem 0;
+}
+.ops summary {
+  cursor: pointer;
+}
+.ops dl {
+  display: grid;
+  grid-template-columns: minmax(5rem, max-content) minmax(0, 1fr);
+  gap: 0.25rem 0.8rem;
+  margin: 0.6rem 0;
+}
+.ops dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ops .notice {
+  color: #7b4624;
+}
+.ops .meta {
+  color: #526170;
+}

@@ -541,6 +541,15 @@ async def authorize_research_file(
         )
     ):
         raise HTTPException(status_code=404, detail="File not found")
+    if file.project_id:
+        from app.models.project_operations import OperationsProof
+        from app.services.project_operations import project_access
+
+        if await db_session.get(OperationsProof, file.id):
+            try:
+                await project_access(db_session, user, file.project_id)
+            except HTTPException:
+                raise HTTPException(404, "File not found") from None
     return scope
 
 

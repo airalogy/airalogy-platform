@@ -297,6 +297,16 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     ai_revision = import_module("migrations.versions.0089_organization_ai")
     assert ai_revision.down_revision == "0088_project_people"
     later_tables.add("organization_ai")
+    operations_revision = import_module("migrations.versions.0090_project_operations")
+    assert operations_revision.down_revision == ai_revision.revision
+    merge_revision = import_module("migrations.versions.0092_merge_project_operations")
+    assert set(merge_revision.down_revision) == {
+        "0091_invitation_receipts", operations_revision.revision,
+    }
+    later_tables.update({
+        "operations_organizations", "operations_books", "operations_grants",
+        "operations_entries", "operations_events", "operations_proofs",
+    })
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

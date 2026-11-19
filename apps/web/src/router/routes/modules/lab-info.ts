@@ -6,6 +6,7 @@ export const labInfoRoute: CustomRoute<LabInfoNameKey> = {
   redirect: { name: "lab-projects" },
   component: () => import("@/views/labs/layout.vue"),
   children: [
+    { path: "operations", name: "lab-operations", meta: { title: "Project operations", i18nKey: "page.operations.overview", allowGuest: false }, component: () => import("@/views/project-operations/overview.vue") },
     {
       path: "projects",
       name: "lab-projects",
