@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test"
 import { expect, test } from "@playwright/test"
 import { loadFixtures } from "./fixtures"
 
@@ -5,44 +6,52 @@ import { loadFixtures } from "./fixtures"
 // This also proves that a multi-organization site with one visible organization keeps /orgs.
 test.use({ storageState: { cookies: [], origins: [] } })
 
-for (const mode of ["single_organization", "single_lab", "community"] as const) {
+const deploymentModes = ["single_organization", "single_lab", "community"] as const
+
+async function openProject(page: Page, mode: typeof deploymentModes[number]) {
+  const single = mode !== "community"
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+  await page.route("**/api/instance", async (route) => {
+    const response = await route.fetch()
+    const status = await response.json()
+    const organization = status.organization ?? status.lab ?? { ...(await loadFixtures()).lab, name: "Synthetic route organization", organization_type: "company" }
+    await route.fulfill({ response, json: {
+      ...status,
+      deployment_mode: mode,
+      single_lab: single,
+      single_organization: single,
+      default_organization_uid: single ? "dev_lab" : "",
+      organization: single ? organization : null,
+      lab: single ? organization : null,
+    } })
+  })
+  const failures: string[] = []
+  page.on("pageerror", error => failures.push(error.message))
+  const base = single ? "/projects/quickstart" : "/orgs/dev_lab/projects/quickstart"
+  await page.goto("/labs/dev_lab/projects/quickstart/documents?read_context=synthetic#result")
+  await expect(page).toHaveURL(/\/login\?redirect=/)
+  expect(new URL(page.url()).searchParams.get("redirect")).toBe(`${base}/documents?read_context=synthetic#result`)
+  await page.getByTestId("login-email").locator("input").fill("dev.owner@airalogy.dev")
+  await page.getByTestId("login-password").locator("input").fill("AiralogyDev123!")
+  const signedIn = page.waitForResponse(response => response.url().endsWith("/api/signin_by_email") && response.ok())
+  const loadedProject = page.waitForResponse(response => response.url().includes("/api/projects/by_uid?") && response.ok())
+  await page.getByTestId("login-submit").click()
+  const projectName = (await (await loadedProject).json()).name as string
+  const headers = { "Auth-Token": (await (await signedIn).json()).token }
+  await expect(page).toHaveURL(`${base}/documents?read_context=synthetic#result`)
+  await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible()
+  return { base, projectName, headers, failures }
+}
+
+for (const mode of deploymentModes) {
   test(`${mode}: old project bookmarks, generated links, reload and management preserve context`, async ({ page }, testInfo) => {
+    const { base, projectName, failures } = await openProject(page, mode)
     const single = mode !== "community"
-    await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
-    await page.route("**/api/instance", async (route) => {
-      const response = await route.fetch()
-      const status = await response.json()
-      const organization = status.organization ?? status.lab ?? { ...(await loadFixtures()).lab, name: "Synthetic route organization", organization_type: "company" }
-      await route.fulfill({ response, json: {
-        ...status,
-        deployment_mode: mode,
-        single_lab: single,
-        single_organization: single,
-        default_organization_uid: single ? "dev_lab" : "",
-        organization: single ? organization : null,
-        lab: single ? organization : null,
-      } })
-    })
-    const failures: string[] = []
-    page.on("pageerror", error => failures.push(error.message))
     const visit = async (navigate: () => Promise<unknown>, section: string) => {
       const saved = page.waitForResponse(response => response.url().endsWith("/api/workspace/project-visits") && response.ok() && response.request().postDataJSON()?.section === section)
       await navigate()
       await saved
     }
-    const base = single ? "/projects/quickstart" : "/orgs/dev_lab/projects/quickstart"
-    await page.goto("/labs/dev_lab/projects/quickstart/documents?read_context=synthetic#result")
-    await expect(page).toHaveURL(/\/login\?redirect=/)
-    expect(new URL(page.url()).searchParams.get("redirect")).toBe(`${base}/documents?read_context=synthetic#result`)
-    await page.getByTestId("login-email").locator("input").fill("dev.owner@airalogy.dev")
-    await page.getByTestId("login-password").locator("input").fill("AiralogyDev123!")
-    const signedIn = page.waitForResponse(response => response.url().endsWith("/api/signin_by_email") && response.ok())
-    const loadedProject = page.waitForResponse(response => response.url().includes("/api/projects/by_uid?") && response.ok())
-    await page.getByTestId("login-submit").click()
-    const projectName = (await (await loadedProject).json()).name as string
-    const headers = { "Auth-Token": (await (await signedIn).json()).token }
-    await expect(page).toHaveURL(`${base}/documents?read_context=synthetic#result`)
-    await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible()
     await page.reload()
     await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible()
     await visit(() => page.locator(".n-tabs-tab[data-name=\"project-protocols\"]").click(), "protocols")
@@ -71,6 +80,16 @@ for (const mode of ["single_organization", "single_lab", "community"] as const) 
     await expect(page.locator(".n-spin-body")).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
     await page.screenshot({ path: testInfo.outputPath(`${mode}-project-mobile.png`), fullPage: true, animations: "disabled" })
+    if (single) {
+      await page.goto("/orgs/another_org/projects/quickstart/overview")
+      await expect(page).toHaveURL("/404/lab")
+      await expect(page.getByRole("heading", { name: projectName, exact: true })).toHaveCount(0)
+    }
+    expect(failures).toEqual([])
+  })
+
+  test(`${mode}: old Record and Protocol editor bookmarks preserve their project`, async ({ page }, testInfo) => {
+    const { base, headers, failures } = await openProject(page, mode)
     // Read existing synthetic assets only: no Record writes or Protocol publication.
     await page.setViewportSize({ width: 1440, height: 980 })
     const listing = await page.request.get("/api/protocols?lab_uid=dev_lab&project_uid=quickstart&page_size=100", { headers })
@@ -92,11 +111,6 @@ for (const mode of ["single_organization", "single_lab", "community"] as const) 
     expect(new URL(page.url()).pathname).toBe(`${base}/${protocol.uid}/editor/v${protocol.latest_version}`)
     await expect(page.locator(".n-spin-body")).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath(`${mode}-protocol-editor.png`), animations: "disabled" })
-    if (single) {
-      await page.goto("/orgs/another_org/projects/quickstart/overview")
-      await expect(page).toHaveURL("/404/lab")
-      await expect(page.getByRole("heading", { name: projectName, exact: true })).toHaveCount(0)
-    }
     expect(failures).toEqual([])
   })
 }

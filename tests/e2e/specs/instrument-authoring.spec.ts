@@ -45,7 +45,7 @@ for (const risk of ["read_only", "medium"]) {
     let ai = true
     let saved: Record<string, any> | null = null
     let writes = 0
-    await page.route("**/api/instance", async (route) => {
+    await page.route(/\/api\/(?:instance|organizations\/uid\/[^/]+\/ai-capabilities)$/, async (route) => {
       const response = await route.fetch()
       await route.fulfill({ response, json: { ...await response.json(), ai_enabled: ai } })
     })

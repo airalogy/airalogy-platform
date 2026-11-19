@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project journals again offer authorized Record export, including the selected day. Record entry keeps its CSV preview when resizing, and opening the Protocol drafting assistant waits for the active organization’s AI settings.
+
 - Scenario kits can be installed on compatible alpha, beta and release candidate versions of Platform. Their declared lower and upper version bounds apply to prereleases as well.
 
 - The PostgreSQL image installs pgvector and zhparser separately, preserving the built-in modules shipped with its server version so fresh databases can initialize after PGDG package updates.

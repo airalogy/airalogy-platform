@@ -55,7 +55,7 @@ test("AI-disabled instances keep deterministic Protocol creation available", asy
   await page.addInitScript(() => {
     window.localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null }))
   })
-  await page.route(/\/api\/instance(?:\?.*)?$/, async (route) => {
+  await page.route(/\/api\/(?:instance|organizations\/uid\/[^/]+\/ai-capabilities)(?:\?.*)?$/, async (route) => {
     const response = await route.fetch()
     const status = await response.json()
     await route.fulfill({

@@ -66,7 +66,8 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     const report = await call("get_external_analysis", { run_id: execution.result.run_id })
     expect(report.result.report).toBe("Mean = 3")
     expect(report.result.method.revision).toBe(1)
-    const projectReports = `/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}/analysis?view=external`
+    const orgPrefix = (process.env.E2E_DEPLOYMENT_MODE ?? "community") === "community" ? `/orgs/${fixtures.lab.uid}` : ""
+    const projectReports = `${orgPrefix}/projects/${fixtures.project.uid}/analysis?view=external`
     expect(execution.result.links[0]).toBe(`${projectReports}&analysis_id=${execution.result.run_id}`)
     await page.goto(projectReports)
     const reports = page.getByTestId("external-project-reports")
@@ -100,11 +101,11 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     await page.goto(`/api/external-access/oauth/authorize?${query}`)
     await expect(page.getByText("Synthetic PKCE client", { exact: true })).toBeVisible()
     const selector = page.locator(".n-select")
-    if (!(await selector.textContent() || "").includes(fixtures.project.uid)) {
+    if (!(await selector.textContent() || "").includes("Quickstart Protocol Testing")) {
       await selector.click()
       await selectVisibleOption(page, "Quickstart Protocol Testing")
     }
-    await page.getByRole("checkbox", { name: strings.reviewed, exact: true }).check()
+    await page.getByRole("checkbox", { name: strings.authorizationReviewed, exact: true }).check()
     await page.getByRole("button", { name: strings.approve, exact: true }).click()
     await expect(page).toHaveURL(/127\.0\.0\.1:8765\/callback\?code=/)
     const codeValue = new URL(page.url()).searchParams.get("code")!

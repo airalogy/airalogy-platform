@@ -14,6 +14,8 @@ English changelog: [CHANGELOG.md](./CHANGELOG.md)。
 
 ## [未发布]
 
+- 项目日志恢复有权限用户的 Record 导出入口，选中日期后可导出当天的记录。调整窗口宽度时保留 CSV 导入预览，从项目打开 Protocol 起草助手时会等当前组织的 AI 设置加载完成。
+
 - 场景套件支持安装到兼容的 Platform alpha、beta 和 rc 版本，并按套件声明的版本上下限校验。
 
 - PostgreSQL 镜像单独安装 pgvector 和 zhparser，保留与数据库服务版本配套的内置模块，修复 PGDG 软件包更新后新数据库初始化失败的问题。

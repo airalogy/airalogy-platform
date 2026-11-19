@@ -173,13 +173,16 @@ onBeforeUnmount(() => requestId++)
       >
         {{ t("page.researchActivity.viewAll") }} →
       </router-link>
-      <research-log-entry-modal
-        v-if="!compact && canWrite"
-        ref="logModal"
-        :scope="scope"
-        :scope-label="t('page.researchActivity.title')"
-        @saved="load"
-      />
+      <div v-if="!compact && (canWrite || $slots.actions)" class="flex flex-wrap items-center gap-2">
+        <slot name="actions" :day="selected || undefined" />
+        <research-log-entry-modal
+          v-if="canWrite"
+          ref="logModal"
+          :scope="scope"
+          :scope-label="t('page.researchActivity.title')"
+          @saved="load"
+        />
+      </div>
     </header>
     <div class="activity-filters flex flex-wrap items-center gap-2 text-sm">
       <n-select

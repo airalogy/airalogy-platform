@@ -1,5 +1,15 @@
 <template>
-  <research-activity v-if="isProjectScope && logScope" :scope="logScope" />
+  <research-activity v-if="isProjectScope && logScope" :scope="logScope">
+    <template v-if="canBulkExport && exportLabId && exportProjectId" #actions="{ day }">
+      <record-export-modal
+        scope-type="project"
+        :lab-id="exportLabId"
+        :project-id="exportProjectId"
+        :date-from="day"
+        :date-to="day"
+      />
+    </template>
+  </research-activity>
   <loading-list-wrapper
     v-else
     :key="requestKey"

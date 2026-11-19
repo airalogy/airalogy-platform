@@ -670,6 +670,8 @@ onMounted(async () => {
   selectedOption.value = "upload-zip"
 
   // Open the requested guided creation flow when arriving from a creation entry.
+  if (route.query.show_ai_create === "true")
+    await instanceStore.whenOrganizationAIReady()
   if (route.query.show_ai_create === "true" && instanceStore.aiEnabled) {
     if (await loadKnowledgeSource())
       showAiCreateDialog.value = true

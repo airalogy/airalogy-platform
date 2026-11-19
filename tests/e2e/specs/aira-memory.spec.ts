@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { expect, test } from "@playwright/test"
 
-test.use({ actionTimeout: 10000 })
+test.use({ actionTimeout: 10000, storageState: { cookies: [], origins: [] } })
 
 // Exercises the actual API; no AI provider is needed for explicit memory commands.
 for (const [locale, width] of [["zh-CN", 1440], ["en-US", 390]] as const) {

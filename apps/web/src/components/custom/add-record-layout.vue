@@ -1,28 +1,11 @@
 <template>
-  <div v-if="compact" class="record-compact-layout" data-testid="record-compact-layout">
-    <div class="mb-3 flex flex-wrap gap-2">
-      <n-button data-testid="record-open-fields" @click="isCollapsed = false">
-        <template #icon>
-          <n-icon><icon-local-menu-expand /></n-icon>
-        </template>
-        {{ $t('common.fields') }}
-      </n-button>
-    </div>
-    <div class="min-w-0 w-full" :class="props.contentClass" data-testid="record-main-content">
-      <slot name="content" />
-    </div>
-    <n-drawer :show="!isCollapsed" display-directive="show" width="calc(100vw - 2rem)" placement="left" @update:show="value => isCollapsed = !value">
-      <n-drawer-content :title="$t('common.fields')" closable :native-scrollbar="false" body-content-class="record-fields-drawer" data-testid="record-fields-drawer">
-        <slot name="prefix" />
-        <n-tabs v-model:value="selectedTab" type="card" :theme-overrides="props.themeOverrides" pane-class="min-w-0">
-          <slot name="tabs" />
-        </n-tabs>
-      </n-drawer-content>
-    </n-drawer>
-  </div>
-  <n-split v-else v-bind="splitProps" v-model:size="splitSize">
+  <n-split
+    v-model:size="splitSize" v-bind="splitProps"
+    :class="{ 'record-compact-layout': compact }"
+    :data-testid="compact ? 'record-compact-layout' : undefined"
+  >
     <template #1>
-      <component :is="props.wrapper" v-if="props.wrapper">
+      <component :is="props.wrapper" v-if="!compact && props.wrapper">
         <slot name="prefix" />
         <n-tabs
           v-model:value="selectedTab" placement="left" type="card"
@@ -43,7 +26,7 @@
         </n-tabs>
       </component>
       <n-tabs
-        v-else
+        v-else-if="!compact"
         v-model:value="selectedTab" placement="left" type="card"
         :theme-overrides="props.themeOverrides"
         tab-class="bg-white" class="h-full w-full" pane-class="!h-full overflow-y-auto"
@@ -62,10 +45,29 @@
       </n-tabs>
     </template>
     <template #2>
-      <div class="h-full w-full overflow-y-auto" :class="props.contentClass">
-        <slot name="content" />
-        <n-back-top v-if="showBackTop" />
+      <div v-if="compact" class="mb-3 flex flex-wrap gap-2">
+        <n-button data-testid="record-open-fields" @click="isCollapsed = false">
+          <template #icon>
+            <n-icon><icon-local-menu-expand /></n-icon>
+          </template>
+          {{ $t('common.fields') }}
+        </n-button>
       </div>
+      <div
+        class="min-w-0 w-full" :class="[props.contentClass, { 'h-full overflow-y-auto': !compact }]"
+        data-testid="record-main-content"
+      >
+        <slot name="content" />
+        <n-back-top v-if="!compact && showBackTop" />
+      </div>
+      <n-drawer v-if="compact" :show="!isCollapsed" display-directive="show" width="calc(100vw - 2rem)" placement="left" @update:show="value => isCollapsed = !value">
+        <n-drawer-content :title="$t('common.fields')" closable :native-scrollbar="false" body-content-class="record-fields-drawer" data-testid="record-fields-drawer">
+          <slot name="prefix" />
+          <n-tabs v-model:value="selectedTab" type="card" :theme-overrides="props.themeOverrides" pane-class="min-w-0">
+            <slot name="tabs" />
+          </n-tabs>
+        </n-drawer-content>
+      </n-drawer>
     </template>
     <template #resize-trigger>
       <div v-if="!isCollapsed" class="n-split__resize-trigger h-full w-full" />
@@ -186,8 +188,17 @@ defineExpose({
 
 <style scoped lang="sass">
 .record-compact-layout
+  display: block
   min-width: 0
   width: 100%
+  height: auto
+
+  :deep(.n-split-pane-1), :deep(.n-split__resize-trigger-wrapper)
+    display: none
+
+  :deep(.n-split-pane-2)
+    height: auto
+    overflow: visible
 
 :global(.record-fields-drawer)
   min-width: 0

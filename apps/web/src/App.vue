@@ -29,7 +29,7 @@ const authStore = useAuthStore()
 const appStore = useAppStore()
 const instanceStore = useInstanceStore()
 const route = useRoute()
-watch(() => [route.params.labUid, authStore.token, instanceStore.isSingleLab] as const, ([uid, token, single]) => {
+watch([() => route.params.labUid, () => authStore.token, () => instanceStore.isSingleLab], ([uid, token, single]) => {
   void instanceStore.loadOrganizationAI(!single && token && typeof uid === "string" ? uid : "")
 }, { immediate: true })
 
