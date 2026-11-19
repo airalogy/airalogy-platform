@@ -20,7 +20,7 @@ test("single Lab keeps the project-led home and shared resources with AI disable
   await expect(resources.getByRole("link", { name: "共享知识", exact: true })).toHaveAttribute("href", "/organization/knowledge")
   await expect(resources.getByRole("link", { name: "实验室日志", exact: true })).toHaveAttribute("href", "/organization/records")
   await expect(resources.locator("a[href=\"/labs/my\"]")).toHaveCount(0)
-  await expect(page.getByTestId("app-shell-header").getByRole("button", { name: "对话", exact: true })).toHaveCount(0)
+  await expect(page.getByTestId("app-shell-header").getByRole("button", { name: "全部对话", exact: true })).toHaveCount(0)
   for (const width of [1440, 820, 390]) {
     await page.setViewportSize({ width, height: 980 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()

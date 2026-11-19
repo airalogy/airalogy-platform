@@ -6,7 +6,7 @@
     @update:show="!$event && hideDropdown()"
   >
     <n-button
-      :theme-overrides="buttonThemeOverrides"
+      type="primary" color="#175fc6" text-color="#fff"
       class="ml-2 h-[36px] shrink-0 rounded-2 px-3"
       :aria-label="$t('common.new')"
       :title="$t('common.new')"
@@ -16,7 +16,7 @@
       @click="isShow ? hideDropdown() : showDropdown()"
       @keydown.enter.stop
     >
-      <span class="hidden sm:inline">{{ $t('common.new') }}</span>
+      <span class="hidden min-[375px]:inline">{{ $t('common.new') }}</span>
       <template #icon>
         <add-icon />
       </template>
@@ -38,7 +38,6 @@ import { useBoolean } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 import { NButton } from "naive-ui"
 import { computed } from "vue"
-import { buttonThemeOverrides } from "../global-header/constants"
 
 defineOptions({ name: "GlobalAddNew" })
 

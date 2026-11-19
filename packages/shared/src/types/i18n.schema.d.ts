@@ -114,6 +114,7 @@ declare namespace I18n {
       adminDashboard: string
       hub: string
       chat: string
+      allChats: string
       docs: string
       docsFull: string
       openDocs: string
@@ -885,6 +886,7 @@ declare namespace I18n {
         inviteDescription: string
         createInvite: string
         inviteLink: string
+        inviteNext: string
         copyInviteLink: string
         createResetLink: string
         resetLink: string
@@ -1049,6 +1051,7 @@ declare namespace I18n {
           allProjects: string
           description: string
           askAira: string
+          airaPrompt: string
           historyHint: string
           firstVisitHint: string
           empty: string
@@ -6019,6 +6022,12 @@ declare namespace I18n {
     chat: {
       newChatButton: string
       newChatTitle: string
+      clearDeviceHistory: string
+      clearDeviceConfirm: string
+      accountHistory: string
+      deviceHistory: string
+      noAccountHistory: string
+      historyUnavailable: string
       askAira: string
       dragToMove: string
       airaIntroTitle: string

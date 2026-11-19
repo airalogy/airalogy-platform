@@ -14,7 +14,11 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
-- Single-organization owners and managers can privately invite members without knowing their email, review redemptions and revoke unused invitations. Administrator invitations remain email-bound.
+- Ask Aira opens a conversation beside Home, keeps the draft when closed and reopened, and links to All chats. Account history can be reopened and continued on another device. Device-only history is scoped to the signed-in account.
+
+- The workspace header uses a compact pale-blue bar, the Airalogy wordmark and a distinct organization name and logo on private deployments. Selecting a logo in settings uploads it once.
+
+- Single-organization owners and managers can privately invite members without knowing their email, review redemptions and revoke unused invitations. Administrator invitations remain email-bound. After copying the link, organizers can invite the next person from the same panel with fresh details and default roles.
 
 - Weekly meeting preparation can select unfinished items from a previous meeting, review their current owner, blocker and next step, and discuss the original work again.
 

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test"
 import { readFileSync } from "node:fs"
 import { expect, test } from "@playwright/test"
+import { selectVisibleOption } from "./fixtures"
 
 const zh = JSON.parse(readFileSync(new URL("../../../packages/shared/src/locales/langs/zh-cn.json", import.meta.url), "utf8"))
 test.skip(process.env.E2E_DEPLOYMENT_MODE !== "single_organization", "Uses an isolated single-organization deployment")
@@ -127,7 +128,7 @@ test("privately invite a member who chooses their own email and username", async
   await page.goto("/organization/members")
   await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
   const modal = page.locator(".n-modal")
-  const username = "invite_" + crypto.randomUUID().replaceAll("-", "").slice(0, 12)
+  const username = `invite_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`
   await modal.locator("input").first().fill(username)
   const createResponse = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/instance/invitations"))
   await modal.getByRole("button", { name: zh.page.instance.createInvite }).click()
@@ -143,7 +144,7 @@ test("privately invite a member who chooses their own email and username", async
     await expect(recipient.getByRole("button", { name: zh.page.instance.signInToJoin })).toBeVisible()
     await recipient.getByRole("button", { name: zh.page.login.register.confirm }).click()
     const common = zh.page.login.common
-    await recipient.getByPlaceholder(common.emailPlaceholder).fill(username + "@example.org")
+    await recipient.getByPlaceholder(common.emailPlaceholder).fill(`${username}@example.org`)
     await recipient.getByPlaceholder(common.displayNamePlaceholder).fill("邀请验收")
     await recipient.getByPlaceholder(common.usernamePlaceholder).fill(username)
     await recipient.getByPlaceholder(common.passwordPlaceholder, { exact: true }).fill("MemberPass123!")
@@ -157,7 +158,7 @@ test("privately invite a member who chooses their own email and username", async
     await modal.getByText(zh.page.instance.inviteHistory, { exact: true }).click()
     const entry = modal.getByRole("listitem").filter({ hasText: username })
     await expect(entry).toContainText(zh.page.instance.inviteStates.claimed)
-    await expect(entry).toContainText("· " + username)
+    await expect(entry).toContainText(`· ${username}`)
   }
   finally {
     await context.close()
@@ -170,7 +171,7 @@ test("invitation preview preserves the link and administrators can revoke it", a
   await page.goto("/organization/members")
   await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
   const modal = page.locator(".n-modal")
-  const note = "撤销验收_" + crypto.randomUUID().slice(0, 8)
+  const note = `撤销验收_${crypto.randomUUID().slice(0, 8)}`
   await modal.locator("input").first().fill(note)
   const creation = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/instance/invitations"))
   await modal.getByRole("button", { name: zh.page.instance.createInvite }).click()
@@ -190,3 +191,59 @@ test("invitation preview preserves the link and administrators can revoke it", a
   await page.goto(invite.url)
   await expect(page.getByText(zh.page.instance.invitationInvalid)).toBeVisible()
 })
+
+for (const width of [1440, 390]) {
+  test(`invite consecutive people from the same panel at ${width}px`, async ({ page, context }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await login(page, "owner")
+    await page.goto("/organization/members")
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(page.url()).origin })
+    await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
+    const modal = page.locator(".n-modal")
+    const form = modal.locator("form")
+    const note = form.locator("input").first()
+    const role = form.locator(".n-base-selection")
+    await expect(role).toHaveCount(2)
+    const defaultRoles = await role.allTextContents()
+    const first = `连续邀请_${crypto.randomUUID().slice(0, 8)}`
+    const second = `${first}_2`
+    const email = `${crypto.randomUUID()}@example.org`
+    await note.fill(first)
+    for (const field of await role.all()) {
+      await field.click()
+      await selectVisibleOption(page, zh.role.manager)
+    }
+    await form.locator("input").last().fill(email)
+    const create = modal.getByRole("button", { name: zh.page.instance.createInvite, exact: true })
+    const link = modal.locator("textarea")
+    await create.click()
+    await expect(link).toBeVisible()
+    const firstUrl = await link.inputValue()
+    await expect(modal.getByText(email, { exact: true })).toBeVisible()
+    await modal.getByRole("button", { name: zh.page.instance.copyInviteLink }).click()
+    expect(await page.evaluate(() => navigator.clipboard.readText()) === firstUrl).toBe(true)
+    const next = modal.getByRole("button", { name: zh.page.instance.inviteNext })
+    await expect(next).toBeInViewport()
+    await next.click()
+    await expect(note).toBeFocused()
+    await expect(note).toHaveValue("")
+    await expect(role).toHaveText(defaultRoles)
+    await expect(form.getByRole("checkbox")).not.toBeChecked()
+    await expect(link).toHaveCount(0)
+    await note.fill(second)
+    await create.click()
+    await expect(link).toBeVisible()
+    const secondUrl = await link.inputValue()
+    expect(secondUrl !== firstUrl).toBe(true)
+    for (const url of [firstUrl, secondUrl]) {
+      const preview = await page.request.get(`/api/instance/invitations/${new URL(url).searchParams.get("token")}`)
+      expect(preview.status()).toBe(200)
+      expect((await preview.json()).email).toBe(url === firstUrl ? email : "")
+    }
+    await modal.getByText(zh.page.instance.inviteHistory, { exact: true }).click()
+    for (const person of [first, second]) {
+      const row = modal.getByRole("listitem").filter({ has: page.getByText(person, { exact: true }) })
+      await expect(row).toContainText(zh.page.instance.inviteStates.pending)
+    }
+  })
+}

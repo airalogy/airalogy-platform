@@ -26,7 +26,7 @@ export const chatRoute: CustomRoute = {
       },
       path: "",
       name: "global-chat",
-      component: () => import("@/views/chat/index.vue"),
+      component: () => import("@/views/chat/account-page.vue"),
     },
   ],
 }

@@ -12,13 +12,14 @@ export function useChatEventHandlers(state: ChatState, mutations: ChatMutations,
 
   const chatStore = useChatStore()
 
-  let chatRouteId = ref<string | undefined | null>(null)
-
-  watch (() => toValue(mode) || false, (val) => {
-  // Initialize store with the correct routing mode
+  watch(mode, (val, _, onCleanup) => {
     chatStore.setRoutingMode(val)
+    if (val === "embedded") {
+      clearActive()
+      return
+    }
 
-    chatRouteId = val ? useRouteQuery<string | undefined | null>("chat") : useRouteParams<string | undefined | null>("chatId")
+    const chatRouteId = val === "query" ? useRouteQuery<string | undefined | null>("chat") : useRouteParams<string | undefined | null>("chatId")
 
     const stop = watch(chatRouteId, async (newId) => {
       if (newId) {
@@ -40,7 +41,7 @@ export function useChatEventHandlers(state: ChatState, mutations: ChatMutations,
       }
     }, { immediate: true })
 
-    return stop
+    onCleanup(stop)
   }, { immediate: true })
 
   watch(chatId, (newId) => {

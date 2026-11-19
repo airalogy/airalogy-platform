@@ -1,6 +1,7 @@
 <template>
-  <n-layout has-sider class="h-full">
+  <n-layout :has-sider="!embedded" class="h-full">
     <n-layout-sider
+      v-if="!embedded && !appStore.isMobile"
       v-model:collapsed="appStore.siderCollapse"
       :collapsed-width="64"
       :width="280"
@@ -12,7 +13,15 @@
       <chat-menu />
     </n-layout-sider>
     <n-layout class="h-full">
-      <div class="h-full w-full overflow-x-hidden">
+      <div v-if="!embedded && appStore.isMobile" class="border-b border-gray-200 px-2 py-1">
+        <n-button size="small" @click="showMobileHistory = true">{{ $t('chat.history') }}</n-button>
+        <n-drawer v-model:show="showMobileHistory" placement="left" width="min(85%, 300px)">
+          <n-drawer-content :title="$t('common.allChats')" closable :native-scrollbar="false">
+            <chat-menu mobile @opened="showMobileHistory = false" />
+          </n-drawer-content>
+        </n-drawer>
+      </div>
+      <div ref="conversationViewport" class="h-full w-full overflow-x-hidden" :class="{ 'overflow-y-auto overscroll-contain': embedded }">
         <div class="mx-auto w-full max-w-3xl min-h-full flex flex-col">
           <chat-interface
             v-model:role="role"
@@ -26,7 +35,11 @@
             :show-scroll-button="arrivedState.bottom"
             :resolve-file="getCachedAttachment"
             @scroll-to-bottom="handleScrollToBottom"
-          />
+          >
+            <template v-if="embedded" #empty>
+              <p class="aira-type-body aira-text-muted px-2">{{ $t('page.home.workspace.airaPrompt') }}</p>
+            </template>
+          </chat-interface>
           <context-select-dialog source="global" v-bind="contextDialog" v-on="contextDialogEventHandlers" />
         </div>
       </div>
@@ -62,6 +75,10 @@ import ChatMenu from "./chat-menu.vue"
 defineOptions({
   name: "ChatRootView",
 })
+
+const { embedded = false } = defineProps<{ embedded?: boolean }>()
+const showMobileHistory = ref(false)
+const conversationViewport = ref<HTMLElement | null>(null)
 
 // Add scroll trapping to prevent parent scrolling
 const { measure, scrollToBottom, scrollRef, arrivedState } = useScroll()
@@ -240,7 +257,7 @@ watch([enableDiscussion], () => {
 
 onMounted(async () => {
   await nextTick()
-  scrollRef.value = document.getElementById(LAYOUT_SCROLL_EL_ID) as HTMLElement | null
+  scrollRef.value = embedded ? conversationViewport.value : document.getElementById(LAYOUT_SCROLL_EL_ID)
   if (!chatId.value) {
     handleAddNewSession(nanoid(), "global")
   }

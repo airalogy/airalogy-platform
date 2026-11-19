@@ -103,7 +103,7 @@ async def send_qa_chat_message(
         )
 
     if params.chat_id is not None:
-        chat = await Chat.find(db_session, id=params.chat_id)
+        chat = await Chat.find(db_session, id=params.chat_id, with_for_update=True)
         if chat.user_id != current_user.id:
             raise HTTPException(status_code=400, detail="Permission denied")
     else:
@@ -548,8 +548,6 @@ async def send_qa_chat_message(
             yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
             return
 
-        yield "data: [DONE]\n\n"
-
         if current_context_message_count:
             del chat.messages[
                 current_context_message_index : current_context_message_index
@@ -565,6 +563,7 @@ async def send_qa_chat_message(
         chat.user_message_count += 1
         chat.updated_at = datetime.now()
         await db_session.commit()
+        yield "data: [DONE]\n\n"
 
     # 返回新的流式响应
     return StreamingResponse(

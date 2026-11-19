@@ -93,6 +93,7 @@ import { NEllipsis, NIcon, NInput, NScrollbar, NTabPane, NTabs, NTree } from "na
 import { computed, h, nextTick, onUpdated, ref, watch } from "vue"
 
 defineOptions({ name: "ChatHistorySidebar" })
+const emit = defineEmits<{ opened: [] }>()
 
 // Define template types
 interface ActionButtonProps {
@@ -215,6 +216,7 @@ function handleSelectedKeysUpdate(keys: string[]) {
         }
         // Load chat
         handleLoad(item)
+        emit("opened")
       }
     }
   }

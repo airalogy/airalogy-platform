@@ -1,13 +1,13 @@
 <template>
   <router-link
-    :to="{ name: 'root' }"
+    :to="props.to"
     class="pl-4 font-[PingFang_SC] no-underline"
     :title="$t('page.about.introduction')"
   >
     <icon-local-logo-icon-monochrome v-if="props.monochrome && props.compact" width="32px" height="32px" />
     <icon-local-logo-monochrome v-else-if="props.monochrome" width="124px" height="32px" />
-    <icon-local-logo v-else-if="props.compact" width="32px" height="32px" />
-    <icon-local-logo-icon v-else width="124px" height="32px" />
+    <icon-local-logo-icon v-else-if="props.compact" width="32px" height="32px" />
+    <icon-local-logo v-else width="124px" height="32px" />
     <slot name="title">
       <h4 v-if="props.showTitle" class="py-6 text-4 text-white font-normal">
         {{ $t("page.about.introduction") }}
@@ -17,9 +17,11 @@
 </template>
 
 <script setup lang="ts">
+import type { RouteLocationRaw } from "vue-router"
 import { $t } from "@airalogy/shared/locales"
 
 interface IProps {
+  to?: RouteLocationRaw
   compact?: boolean
   color?: string
   monochrome?: boolean
@@ -27,6 +29,7 @@ interface IProps {
 }
 
 const props = withDefaults(defineProps<IProps>(), {
+  to: () => ({ name: "root" }),
   compact: false,
   color: "white",
   monochrome: false,

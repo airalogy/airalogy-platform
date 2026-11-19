@@ -37,7 +37,9 @@
           @scroll-to-bottom="(force?: boolean) => emit('scrollToBottom', force)"
         />
       </template>
-      <chat-placeholder v-else :examples="chatExamples" @example-click="handleStartNewChatWithExample" />
+      <slot v-else name="empty">
+        <chat-placeholder :examples="chatExamples" @example-click="handleStartNewChatWithExample" />
+      </slot>
     </div>
 
     <div class="sticky bottom-0 z-10 w-full bg-white pt-2">

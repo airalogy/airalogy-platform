@@ -84,7 +84,7 @@ onUnmounted(async () => {
     display: flex
     width: 100%
     min-width: 0
-    min-height: calc(100vh - 70px)
+    min-height: calc(100vh - var(--aira-header-height))
     padding: 24px 0
     background: #fff
   &__content

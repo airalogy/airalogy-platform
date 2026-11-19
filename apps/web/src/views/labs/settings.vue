@@ -25,7 +25,6 @@
         <n-form-item :label="$t('page.labs.settingsPage.logoLabel')" path="logo">
           <div class="flex flex-col space-y-2">
             <form-upload-file
-              ref="logoUploadRef"
               :default-file-list="defaultFileList"
               :upload-props="{ accept: 'image/*', showRemoveButton: true }"
               @update:file="handleSelectLogo"
@@ -380,7 +379,6 @@ const logoRef = computed({
   set: (value) => { model.value.logo = value },
 })
 const {
-  logoUploadRef,
   defaultFileList,
   handleSelectLogo,
   handleUploadedLogo,

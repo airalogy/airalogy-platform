@@ -10,12 +10,14 @@ import {
   type ResearchWorkItemDetail,
   startResearchWorkItem,
 } from "@/service/api/research-tasks"
+import { organizationUid } from "@/service/request/organization"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import WorkSummary from "@/views/project-work/work-summary.vue"
 import ResearchApprovalActions from "@/views/research/components/research-approval-actions.vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
+import HomeAira from "./home-aira.vue"
 import ProjectWorkspaces from "./project-workspaces.vue"
 
 defineProps<{ pins: PinnedItem[], pinningKeys: Set<string> }>()
@@ -104,9 +106,7 @@ onBeforeUnmount(() => sequence++)
           {{ t('page.home.workspace.description') }}
         </p>
       </div>
-      <n-button v-if="instanceStore.aiEnabled" secondary type="primary" data-testid="home-aira" @click="router.push({ name: 'global-chat' })">
-        {{ t('page.home.workspace.askAira') }}
-      </n-button>
+      <home-aira v-if="instanceStore.aiEnabled && authStore.userInfo.id" :key="JSON.stringify([authStore.userInfo.id, organizationUid])" />
     </div>
     <project-workspaces :pins="pins" :pinning-keys="pinningKeys" @toggle-pin="emit('togglePin', $event)" />
     <work-summary />

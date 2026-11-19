@@ -188,6 +188,7 @@ declare global {
     }
 
     interface ChatState {
+      legacyOwnershipChecked?: boolean
       active: string | null
       isInit: boolean
       history: ChatHistory[]

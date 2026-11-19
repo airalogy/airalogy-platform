@@ -1,5 +1,6 @@
 import type { ChatType } from "@airalogy/shared/enum/chat"
-import type { ChatModels, PiniaStore } from "@airalogy/shared/types"
+import type { ChatModels } from "@airalogy/shared/types"
+import type { ChatProviderProps } from "../providers/useChatProvider"
 // import { getChatConversation } from "@airalogy/shared/service/api/chat"
 import { nanoid } from "nanoid"
 import { defineStore } from "pinia"
@@ -7,15 +8,16 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from "vue"
 // Add router import for navigation
 import { useRouter } from "vue-router"
 import { createUserMessage } from "../composables/utils"
+import { chatAccountId, chatStorage } from "../utils/storage"
 import { defaultConfig, defaultState, getLocalState, setLocalState } from "./helper"
 
-export const useChatStore = defineStore("chat-store", () => {
+function setupChatStore(accountId: string) {
   // Add mode state for routing
-  const routingMode = ref<"query" | "param">("query")
+  const routingMode = ref<ChatProviderProps["mode"]>("query")
   const router = useRouter()
 
   // state
-  const state = ref<Chat.ChatState>(getLocalState())
+  const state = ref<Chat.ChatState>(getLocalState(accountId))
 
   const context = ref<Record<string, Chat.ChatContext[]>>(
     Object.fromEntries(state.value.session.filter(chat => chat.context != null).map(chat => [chat.uuid, chat.context!])),
@@ -224,18 +226,52 @@ export const useChatStore = defineStore("chat-store", () => {
     )
   }
 
-  function clearHistory() {
-    state.value = defaultState(false)
+  async function importOwnedLegacyHistory(verify: (ids: string[]) => Promise<string[]>) {
+    if (!accountId || state.value.legacyOwnershipChecked)
+      return
+    const legacy = chatStorage.get("chatStorage")
+    if (!Array.isArray(legacy?.session) || !Array.isArray(legacy.history))
+      return
+    const candidates = legacy.session.filter(s => s.serverId === s.uuid
+      && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s.uuid))
+    const owned = new Set<string>()
+    for (let i = 0; i < candidates.length; i += 100) {
+      if (chatAccountId() !== accountId)
+        return
+      const batch = candidates.slice(i, i + 100).map(s => s.uuid)
+      for (const id of await verify(batch)) owned.add(id)
+    }
+    if (chatAccountId() !== accountId || state.value.legacyOwnershipChecked)
+      return
+    for (const session of candidates) {
+      if (!owned.has(session.uuid) || findSessionByUUID(session.uuid))
+        continue
+      const item = legacy.history.find(h => h.uuid === session.uuid)
+      if (!item)
+        continue
+      state.value.session.push(session)
+      state.value.history.push(item)
+      if (session.context)
+        context.value[session.uuid] = session.context
+    }
+    state.value.legacyOwnershipChecked = true
     recordState()
   }
 
-  function setRoutingMode(mode: "query" | "param") {
+  function clearHistory() {
+    state.value = { ...defaultState(false), legacyOwnershipChecked: true }
+    context.value = {}
+    draftMessages.clear()
+    recordState()
+  }
+
+  function setRoutingMode(mode: ChatProviderProps["mode"]) {
     routingMode.value = mode
   }
 
   async function reloadRoute(uuid?: string | null) {
     try {
-      if (!router) {
+      if (!router || routingMode.value === "embedded" || accountId !== chatAccountId()) {
         return
       }
 
@@ -296,7 +332,7 @@ export const useChatStore = defineStore("chat-store", () => {
   }
 
   function recordState() {
-    setLocalState(state.value)
+    setLocalState(accountId, state.value)
   }
 
   function getLatestSessionBySource(source: Chat.ChatSource): Chat.ChatSession | null {
@@ -368,9 +404,10 @@ export const useChatStore = defineStore("chat-store", () => {
     // Update history UUID
     history.uuid = serverId
 
-    // Update active state if it matches the old UUID
+    // A late response must not replace a conversation opened in the meantime.
     if (state.value.active === oldUuid) {
-      state.value.active = serverId
+      setActive(serverId)
+      reloadRoute(serverId)
     }
 
     // Migrate context mapping
@@ -385,9 +422,6 @@ export const useChatStore = defineStore("chat-store", () => {
       draftMessages.delete(oldUuid)
     }
 
-    setActive(serverId)
-    // Explicitly trigger route reload to ensure URL is updated
-    reloadRoute(serverId)
     recordState()
 
     return { session, history }
@@ -407,56 +441,59 @@ export const useChatStore = defineStore("chat-store", () => {
     return chat?.serverId
   }
 
+  function applyServerMessages(session: Chat.ChatSession, data: ChatModels.ChatResponse) {
+    const visible = data.messages.filter(item =>
+      (item.role === "user" || item.role === "assistant") && (item.content || item.files?.length))
+    session.serverId = data.id
+    session.memoryDisabled = Boolean(data.context?.memory_disabled)
+    session.rootBranchIndex = 0
+    session.rootBranchIndices = visible.length ? [0] : []
+    session.data = visible.map((item, i): Chat.ChatMessage => ({
+      dateTime: 0,
+      text: item.content || "",
+      inversion: item.role === "user",
+      attachments: item.files?.map((file: { id: string, file_name: string }) => ({
+        id: file.id,
+        serverId: file.id,
+        name: file.file_name,
+        status: "finished",
+      })),
+      conversationOptions: { conversationId: data.id },
+      requestOptions: { prompt: item.role === "user" ? item.content || "" : "" },
+      originalIndex: i,
+      parentIndex: i ? i - 1 : null,
+      childIndices: i + 1 < visible.length ? [i + 1] : [],
+      currentChildIndex: 0,
+    }))
+    return visible
+  }
+
   async function restoreChatHistory(uuid: string, getChatConversation: (id: string) => Promise<ChatModels.ChatResponse>) {
-    const chat = findSessionByUUID(uuid)
-    if (!chat?.serverId)
+    const session = findSessionByUUID(uuid)
+    if (!session?.serverId)
       return
-
-    try {
-      const data = await getChatConversation(chat.serverId)
-      if (!data?.messages)
-        return
-
-      chat.memoryDisabled = Boolean(data.context?.memory_disabled)
-
-      // Convert server history format to local chat messages
-      const messages = data.messages
-        .filter(({ role, content }) => (role === "user" || role === "assistant") && !!content)
-        .map(
-          (item, index): Chat.ChatMessage => ({
-            dateTime: Date.now(),
-            text: item.content || "",
-            inversion: item.role === "user",
-            error: false,
-            loading: false,
-            editing: false,
-            tool: index > 0 ? data.messages[index - 1] : null,
-            conversationOptions: {
-              conversationId: data.id,
-              parentMessageId: data.id,
-            },
-            requestOptions: {
-              prompt: item.role === "user" ? item.content || "" : "",
-              options: null,
-            },
-            originalIndex: index,
-            parentIndex: index > 0 ? index - 1 : null,
-            childIndices: [],
-            currentChildIndex: 0,
-          }),
-        )
-
-      // Update the chat with restored messages
-      const chatIndex = findSessionIndex(uuid)
-      if (chatIndex !== -1) {
-        setSessionData(chatIndex, messages)
-      }
-
+    const data = await getChatConversation(session.serverId)
+    if (data?.id === session.serverId && data.user_id === accountId) {
+      applyServerMessages(session, data)
       recordState()
     }
-    catch (error) {
-      console.error("Failed to restore chat history:", error)
+  }
+
+  function restoreAccountConversation(data: ChatModels.ChatResponse) {
+    if (!accountId || accountId !== chatAccountId() || data.user_id !== accountId || data.protocol_id || data.type !== 1)
+      throw new Error("Conversation is unavailable")
+
+    const session = createEmptySession(data.id, "global")
+    const visible = applyServerMessages(session, data)
+    const history = findHistory(data.id)
+    if (history) {
+      history.serverId = data.id
+      history.time = new Date(data.updated_at).getTime()
+      history.title = visible.find(item => item.role === "user")?.content?.slice(0, 120) || history.title
     }
+    setActive(data.id)
+    recordState()
+    return session
   }
 
   function getHistoryByAiralogyId(airalogyId: string) {
@@ -1115,6 +1152,8 @@ export const useChatStore = defineStore("chat-store", () => {
     updateServerIdByUuid,
     updateChatRole,
     restoreChatHistory,
+    restoreAccountConversation,
+    importOwnedLegacyHistory,
     addAttachment,
     removeAttachment,
     updateAttachmentUploadStatus,
@@ -1134,6 +1173,11 @@ export const useChatStore = defineStore("chat-store", () => {
     replaceUUIDWithServerId,
     setRoutingMode,
   }
-})
+}
 
-export type ChatStoreState = PiniaStore<typeof useChatStore>
+export function useChatStore() {
+  const account = chatAccountId()
+  return defineStore(`chat-store:${account}`, () => setupChatStore(account))()
+}
+
+export type ChatStoreState = ReturnType<typeof useChatStore>

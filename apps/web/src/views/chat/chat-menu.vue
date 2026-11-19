@@ -14,8 +14,11 @@
 
     <!-- Menu Navigation -->
     <nav class="flex-1 overflow-hidden">
-      <div v-if="!appStore.siderCollapse" class="h-full">
-        <chat-history-sidebar />
+      <div v-if="!appStore.siderCollapse || mobile" class="h-full">
+        <n-tabs v-model:value="historyTab" class="h-full" type="line" size="small" pane-class="min-h-0 flex-1 overflow-auto">
+          <n-tab-pane name="account" :tab="$t('chat.accountHistory')"><account-history @opened="emit('opened')" /></n-tab-pane>
+          <n-tab-pane name="device" :tab="$t('chat.deviceHistory')"><chat-history-sidebar @opened="emit('opened')" /></n-tab-pane>
+        </n-tabs>
       </div>
       <div v-else class="mt-3">
         <tooltip-button
@@ -83,7 +86,7 @@
             <n-icon :size="14">
               <icon-ion-trash-outline />
             </n-icon>
-            <span>{{ `${$t("chat.common.clear")} ${$t("chat.history")}` }}</span>
+            <span>{{ $t("chat.clearDeviceHistory") }}</span>
           </n-button>
         </div>
       </n-popover>
@@ -113,10 +116,14 @@ import { $t } from "@airalogy/shared/locales"
 import { useDialog } from "naive-ui"
 import { nanoid } from "nanoid"
 import { useOpenNewTab } from "../../composables"
+import AccountHistory from "./account-history.vue"
 import ChatHistorySidebar from "./chat-history-sidebar.vue"
 
 defineOptions({ name: "GlobalMenu" })
 
+defineProps<{ mobile?: boolean }>()
+const emit = defineEmits<{ opened: [] }>()
+const historyTab = ref("account")
 const appStore = useAppStore()
 const dialog = useDialog()
 
@@ -128,6 +135,7 @@ function handleNewChat() {
 
   // Create empty session
   handleAddNewSession(newChatId, "global")
+  emit("opened")
 }
 
 const { openNewTab } = useOpenNewTab()
@@ -138,8 +146,8 @@ function openHelpCenter() {
 
 function handleClearHistory() {
   dialog.warning({
-    title: `${$t("chat.common.clear")} ${$t("chat.history")}`,
-    content: $t("chat.clearHistoryConfirm"),
+    title: $t("chat.clearDeviceHistory"),
+    content: $t("chat.clearDeviceConfirm"),
     positiveText: $t("common.confirm"),
     negativeText: $t("common.cancel"),
     closable: true,

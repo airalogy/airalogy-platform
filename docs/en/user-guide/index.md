@@ -29,6 +29,8 @@ A deployment may present one fixed Lab or allow users to join several Labs. Proj
 
 The signed-in home page leads with **Your projects**: pinned projects first, followed by your own recent visits. Without visit history, it offers available projects and explains how to start. Another member updating a project does not change your personal recency order.
 
+Ask Aira on Home opens a side panel. All chats in the panel opens the dedicated chat page in a new tab, keeping the Home draft in place. Account history lists saved general conversations for the signed-in account and lets you continue them on another device. On phones, open Chat history first. Older conversations with verified server ownership appear here. Legacy browser-only data without an identifiable owner is left unassigned.
+
 - Select a project name to open Overview. Project navigation is Overview, Protocols, Documents, Materials, then Knowledge.
 - **Continue** opens the last document, Protocol page or Record report. The Protocols and Documents shortcuts retain the project context.
 - A compatible Record draft on this browser offers **Continue Record**, labeled **Saved on this device**. Visit history never uploads draft values. Another device can reopen a recent page, but cannot restore unsynchronized values from the original browser.

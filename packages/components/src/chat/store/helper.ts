@@ -1,7 +1,7 @@
 import type { ContextProviderName } from "../providers/types"
 import { nanoid } from "nanoid"
 import { contextProviderClassFromName } from "../providers"
-import { chatStorage, LOCAL_CHAT_STORAGE_NAME } from "../utils/storage"
+import { chatStorage } from "../utils/storage"
 
 export interface ContextProviderWithParams {
   name: ContextProviderName
@@ -72,11 +72,12 @@ export function defaultState(setActive = true): Chat.ChatState {
   }
 }
 
-export function getLocalState(): Chat.ChatState {
-  const localState = chatStorage.get(LOCAL_CHAT_STORAGE_NAME) || {}
+export function getLocalState(accountId: string): Chat.ChatState {
+  const localState = accountId ? chatStorage.get(`chatStorage:${accountId}`) : null
   return { ...defaultState(), ...localState }
 }
 
-export function setLocalState(state: Chat.ChatState) {
-  chatStorage.set(LOCAL_CHAT_STORAGE_NAME, state)
+export function setLocalState(accountId: string, state: Chat.ChatState) {
+  if (accountId)
+    chatStorage.set(`chatStorage:${accountId}`, state)
 }

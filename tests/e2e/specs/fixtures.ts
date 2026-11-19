@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test"
+import type { BrowserContext, Page } from "@playwright/test"
 import { readFile } from "node:fs/promises"
 
 export interface E2EFixtures {
@@ -30,7 +30,7 @@ export async function loadFixtures(): Promise<E2EFixtures> {
   ) as E2EFixtures
 }
 
-export async function mockAIEnabled(page: Page, isEnabled: () => boolean) {
+export async function mockAIEnabled(page: Page | BrowserContext, isEnabled: () => boolean) {
   await page.route(/\/api\/(?:instance|organizations\/uid\/[^/]+\/ai-capabilities)(?:\?.*)?$/, async (route) => {
     const response = await route.fetch()
     const status = await response.json()

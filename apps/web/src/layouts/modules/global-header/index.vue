@@ -1,20 +1,23 @@
 <template>
   <section
     data-testid="app-shell-header"
-    class="mx-auto h-[70px] min-w-0 w-full flex items-center"
+    class="platform-header mx-auto h-full min-w-0 w-full flex items-center px-2 sm:px-4"
     :class="isContainer ? 'container' : ''"
     :style="containerStyle"
   >
-    <global-logo class="mr-3 shrink-0 text-white lg:mr-5" monochrome :compact="isMobile || instanceStore.isSingleLab" />
+    <global-logo
+      class="platform-brand shrink-0" data-testid="platform-brand" aria-label="Airalogy"
+      :to="{ name: authStore.isLogin ? 'home' : 'root' }" :compact="isMobile && showOrganizationIdentity"
+    />
     <router-link
-      v-if="authStore.isLogin && instanceStore.isSingleLab && instanceStore.lab"
+      v-if="showOrganizationIdentity"
       :to="{ name: 'home' }"
-      class="mr-2 max-w-24 min-w-0 flex items-center gap-2 text-white sm:max-w-40"
-      :title="workspaceInfo?.name || instanceStore.lab.name"
+      class="organization-identity min-w-0 flex items-center gap-1.5"
+      :title="organizationName"
       data-testid="single-lab-identity"
     >
-      <n-avatar v-if="workspaceInfo?.logo_url" :src="workspaceInfo.logo_url" :size="24" class="hidden shrink-0 sm:block" />
-      <span class="truncate text-sm">{{ workspaceInfo?.name || instanceStore.lab.name }}</span>
+      <n-avatar v-if="workspaceInfo?.logo_url" :src="workspaceInfo.logo_url" :size="24" object-fit="contain" color="transparent" class="shrink-0" />
+      <span class="truncate text-sm">{{ organizationName }}</span>
     </router-link>
     <template v-if="authStore.isLogin">
       <global-menu />
@@ -25,7 +28,7 @@
         class="ml-2 h-[36px] rounded-2 px-3"
         @click="routerPushByKey('global-chat')"
       >
-        {{ $t("common.chat") }}
+        {{ $t("common.allChats") }}
       </n-button>
       <n-dropdown v-if="!isMobile" trigger="click" :options="discoveryOptions" @select="handleSelect">
         <n-button :theme-overrides="buttonThemeOverrides" class="ml-2 h-9 rounded-2 px-3">
@@ -33,19 +36,10 @@
         </n-button>
       </n-dropdown>
     </template>
-    <!-- <global-search
-      class="my-5 ml-auto w-full border-0 sm:max-w-[400px]"
-      :input-props="{
-        inputClass: 'border-0',
-        showBorder: false,
-      }"
-    /> -->
-    <!-- <div class="ml-auto h-4 w-1px rounded bg-white opacity-40" :class="authStore.isLogin ? 'mr-5' : 'mr-2'" /> -->
-    <!-- <n-dropdown v-if="isMobile" :options="options" @select="handleSelect" /> -->
     <n-dropdown v-if="isMobile" trigger="click" :options="localeDropdownOptions" @select="handleLocaleSelect">
       <n-button
         quaternary
-        color="white"
+        :theme-overrides="buttonThemeOverrides"
         class="ml-auto mr-2"
         :aria-label="currentLocaleLabel"
         :title="currentLocaleLabel"
@@ -58,7 +52,7 @@
       </n-button>
     </n-dropdown>
     <n-dropdown v-if="isMobile" trigger="click" :options="menuOptions" @select="handleSelect">
-      <n-button quaternary color="white" :aria-label="$t('common.more')" :title="$t('common.more')">
+      <n-button quaternary :theme-overrides="buttonThemeOverrides" :aria-label="$t('common.more')" :title="$t('common.more')">
         <template #icon>
           <n-icon>
             <icon-tabler-menu-2 />
@@ -97,12 +91,8 @@
       </template>
       <template v-else>
         <n-button
-          style="
-          --n-text-color-hover: rgba(255, 255, 255, 0.8);
-          --n-text-color-pressed: rgba(255, 255, 255, 0.4);
-        "
-          class="mr-4 text-white"
-          quaternary
+          :theme-overrides="buttonThemeOverrides"
+          class="mr-2"
           @click="routerPushByKey('login')"
         >
           {{ $t("common.login") }}
@@ -161,6 +151,12 @@ const containerStyle = computed(() =>
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 const { info: workspaceInfo, canManageLab } = useSingleLabWorkspace()
+const organizationName = computed(() => workspaceInfo.value?.name || instanceStore.lab?.name || "")
+const showOrganizationIdentity = computed(() =>
+  Boolean(authStore.isLogin && instanceStore.isSingleLab && instanceStore.lab && (
+    workspaceInfo.value?.logo_url || instanceStore.lab.uid !== "airalogy" || organizationName.value.trim().toLowerCase() !== "airalogy"
+  )),
+)
 const showOrganizationManagement = computed(() => authStore.isLogin && instanceStore.isSingleLab && Boolean(instanceStore.lab) && canManageLab.value)
 const appStore = useAppStore()
 const { routerPushByKey } = useRouterPush()
@@ -197,7 +193,7 @@ const menuOptions = computed<DropdownOption[]>(() => {
 
   return [
     ...(showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
-    ...(instanceStore.aiEnabled ? [{ label: $t("common.chat"), key: "chat" }] : []),
+    ...(instanceStore.aiEnabled ? [{ label: $t("common.allChats"), key: "chat" }] : []),
     ...discoveryOptions.value,
     { label: $t("common.profile"), key: "profile" },
     ...(authStore.userInfo.roles?.some(role => role === "R_ADMIN" || role === "R_SUPER")
@@ -263,4 +259,18 @@ function handleLocaleSelect(key: string | number) {
 }
 </script>
 
-<style scoped lang="sass"></style>
+<style scoped>
+.platform-header { gap: 0.25rem; color: #354962; }
+.platform-brand { display: inline-flex; align-items: center; min-height: 44px; padding: 0; margin-right: 0.5rem; color: #183453; }
+.platform-brand :deep(svg) { display: block; width: 106px; height: 29px; }
+.organization-identity { max-width: 10rem; border-left: 1px solid #c7d5e4; padding-left: 0.75rem; margin-right: 0.5rem; color: inherit; }
+.platform-header :deep(:focus-visible) { outline: 2px solid #165bb7; outline-offset: 2px; }
+@media (max-width: 639px) {
+  .platform-header { gap: 2px; }
+  .platform-brand { margin-right: 2px; }
+  .platform-brand :deep(svg) { width: 88px; height: 24px; }
+  .platform-brand:has(+ .organization-identity) :deep(svg) { width: 26px; height: 26px; }
+  .organization-identity { max-width: 6rem; padding-left: 0.375rem; margin-right: 0.125rem; }
+  .platform-header :deep(.n-button) { min-height: 44px; }
+}
+</style>

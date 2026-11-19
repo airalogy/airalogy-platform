@@ -17,37 +17,55 @@
   >
     <n-tabs v-model:value="tab" type="line" size="small">
       <n-tab-pane name="create" :tab="$t('page.instance.createInvite')">
-        <p class="mb-5 mt-0 text-sm text-gray-500">
-          {{ $t("page.instance.privateInviteHint") }}
-        </p>
-        <n-form ref="formRef" :model="model" :rules="rules" label-placement="top">
-          <n-form-item :label="$t('page.instance.inviteNote')" path="note">
-            <n-input v-model:value="model.note" :maxlength="120" :disabled="loading || Boolean(inviteUrl)" />
-          </n-form-item>
-          <n-form-item :label="$t('page.instance.labRole')" path="labRole">
-            <n-select v-model:value="model.labRole" :options="labRoleOptions" :disabled="loading || Boolean(inviteUrl)" />
-          </n-form-item>
-          <n-form-item :label="$t('page.instance.projectRole')" path="projectRole">
-            <n-select v-model:value="model.projectRole" :options="projectRoleOptions" :disabled="loading || Boolean(inviteUrl)" />
-          </n-form-item>
-          <n-checkbox v-if="!privileged" v-model:checked="bindEmail" :disabled="loading || Boolean(inviteUrl)">
-            {{ $t("page.instance.bindInviteEmail") }}
-          </n-checkbox>
-          <n-form-item v-if="emailRequired" :label="$t('page.instance.email')" path="email">
-            <n-input v-model:value="model.email" type="text" :disabled="loading || Boolean(inviteUrl)" />
-            <template v-if="privileged" #feedback>
-              {{ $t("page.instance.privilegedInviteEmail") }}
-            </template>
-          </n-form-item>
-        </n-form>
-
-        <div v-if="inviteUrl" class="mt-4 border border-gray-200 rounded p-3">
-          <div class="mb-2 text-sm font-medium">
+        <template v-if="!inviteUrl">
+          <p class="mb-5 mt-0 text-sm text-gray-500">
+            {{ $t("page.instance.privateInviteHint") }}
+          </p>
+          <n-form ref="formRef" :model="model" :rules="rules" label-placement="top">
+            <n-form-item :label="$t('page.instance.inviteNote')" path="note">
+              <n-input ref="noteInput" v-model:value="model.note" :maxlength="120" :disabled="loading" />
+            </n-form-item>
+            <n-form-item :label="$t('page.instance.labRole')" path="labRole">
+              <n-select v-model:value="model.labRole" :options="labRoleOptions" :disabled="loading" />
+            </n-form-item>
+            <n-form-item :label="$t('page.instance.projectRole')" path="projectRole">
+              <n-select v-model:value="model.projectRole" :options="projectRoleOptions" :disabled="loading" />
+            </n-form-item>
+            <n-checkbox v-if="!privileged" v-model:checked="bindEmail" :disabled="loading">
+              {{ $t("page.instance.bindInviteEmail") }}
+            </n-checkbox>
+            <n-form-item v-if="emailRequired" :label="$t('page.instance.email')" path="email">
+              <n-input v-model:value="model.email" type="text" :disabled="loading" />
+              <template v-if="privileged" #feedback>
+                {{ $t("page.instance.privilegedInviteEmail") }}
+              </template>
+            </n-form-item>
+          </n-form>
+        </template>
+        <div v-else class="space-y-2">
+          <div class="break-words text-sm font-medium">
             {{ $t("page.instance.inviteLink") }}
+            <span v-if="model.note || (emailRequired && model.email)"> · {{ model.note || model.email }}</span>
           </div>
+          <dl class="grid grid-cols-[auto_minmax(0,1fr)] m-0 gap-x-3 gap-y-1 text-sm">
+            <template v-if="emailRequired && model.note">
+              <dt>{{ $t("page.instance.email") }}</dt>
+              <dd class="m-0 break-words">
+                {{ model.email }}
+              </dd>
+            </template>
+            <dt>{{ $t("page.instance.labRole") }}</dt>
+            <dd class="m-0">
+              {{ labRoleOptions.find(option => option.value === model.labRole)?.label }}
+            </dd>
+            <dt>{{ $t("page.instance.projectRole") }}</dt>
+            <dd class="m-0">
+              {{ projectRoleOptions.find(option => option.value === model.projectRole)?.label }}
+            </dd>
+          </dl>
           <div class="flex flex-col gap-2 sm:flex-row">
             <n-input :value="inviteUrl" readonly type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" />
-            <n-button class="self-end sm:self-auto" secondary @click="copyInviteUrl">
+            <n-button class="self-end sm:self-auto" type="primary" @click="copyInviteUrl">
               {{ $t("page.instance.copyInviteLink") }}
             </n-button>
           </div>
@@ -69,12 +87,16 @@
         <n-button v-if="tab === 'create' && !inviteUrl" type="primary" :loading="loading" @click="handleCreate">
           {{ $t("page.instance.createInvite") }}
         </n-button>
+        <n-button v-else-if="tab === 'create'" @click="inviteNext">
+          {{ $t("page.instance.inviteNext") }}
+        </n-button>
       </div>
     </template>
   </n-modal>
 </template>
 
 <script setup lang="ts">
+import type { InputInst } from "naive-ui"
 import { useBasicLayout, useLoading, useShowModal } from "@/composables"
 import { useFormRules, useNaiveForm } from "@/composables/useForm"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
@@ -100,6 +122,7 @@ const { loading, startLoading, endLoading } = useLoading()
 const { formRef, validate } = useNaiveForm()
 const { formRules: { user }, defaultRequiredRule } = useFormRules()
 const tab = ref("create")
+const noteInput = ref<InputInst | null>(null)
 const bindEmail = ref(false)
 const inviteId = ref("")
 const inviteUrl = ref("")
@@ -124,11 +147,11 @@ const labRoleOptions = computed(() => [
     : []),
   { label: $t("role.member"), value: LabRole.MEMBER },
 ])
-const projectRoleOptions = [
+const projectRoleOptions = computed(() => [
   { label: $t("role.manager"), value: ProjectRole.MANAGER },
   { label: $t("role.collaborator"), value: ProjectRole.COLLABORATOR },
   { label: $t("role.recorder"), value: ProjectRole.RECORDER },
-]
+])
 
 async function handleCreate() {
   if (loading.value || inviteUrl.value)
@@ -161,17 +184,27 @@ async function copyInviteUrl() {
   window.$message?.success($t("page.instance.linkCopied"))
 }
 
+function resetInvitation() {
+  bindEmail.value = false
+  model.note = ""
+  model.email = ""
+  model.labRole = LabRole.MEMBER
+  model.projectRole = instanceStore.status.default_invitation_project_role ?? ProjectRole.RECORDER
+  inviteId.value = ""
+  inviteUrl.value = ""
+  expiresAt.value = ""
+}
+
+async function inviteNext() {
+  resetInvitation()
+  await nextTick()
+  noteInput.value?.focus()
+}
+
 watch(isShown, (shown) => {
   if (!shown) {
     tab.value = "create"
-    bindEmail.value = false
-    inviteId.value = ""
-    model.note = ""
-    model.email = ""
-    model.labRole = LabRole.MEMBER
-    model.projectRole = instanceStore.status.default_invitation_project_role ?? ProjectRole.RECORDER
-    inviteUrl.value = ""
-    expiresAt.value = ""
+    resetInvitation()
   }
 })
 

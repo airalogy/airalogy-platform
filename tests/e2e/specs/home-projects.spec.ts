@@ -1,9 +1,142 @@
 import { randomUUID } from "node:crypto"
 import { expect, test } from "@playwright/test"
-import { loadFixtures } from "./fixtures"
+import { loadFixtures, mockAIEnabled } from "./fixtures"
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+})
+
+for (const width of [1440, 876, 390]) {
+  test(`Home Aira keeps the workbench and draft at ${width}px`, async ({ page }, testInfo) => {
+    const question = "合成验收：怎样整理本周进展？"
+    const answer = "可以先整理已完成的事项。"
+    const id = randomUUID()
+    await mockAIEnabled(page, () => true)
+    await page.route("**/chats/qa/message", async (route) => {
+      const payload = route.request().postDataJSON()
+      expect(JSON.stringify(payload.message)).toContain(question)
+      expect(payload.protocol_id).toBeUndefined()
+      await route.fulfill({
+        contentType: "text/event-stream",
+        body: [
+          JSON.stringify({ type: "meta", data: { chat_id: id } }),
+          JSON.stringify({ type: "message", data: { index: 0, message: { role: "assistant", content: answer } } }),
+          "[DONE]",
+        ].map(data => `data: ${data}\n\n`).join(""),
+      })
+    })
+    await page.setViewportSize({ width, height: 850 })
+    await page.goto("/home")
+    const url = page.url()
+    const trigger = page.getByTestId("home-aira")
+    const panel = page.getByRole("dialog", { name: "Aira", exact: true })
+    const input = panel.getByTestId("chat-input").locator("[contenteditable=true]")
+    await trigger.click()
+    await expect(input).toBeVisible()
+    const bounds = await panel.boundingBox()
+    expect(Math.round(bounds!.width)).toBe(Math.min(width, 460))
+    await expect.poll(async () => Math.round((await panel.boundingBox())!.x)).toBe(width - Math.min(width, 460))
+    await input.fill(question)
+    await page.keyboard.press("Escape")
+    await expect(panel).toBeHidden()
+    await expect(trigger).toBeFocused()
+    await trigger.click()
+    await expect(input).toHaveText(question)
+    await panel.getByTestId("chat-submit").click()
+    await expect(panel.getByText(answer, { exact: true })).toBeVisible()
+    await expect(page).toHaveURL(url)
+    expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`home-aira-${width}.png`) })
+    await panel.getByRole("button", { name: "关闭" }).click()
+    await trigger.click()
+    await expect(panel.getByText(answer, { exact: true })).toBeVisible()
+    await panel.getByRole("button", { name: "关闭" }).click()
+    await expect(page).toHaveURL(url)
+    if (width === 1440) {
+      await page.getByRole("button", { name: "全部对话", exact: true }).click()
+      await expect(page).toHaveURL(/\/chat(?:\?|$)/)
+      await page.getByText("此设备", { exact: true }).click()
+      await page.locator(".chat-history-sidebar").getByText(question, { exact: true }).click()
+      await expect(page.getByText(answer, { exact: true })).toBeVisible()
+    }
+  })
+}
+
+test("Home Aira account history opens the same conversation on a fresh phone", async ({ page, browser }) => {
+  await mockAIEnabled(page.context(), () => true)
+  await page.goto("/home")
+  await page.getByTestId("home-aira").click()
+  const panel = page.getByTestId("home-aira-panel")
+  // A deterministic personal-memory command persists a real conversation without a model call.
+  const send = panel.getByTestId("chat-input").locator("[contenteditable=true]")
+  await send.fill("记住：合成验收未支持偏好")
+  const completed = page.waitForResponse(r => r.url().endsWith("/chats/qa/message"))
+  await panel.getByTestId("chat-submit").click()
+  expect((await completed).ok()).toBeTruthy()
+  const link = panel.getByTestId("open-aira-history")
+  await expect(link).toHaveAttribute("href", /\/chat\?chat=[a-f0-9-]{36}/)
+  const href = (await link.getAttribute("href"))!
+  const id = new URL(href, page.url()).searchParams.get("chat")
+  const legacy = await page.evaluate(() => {
+    const key = Object.keys(localStorage).find(name => name.startsWith("chatStorage:"))!
+    return localStorage.getItem(key)!
+  })
+  const viewer = await browser.newContext({ storageState: "tests/e2e/.auth/viewer.json" })
+  try {
+    await viewer.addInitScript(cache => localStorage.setItem("chatStorage", cache), legacy)
+    const own = await viewer.newPage()
+    await mockAIEnabled(own, () => true)
+    await own.goto("/chat")
+    const list = own.getByTestId("account-chat-history")
+    await expect(list).toBeVisible()
+    await expect(list.locator(".n-spin")).toHaveCount(0)
+    await expect(list.locator(`[data-chat-id="${id}"]`)).toHaveCount(0)
+  }
+  finally { await viewer.close() }
+  const popupPromise = page.waitForEvent("popup")
+  await link.click()
+  const popup = await popupPromise
+  await expect(popup.getByTestId("account-chat-history")).toBeVisible()
+  await expect(popup.getByText("[Personal memory management request]", { exact: true }).last()).toBeVisible()
+  await popup.close()
+
+  const phone = await browser.newContext({ storageState: "tests/e2e/.auth/owner.json", viewport: { width: 390, height: 844 } })
+  try {
+    const fresh = await phone.newPage()
+    await mockAIEnabled(fresh, () => true)
+    await fresh.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+    // An older device retains an unscoped cache. Import only sessions whose owner
+    // is confirmed by the API; a new device can open the same history without it.
+    await fresh.goto("/chat")
+    await fresh.getByRole("button", { name: "聊天记录", exact: true }).click()
+    const history = fresh.getByTestId("account-chat-history")
+    await history.locator(`[data-chat-id="${id}"]`).click()
+    await expect(fresh).toHaveURL(new RegExp(String(id)))
+    await expect(fresh.getByText("[Memory management handled by Platform; no research data changed.]", { exact: true })).toBeVisible()
+    const input = fresh.getByTestId("chat-input").locator("[contenteditable=true]")
+    await input.fill("记住：合成验收其他未支持偏好")
+    const request = fresh.waitForRequest(r => r.url().endsWith("/chats/qa/message"))
+    const persisted = fresh.waitForResponse(r => r.url().endsWith("/chats/qa/message"))
+    await fresh.getByTestId("chat-submit").click()
+    expect((await request).postDataJSON().chat_id).toBe(id)
+    expect((await persisted).ok()).toBeTruthy()
+    await fresh.evaluate(cache => localStorage.setItem("chatStorage", cache), legacy)
+    await fresh.reload()
+    await expect.poll(async () => fresh.evaluate(() => {
+      const key = Object.keys(localStorage).find(name => name.startsWith("chatStorage:"))
+      return !!key && JSON.parse(localStorage.getItem(key)!).data.legacyOwnershipChecked
+    })).toBe(true)
+    await expect(fresh.getByText("[Memory management handled by Platform; no research data changed.]", { exact: true })).toHaveCount(2)
+  }
+  finally { await phone.close() }
+})
+
+test("Home Aira respects the organization AI switch", async ({ page }) => {
+  await mockAIEnabled(page, () => false)
+  await page.goto("/home")
+  await expect(page.getByTestId("task-workbench")).toBeVisible()
+  await expect(page.getByTestId("home-aira")).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "全部对话" })).toHaveCount(0)
 })
 
 test("project document work resumes directly and pins share the existing project list", async ({ page }, testInfo) => {

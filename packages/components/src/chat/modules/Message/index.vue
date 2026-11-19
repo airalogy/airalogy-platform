@@ -27,6 +27,7 @@
     </div>
     <div class="max-w-[calc(100%-3rem)] flex flex-1 flex-col" :class="[props.message.inversion ? 'flex-row-reverse' : '', props.message.editing ? 'mx-auto' : '']">
       <p
+        v-if="props.message.dateTime"
         class="absolute text-xs text-[#b4bbc4] opacity-0 transition-opacity -top-5 group-hover:opacity-100"
         :class="[props.message.inversion ? 'right-12' : 'left-12']"
       >

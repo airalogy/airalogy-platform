@@ -47,6 +47,35 @@ export async function postToolResultChat(payload: {
   return null
 }
 
+export async function verifyOwnedChatIds(ids: string[]) {
+  const { data, error } = await request<{ ids: string[] }>({
+    url: "/chats/history/owned",
+    method: "POST",
+    data: ids,
+    metadata: { showError: false },
+  })
+  if (error || !data)
+    throw error || new Error("Chat ownership unavailable")
+  return data.ids
+}
+
+export interface AccountChatSummary {
+  id: string
+  title: string
+  updated_at: string
+}
+
+export async function getAccountChatHistory(page: number) {
+  const { data, error } = await request<{ items: AccountChatSummary[], has_more: boolean }>({
+    url: "/chats/history/global",
+    params: { page },
+    metadata: { showError: false },
+  })
+  if (error || !data)
+    throw error || new Error("Chat history unavailable")
+  return data
+}
+
 export async function getChatConversation(chatId: string) {
   if (!chatId) {
     throw new Error("chatId is required")

@@ -10,7 +10,7 @@ Frequent internal updates may use the separate [internal application deployment 
 
 ## Daily workspace navigation
 
-After signing in, Home shows recent Projects, resumable work, pending actions and personal documents. It no longer redirects to a Lab project list. The configured Lab name and logo identify the workspace; Project and Protocol pages omit the redundant Lab breadcrumb. Existing URLs and asset identifiers remain valid.
+After signing in, Home shows recent Projects, resumable work, pending actions and personal documents. It no longer redirects to a Lab project list. The header shows the Airalogy product brand alongside the organization identity. The organization creator can update its display name and logo in Organization management → Settings. Its ID stays the same. The Airalogy company instance displays a single wordmark by default and also shows any uploaded organization logo. Project and Protocol pages omit the redundant Lab breadcrumb. Existing URLs and asset identifiers remain valid.
 
 - **Projects** is the daily project entry. Creating a Project or choosing a Protocol inherits the configured Lab; users select a Project when several are available.
 - Home shortcuts and **More** open shared Knowledge (including the Paper Library), resources/inventory/equipment and the Lab Log.

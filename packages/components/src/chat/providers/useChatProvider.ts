@@ -52,7 +52,7 @@ export interface ChatProviderProps<InjectContext = any> {
   stopStream: (payload: { chatId: string }) => Promise<void>
   baseUrl: string
   token: string
-  mode: "query" | "param"
+  mode: "query" | "param" | "embedded"
   protocolId: string
   userInfo: {
     avatar?: string | null
