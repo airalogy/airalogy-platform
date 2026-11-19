@@ -7,6 +7,7 @@ export interface ProjectPerson {
   organization: string
   user_id: string | null
   revision: number
+  display_name?: string
   assigned_count?: number
 }
 export function listProjectPeople(projectId: string) {
@@ -20,7 +21,7 @@ export function associateProjectPerson(person: ProjectPerson, userId: string | n
 }
 
 export interface ProjectTeam {
-  additional_members: { id: string, name: string, username: string }[]
+  additional_members: { id: string, name: string, username: string, display_name?: string }[]
   participants: Pick<ProjectPerson, "id" | "name" | "organization">[]
 }
 

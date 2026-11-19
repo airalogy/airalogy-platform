@@ -7,7 +7,7 @@
   >
     <n-button
       type="primary" color="#175fc6" text-color="#fff"
-      class="ml-2 h-[36px] shrink-0 rounded-2 px-3"
+      class="ml-2 h-[36px] shrink-0 rounded-2 px-3 max-[374px]:ml-0 max-[374px]:w-11 max-[374px]:px-0"
       :aria-label="$t('common.new')"
       :title="$t('common.new')"
       :aria-expanded="isShow && !isModalOpen"

@@ -20,12 +20,13 @@
       <span class="truncate text-sm">{{ organizationName }}</span>
     </router-link>
     <template v-if="authStore.isLogin">
-      <global-menu />
+      <global-menu :label="isMobile ? currentSectionLabel : undefined" />
       <global-add-new />
       <n-button
         v-if="!isMobile && instanceStore.aiEnabled"
         :theme-overrides="buttonThemeOverrides"
         class="ml-2 h-[36px] rounded-2 px-3"
+        :aria-current="inChat ? 'page' : undefined"
         @click="routerPushByKey('global-chat')"
       >
         {{ $t("common.allChats") }}
@@ -36,7 +37,7 @@
         </n-button>
       </n-dropdown>
     </template>
-    <n-dropdown v-if="isMobile" trigger="click" :options="localeDropdownOptions" @select="handleLocaleSelect">
+    <n-dropdown v-if="isMobile && !narrowHeader" trigger="click" :options="localeDropdownOptions" @select="handleLocaleSelect">
       <n-button
         quaternary
         :theme-overrides="buttonThemeOverrides"
@@ -51,8 +52,8 @@
         </template>
       </n-button>
     </n-dropdown>
-    <n-dropdown v-if="isMobile" trigger="click" :options="menuOptions" @select="handleSelect">
-      <n-button quaternary :theme-overrides="buttonThemeOverrides" :aria-label="$t('common.more')" :title="$t('common.more')">
+    <n-dropdown v-if="isMobile" trigger="click" :value="mobileSelection" :options="menuOptions" @select="handleSelect">
+      <n-button quaternary class="mobile-menu-trigger ml-auto shrink-0" :theme-overrides="buttonThemeOverrides" :aria-label="$t('common.more')" :title="$t('common.more')">
         <template #icon>
           <n-icon>
             <icon-tabler-menu-2 />
@@ -65,6 +66,7 @@
         v-if="showOrganizationManagement"
         :theme-overrides="buttonThemeOverrides"
         class="ml-auto mr-2 h-9 rounded-2 px-3"
+        :aria-current="inManagement ? 'page' : undefined"
         data-testid="organization-management-entry"
         @click="handleSelect('organization-management')"
       >
@@ -117,7 +119,7 @@ import GlobalMenu from "@/layouts/modules/global-menu/index.vue"
 import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { singleLabManagementEntries, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
+import { singleLabManagementEntries, singleLabManagementRoutes, singleLabSharedEntries } from "@/utils/singleLabWorkspace"
 import { useMediaQuery } from "@vueuse/core"
 import UserAvatar from "./components/user-avatar.vue"
 import { buttonThemeOverrides } from "./constants"
@@ -133,6 +135,7 @@ const props = withDefaults(defineProps<IProps>(), {
 const { t: $t } = useOrganizationTranslation()
 
 const { isMobile } = useBasicLayout()
+const narrowHeader = useMediaQuery("(max-width: 479px)")
 const compactHeader = useMediaQuery("(max-width: 1535px)")
 interface IProps {
   showLogo?: boolean
@@ -161,6 +164,27 @@ const showOrganizationManagement = computed(() => authStore.isLogin && instanceS
 const appStore = useAppStore()
 const { routerPushByKey } = useRouterPush()
 
+const route = useRoute()
+const inChat = computed(() => route.name === "global-chat")
+const inManagement = computed(() => instanceStore.isSingleLab && singleLabManagementRoutes.has(String(route.name)))
+const currentSectionLabel = computed(() => {
+  if (inChat.value)
+    return $t("common.allChats")
+  if (inManagement.value) {
+    if (!canManageLab.value)
+      return $t("page.labs.members")
+    return $t(instanceStore.usesOrganizationVocabulary ? "common.organizationNav" : "common.lab")
+  }
+  return undefined
+})
+const mobileSelection = computed(() => {
+  if (inChat.value)
+    return "chat"
+  if (inManagement.value)
+    return canManageLab.value ? "organization-management" : String(route.name)
+  return undefined
+})
+
 async function handleToHelp() {
   await routerPushByKey("help-center")
 }
@@ -181,9 +205,19 @@ const discoveryOptions = computed<DropdownOption[]>(() => [
     : []),
   { label: $t("page.help.title"), key: "help" },
 ])
+const currentLocaleLabel = computed(() => {
+  return appStore.localeOptions.find(option => option.key === appStore.locale)?.label || appStore.locale
+})
+
 const menuOptions = computed<DropdownOption[]>(() => {
+  const language = {
+    label: currentLocaleLabel.value,
+    key: "language",
+    children: appStore.localeOptions.map(option => ({ label: option.label, key: `language:${option.key}` })),
+  }
   if (!authStore.isLogin) {
     return [
+      ...(narrowHeader.value ? [language] : []),
       { label: $t("common.login"), key: "login" },
       ...(instanceStore.signupMode === "open"
         ? [{ label: $t("common.signup"), key: "sign-up" }]
@@ -195,6 +229,7 @@ const menuOptions = computed<DropdownOption[]>(() => {
     ...(showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
     ...(instanceStore.aiEnabled ? [{ label: $t("common.allChats"), key: "chat" }] : []),
     ...discoveryOptions.value,
+    ...(narrowHeader.value ? [language] : []),
     { label: $t("common.profile"), key: "profile" },
     ...(authStore.userInfo.roles?.some(role => role === "R_ADMIN" || role === "R_SUPER")
       ? [{ label: $t("common.adminDashboard"), key: "admin-dashboard" }]
@@ -205,6 +240,11 @@ const menuOptions = computed<DropdownOption[]>(() => {
 })
 
 async function handleSelect(key: string | number) {
+  const locale = appStore.localeOptions.find(option => key === `language:${option.key}`)
+  if (locale) {
+    handleLocaleSelect(locale.key)
+    return
+  }
   const workspaceEntries = [...singleLabSharedEntries, ...singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value)]
   const entry = workspaceEntries.find(item => item.name === key)
   if (instanceStore.isSingleLab && instanceStore.lab && entry) {
@@ -250,10 +290,6 @@ const localeDropdownOptions = computed<DropdownOption[]>(() => {
   }))
 })
 
-const currentLocaleLabel = computed(() => {
-  return appStore.localeOptions.find(option => option.key === appStore.locale)?.label || appStore.locale
-})
-
 function handleLocaleSelect(key: string | number) {
   appStore.changeLocale(key as I18n.LangType)
 }
@@ -265,12 +301,16 @@ function handleLocaleSelect(key: string | number) {
 .platform-brand :deep(svg) { display: block; width: 106px; height: 29px; }
 .organization-identity { max-width: 10rem; border-left: 1px solid #c7d5e4; padding-left: 0.75rem; margin-right: 0.5rem; color: inherit; }
 .platform-header :deep(:focus-visible) { outline: 2px solid #165bb7; outline-offset: 2px; }
+.platform-header :deep(.n-button[aria-current="page"]) { color: #165bb7; box-shadow: inset 0 -2px #165bb7; border-radius: 0; font-weight: 600; }
 @media (max-width: 639px) {
+  .platform-header :deep(.workspace-nav) { flex: 1 1 auto; }
+  .platform-header :deep(.workspace-nav__trigger) { width: auto; padding-inline: 4px; }
+  .mobile-menu-trigger { min-width: 44px; }
   .platform-header { gap: 2px; }
   .platform-brand { margin-right: 2px; }
   .platform-brand :deep(svg) { width: 88px; height: 24px; }
   .platform-brand:has(+ .organization-identity) :deep(svg) { width: 26px; height: 26px; }
-  .organization-identity { max-width: 6rem; padding-left: 0.375rem; margin-right: 0.125rem; }
+  .organization-identity { max-width: clamp(3rem, calc(50vw - 6.5rem), 6rem); padding-left: 0.375rem; margin-right: 0.125rem; }
   .platform-header :deep(.n-button) { min-height: 44px; }
 }
 </style>

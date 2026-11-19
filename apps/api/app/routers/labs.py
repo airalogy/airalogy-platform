@@ -323,7 +323,9 @@ async def get_lab_by_id(
 class LabAddUserParams(BaseModel):
     user_id: UUID
     role: LabRole = LabRole.MEMBER
-    alias: str | None = None
+    alias: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=255)] | None
+    ) = None
 
 
 class LabCreateParams(BaseModel):
@@ -674,7 +676,10 @@ async def change_user_role_or_alias_in_lab(
     lab = await Lab.find(db_session, id=lab_id)
     require_configured_single_lab(lab)
     current_membership = None
-    if config.is_single_lab:
+    name_only = (
+        "alias" in params.model_fields_set and "role" not in params.model_fields_set
+    )
+    if config.is_single_lab or (name_only and lab.create_user_id != current_user.id):
         current_membership = await require_lab_manager(
             db_session,
             lab.id,
@@ -682,34 +687,44 @@ async def change_user_role_or_alias_in_lab(
         )
     elif lab.create_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
-    lab_user = await LabUser.find_by(
-        db_session,
-        [LabUser.lab_id == lab_id, LabUser.user_id == user_id],
+    lab_user = await db_session.scalar(
+        select(LabUser)
+        .where(LabUser.lab_id == lab_id, LabUser.user_id == user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if lab_user is None:
         raise HTTPException(status_code=404, detail="User not found in lab")
-    if user_id == lab.create_user_id and params.role != LabRole.OWNER:
-        raise HTTPException(status_code=403, detail="The Lab owner role cannot be changed")
-    if params.role == LabRole.OWNER and user_id != lab.create_user_id:
-        raise HTTPException(status_code=403, detail="Additional Lab owners are not allowed")
+    role = params.role if "role" in params.model_fields_set else lab_user.role
+    if user_id == lab.create_user_id and role != LabRole.OWNER:
+        raise HTTPException(
+            status_code=403, detail="The Lab owner role cannot be changed"
+        )
+    if role == LabRole.OWNER and user_id != lab.create_user_id:
+        raise HTTPException(
+            status_code=403, detail="Additional Lab owners are not allowed"
+        )
     if current_membership is not None and current_membership.role == LabRole.MANAGER:
-        if lab_user.role != LabRole.MEMBER or params.role != LabRole.MEMBER:
-            raise HTTPException(status_code=403, detail="Managers can only update members")
+        if lab_user.role != LabRole.MEMBER or role != LabRole.MEMBER:
+            raise HTTPException(
+                status_code=403, detail="Managers can only update members"
+            )
     if (
         lab_user.role == LabRole.OWNER
         and current_membership is not None
         and current_membership.role != LabRole.OWNER
     ):
         raise HTTPException(status_code=403, detail="Permission denied")
-    if lab_user.role == LabRole.MANAGER and params.role == LabRole.MEMBER:
+    if lab_user.role == LabRole.MANAGER and role == LabRole.MEMBER:
         await revoke_lab_account_tokens(
             db_session,
             lab_id=lab.id,
             user_id=user_id,
             include_targeted_tokens=False,
         )
-    lab_user.role = params.role
-    lab_user.alias = params.alias
+    lab_user.role = role
+    if "alias" in params.model_fields_set:
+        lab_user.alias = params.alias or None
     await db_session.commit()
     return {"message": "success"}
 

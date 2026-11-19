@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
 import { useI18n } from "vue-i18n"
 import EvidenceLinks from "./evidence-links.vue"
 
 const props = defineProps<{
   item: ProjectWork
+  people?: ProjectPerson[]
   members: { id: string, name: string }[]
   items: ProjectWork[]
   projectId: string
@@ -14,13 +16,17 @@ function person(id: string | null) {
   return props.members.find(member => member.id === id)?.name
     || t(id ? "page.projectWork.formerMember" : "page.projectWork.unassigned")
 }
+function personName(id: string | null) {
+  return props.people?.find(p => p.id === id)?.display_name
+    || props.item.people_snapshot?.find(p => p.id === id)?.name
+}
 const fields = computed(() => [
   ["titleLabel", props.item.title],
   ["kind", t(`page.projectWork.kinds.${props.item.kind}`)],
   ["state", t(`page.projectWork.states.${props.item.state}`)],
   ["priority", t(`page.projectWork.priorities.${props.item.priority}`)],
-  ["assignee", props.item.people_snapshot?.find(p => p.id === props.item.assignee_person_id)?.name || person(props.item.assignee_user_id)],
-  ["collaborators", [...props.item.collaborator_ids.map(person), ...(props.item.collaborator_person_ids || []).map(id => props.item.people_snapshot?.find(p => p.id === id)?.name || "")].join(" · ")],
+  ["assignee", personName(props.item.assignee_person_id) || person(props.item.assignee_user_id)],
+  ["collaborators", [...props.item.collaborator_ids.map(person), ...(props.item.collaborator_person_ids || []).map(id => personName(id) || "")].join(" · ")],
   ["goal", props.item.goal],
   ["acceptance", props.item.acceptance],
   ["start", props.item.planned_start],

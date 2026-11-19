@@ -7,11 +7,12 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import case, func, select
 
 from app.database import DBSession
-from app.models.lab import Lab, LabUser
+from app.models.lab import Lab
 from app.models.project_work import ProjectWork
 from app.models.research import ResearchEvent, ResearchTask
 from app.models.user import User
 from app.routers.depends import CurrentUser
+from app.services.project_people import organization_accounts
 from app.services.knowledge import canonical_digest
 from app.services.project_work import (
     evidence_view,
@@ -339,21 +340,19 @@ async def append_event(db, user, task, kind, payload, request_id):
 @router.get("/members")
 async def members(current_user: CurrentUser, db_session: DBSession, project_id: UUID):
     project = await project_context(db_session, current_user, project_id)
-    candidates = (
-        await db_session.scalars(
-            select(User)
-            .join(LabUser, LabUser.user_id == User.id)
-            .where(LabUser.lab_id == project.lab_id)
-            .order_by(User.name, User.id)
-        )
-    ).all()
+    candidates = await db_session.execute(organization_accounts(project.lab_id))
     result = []
-    for user in candidates:
+    for user, display_name in candidates:
         if await has_research_capability(
             db_session, user=user, project=project, capability="log.write"
         ):
             result.append(
-                {"id": str(user.id), "name": user.name, "username": user.username}
+                {
+                    "id": str(user.id),
+                    "name": user.name,
+                    "username": user.username,
+                    "display_name": display_name,
+                }
             )
     return {"members": result}
 

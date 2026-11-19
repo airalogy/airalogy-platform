@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork, WorkContent, WorkEvent } from "@/service/api/project-work"
 import PeoplePicker from "@/components/project/people-picker.vue"
 import { templateError } from "@/service/api/document-templates"
@@ -26,6 +27,7 @@ const props = defineProps<{
   projectId: string
   projectName: string
   labId: string
+  people?: ProjectPerson[]
   items: ProjectWork[]
 }>()
 const emit = defineEmits<{ close: [], saved: [id: string] }>()
@@ -469,7 +471,7 @@ async function createPlan() {
             }}</n-button></n-alert
           >
           <p v-if="notice" role="status" class="text-green-700">{{ notice }}</p>
-          <work-snapshot v-if="!loading && !canWrite && currentItem" v-show="panel === 'details'" :item="currentItem" :members="members" :items="items" :project-id="projectId" />
+          <work-snapshot v-if="!loading && !canWrite && currentItem" v-show="panel === 'details'" :item="currentItem" :members="members" :people="people" :items="items" :project-id="projectId" />
           <form v-if="canWrite" v-show="panel === 'details'" class="space-y-4" @submit.prevent="save">
             <fieldset :disabled="!canWrite || busy" class="m-0 min-w-0 border-0 p-0 space-y-4">
               <label class="block"

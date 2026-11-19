@@ -114,6 +114,7 @@ declare namespace I18n {
       adminDashboard: string
       hub: string
       chat: string
+      organizationNav: string
       allChats: string
       docs: string
       docsFull: string
@@ -321,10 +322,17 @@ declare namespace I18n {
       setUserAlias: string
       labAliasLabel: string
       labAliasPlaceholder: string
-      labAliasRequired: string
+      organizationNameHint: string
+      memberNameSaved: string
+      memberNameSaveFailed: string
+      personalNoteSaved: string
+      personalNoteSaveFailed: string
       userAliasLabel: string
       userAliasPlaceholder: string
       userAliasRequired: string
+      memberRoleTitle: string
+      memberRoleSaved: string
+      memberRoleSaveFailed: string
       changeRole: string
       footer: {
         copyright: string
@@ -1086,6 +1094,8 @@ declare namespace I18n {
             materials: string
             knowledge: string
             work: string
+            meetings: string
+            records: string
           }
           resources: string
           pinnedHint: string

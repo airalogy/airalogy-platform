@@ -87,7 +87,7 @@ export async function putLabMember(
   labId: string | number,
   payload: {
     userId: string | number
-    role: Api.Lab.LabRole
+    role?: Api.Lab.LabRole
     alias?: string | null
   },
 ) {

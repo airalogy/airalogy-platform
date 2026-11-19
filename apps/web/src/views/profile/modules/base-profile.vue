@@ -77,17 +77,19 @@ function openUserAliasDialog() {
         requiredMessage: $t("common.userAliasRequired"),
         required: false,
       }),
-    positiveText: $t("common.confirm"),
+    positiveText: $t("common.save"),
     negativeText: $t("common.cancel"),
     showIcon: false,
     onPositiveClick: async () => {
       dialogInstance.loading = true
       try {
         const alias = await aliasRef.value?.getAlias()
-        const trimmedAlias = (alias as string || "").trim()
-        await setUserAlias({ target_user_id: userInfo.value!.id, alias: trimmedAlias })
+        const trimmedAlias = (alias || "").trim()
+        const { error } = await setUserAlias({ target_user_id: userInfo.value!.id, alias: trimmedAlias })
+        if (error)
+          throw new Error($t("common.personalNoteSaveFailed"))
         userInfo.value!.user_alias = trimmedAlias
-        message.success($t("common.editSuccess"))
+        message.success($t("common.personalNoteSaved"))
       }
       catch (e) {
         message.error((e as Error).message)

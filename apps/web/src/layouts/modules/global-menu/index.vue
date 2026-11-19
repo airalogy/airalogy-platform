@@ -13,7 +13,7 @@
       <template #trigger>
         <n-button
           :theme-overrides="props.buttonThemeOverrides ?? buttonThemeOverrides"
-          :class="{ 'workspace-nav__trigger--current': !props.compact && activeItem }"
+          :class="{ 'workspace-nav__trigger--current': !props.compact && (activeItem || props.label) }"
           icon-placement="right"
           class="workspace-nav__trigger h-9 max-w-full w-full rounded-2 px-3"
           :aria-expanded="expanded" :aria-label="$t('common.workspaceNavigation')" data-testid="workspace-menu-trigger"

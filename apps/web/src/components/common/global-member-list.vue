@@ -57,7 +57,7 @@
             {{ $t("page.instance.createResetLink") }}
           </n-button>
           <n-button
-            v-if="props.type !== 'group'"
+            v-if="canChangeMemberRole"
             class="mr-3"
             size="small"
             @click="showRoleChangeDialog(item)"
@@ -73,11 +73,12 @@
 
 <script setup lang="tsx">
 import type { RoleInfo } from "@/composables"
+import type { ProjectRole } from "@/enum"
 import type { DropdownOption } from "naive-ui"
 import { getRoleLabel, projectRoleHierarchyPrivate, useBasicLayout, useClosableMessage, useRoleDescription } from "@/composables"
 import { useLabPermissions } from "@/composables/useLabPermissions"
 import { useProjectPermissions } from "@/composables/useProjectPermissions"
-import { LabRole, ProjectRole, ProjectType } from "@/enum"
+import { LabRole, ProjectType } from "@/enum"
 import { deleteGroupsMember } from "@/service/api/groups"
 import { createPasswordResetLink } from "@/service/api/instance"
 import { deleteLabMember, putLabMember } from "@/service/api/labs"
@@ -148,36 +149,20 @@ const roleRecord = computed(() => {
   )
 })
 
-// const projectRoleOptions: { label: string, value: ProjectRole }[] = Object.entries(ProjectRole)
-//   .filter(([, value]) => typeof value === "number")
-//   .map(([key, value]) => ({
-//     label: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase(),
-//     value: value as ProjectRole,
-//   }))
 const projectType = computed(() => projectInfo.value?.type)
 const { projectRoleOptions } = useRoleDescription(userProjectRole, toRef(props.type), projectType, true)
-
-const options = computed((): (RoleInfo | { label: string, value: any })[] => {
-  if (props.type === "project") {
-    return projectRoleOptions.value
-  }
-  if (props.type === "group") {
-    return [
-      { label: "Manager", value: LabRole.MANAGER },
-      { label: "Member", value: LabRole.MEMBER },
-    ]
-  }
-  // lab
-  return [
-    { label: "Manager", value: LabRole.MANAGER },
-    { label: "Member", value: LabRole.MEMBER },
-  ]
-})
 
 const dialog = useDialog()
 const message = useClosableMessage()
 const { reloadPage } = useAppStore()
 const { t } = useI18n()
+const canChangeMemberRole = computed(() => props.type === "project" || (props.type === "lab" && isLabOwner.value))
+const options = computed(() => props.type === "project"
+  ? projectRoleOptions.value
+  : [
+      { label: t("role.manager"), value: LabRole.MANAGER },
+      { label: t("role.member"), value: LabRole.MEMBER },
+    ])
 
 type MobileMemberAction = "alias" | "reset-password" | "change-role" | "remove"
 
@@ -189,7 +174,7 @@ function mobileActionOptions(
     ...(props.type === "lab" && instanceStore.isSingleLab
       ? [{ label: t("page.instance.createResetLink"), key: "reset-password" }]
       : []),
-    ...(props.type !== "group" ? [{ label: t("common.changeRole"), key: "change-role" }] : []),
+    ...(canChangeMemberRole.value ? [{ label: t("common.changeRole"), key: "change-role" }] : []),
     ...(!checkIsSelf(item) ? [{ label: t("common.remove"), key: "remove" }] : []),
   ]
 }
@@ -253,50 +238,6 @@ async function showPasswordResetLink(item: Api.Lab.MemberListItem) {
   finally {
     resettingUserId.value = ""
   }
-}
-
-interface AliasDialogConfig {
-  title: string
-  alias?: string | null
-  label: string
-  placeholder: string
-  requiredMessage: string
-  required?: boolean
-  onSubmit: (alias: string) => Promise<void>
-}
-
-function openAliasDialog(config: AliasDialogConfig) {
-  const aliasRef = ref<InstanceType<typeof UpdateAliasModal>>()
-  const dialogInstance = dialog.info({
-    title: config.title,
-    content: () =>
-      h(UpdateAliasModal, {
-        ref: aliasRef,
-        alias: config.alias ?? "",
-        label: config.label,
-        placeholder: config.placeholder,
-        requiredMessage: config.requiredMessage,
-        required: config.required ?? true,
-      }),
-    positiveText: "Confirm",
-    negativeText: "Cancel",
-    showIcon: false,
-    onPositiveClick: async () => {
-      dialogInstance.loading = true
-      try {
-        const alias = await aliasRef.value?.getAlias()
-        await config.onSubmit((alias as string) || "")
-        message.success("Alias updated successfully")
-      }
-      catch (e) {
-        message.error((e as Error).message)
-        return false
-      }
-      finally {
-        dialogInstance.loading = false
-      }
-    },
-  })
 }
 
 function handleRemoveUser(item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem) {
@@ -379,7 +320,7 @@ function handleRemoveUser(item: Api.Lab.MemberListItem | Api.Project.MemberListI
           }
         }
 
-        message.error("Failed to remove member")
+        message.error(t("common.memberRemoveFailed"))
       }
       catch (e) {
         message.error((e as Error).message)
@@ -389,20 +330,40 @@ function handleRemoveUser(item: Api.Lab.MemberListItem | Api.Project.MemberListI
 }
 
 function showUpdateLabAliasDialog(item: Api.Lab.MemberListItem) {
-  openAliasDialog({
+  const editor = ref<InstanceType<typeof UpdateAliasModal>>()
+  const modal = dialog.info({
     title: t("common.setAlias"),
-    alias: item.lab_alias,
-    label: t("common.labAliasLabel"),
-    placeholder: t("common.labAliasPlaceholder"),
-    requiredMessage: t("common.labAliasRequired"),
-    onSubmit: async (alias) => {
-      const labId = Array.isArray(props.id) ? props.id.join("") : props.id
-      if (!labId) {
-        message.error(t("common.memberRemoveFailed"))
-        return
+    content: () => h(UpdateAliasModal, {
+      ref: editor,
+      alias: item.lab_alias,
+      label: t("common.labAliasLabel"),
+      placeholder: t("common.labAliasPlaceholder"),
+      hint: t("common.organizationNameHint"),
+      maxlength: 255,
+      required: false,
+    }),
+    positiveText: t("common.save"),
+    negativeText: t("common.cancel"),
+    showIcon: false,
+    onPositiveClick: async () => {
+      if (!editor.value || modal.loading)
+        return false
+      modal.loading = true
+      try {
+        const alias = await editor.value.getAlias()
+        const { data, error } = await putLabMember(String(props.id), { userId: item.id, alias: alias.trim() || null })
+        if (error || !data)
+          throw new Error(t("common.memberNameSaveFailed"))
+        emit("update:role", { id: item.id, role: item.lab_role })
+        message.success(t("common.memberNameSaved"))
       }
-      await putLabMember(labId, { userId: item.id, role: item.lab_role, alias })
-      emit("update:role", { id: item.id, role: item.lab_role })
+      catch {
+        message.error(t("common.memberNameSaveFailed"))
+        return false
+      }
+      finally {
+        modal.loading = false
+      }
     },
   })
 }
@@ -413,12 +374,13 @@ function showRoleChangeDialog(item: Api.Lab.MemberListItem | Api.Project.MemberL
     ? (item as Api.Project.MemberListItem).project_role
     : (item as Api.Lab.MemberListItem).lab_role
 
-  const newRole = ref<ProjectRole | LabRole >(currentRole)
+  const newRole = ref<ProjectRole | LabRole>(currentRole)
+  const name = (item as Api.Lab.MemberListItem).lab_alias?.trim() || item.name || item.username
   const handleUpdateRole = (value: ProjectRole | LabRole) => {
     newRole.value = value
   }
-  dialog.info({
-    title: `Change the ${props.type} role of ${item.name}?`,
+  const modal = dialog.info({
+    title: t("common.memberRoleTitle", { name }),
     content: () =>
       (
         <RoleChangeDialog
@@ -428,65 +390,35 @@ function showRoleChangeDialog(item: Api.Lab.MemberListItem | Api.Project.MemberL
           onUpdate:role={handleUpdateRole}
         />
       ),
-    positiveText: "Confirm",
-    negativeText: "Cancel",
+    positiveText: t("common.save"),
+    negativeText: t("common.cancel"),
     showIcon: false,
-    class: "!w-fit",
-    contentClass: "w-40vw",
-    onPositiveClick: () => {
-      if (newRole.value !== currentRole) {
-        handleChangeRole(item, newRole.value)
+    style: { width: "min(36rem, calc(100vw - 2rem))" },
+    onPositiveClick: async () => {
+      if (newRole.value === currentRole)
+        return
+      if (modal.loading)
+        return false
+      modal.loading = true
+      try {
+        const parentId = Array.isArray(props.id) ? props.id.join("") : props.id
+        if (!parentId || (isProject && projectType.value === ProjectType.PRIVATE && !projectRoleHierarchyPrivate.includes(newRole.value as ProjectRole)))
+          throw new Error(t("common.memberRoleSaveFailed"))
+        const result = isProject
+          ? await putProjectMember(parentId, { role: newRole.value as ProjectRole, userId: item.id })
+          : await putLabMember(parentId, { role: newRole.value as LabRole, userId: item.id })
+        if (result.error || !result.data)
+          throw new Error(t("common.memberRoleSaveFailed"))
+        message.success(t("common.memberRoleSaved", { name, role: getRoleLabel(newRole.value, props.type) }))
+        emit("update:role", { id: item.id, role: newRole.value })
       }
+      catch {
+        message.error(t("common.memberRoleSaveFailed"))
+        return false
+      }
+      finally { modal.loading = false }
     },
   })
-}
-
-async function handleChangeRole(
-  item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
-  val: LabRole | ProjectRole,
-) {
-  const { type } = props
-
-  if (type === "lab") {
-    const { id: userId, username } = item as Api.Lab.MemberListItem
-
-    const labId = Array.isArray(props.id) ? props.id.join("") : props.id
-    if (!labId) {
-      message.error(`Failed changing user ${username} to ${val}. `)
-      return
-    }
-
-    const labAlias = (item as Api.Lab.MemberListItem).lab_alias
-    const { data } = await putLabMember(labId, { role: val, userId, alias: labAlias })
-    if (data) {
-      message.success(`Successfully changed user "${username}" to "${LabRole[val]}". `)
-      emit("update:role", { id: userId, role: val })
-    }
-    else {
-      message.error(`Failed changing user "${username}" role to "${LabRole[val]}". `)
-    }
-  }
-  else if (type === "project") {
-    const { id: userId, username } = item as Api.Project.MemberListItem
-    const projectId = Array.isArray(props.id) ? props.id.join("") : props.id
-    if (!projectId) {
-      message.error(`Failed changing user ${userId} to ${val}. `)
-      return
-    }
-
-    if (projectType.value === ProjectType.PRIVATE && !projectRoleHierarchyPrivate.includes(val as ProjectRole)) {
-      message.error("Invalid role for private project")
-      return
-    }
-    const { data } = await putProjectMember(projectId, { role: val, userId })
-    if (data) {
-      message.success(`Successfully changed user "${username}" to "${ProjectRole[val]}". `)
-      emit("update:role", { id: userId, role: val })
-    }
-    else {
-      message.error(`Failed changing user "${userId}" role to "${ProjectRole[val]}". `)
-    }
-  }
 }
 
 function checkIsSelf(item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem) {

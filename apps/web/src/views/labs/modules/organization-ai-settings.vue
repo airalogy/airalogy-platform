@@ -16,7 +16,7 @@
         {{ t("page.organization.ai.blocked") }}
       </n-alert>
       <n-form-item :label="t('page.organization.ai.enable')">
-        <n-switch v-model:value="enabled" :disabled="settings.instance_blocked || Boolean(busy)" :aria-label="t('page.organization.ai.enable')" />
+        <n-switch v-model:value="enabled" :disabled="switchDisabled" :aria-disabled="switchDisabled" :aria-label="t('page.organization.ai.enable')" />
       </n-form-item>
       <p v-if="settings.inherited" class="mb-3 text-sm text-gray-500">
         {{ t("page.organization.ai.inherited") }}
@@ -80,6 +80,7 @@ const conflict = ref(false)
 const path = computed(() => `/organizations/${props.labId}/ai-settings`)
 const savedKey = computed(() => settings.value?.has_key && settings.value.model.startsWith("qwen") === model.value.startsWith("qwen"))
 const hasKey = computed(() => Boolean(key.value.trim() || (savedKey.value && !clearKey.value)))
+const switchDisabled = computed(() => Boolean(settings.value?.instance_blocked || busy.value))
 const canTest = computed(() => hasKey.value && !settings.value?.instance_blocked && !clearKey.value)
 const canSave = computed(() => !conflict.value && (!enabled.value || hasKey.value) && (!settings.value?.has_key || hasKey.value || clearKey.value)
   && (model.value !== settings.value?.model || enabled.value !== settings.value?.enabled || key.value.trim() || clearKey.value))

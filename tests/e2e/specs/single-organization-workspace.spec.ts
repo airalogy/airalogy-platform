@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer"
 import { randomUUID } from "node:crypto"
 import { expect, test } from "@playwright/test"
-import { loadFixtures } from "./fixtures"
+import { loadFixtures, mockAIEnabled } from "./fixtures"
 
 test.skip(process.env.E2E_DEPLOYMENT_MODE !== "single_organization", "Uses the isolated company workspace profile")
 test.beforeEach(async ({ page }) => {
@@ -87,6 +87,119 @@ test("the Airalogy product wordmark and a configured organization logo have sepa
   await expect(organization).toHaveText(company.name)
   await expect(organization.locator("img")).toBeVisible()
   await expect(brand.locator("svg")).toHaveAttribute("viewBox", "0 0 684 184")
+})
+
+test("narrow navigation shows the full location and marks the active desktop entry", async ({ page }) => {
+  await mockAIEnabled(page, () => true)
+  for (const [route, label] of [["/home", "首页"], ["/organization/members", "组织管理"], ["/chat", "全部对话"]]) {
+    await page.setViewportSize({ width: 876, height: 844 })
+    await page.goto(route)
+    const header = page.getByTestId("app-shell-header")
+    await expect(header.getByTestId("organization-management-entry")).toBeVisible()
+    if (label !== "首页")
+      await expect(header.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-current", "page")
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 })
+      const current = header.getByTestId("workspace-menu-trigger").locator(".truncate")
+      await expect(current).toHaveText(label)
+      await expect.poll(() => current.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
+      await expect(header.getByRole("button", { name: "更多", exact: true })).toBeInViewport({ ratio: 1 })
+    }
+  }
+})
+
+test("English navigation keeps the current section readable on a narrow phone", async ({ page }) => {
+  await mockAIEnabled(page, () => true)
+  for (const [route, label] of [["/organization/members", "Organization"], ["/chat", "All chats"]]) {
+    await page.setViewportSize({ width: 876, height: 844 })
+    await page.goto(route)
+    const header = page.getByTestId("app-shell-header")
+    await header.getByRole("button", { name: "中文", exact: true }).click()
+    await page.locator(".n-dropdown-menu:visible").last().getByText("English", { exact: true }).click()
+    await page.setViewportSize({ width: 320, height: 844 })
+    const current = header.getByTestId("workspace-menu-trigger").locator(".truncate")
+    await expect(current).toHaveText(label)
+    await expect.poll(() => current.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
+  }
+})
+
+test("organization display names can be cleared and personal notes stay secondary", async ({ page }, testInfo) => {
+  await page.route("**/api/labs/*/users?**", async (route) => {
+    const response = await route.fetch()
+    const result = await response.json()
+    await route.fulfill({ response, json: { ...result, users: result.users.map((u: object) => ({ ...u, user_alias: "Synthetic private note" })) } })
+  })
+  await page.goto("/organization/members")
+  const row = page.locator(".member-list__item").filter({ has: page.getByRole("button", { name: "设置组织内显示名" }) }).first()
+  await expect(row).toBeVisible()
+  const profile = row.locator("a").first()
+  const accountLink = await profile.getAttribute("href")
+  const { project } = await loadFixtures()
+  const edit = row.getByRole("button", { name: "设置组织内显示名" })
+  await row.getByRole("button", { name: "变更角色", exact: true }).click()
+  await expect(page.getByRole("dialog")).toContainText("的角色")
+  await expect(page.getByRole("dialog").getByRole("radio", { name: /管理者/ })).toBeVisible()
+  await page.getByRole("dialog").getByRole("button", { name: "取消", exact: true }).click()
+  const name = `合成显示名-${randomUUID().slice(0, 8)}`
+  await edit.click()
+  const dialog = page.getByRole("dialog")
+  const field = dialog.getByRole("textbox")
+  const original = await field.inputValue()
+  try {
+    await expect(dialog).toContainText("清空后使用成员的个人昵称")
+    await field.fill(name)
+    await dialog.screenshot({ path: testInfo.outputPath("organization-name-dialog-desktop.png"), animations: "disabled" })
+    await dialog.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(profile).toContainText(name)
+    await expect(profile).toHaveAttribute("href", accountLink!)
+    await expect(profile).not.toContainText("Synthetic private note")
+    await profile.hover()
+    await expect(page.getByText("个人备注（仅自己可见） · Synthetic private note").first()).toBeVisible()
+    await page.reload()
+    await expect(profile).toContainText(name)
+    await page.goto(`/projects/${project.uid}/meetings`)
+    await page.getByTestId("meeting-new").click()
+    await page.getByTestId("meeting-people").locator(".n-select").first().click()
+    await expect(page.locator(".n-base-select-option").filter({ hasText: name })).toBeVisible()
+    await page.goto(`/projects/${project.uid}/work`)
+    await page.getByTestId("work-new").click()
+    await page.getByTestId("work-assignee").locator(".n-select").click()
+    await expect(page.locator(".n-base-select-option").filter({ hasText: name })).toBeVisible()
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.goto("/organization/members")
+    const mobileProfile = page.locator(`.member-list__item a[href="${accountLink}"]`).first()
+    const mobileRow = page.locator(".member-list__item").filter({ has: page.locator(`a[href="${accountLink}"]`) })
+    await mobileRow.getByRole("button", { name: "操作", exact: true }).click()
+    await page.locator(".n-dropdown-menu:visible").getByText("设置组织内显示名", { exact: true }).click()
+    await expect(dialog).toBeInViewport({ ratio: 0.99 })
+    await dialog.screenshot({ path: testInfo.outputPath("organization-name-dialog-mobile.png"), animations: "disabled" })
+    await field.fill("")
+    await dialog.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(mobileProfile).not.toContainText(name)
+    await expect(mobileProfile).toHaveAttribute("href", accountLink!)
+  }
+  finally {
+    if (original) {
+      await page.setViewportSize({ width: 876, height: 844 })
+      await page.goto("/organization/members")
+      await edit.click()
+      await field.fill(original)
+      await dialog.getByRole("button", { name: "保存", exact: true }).click()
+    }
+  }
+})
+
+test("recent meeting and log destinations have labels and reopen their original section", async ({ page }) => {
+  const { project } = await loadFixtures()
+  const base = `/projects/${project.uid}`
+  for (const [section, label, marker] of [["meetings", "会议", "meeting-search"], ["records", "日志", "activity-type"]]) {
+    await page.goto(`${base}/${section}`)
+    await expect(page.getByTestId(marker)).toBeVisible()
+    await page.getByTestId("platform-brand").click()
+    const card = page.getByTestId("home-project-card").filter({ has: page.locator(`a[href="${base}/overview"]`) })
+    await expect(card.getByText(label, { exact: true })).toBeVisible()
+    await expect(card.getByTestId("home-resume-project")).toHaveAttribute("href", `${base}/${section}`)
+  }
 })
 
 test("choosing an organization logo uploads it once and saves its attachment ID", async ({ page }) => {

@@ -16,7 +16,15 @@ from app.database import get_db_session
 from app.models.meeting import MeetingWorkLink
 from app.models.project import ProjectUser
 from app.models.research import ResearchTask
-from app.routers import meetings, project_work, research_documents, research_log
+from app.routers import (
+    labs,
+    meetings,
+    project_people,
+    project_work,
+    research_documents,
+    research_log,
+    user_aliases,
+)
 from app.routers.depends import create_access_token
 from app.services.meetings import MeetingContent
 from tests.test_record_analysis_postgres import database, seed_analysis
@@ -54,7 +62,15 @@ def test_preparation_does_not_require_schedule_or_actual_time():
 @asynccontextmanager
 async def client(sessions):
     app = FastAPI()
-    for module in [meetings, research_documents, research_log, project_work]:
+    for module in [
+        labs,
+        meetings,
+        project_people,
+        research_documents,
+        research_log,
+        project_work,
+        user_aliases,
+    ]:
         app.include_router(module.router)
 
     async def session():
@@ -660,5 +676,179 @@ def test_aira_meeting_draft_checks_writer_and_instance_and_only_returns_proposal
                     "/meetings", headers=owner, params={"project_id": project_id}
                 )
                 assert listed.json()["total"] == 0
+
+    asyncio.run(run())
+
+
+@integration
+def test_organization_display_name_scope_permissions_and_research_identity():
+    async def run():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions)
+            other = await seed_analysis(sessions)
+            account_id = str(seed.analyst.id)
+            project_id = str(seed.project.id)
+            owner = {"Auth-Token": create_access_token(seed.owner)}
+            manager = {"Auth-Token": create_access_token(seed.recorder)}
+            member = {"Auth-Token": create_access_token(seed.analyst)}
+            path = f"/labs/{seed.lab.id}/users/{account_id}"
+
+            async with client(sessions) as http:
+
+                async def rename(name, headers):
+                    return await http.put(
+                        path,
+                        headers=headers,
+                        json={"user_id": account_id, "alias": name},
+                    )
+
+                assert (await rename("Denied", member)).status_code == 403
+                promote = await http.put(
+                    f"/labs/{seed.lab.id}/users/{seed.recorder.id}",
+                    headers=owner,
+                    json={"user_id": str(seed.recorder.id), "role": 2},
+                )
+                assert promote.status_code == 200
+                assert (
+                    await rename("  Synthetic Team Name  ", manager)
+                ).status_code == 200
+                denied = await http.put(
+                    f"/labs/{seed.lab.id}/users/{seed.owner.id}",
+                    headers=manager,
+                    json={"user_id": str(seed.owner.id), "alias": "Denied"},
+                )
+                assert denied.status_code == 403
+                add_other = await http.post(
+                    f"/labs/{other.lab.id}/users",
+                    headers={"Auth-Token": create_access_token(other.owner)},
+                    json={"user_id": account_id, "alias": "Other team"},
+                )
+                assert add_other.status_code == 200, add_other.text
+
+                private = await http.post(
+                    "/users/set_user_alias",
+                    headers=owner,
+                    json={
+                        "target_user_id": account_id,
+                        "alias": "Synthetic private note",
+                    },
+                )
+                assert private.status_code == 200
+                for observer, expected in [
+                    (owner, "Synthetic private note"),
+                    (member, None),
+                ]:
+                    lookup = await http.post(
+                        "/users/get_user_aliases",
+                        headers=observer,
+                        json={
+                            "user_ids": [account_id],
+                            "lab_id": str(seed.lab.id),
+                        },
+                    )
+                    assert lookup.status_code == 200, lookup.text
+                    assert lookup.json()[0]["lab_alias"] == "Synthetic Team Name"
+                    assert lookup.json()[0]["user_alias"] == expected
+                outside = await http.post(
+                    "/users/get_user_aliases",
+                    headers=owner,
+                    json={
+                        "user_ids": [account_id],
+                        "lab_id": str(other.lab.id),
+                    },
+                )
+                assert outside.status_code == 403
+
+                work_id = str(uuid4())
+                work = await http.post(
+                    "/project-work",
+                    headers=owner,
+                    json={
+                        "id": work_id,
+                        "project_id": project_id,
+                        "title": "Synthetic ownership",
+                        "assignee_user_id": account_id,
+                    },
+                )
+                assert work.status_code == 200, work.text
+                for endpoint in ("/project-work/members", "/meetings/members"):
+                    response = await http.get(
+                        endpoint, params={"project_id": project_id}, headers=owner
+                    )
+                    choice = next(
+                        m for m in response.json()["members"] if m["id"] == account_id
+                    )
+                    assert (
+                        choice["display_name"],
+                        choice["name"],
+                        choice["username"],
+                    ) == (
+                        "Synthetic Team Name",
+                        seed.analyst.name,
+                        seed.analyst.username,
+                    )
+                meeting = await http.post(
+                    "/meetings",
+                    headers=owner,
+                    json={
+                        "id": str(uuid4()),
+                        "project_id": project_id,
+                        "title": "Synthetic check",
+                        "status": "planned",
+                        "participants": [{"user_id": account_id}],
+                    },
+                )
+                assert meeting.status_code == 200, meeting.text
+                saved = meeting.json()
+                assert saved["participants"][0]["name"] == "Synthetic Team Name"
+                # A role-only save must retain the organization name.
+                promoted = await http.put(
+                    path, headers=owner, json={"user_id": account_id, "role": 2}
+                )
+                assert promoted.status_code == 200
+                assert (await rename("Denied", manager)).status_code == 403
+                org_members = (
+                    await http.get(f"/labs/{seed.lab.id}/users", headers=owner)
+                ).json()["users"]
+                row = next(m for m in org_members if m["id"] == account_id)
+                assert (row["lab_alias"], row["lab_role"]) == ("Synthetic Team Name", 2)
+                assert (await rename(None, owner)).status_code == 200
+                org_members = (
+                    await http.get(f"/labs/{seed.lab.id}/users", headers=owner)
+                ).json()["users"]
+                row = next(m for m in org_members if m["id"] == account_id)
+                assert (row["lab_alias"], row["lab_role"]) == (None, 2)
+                choices = (
+                    await http.get(
+                        "/meetings/members",
+                        params={"project_id": project_id},
+                        headers=owner,
+                    )
+                ).json()["members"]
+                assert (
+                    next(m["display_name"] for m in choices if m["id"] == account_id)
+                    == seed.analyst.name
+                )
+                other_members = (
+                    await http.get(
+                        f"/labs/{other.lab.id}/users",
+                        headers={"Auth-Token": create_access_token(other.owner)},
+                    )
+                ).json()["users"]
+                assert (
+                    next(m["lab_alias"] for m in other_members if m["id"] == account_id)
+                    == "Other team"
+                )
+                mine = await http.get(
+                    "/project-work",
+                    params={"project_id": project_id, "mine": True},
+                    headers=member,
+                )
+                assert any(
+                    w["id"] == work_id and w["assignee_user_id"] == account_id
+                    for w in mine.json()["items"]
+                )
+                reread = await http.get(f"/meetings/{saved['id']}", headers=owner)
+                assert reread.json()["participants"] == saved["participants"]
 
     asyncio.run(run())

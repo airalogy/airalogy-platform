@@ -2,6 +2,8 @@
 
 Open **Project → R&D work** to create requirements, tasks, issues and milestones. A Protocol, automated Run or AI service is not required. Protocols remain a prominent Project entry and can be linked when repeatable execution is useful.
 
+Under **Organization management → Members**, owners and authorized administrators can set an organization display name. Clearing it restores the member’s profile name. Personal notes are visible only to their author. Meeting and work-item pickers show the organization display name and store the account ID. Renaming a member preserves existing assignments and the participant names recorded in earlier meetings.
+
 ## Start with a concrete goal
 
 For a glasses prototype, create a work item such as “Verify the first optical prototype.” Define the goal and completion conditions, optionally assign a responsible person and collaborators, and enter priority and planned dates. Let the team determine scientific thresholds; the platform does not invent acceptance criteria.
