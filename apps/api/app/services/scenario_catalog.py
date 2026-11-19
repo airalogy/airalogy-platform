@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -60,7 +61,17 @@ def digest(value: object) -> str:
 
 
 def version_tuple(value: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in value.split("."))
+    # Product releases follow scripts/release-version.mjs, including alpha, beta and rc.
+    match = re.fullmatch(
+        r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+        r"(?:-(alpha|beta|rc)\.([1-9][0-9]*))?",
+        value,
+    )
+    if not match:
+        raise ValueError("Invalid Platform version")
+    major, minor, patch, stage, serial = match.groups()
+    stage_order = {"alpha": 0, "beta": 1, "rc": 2, None: 3}
+    return int(major), int(minor), int(patch), stage_order[stage], int(serial or 0)
 
 
 def manifest(kit_id: str, version: str) -> dict:

@@ -33,6 +33,29 @@ def test_catalog_is_closed_and_compatible():
 
 
 @pytest.mark.parametrize(
+    ("version", "compatible"),
+    [
+        ("0.5.0-alpha.3", False),
+        ("0.5.0-beta.1", False),
+        ("0.5.0-beta.2", True),
+        ("0.5.0-beta.10", True),
+        ("0.5.0-rc.1", True),
+        ("0.5.0", True),
+        ("0.6.0", False),
+        ("0.5.0-beta", False),
+    ],
+)
+def test_catalog_prerelease_boundaries(version, compatible):
+    entry = {
+        **next(iter(catalog())),
+        "platform_min": "0.5.0-beta.2",
+        "platform_max_exclusive": "0.6.0",
+    }
+    blockers = availability(entry, enabled_modules=set(MODULES), platform_version=version)
+    assert ("platform_version" not in blockers) == compatible
+
+
+@pytest.mark.parametrize(
     "component,version",
     [("sample", "1.0.0"), ("measurement", "1.0.0"), ("measurement", "1.1.0")],
 )

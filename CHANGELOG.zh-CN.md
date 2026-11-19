@@ -14,6 +14,8 @@ English changelog: [CHANGELOG.md](./CHANGELOG.md)。
 
 ## [未发布]
 
+- 场景套件支持安装到兼容的 Platform alpha、beta 和 rc 版本，并按套件声明的版本上下限校验。
+
 - PostgreSQL 镜像单独安装 pgvector 和 zhparser，保留与数据库服务版本配套的内置模块，修复 PGDG 软件包更新后新数据库初始化失败的问题。
 
 - 混合研究活动按实际时刻排列新提交的 Record、Protocol 版本和手工日志。日志日历、热力图与当日明细按查看者所在时区归日。旧记录可按核实的历史写入时区解读。

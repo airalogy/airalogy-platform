@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from importlib import import_module
 from pathlib import Path
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -24,7 +25,7 @@ from sqlalchemy import delete, func, inspect, select, update
 
 from app.build_info import resolve_build_info
 from app.config import config
-from app.database import get_db_session
+from app.database import get_db_session, sessionmanager
 from app.libs.external_request_boundary import ExternalRequestBoundary
 from app.models.external_access import (
     ExternalAccessPolicy,
@@ -108,10 +109,13 @@ async def client(sessions):
             yield db
 
     app.dependency_overrides[get_db_session] = db_dependency
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app), base_url="http://test"
-    ) as http:
-        yield http
+    # Background work can open its own session outside FastAPI dependency injection.
+    # Keep it on the same test database and event loop as the request.
+    with patch.object(sessionmanager, "session", sessions):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app), base_url="http://test"
+        ) as http:
+            yield http
 
 
 def browser(user):
