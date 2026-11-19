@@ -133,3 +133,41 @@ def test_protocol_generation_preserves_original_instruction_and_machine_constrai
     assert captured[0]["instruction"].endswith("Keep field value in mL")
     assert captured[0]["prefer_client_assigners"] is True
     assert chat.context == {"instruction": "Keep field value in mL"}
+
+
+@pytest.mark.parametrize(
+    ("text", "previous", "result"),
+    [
+        ("以后都这样", "这次分步骤写", {"changes": {"format": "steps"}}),
+        ("以后都这样", "这批设备今天到货。", {"clarify": True}),
+        ("用英文回答，以后都这样", "", {"changes": {"language": "en-US"}}),
+        ("以后都简短回答", "", {"changes": {"detail": "concise"}}),
+        ("Always use numbered steps", "", {"changes": {"format": "steps"}}),
+        ("文档写着“以后都这样”", "分点回答", None),
+    ],
+)
+def test_future_style_reference(text, previous, result):
+    assert memory.parse_command(text, previous) == result
+
+
+def test_temporary_and_quoted_styles_are_not_suggestion_signals():
+    for text in [
+        "这次分步骤写",
+        "参考资料写着：分步骤回答",
+        "不要分点回答",
+        "这里只是示范“用英文回答”",
+    ]:
+        assert memory.requested_style(text) is None
+    assert memory.requested_style("这个公式怎么理解？请分步骤回答") == (
+        "format",
+        "steps",
+    )
+
+
+def test_refer_to_visible_numbered_answer_without_storing_its_content():
+    assert memory.parse_command(
+        "以后都这样", "接下来怎么安排？", "1. 核对输入\n2. 记录结果"
+    ) == {"changes": {"format": "steps"}}
+    assert memory.parse_command(
+        "以后都这样", "", "```\n1. example\n2. example\n```"
+    ) == {"clarify": True}

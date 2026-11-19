@@ -17,6 +17,8 @@ class AiraMemory(Base):
     enabled: Mapped[bool] = mapped_column(default=True)
     revision: Mapped[int] = mapped_column(default=0)
     preferences: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Bounded account-private suggestion state and one undo receipt.
+    interaction: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

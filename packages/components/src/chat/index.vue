@@ -1,5 +1,6 @@
 <template>
   <div class="size-full min-h-20 flex flex-col">
+    <div v-if="!memoryHeaderTarget" :id="localMemoryHeader" class="flex justify-end" />
     <div class="flex-1 pb-4 pt-6" :class="contentClass">
       <template v-if="Array.isArray(session?.data) && session.data.length > 0">
         <!-- Load More Button -->
@@ -40,6 +41,16 @@
       <slot v-else name="empty">
         <chat-placeholder :examples="chatExamples" @example-click="handleStartNewChatWithExample" />
       </slot>
+      <memory-controls
+        v-if="baseUrl && token"
+        v-model:disabled="memoryDisabled"
+        :endpoint="baseUrl.replace(/\/chats\/?$/, '/aira-memory')"
+        :token="token"
+        :header-target="props.memoryHeaderTarget || `#${localMemoryHeader}`"
+        :chat-id="session?.serverId || undefined"
+        :busy="loading"
+        :changed-at="session?.memoryChangedAt"
+      />
     </div>
 
     <div class="sticky bottom-0 z-10 w-full bg-white pt-2">
@@ -50,15 +61,6 @@
           </n-icon>
         </template>
       </tooltip-button>
-      <memory-controls
-        v-if="baseUrl && token"
-        v-model:disabled="memoryDisabled"
-        :endpoint="baseUrl.replace(/\/chats\/?$/, '/aira-memory')"
-        :token="token"
-        :locked="!!session?.serverId && !!session?.memoryDisabled"
-        :busy="loading"
-        :status="session?.memoryStatus"
-      />
       <slot name="input-prefix" />
       <chat-input :placeholder="inputPlaceholder" :source="props.source" :submit-handler="props.submitHandler" />
       <p class="py-2 text-center text-xs text-gray-500">
@@ -71,6 +73,7 @@
 <script setup lang="ts">
 import { $t } from "@airalogy/shared/locales"
 import { documentationPageUrl } from "@airalogy/shared/utils"
+import { useId } from "vue"
 import { useI18n } from "vue-i18n"
 import { type IProps, useOrProvideChatInfoStore } from "./composables/useChatInfoStore"
 import ChatInput from "./modules/chat-input.vue"
@@ -84,6 +87,7 @@ defineOptions({
 })
 
 const props = withDefaults(defineProps<IProps & {
+  memoryHeaderTarget?: string
   contentClass?: any
   showScrollButton?: boolean
   resolveFile?: (id: string) => Promise<{ url: string } | null>
@@ -109,6 +113,7 @@ interface IEmits {
   (e: "scrollToBottom", isBottom?: boolean): void
 }
 
+const localMemoryHeader = `aira-memory-${useId()}`
 const { locale } = useI18n()
 
 const {

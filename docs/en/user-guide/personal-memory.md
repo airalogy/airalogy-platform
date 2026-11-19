@@ -1,10 +1,10 @@
 # Aira personal memory
 
-Personal memory carries explicitly chosen communication preferences into new conversations. This first version supports **language, detail, format and explanation style**. It does not scan old conversations, infer habits or store measurements, patient information or project content.
+Personal memory carries explicitly chosen communication preferences into new conversations. This first version supports **language, detail, format and explanation style**. It recognizes presentation requests in new user messages. It does not store measurements, patient information or project content.
 
 ## Set preferences
 
-Open **Aira personal memory** in account settings, or **Personal memory** above the Aira input. Save your choices; clearing one option forgets that preference. The management panel can undo its last edit.
+Open **Aira personal memory** in account settings. Save your choices; clearing one option forgets that preference. The management panel can undo its last edit.
 
 You can also send explicit commands, combining preferences with commas:
 
@@ -29,4 +29,4 @@ These actions do not retroactively delete in-flight model requests, existing ans
 
 Only the current account can manage its memory, in the current Platform instance. It is not shared with Lab or Project members or exposed through external Agent project tokens. Ordinary chat continues without personalization if memory is unavailable. Account settings remain available for viewing, editing, clearing and exporting when AI is off.
 
-Automatically suggested memories, work-progress memory and project knowledge retrieval are later phases, not part of this first version.
+Open the conversation options menu at the upper right on Home or All chats to pause memory for this conversation. An explicit request such as “Always use numbered steps” saves a preference and offers Undo. “From now on like this” refers to the preceding explicit presentation request or to a clearly numbered answer. If its meaning is unclear, Aira asks for clarification. Two matching requests can prompt a suggestion. Choose Remember to save it or No thanks to dismiss it. “For this answer” requests do not count toward a suggestion.

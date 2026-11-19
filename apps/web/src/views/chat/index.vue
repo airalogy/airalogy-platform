@@ -13,8 +13,12 @@
       <chat-menu />
     </n-layout-sider>
     <n-layout class="h-full">
-      <div v-if="!embedded && appStore.isMobile" class="border-b border-gray-200 px-2 py-1">
-        <n-button size="small" @click="showMobileHistory = true">{{ $t('chat.history') }}</n-button>
+      <div v-if="!embedded" class="flex items-center justify-between border-b border-gray-200 px-3 py-1">
+        <span v-if="!appStore.isMobile" class="font-semibold">Aira</span>
+        <n-button v-if="appStore.isMobile" size="small" @click="showMobileHistory = true">
+          {{ $t('chat.history') }}
+        </n-button>
+        <div id="page-aira-memory-actions" class="ml-auto" />
         <n-drawer v-model:show="showMobileHistory" placement="left" width="min(85%, 300px)">
           <n-drawer-content :title="$t('common.allChats')" closable :native-scrollbar="false">
             <chat-menu mobile @opened="showMobileHistory = false" />
@@ -22,7 +26,7 @@
         </n-drawer>
       </div>
       <div ref="conversationViewport" class="h-full w-full overflow-x-hidden" :class="{ 'overflow-y-auto overscroll-contain': embedded }">
-        <div class="mx-auto w-full max-w-3xl min-h-full flex flex-col">
+        <div class="mx-auto max-w-3xl min-h-full w-full flex flex-col">
           <chat-interface
             v-model:role="role"
             v-model:full-screen="appStore.fullContent"
@@ -30,6 +34,7 @@
             v-model:collapsed="isCollapsed"
             v-model:docked="docked"
             class="w-full flex-1"
+            :memory-header-target="embedded ? '#home-aira-memory-actions' : '#page-aira-memory-actions'"
             source="global"
             :chat-id="chatId"
             :show-scroll-button="arrivedState.bottom"
@@ -37,7 +42,9 @@
             @scroll-to-bottom="handleScrollToBottom"
           >
             <template v-if="embedded" #empty>
-              <p class="aira-type-body aira-text-muted px-2">{{ $t('page.home.workspace.airaPrompt') }}</p>
+              <p class="aira-type-body aira-text-muted px-2">
+                {{ $t('page.home.workspace.airaPrompt') }}
+              </p>
             </template>
           </chat-interface>
           <context-select-dialog source="global" v-bind="contextDialog" v-on="contextDialogEventHandlers" />

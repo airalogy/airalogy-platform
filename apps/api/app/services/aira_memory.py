@@ -9,7 +9,7 @@ import asyncio
 import logging
 import re
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -64,6 +64,21 @@ async def read_memory(db: AsyncSession, user_id: UUID) -> dict:
     return serialize(memory)
 
 
+async def lock_memory(db: AsyncSession, user_id: UUID) -> AiraMemory:
+    # A row per account serializes different clients, clears and command retries.
+    await db.execute(
+        insert(AiraMemory)
+        .values(user_id=user_id, enabled=True, revision=0, preferences={})
+        .on_conflict_do_nothing()
+    )
+    return await db.scalar(
+        select(AiraMemory)
+        .where(AiraMemory.user_id == user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
 async def update_memory(
     db: AsyncSession,
     user_id: UUID,
@@ -72,18 +87,7 @@ async def update_memory(
     source="settings",
     chat_id: UUID | None = None,
 ) -> dict:
-    # A row per account serializes different clients, clears and command retries.
-    await db.execute(
-        insert(AiraMemory)
-        .values(user_id=user_id, enabled=True, revision=0, preferences={})
-        .on_conflict_do_nothing()
-    )
-    memory = await db.scalar(
-        select(AiraMemory)
-        .where(AiraMemory.user_id == user_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
+    memory = await lock_memory(db, user_id)
     prior = await db.scalar(
         select(AiraMemoryEvent).where(
             AiraMemoryEvent.user_id == user_id,
@@ -110,6 +114,20 @@ async def update_memory(
                 "chat_id": str(chat_id) if chat_id else None,
                 "updated_at": now.isoformat(),
             }
+    # Any subsequent edit invalidates the undo offer and outstanding suggestions.
+    interaction = {}
+    if (
+        source == "chat"
+        and chat_id
+        and request.changes
+        and all(request.changes.values())
+    ):
+        interaction["undo"] = {
+            "id": str(request.request_id),
+            "chat_id": str(chat_id),
+            "previous": {key: memory.preferences.get(key) for key in request.changes},
+        }
+    memory.interaction = interaction
     memory.preferences = values
     if request.enabled is not None:
         memory.enabled = request.enabled
@@ -138,6 +156,9 @@ PHRASES = {
     "detail": {
         "concise": [
             "简洁回答",
+            "简洁一点",
+            "简短一点",
+            "回答简短些",
             "简短回答",
             "回答简洁一点",
             "回答简短一点",
@@ -147,7 +168,14 @@ PHRASES = {
     },
     "format": {
         "paragraphs": ["用段落回答", "使用段落", "use paragraphs"],
-        "steps": ["分步骤回答", "分点回答", "使用编号步骤", "use numbered steps"],
+        "steps": [
+            "分步骤回答",
+            "分步骤写",
+            "按步骤回答",
+            "分点回答",
+            "使用编号步骤",
+            "use numbered steps",
+        ],
     },
     "explanation": {
         "accessible": ["通俗解释", "用通俗语言解释", "explain in plain language"],
@@ -173,8 +201,39 @@ FORGET_KEYS = {
 }
 
 
-def parse_command(text: str) -> dict | None:
-    text = text.strip().rstrip("。.!！").strip().lower()
+def normalized(text: str) -> str:
+    return text.strip().rstrip("。.!！").strip().lower()
+
+
+def requested_style(text: str, *, include_once=False) -> tuple[str, str] | None:
+    """Only a direct, allowlisted style instruction, optionally after a question."""
+    tail = re.split(r"[。！？!?\n]", normalized(text))[-1].strip()
+    if include_once:
+        tail = re.sub(r"^(?:这一次|这次|本次|for this answer[, ]+)\s*", "", tail)
+    return ALIASES.get(tail.removeprefix("请").removeprefix("please ").strip())
+
+
+def numbered_answer(text: str) -> bool:
+    """Recognize visible numbered steps, never copy their content into memory."""
+    if "```" in text or "~~~" in text:
+        return False
+    numbers = re.findall(r"^[ \t]*(\d{1,2})(?:[.)][ \t]+|、[ \t]*)\S", text, re.MULTILINE)
+    return 2 <= len(numbers) <= 99 and [int(n) for n in numbers] == list(
+        range(1, len(numbers) + 1)
+    )
+
+
+def parse_command(
+    text: str, previous: str = "", previous_answer: str = ""
+) -> dict | None:
+    text = normalized(text)
+    refer = r"(?:以后(?:请)?都(?:这样|这么)(?:写|回答|说)?|from now on like this)"
+    match = re.fullmatch(r"(?:(.+?)[，,。；;]\s*)?" + refer, text)
+    if match:
+        pair = requested_style(match[1] or previous, include_once=True)
+        if not pair and not match[1] and numbered_answer(previous_answer):
+            pair = ("format", "steps")
+        return {"changes": dict([pair])} if pair else {"clarify": True}
     if text in ("忘记所有个人偏好", "清除所有个人记忆", "forget all my preferences"):
         return {"clear": True}
     match = re.fullmatch(r"(?:请)?(?:忘记|forget)\s*[:：]?\s*(.+)", text)
@@ -182,7 +241,7 @@ def parse_command(text: str) -> dict | None:
         key = FORGET_KEYS.get(match[1])
         return {"changes": {key: None}} if key else {"unsupported": True}
     match = re.fullmatch(
-        r"(?:请)?(?:记住我的偏好|记住|以后请|remember(?: my preference)?)[：:,，\s]*(.+)",
+        r"(?:请)?(?:记住我的偏好|记住|以后(?:请)?(?:都)?|from now on[, ]+|always |remember(?: my preference)?)[：:,，\s]*(.+)",
         text,
     )
     if not match:
@@ -244,3 +303,96 @@ async def context_for_usage(usage_context) -> str:
             disabled=bool(usage_context.attributes.get("memory_disabled")),
         )
     )
+
+
+def conversation_feedback(memory: AiraMemory | None, chat_id: UUID) -> dict:
+    if not memory or not memory.enabled:
+        return {}
+    state = memory.interaction or {}
+    for key, item in state.get("signals", {}).items():
+        if item.get("chat_id") == str(chat_id) and item.get("stage") == "offered":
+            return {
+                "kind": "suggest",
+                "id": item["id"],
+                "key": key,
+                "value": item["value"],
+            }
+    undo = state.get("undo", {})
+    if undo.get("chat_id") == str(chat_id):
+        return {"kind": "saved", "id": undo["id"]}
+    return {}
+
+
+async def observe_style(db, user_id, chat_id, request_id, pair, expected_revision):
+    """Track at most one signal per allowlisted category, without message text."""
+    memory = await lock_memory(db, user_id)
+    key, value = pair
+    if (
+        not memory.enabled
+        or memory.revision != expected_revision
+        or memory.preferences.get(key, {}).get("value") == value
+    ):
+        return
+    signals = dict((memory.interaction or {}).get("signals", {}))
+    prior = signals.get(key, {})
+    if prior.get("value") == value:
+        if prior["stage"] != "seen" or prior["id"] == str(request_id):
+            return
+        stage = "offered"
+    else:
+        stage = "seen"
+    signals[key] = {
+        "value": value,
+        "stage": stage,
+        "id": str(request_id),
+        "chat_id": str(chat_id),
+    }
+    memory.interaction = {**(memory.interaction or {}), "signals": signals}
+
+
+async def decide_feedback(db, user_id, chat_id, action, offer_id):
+    memory = await lock_memory(db, user_id)
+    state = memory.interaction or {}
+    feedback = conversation_feedback(memory, chat_id)
+    if feedback.get("id") != str(offer_id):
+        raise HTTPException(409, "This memory action is no longer current.")
+    if action == "undo" and feedback["kind"] == "saved":
+        previous = state["undo"]["previous"]
+        await update_memory(
+            db,
+            user_id,
+            MemoryUpdate(
+                expected_revision=memory.revision,
+                request_id=uuid4(),
+                changes={k: v["value"] if v else None for k, v in previous.items()},
+            ),
+            source="chat",
+            chat_id=chat_id,
+        )
+        values = dict(memory.preferences)
+        for key, value in previous.items():
+            if value is not None:
+                values[key] = value
+        memory.preferences = values
+        memory.interaction = {}
+    elif action in ("accept", "dismiss") and feedback["kind"] == "suggest":
+        key = feedback["key"]
+        if action == "accept":
+            await update_memory(
+                db,
+                user_id,
+                MemoryUpdate(
+                    expected_revision=memory.revision,
+                    request_id=uuid4(),
+                    changes={key: feedback["value"]},
+                ),
+                source="chat",
+                chat_id=chat_id,
+            )
+        else:
+            signals = dict(state["signals"])
+            signals[key] = {**signals[key], "stage": "dismissed"}
+            memory.interaction = {**state, "signals": signals}
+    else:
+        raise HTTPException(409, "This memory action is no longer current.")
+    return conversation_feedback(memory, chat_id)

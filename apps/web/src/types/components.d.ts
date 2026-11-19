@@ -195,6 +195,7 @@ declare module 'vue' {
     IconTablerCircleCheck: typeof import('~icons/tabler/circle-check')['default']
     IconTablerClipboardList: typeof import('~icons/tabler/clipboard-list')['default']
     IconTablerCopy: typeof import('~icons/tabler/copy')['default']
+    IconTablerDots: typeof import('~icons/tabler/dots')['default']
     IconTablerDotsVertical: typeof import('~icons/tabler/dots-vertical')['default']
     IconTablerDownload: typeof import('~icons/tabler/download')['default']
     IconTablerEdit: typeof import('~icons/tabler/edit')['default']

@@ -225,3 +225,98 @@ def test_chat_commands_cross_session_temporary_forget_and_sources(monkeypatch):
                     assert "用中文回答" not in str(chat.messages)
 
     asyncio.run(run())
+
+
+def test_feedback_confirmation_undo_scope_and_opt_out():
+    async def run():
+        async with database() as sessions:
+            s = await seed_analysis(sessions)
+            async with client(sessions) as h:
+                owner, other = headers(s.owner), headers(s.outsider)
+
+                async def ask(text, cid=None, rid=None):
+                    result = events(
+                        await h.post(
+                            "/chats/qa/message",
+                            headers=owner,
+                            json={
+                                "context": {},
+                                "model": {},
+                                "chat_id": cid,
+                                "message": {"role": "user", "content": text},
+                                "memory_request_id": str(rid or uuid4()),
+                            },
+                        )
+                    )
+                    return result[0]["data"]["chat_id"]
+
+                async def controls(cid):
+                    return (
+                        await h.get("/aira-memory/conversations/" + cid, headers=owner)
+                    ).json()
+
+                async def decide(cid, action, feedback):
+                    return await h.patch(
+                        "/aira-memory/conversations/" + cid,
+                        headers=owner,
+                        json={"action": action, "offer_id": feedback["id"]},
+                    )
+
+                async def prefs():
+                    return (await h.get("/aira-memory", headers=owner)).json()[
+                        "preferences"
+                    ]
+
+                async def set_style(cid, text):
+                    await ask(text, cid)
+                    return (await controls(cid))["feedback"]
+
+                first_id = uuid4()
+                first = await ask("请分步骤回答", rid=first_id)
+                await ask("请分步骤回答", first, rid=first_id)
+                assert not (await controls(first))["feedback"]
+                second = await ask("请分步骤回答")
+                candidate = (await controls(second))["feedback"]
+                assert (
+                    candidate["kind"] == "suggest"
+                    and candidate["value"] == "steps"
+                    and not await prefs()
+                )
+                assert (
+                    await h.get("/aira-memory/conversations/" + second, headers=other)
+                ).status_code == 404
+                accepted = (await decide(second, "accept", candidate)).json()[
+                    "feedback"
+                ]
+                assert (await prefs())["format"]["value"] == "steps"
+                assert (
+                    await decide(second, "undo", accepted)
+                ).is_success and not await prefs()
+                await ask("这次请用英文回答", second)
+                saved = await set_style(second, "以后都这样")
+                assert (
+                    saved["kind"] == "saved"
+                    and (await prefs())["language"]["value"] == "en-US"
+                )
+                original = await prefs()
+                saved = await set_style(second, "以后都用中文回答")
+                assert (
+                    await decide(second, "undo", saved)
+                ).is_success and await prefs() == original
+                assert (await decide(second, "undo", saved)).status_code == 409
+                await ask("简短回答", first)
+                await ask("简短回答", second)
+                candidate = (await controls(second))["feedback"]
+                assert (await decide(second, "dismiss", candidate)).is_success
+                await ask("简短回答", second)
+                assert not (await controls(second))["feedback"]
+                await h.patch(
+                    "/aira-memory/conversations/" + second,
+                    headers=owner,
+                    json={"action": "disable"},
+                )
+                await ask("以后都分点回答", second)
+                assert await prefs() == original
+                assert (await controls(second)) == {"disabled": True, "feedback": {}}
+
+    asyncio.run(run())

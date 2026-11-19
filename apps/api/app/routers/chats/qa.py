@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import config
 from app.database import DBSession
@@ -24,9 +25,11 @@ from app.routers.permission import check_user_permission
 from app.services.aira_memory import (
     MemoryUpdate,
     load_for_inference,
+    observe_style,
     parse_command,
     preference_prompt,
     read_memory,
+    requested_style,
     update_memory,
 )
 from app.services.model_usage import create_usage_context
@@ -129,16 +132,65 @@ async def send_qa_chat_message(
         params.memory_disabled or (chat.context or {}).get("memory_disabled")
     )
     chat.context = {**(chat.context or {}), "memory_disabled": memory_disabled}
-    command = (
-        parse_command(params.message.content) if not params.message.files else None
+    text = params.message.content
+    previous = next((m for m in reversed(chat.messages) if m.get("role") == "user"), {})
+    prior_text = previous.get("content") if not previous.get("files") else None
+    last = chat.messages[-1] if chat.messages else {}
+    answer = (
+        last.get("content")
+        if last.get("role") == "assistant" and not previous.get("files")
+        else None
     )
-    if command is not None:
+    command = (
+        parse_command(
+            text,
+            prior_text if isinstance(prior_text, str) else "",
+            answer if isinstance(answer, str) else "",
+        )
+        if not params.message.files
+        else None
+    )
+    # Observe direct style requests only in QA; attachments and Recorder fields are never signals.
+    pair = (
+        requested_style(text)
+        if not (params.message.files or params.recorder_target or memory_disabled)
+        else None
+    )
+    style_only = (
+        not (params.message.files or params.recorder_target)
+        and requested_style(text, include_once=True)
+        and not any(c in text.strip().rstrip("。.!！") for c in "。！？!?\n")
+    )
+    if command is not None or style_only:
         chinese = any("\u4e00" <= char <= "\u9fff" for char in params.message.content)
-        if memory_disabled:
+        if style_only and command is None:
+            reply = (
+                "好的，这次会按你说的方式回答。"
+                if chinese
+                else "Understood. I’ll use that style for this conversation."
+            )
+            if pair and params.memory_request_id:
+                state = await read_memory(db_session, current_user.id)
+                if state["enabled"]:
+                    await observe_style(
+                        db_session,
+                        current_user.id,
+                        chat.id,
+                        params.memory_request_id,
+                        pair,
+                        state["revision"],
+                    )
+        elif memory_disabled:
             reply = (
                 "这次对话不读取或保存个人记忆，已有偏好保持不变。"
                 if chinese
                 else "This conversation does not read or save personal memory. Your preferences are unchanged."
+            )
+        elif command.get("clarify"):
+            reply = (
+                "想长期保留哪种回答方式？比如‘以后都分步骤回答’。"
+                if chinese
+                else "Which response style should I remember? For example, ‘Always use numbered steps’."
             )
         elif command.get("unsupported"):
             reply = (
@@ -192,18 +244,25 @@ async def send_qa_chat_message(
                     )
                 else:
                     reply = (
-                        "已记住你的表达偏好，新对话也会使用。你这次明确提出的要求优先；可在‘个人记忆’中查看、修改或忘记。"
+                        "已记住你的表达偏好。"
                         if chinese
-                        else "Your communication preferences are saved for future conversations. Explicit requests take priority. View, edit or forget them in Personal memory."
+                        else "Your communication preferences are saved."
                     )
         # Do not retain commands as instructions in model history after forgetting.
         # The visible response may be descriptive; the stored history is neutral.
         chat.messages.extend(
             [
-                {"role": "user", "content": "[Personal memory management request]"},
+                {
+                    "role": "user",
+                    "content": text
+                    if style_only
+                    else "[Personal memory management request]",
+                },
                 {
                     "role": "assistant",
-                    "content": "[Memory management handled by Platform; no research data changed.]",
+                    "content": reply
+                    if style_only
+                    else "[Memory management handled by Platform; no research data changed.]",
                 },
             ]
         )
@@ -560,9 +619,24 @@ async def send_qa_chat_message(
                 "content": full_response,
             }
         )
+        if pair and params.memory_request_id and memory_state["enabled"]:
+            try:
+                async with db_session.begin_nested():
+                    await observe_style(
+                        db_session,
+                        current_user.id,
+                        chat.id,
+                        params.memory_request_id,
+                        pair,
+                        memory_state["revision"],
+                    )
+            except SQLAlchemyError:
+                logger.warning("Personal preference suggestion unavailable")
         chat.user_message_count += 1
         chat.updated_at = datetime.now()
         await db_session.commit()
+        if pair:
+            yield 'data: {"type":"meta","data":{"memory_changed":true}}\n\n'
         yield "data: [DONE]\n\n"
 
     # 返回新的流式响应

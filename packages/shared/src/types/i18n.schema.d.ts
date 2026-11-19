@@ -6845,6 +6845,15 @@ declare namespace I18n {
       "failed": string
       "reload": string
       "temporary": string
+      "options": string
+      "paused": string
+      "suggest": string
+      "accept": string
+      "dismiss": string
+      "savedShort": string
+      "undoShort": string
+      "undone": string
+      "stale": string
       "temporaryHint": string
       "used": string
       "notUsed": string
