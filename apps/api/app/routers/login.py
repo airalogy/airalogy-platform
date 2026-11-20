@@ -289,6 +289,7 @@ async def signup(params: SignUpParams, db_session: DBSession):
                 if invitation is not None and invitation.created_by_user_id is not None
                 else user.id
             ),
+            display_name=invitation.invitation_display_name if invitation else None,
             lab_role=LabRole(
                 invitation.lab_role
                 if invitation is not None and invitation.lab_role is not None

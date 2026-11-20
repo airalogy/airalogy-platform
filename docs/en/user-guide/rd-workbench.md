@@ -48,6 +48,8 @@ List, board and plan views share search, assignee and state filters. Filter unfi
 
 ## Organization research overview
 
-Under organization management, open Research overview to see project owners, blockers, recorded next steps and the next open milestone. Blocked projects appear first. Milestones use the earliest planned end date, falling back to the planned start date. Overdue open milestones remain visible. Follow a link to open the original work item.
+On a single-organization instance, open Projects → Research overview, or use the Research overview link beside All projects on Home. Existing bookmarks under Organization management open the same page. On a multi-organization instance, open the relevant organization and select Research overview beside Projects.
+
+The overview shows project owners, blockers, recorded next steps and the next open milestone. Blocked projects appear first. Milestones use the earliest planned end date, falling back to the planned start date. Overdue open milestones remain visible. Follow a link to open the original work item.
 
 Select a day on the 90-day heatmap to see its project activities and sources in your browser time zone. Select it again to return to recent activity. Organization owners and managers can use this page. Source permissions still apply to meetings, records and other research assets.

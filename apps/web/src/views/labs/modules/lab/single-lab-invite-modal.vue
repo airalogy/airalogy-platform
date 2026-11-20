@@ -22,8 +22,8 @@
             {{ $t("page.instance.privateInviteHint") }}
           </p>
           <n-form ref="formRef" :model="model" :rules="rules" label-placement="top">
-            <n-form-item :label="$t('page.instance.inviteNote')" path="note">
-              <n-input ref="noteInput" v-model:value="model.note" :maxlength="120" :disabled="loading" />
+            <n-form-item :label="$t('common.labAliasLabel')" path="displayName">
+              <n-input ref="displayNameInput" v-model:value="model.displayName" :placeholder="$t('common.labAliasPlaceholder')" :maxlength="255" :disabled="loading" />
             </n-form-item>
             <n-form-item :label="$t('page.instance.labRole')" path="labRole">
               <n-select v-model:value="model.labRole" :options="labRoleOptions" :disabled="loading" />
@@ -40,15 +40,19 @@
                 {{ $t("page.instance.privilegedInviteEmail") }}
               </template>
             </n-form-item>
+            <details class="mt-3 text-sm">
+              <summary class="w-fit cursor-pointer">{{ $t("page.instance.inviteNote") }}</summary>
+              <n-input v-model:value="model.note" class="mt-2" :input-props="{ 'aria-label': $t('page.instance.inviteNote') }" :maxlength="120" :disabled="loading" />
+            </details>
           </n-form>
         </template>
         <div v-else class="space-y-2">
           <div class="break-words text-sm font-medium">
             {{ $t("page.instance.inviteLink") }}
-            <span v-if="model.note || (emailRequired && model.email)"> · {{ model.note || model.email }}</span>
+            <span> · {{ model.displayName }}</span>
           </div>
           <dl class="grid grid-cols-[auto_minmax(0,1fr)] m-0 gap-x-3 gap-y-1 text-sm">
-            <template v-if="emailRequired && model.note">
+            <template v-if="emailRequired">
               <dt>{{ $t("page.instance.email") }}</dt>
               <dd class="m-0 break-words">
                 {{ model.email }}
@@ -122,13 +126,14 @@ const { loading, startLoading, endLoading } = useLoading()
 const { formRef, validate } = useNaiveForm()
 const { formRules: { user }, defaultRequiredRule } = useFormRules()
 const tab = ref("create")
-const noteInput = ref<InputInst | null>(null)
+const displayNameInput = ref<InputInst | null>(null)
 const bindEmail = ref(false)
 const inviteId = ref("")
 const inviteUrl = ref("")
 const expiresAt = ref("")
 const model = reactive({
   email: "",
+  displayName: "",
   note: "",
   labRole: LabRole.MEMBER,
   projectRole: instanceStore.status.default_invitation_project_role ?? ProjectRole.RECORDER,
@@ -137,6 +142,7 @@ const model = reactive({
 const privileged = computed(() => model.labRole === LabRole.MANAGER || model.projectRole === ProjectRole.MANAGER)
 const emailRequired = computed(() => privileged.value || bindEmail.value)
 const rules = computed(() => ({
+  displayName: [{ required: true, whitespace: true, message: $t("common.labAliasPlaceholder"), trigger: ["input", "blur"] }],
   email: emailRequired.value ? user.email : [],
   labRole: [defaultRequiredRule],
   projectRole: [defaultRequiredRule],
@@ -158,7 +164,13 @@ async function handleCreate() {
     return
   startLoading()
   try {
-    await validate()
+    model.displayName = model.displayName.trim()
+    try {
+      await validate()
+    }
+    catch {
+      return
+    }
     const { data } = await postInvitation({ ...model, email: emailRequired.value ? model.email.trim() : undefined })
     if (data) {
       inviteId.value = data.id
@@ -186,6 +198,7 @@ async function copyInviteUrl() {
 
 function resetInvitation() {
   bindEmail.value = false
+  model.displayName = ""
   model.note = ""
   model.email = ""
   model.labRole = LabRole.MEMBER
@@ -198,7 +211,7 @@ function resetInvitation() {
 async function inviteNext() {
   resetInvitation()
   await nextTick()
-  noteInput.value?.focus()
+  displayNameInput.value?.focus()
 }
 
 watch(isShown, (shown) => {

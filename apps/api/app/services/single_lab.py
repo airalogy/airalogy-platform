@@ -114,6 +114,7 @@ async def add_user_to_single_lab(
     lab: Lab,
     user: User,
     created_by_user_id: UUID,
+    display_name: str | None = None,
     lab_role: LabRole = LabRole.MEMBER,
     project_role: ProjectRole = ProjectRole.RECORDER,
 ) -> bool:
@@ -131,6 +132,7 @@ async def add_user_to_single_lab(
             lab_id=lab.id,
             user_id=user.id,
             role=lab_role,
+            alias=display_name,
             create_user_id=created_by_user_id,
         )
     )
@@ -173,6 +175,7 @@ async def create_account_token(
     created_by_user_id: UUID | None,
     expires_in: timedelta,
     email: str = "",
+    invitation_display_name: str | None = None,
     invitation_note: str | None = None,
     lab_id: UUID | None = None,
     user_id: UUID | None = None,
@@ -204,6 +207,7 @@ async def create_account_token(
         token_hash=hash_account_token(raw_token),
         token_type=token_type.value,
         email=normalized_email,
+        invitation_display_name=invitation_display_name,
         invitation_note=invitation_note,
         lab_id=lab_id,
         user_id=user_id,

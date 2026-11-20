@@ -21,6 +21,7 @@ const defaultEnabledModels = [ChatModel.BASIC, ChatModel.PLUS, ChatModel.PRO]
 export function useChatState(
   props: ToRefs<IProps>,
   enabledModelsRef: MaybeRefOrGetter<ChatModel[]> = defaultEnabledModels,
+  modelNames: MaybeRefOrGetter<Partial<Record<ChatModel, string>>> = {},
 ): ChatState {
   const { chatId: defaultChatId, source: sourceRef, role: roleRef, level: levelRef } = props as ToRefs<Required<IProps>>
   const hubSearchDefault = props.hubSearchDefault ?? ref(false)
@@ -53,16 +54,6 @@ export function useChatState(
   const enableThinking = ref<boolean>(false)
   const enableSearch = ref<boolean>(false)
   const enableHubSearch = ref<boolean>(Boolean(toValue(hubSearchDefault)))
-
-  watch(
-    () => toValue(enabledModelsRef),
-    (enabledModels) => {
-      if (!enabledModels.includes(selectedModel.value)) {
-        selectedModel.value = enabledModels[0] ?? ChatModel.BASIC
-      }
-    },
-    { immediate: true },
-  )
 
   // UI state
   const inputMethod = ref<InputMethod>("text")
@@ -125,15 +116,21 @@ export function useChatState(
     return modelOptionDefs
       .filter(item => enabledModels.includes(item.value) && level >= item.requiredLevel)
       .map(item => ({
-        label: $t(item.labelKey),
+        label: toValue(modelNames)[item.value] || $t(item.labelKey),
         value: item.value,
         key: item.key,
       }))
   })
 
+  watch(modelOptions, (options) => {
+    const available = options.map(option => option.value)
+    if (!available.includes(selectedModel.value))
+      selectedModel.value = toValue(enabledModelsRef).find(model => available.includes(model)) ?? ChatModel.BASIC
+  }, { immediate: true })
+
   const modelName = computed(() => {
-    const option = modelOptionDefs.find(opt => opt.value === selectedModel.value)
-    return option ? $t(option.labelKey) : $t("chat.model.select")
+    const selected = modelOptions.value.find(option => option.value === selectedModel.value)
+    return selected ? String(selected.label) : $t("chat.model.unavailable")
   })
 
   const roleName = computed(() => {

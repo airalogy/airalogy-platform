@@ -15,7 +15,7 @@ from app.models.lab import Lab
 from app.models.organization import OrganizationType
 from app.models.organization_ai import OrganizationAI
 from app.services import organization_ai as ai
-from app.services.chat_models import enabled_chat_model_types
+from app.services.chat_models import ChatCapabilities, enabled_chat_model_types
 
 from . import labs
 from .depends import CurrentUser, get_current_user
@@ -130,17 +130,17 @@ async def remove_member(
 @router.get("/uid/{organization_uid}/ai-capabilities")
 async def ai_capabilities(
     organization_uid: str, current_user: CurrentUser, db_session: DBSession
-):
+) -> ChatCapabilities:
     org = await Lab.find_by(db_session, [Lab.uid == organization_uid])
     if not org:
         raise HTTPException(404, "Organization unavailable")
     labs.require_configured_single_lab(org)
     await labs.require_lab_membership(db_session, org.id, current_user.id)
     await ai.bind_organization(db_session, org.id)
-    return {
-        "ai_enabled": config.effective_ai_enabled,
-        "enabled_chat_models": enabled_chat_model_types(),
-    }
+    return ChatCapabilities(
+        ai_enabled=config.effective_ai_enabled,
+        enabled_chat_models=list(enabled_chat_model_types()),
+    )
 
 
 async def ai_manager(db, org_id, user):

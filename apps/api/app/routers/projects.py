@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import AliasChoices, BaseModel, Field, StringConstraints, model_validator
 from pydash import py_
 from sqlalchemy import and_, case, delete, distinct, func, or_, select
@@ -30,6 +30,7 @@ from app.routers.permission import (
     public_project_permissions,
 )
 from app.services.access_control import structured_project_ids_for_action
+from app.services.project_people import organization_display_name
 
 DEFAULT_PROJECT_UIDS = {"public_protocols", "lab_protocols"}
 
@@ -737,6 +738,92 @@ class ProjectAddUserParams(BaseModel):
     role: ProjectRole
 
 
+@router.get("/{project_id}/member-candidates")
+async def project_member_candidates(
+    project_id: UUID,
+    db_session: DBSession,
+    current_user: CurrentUser,
+    q: str = Query("", max_length=255),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(30, ge=1, le=100),
+):
+    project = await Project.find(db_session, id=project_id)
+    await check_user_permission(
+        db_session, project=project, user=current_user, action="set_role_other"
+    )
+    name = organization_display_name()
+    direct_member = select(ProjectUser.id).where(
+        ProjectUser.project_id == project_id, ProjectUser.user_id == User.id
+    ).exists()
+    query = (
+        select(User.id, User.username, name)
+        .join(LabUser, LabUser.user_id == User.id)
+        .where(LabUser.lab_id == project.lab_id, User.id != current_user.id, ~direct_member)
+    )
+    if term := q.strip():
+        query = query.where(
+            or_(
+                name.icontains(term, autoescape=True),
+                User.username.icontains(term, autoescape=True),
+                func.lower(User.email) == term.lower(),
+            )
+        )
+    result = await db_session.execute(
+        query.order_by(name, User.username, User.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size + 1)
+    )
+    rows = result.mappings().all()
+    return {"users": rows[:page_size], "has_more": len(rows) > page_size}
+
+
+@router.post("/{project_id}/organization-members")
+async def add_organization_members(
+    project_id: UUID,
+    members: Annotated[list[ProjectAddUserParams], Field(min_length=1, max_length=100)],
+    db_session: DBSession,
+    current_user: CurrentUser,
+):
+    project = await Project.find(db_session, id=project_id, with_for_update=True)
+    await check_user_permission(
+        db_session, project=project, user=current_user, action="set_role_other"
+    )
+    ids = {member.user_id for member in members}
+    roles = {member.role for member in members}
+    if len(ids) != len(members) or current_user.id in ids:
+        raise HTTPException(422, "Select distinct organization members")
+    if roles & {ProjectRole.OWNER, ProjectRole.PROTOCOL_OWNER} or (
+        project.is_private and max(roles) > ProjectRole.RECORDER
+    ):
+        raise HTTPException(422, "Invalid project member role")
+    if ProjectRole.MANAGER in roles:
+        await check_user_permission(
+            db_session, project=project, user=current_user, action="set_role_manager"
+        )
+    organization_users = select(LabUser.user_id).where(
+        LabUser.lab_id == project.lab_id, LabUser.user_id.in_(ids)
+    ).with_for_update()
+    eligible = set(await db_session.scalars(organization_users))
+    if eligible != ids:
+        raise HTTPException(409, "Organization membership changed")
+    direct_users = select(ProjectUser.user_id).where(
+        ProjectUser.project_id == project_id, ProjectUser.user_id.in_(ids)
+    )
+    existing = set(await db_session.scalars(direct_users))
+    db_session.add_all(
+        ProjectUser(
+            project_id=project_id,
+            user_id=member.user_id,
+            role=member.role,
+            create_user_id=current_user.id,
+        )
+        for member in members
+        if member.user_id not in existing
+    )
+    await db_session.commit()
+    return {"added": len(ids - existing), "already_members": len(existing)}
+
+
 @router.post("/{project_id}/users")
 async def add_user_to_project(
     project_id: UUID,
@@ -744,7 +831,7 @@ async def add_user_to_project(
     current_user: CurrentUser,
     db_session: DBSession,
 ):
-    project: Project = await Project.find(db_session, id=project_id)
+    project: Project = await Project.find(db_session, id=project_id, with_for_update=True)
     action = (
         "set_role_manager" if params.role <= ProjectRole.MANAGER else "set_role_other"
     )

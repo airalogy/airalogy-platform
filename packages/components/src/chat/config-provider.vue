@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<ChatProviderProps>(), {
   createRendererContext: createDefaultRendererContext,
   token: "",
   userInfo: () => ({}),
+  modelNames: () => ({}),
 })
 
 const emit = defineEmits<IEmits>()

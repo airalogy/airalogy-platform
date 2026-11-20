@@ -18,12 +18,11 @@ from sqlalchemy import func, select, text
 from app.config import config
 from app.database import DBSession
 from app.models.account_token import AccountToken, AccountTokenType
-from app.models.chat import ChatModelType
 from app.models.lab import Lab, LabRole, LabUser, OrganizationType
 from app.models.project import ProjectRole
 from app.models.user import User
 from app.services.account_security import bump_auth_version
-from app.services.chat_models import enabled_chat_model_types
+from app.services.chat_models import ChatCapabilities, enabled_chat_model_types
 from app.services.organization_ai import bind_organization
 from app.services.single_lab import (
     add_user_to_single_lab,
@@ -56,7 +55,7 @@ class InstanceLabInfo(BaseModel):
     name: str
 
 
-class InstanceStatus(BaseModel):
+class InstanceStatus(ChatCapabilities):
     deployment_mode: str
     single_lab: bool
     initialized: bool
@@ -67,10 +66,8 @@ class InstanceStatus(BaseModel):
     documentation_profile: Literal["community", "customer_managed", "vendor_managed"]
     documentation_url: str
     support_url: str
-    ai_enabled: bool
     sms_login_enabled: bool
     sms_signup_required: bool
-    enabled_chat_models: list[ChatModelType]
     lab: InstanceLabInfo | None = None
     single_organization: bool = False
     organization: InstanceLabInfo | None = None
@@ -250,6 +247,9 @@ async def bootstrap_single_lab(params: BootstrapParams, db_session: DBSession):
 
 
 class CreateInvitationParams(BaseModel):
+    display_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+    ]
     email: EmailStr | None = None
     note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] = ""
     lab_role: LabRole = LabRole.MEMBER
@@ -312,6 +312,7 @@ async def create_invitation(
     token, raw_token = await create_account_token(
         db_session,
         token_type=AccountTokenType.INVITATION,
+        invitation_display_name=params.display_name,
         invitation_note=params.note or None,
         created_by_user_id=current_user.id,
         expires_in=timedelta(hours=config.INVITATION_TTL_HOURS),
@@ -359,6 +360,7 @@ async def list_invitations(
         items.append(
             {
                 "id": invite.id,
+                "display_name": invite.invitation_display_name,
                 "note": invite.invitation_note,
                 "email": invite.email,
                 "status": status,
@@ -455,6 +457,7 @@ async def accept_invitation(
         lab=lab,
         user=current_user,
         created_by_user_id=token.created_by_user_id or current_user.id,
+        display_name=token.invitation_display_name,
         lab_role=LabRole(token.lab_role or LabRole.MEMBER),
         project_role=ProjectRole(token.project_role or ProjectRole.RECORDER),
     )

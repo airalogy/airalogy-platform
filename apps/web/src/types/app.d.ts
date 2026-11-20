@@ -14,6 +14,7 @@ declare namespace App {
       | "profile-settings"
       | "profile-records"
       | "project-dashboard"
+      | "projects-research-overview"
       | "project-starred"
       | "lab-records"
       | "lab-research-overview"

@@ -4,17 +4,17 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from fastapi import HTTPException
-
 from app.config import config
 from app.models.chat import ChatContext, ChatModel, ChatModelType, ChatUserMessage
 from app.routers.chats.qa import QAChatMessageParams, send_qa_chat_message
 from app.routers.chats.utils import check_model_usage
 from app.services.chat_models import (
+    ChatCapabilities,
     enabled_chat_model_types,
     is_chat_model_enabled,
     require_ai_enabled,
 )
+from fastapi import HTTPException
 
 
 def test_gpt_is_excluded_when_not_enabled(monkeypatch):
@@ -37,6 +37,8 @@ def test_gpt_is_available_when_explicitly_enabled(monkeypatch):
     monkeypatch.setattr(config, "ENABLE_GPT_MODEL", True)
 
     assert enabled_chat_model_types() == (ChatModelType.GPT,)
+    caps = ChatCapabilities(ai_enabled=True, enabled_chat_models=list(enabled_chat_model_types()))
+    assert caps.model_dump(mode="json")["chat_model_names"] == {"4": "gpt-4.1"}
     assert is_chat_model_enabled(ChatModelType.GPT) is True
 
 
@@ -45,6 +47,7 @@ def test_all_chat_models_are_hidden_when_ai_is_disabled(monkeypatch):
     monkeypatch.setattr(config, "DASHSCOPE_API_KEY", "test-dashscope-key")
 
     assert enabled_chat_model_types() == ()
+    assert ChatCapabilities(ai_enabled=False, enabled_chat_models=[]).chat_model_names == {}
     assert is_chat_model_enabled(ChatModelType.BASIC) is False
 
     with pytest.raises(HTTPException, match="AI features are disabled") as error:

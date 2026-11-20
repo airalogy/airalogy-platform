@@ -36,6 +36,7 @@ export interface InstanceStatus {
   sms_login_enabled: boolean
   sms_signup_required: boolean
   enabled_chat_models: ChatModel[]
+  chat_model_names?: Partial<Record<ChatModel, string>>
   lab: InstanceLabInfo | null
 }
 
@@ -111,6 +112,7 @@ export async function fetchInvitation(token: string) {
 }
 
 export async function postInvitation(payload: {
+  displayName: string
   email?: string
   note?: string
   labRole: Api.Lab.LabRole
@@ -127,6 +129,7 @@ export async function postInvitation(payload: {
     method: "POST",
     data: {
       email: payload.email,
+      display_name: payload.displayName,
       note: payload.note,
       lab_role: payload.labRole,
       project_role: payload.projectRole,
@@ -136,6 +139,7 @@ export async function postInvitation(payload: {
 
 export interface InvitationRecord {
   id: string
+  display_name: string | null
   note: string | null
   email: string
   expires_at: string

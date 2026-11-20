@@ -81,10 +81,24 @@ test("ordinary members see their member directory instead of administrator contr
   await expect(page.locator('.n-tabs-tab[data-name="lab-settings"]')).toHaveCount(0)
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 980 })
-    await page.getByTestId("app-shell-header").getByRole("button", { name: zh.common.more, exact: true }).click()
+    if (width === 390)
+      await page.getByTestId("workspace-menu-trigger").click()
+    await page.getByRole("button", { name: zh.common.more, exact: true }).click()
     await expect(page.locator(".n-dropdown-menu").getByText("组织管理", { exact: true })).toHaveCount(0)
     await expect(page.getByText(zh.page.singleLabWorkspace.membersAccess, { exact: true }).last()).toBeVisible()
     await page.keyboard.press("Escape")
+    await page.goto("/home")
+    const workspace = page.getByTestId("home-project-workspaces")
+    await expect(workspace.getByRole("link", { name: /全部项目/ })).toBeVisible()
+    await expect(workspace.getByRole("link", { name: "研发总览" })).toHaveCount(0)
+    await workspace.getByRole("link", { name: /全部项目/ }).click()
+    await expect(page.locator('.n-tabs-tab[data-name="project-dashboard"]')).toBeVisible()
+    await expect(page.locator('.n-tabs-tab[data-name="projects-research-overview"]')).toHaveCount(0)
+    await page.goto("/organization/research-overview")
+    await expect(page).toHaveURL(/\/projects\/research-overview$/)
+    await expect(page.getByRole("alert")).toContainText(zh.route["403"])
+    await expect(page.getByTestId("org-research-overview")).toHaveCount(0)
+    await page.goto("/organization/members")
   }
 })
 
@@ -129,7 +143,13 @@ test("privately invite a member who chooses their own email and username", async
   await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
   const modal = page.locator(".n-modal")
   const username = `invite_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`
-  await modal.locator("input").first().fill(username)
+  const displayName = `合成成员_${username.slice(-6)}`
+  const privateNote = "Synthetic admin-only note"
+  await modal.getByPlaceholder(zh.common.labAliasPlaceholder).fill(displayName)
+  const note = modal.getByRole("textbox", { name: zh.page.instance.inviteNote })
+  await expect(note).toBeHidden()
+  await modal.getByText(zh.page.instance.inviteNote, { exact: true }).click()
+  await note.fill(privateNote)
   const createResponse = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/instance/invitations"))
   await modal.getByRole("button", { name: zh.page.instance.createInvite }).click()
   const created = await createResponse
@@ -158,7 +178,14 @@ test("privately invite a member who chooses their own email and username", async
     await modal.getByText(zh.page.instance.inviteHistory, { exact: true }).click()
     const entry = modal.getByRole("listitem").filter({ hasText: username })
     await expect(entry).toContainText(zh.page.instance.inviteStates.claimed)
-    await expect(entry).toContainText(`· ${username}`)
+    await expect(entry.locator("strong")).toHaveText(displayName)
+    await expect(entry).toContainText(zh.page.instance.invitationClaimant.replace("{account}", username))
+    await expect(entry).toContainText(privateNote)
+    await modal.getByRole("button", { name: zh.common.close, exact: true }).last().click()
+    await page.reload()
+    const newMember = page.locator(".member-list__item").filter({ hasText: displayName })
+    await expect(newMember).toContainText(`@${username}`)
+    await expect(newMember).not.toContainText(privateNote)
   }
   finally {
     await context.close()
@@ -171,8 +198,8 @@ test("invitation preview preserves the link and administrators can revoke it", a
   await page.goto("/organization/members")
   await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
   const modal = page.locator(".n-modal")
-  const note = `撤销验收_${crypto.randomUUID().slice(0, 8)}`
-  await modal.locator("input").first().fill(note)
+  const displayName = `撤销验收_${crypto.randomUUID().slice(0, 8)}`
+  await modal.getByPlaceholder(zh.common.labAliasPlaceholder).fill(displayName)
   const creation = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/instance/invitations"))
   await modal.getByRole("button", { name: zh.page.instance.createInvite }).click()
   const invite = await (await creation).json()
@@ -183,7 +210,7 @@ test("invitation preview preserves the link and administrators can revoke it", a
   await page.goto("/organization/members")
   await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
   await modal.getByText(zh.page.instance.inviteHistory, { exact: true }).click()
-  const entry = modal.getByRole("listitem").filter({ hasText: note })
+  const entry = modal.getByRole("listitem").filter({ hasText: displayName })
   await expect(entry).toContainText(zh.page.instance.inviteStates.pending)
   await entry.getByRole("button", { name: zh.page.instance.revokeInvite }).click()
   await page.locator(".n-popconfirm__action").getByRole("button").last().click()
@@ -201,20 +228,25 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: zh.page.instance.inviteMember }).click()
     const modal = page.locator(".n-modal")
     const form = modal.locator("form")
-    const note = form.locator("input").first()
+    const name = form.getByPlaceholder(zh.common.labAliasPlaceholder)
+    const create = modal.getByRole("button", { name: zh.page.instance.createInvite, exact: true })
+    await name.fill("   ")
+    await create.click()
+    await expect(form.locator(".n-form-item-feedback__line").first()).toHaveText(zh.common.labAliasPlaceholder)
     const role = form.locator(".n-base-selection")
     await expect(role).toHaveCount(2)
     const defaultRoles = await role.allTextContents()
     const first = `连续邀请_${crypto.randomUUID().slice(0, 8)}`
     const second = `${first}_2`
     const email = `${crypto.randomUUID()}@example.org`
-    await note.fill(first)
+    await name.fill(first)
+    await form.getByText(zh.page.instance.inviteNote, { exact: true }).click()
+    await form.getByRole("textbox", { name: zh.page.instance.inviteNote }).fill("First only")
     for (const field of await role.all()) {
       await field.click()
       await selectVisibleOption(page, zh.role.manager)
     }
-    await form.locator("input").last().fill(email)
-    const create = modal.getByRole("button", { name: zh.page.instance.createInvite, exact: true })
+    await form.getByRole("textbox").nth(1).fill(email)
     const link = modal.locator("textarea")
     await create.click()
     await expect(link).toBeVisible()
@@ -225,12 +257,13 @@ for (const width of [1440, 390]) {
     const next = modal.getByRole("button", { name: zh.page.instance.inviteNext })
     await expect(next).toBeInViewport()
     await next.click()
-    await expect(note).toBeFocused()
-    await expect(note).toHaveValue("")
+    await expect(name).toBeFocused()
+    await expect(name).toHaveValue("")
+    await expect(form.getByRole("textbox", { name: zh.page.instance.inviteNote })).toBeHidden()
     await expect(role).toHaveText(defaultRoles)
     await expect(form.getByRole("checkbox")).not.toBeChecked()
     await expect(link).toHaveCount(0)
-    await note.fill(second)
+    await name.fill(second)
     await create.click()
     await expect(link).toBeVisible()
     const secondUrl = await link.inputValue()
@@ -244,6 +277,10 @@ for (const width of [1440, 390]) {
     for (const person of [first, second]) {
       const row = modal.getByRole("listitem").filter({ has: page.getByText(person, { exact: true }) })
       await expect(row).toContainText(zh.page.instance.inviteStates.pending)
+      if (person === first)
+        await expect(row).toContainText("First only")
+      else
+        await expect(row).not.toContainText("First only")
     }
   })
 }

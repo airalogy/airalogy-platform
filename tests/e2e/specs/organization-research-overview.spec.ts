@@ -6,7 +6,8 @@ for (const width of [1440, 390]) {
   test(`organization research overview follows original work and daily activity at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
-    const { lab } = await loadFixtures()
+    const status = await (await page.request.get("/api/instance")).json()
+    const lab = status.organization ?? (await loadFixtures()).lab
     const auth = await page.request.post("/api/signin_by_email", { data: { email: "dev.owner@airalogy.dev", password: "AiralogyDev123!" } })
     expect(auth.ok()).toBeTruthy()
     const headers = { "Auth-Token": (await auth.json()).token }
@@ -32,8 +33,26 @@ for (const width of [1440, 390]) {
       data: { scope_type: "project", project_id: id, kind: "progress", title, occurred_at: when.toISOString() },
     })
     expect(log.ok()).toBeTruthy()
-    await page.goto(`/orgs/${lab.uid}/members`)
-    await page.getByText("研发总览", { exact: true }).click()
+    if (status.single_lab) {
+      await page.goto("/home")
+      const shortcut = page.getByTestId("home-project-workspaces").getByRole("link", { name: "研发总览", exact: true })
+      await expect(shortcut).toBeInViewport()
+      await shortcut.click()
+      await expect(page).toHaveURL(/\/projects\/research-overview$/)
+      await page.locator('.n-tabs-tab[data-name="project-dashboard"]').click()
+      await expect(page).toHaveURL(/\/projects\/my$/)
+      await page.locator('.n-tabs-tab[data-name="projects-research-overview"]').click()
+      await expect(page).toHaveURL(/\/projects\/research-overview$/)
+      await page.goto("/organization/members")
+      await expect(page.locator('.n-tabs-tab[data-name="lab-members"]')).toBeVisible()
+      await expect(page.getByText("研发总览", { exact: true })).toHaveCount(0)
+      await page.goto("/organization/research-overview")
+      await expect(page).toHaveURL(/\/projects\/research-overview$/)
+    }
+    else {
+      await page.goto(`/orgs/${lab.uid}/members`)
+      await page.getByText("研发总览", { exact: true }).click()
+    }
     const overview = page.getByTestId("org-research-overview")
     const card = overview.getByTestId("org-project").filter({ hasText: uid })
     await expect(card).toContainText("Waiting for fixture")

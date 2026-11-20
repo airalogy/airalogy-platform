@@ -64,6 +64,7 @@ export interface ChatProviderProps<InjectContext = any> {
   currentEditorProtocolContext: CurrentEditorProtocolContext
   currentRecorderRecordContext: CurrentRecorderRecordContext
   enabledModels: ChatModel[]
+  modelNames?: Partial<Record<ChatModel, string>>
   /**
    * @deprecated This function is no longer used since markdown-preview migrated to unified system.
    * Kept for backward compatibility only.
@@ -105,7 +106,7 @@ export function createDefaultCurrentRecorderRecordContext(): CurrentRecorderReco
 }
 
 export function useProvideChatProvider(config: ChatProviderContext) {
-  const context = pick(config, ["postToolResultChat", "uploadAttachment", "stopStream", "baseUrl", "token", "mode", "protocolId", "userInfo", "contextDialog", "contextDialogEventHandlers", "contextOptions", "createChatContext", "currentEditorProtocolContext", "currentRecorderRecordContext", "enabledModels", "createRendererContext"])
+  const context = pick(config, ["postToolResultChat", "uploadAttachment", "stopStream", "baseUrl", "token", "mode", "protocolId", "userInfo", "contextDialog", "contextDialogEventHandlers", "contextOptions", "createChatContext", "currentEditorProtocolContext", "currentRecorderRecordContext", "enabledModels", "modelNames", "createRendererContext"])
 
   provide(ChatProviderKey, context)
 

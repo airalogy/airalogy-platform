@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from pydantic import BaseModel, computed_field
 
 from app.config import config
 from app.libs.ai_scope import active_ai_scope
@@ -9,6 +10,16 @@ DEFAULT_CHAT_MODEL_TYPES = (
     ChatModelType.PLUS,
     ChatModelType.PRO,
 )
+
+
+class ChatCapabilities(BaseModel):
+    ai_enabled: bool
+    enabled_chat_models: list[ChatModelType]
+
+    @computed_field
+    @property
+    def chat_model_names(self) -> dict[ChatModelType, str]:
+        return {kind: ChatModel(model_type=kind).name for kind in self.enabled_chat_models}
 
 
 def enabled_chat_model_types() -> tuple[ChatModelType, ...]:

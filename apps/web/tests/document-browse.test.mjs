@@ -46,6 +46,8 @@ test("document routes retain their workspace location instead of matching resear
     assert.equal(workspaceDestination(name), "research-documents")
   assert.equal(workspaceDestination("research-tasks"), "research-tasks")
   assert.equal(workspaceDestination("project-documents"), "project-dashboard")
+  assert.equal(workspaceDestination("projects-research-overview"), "project-dashboard")
+  assert.equal(workspaceDestination("lab-research-overview"), "labs-my")
   assert.equal(workspaceDestination("project-records"), "profile-records")
   assert.equal(workspaceDestination("unrecognized"), null)
 })

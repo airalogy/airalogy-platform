@@ -6,13 +6,16 @@ import { useProjectPermissions } from "@/composables/useProjectPermissions"
 import { ProjectType } from "@/enum"
 import { getProjectTeam } from "@/service/api/project-people"
 import { fetchProjectMembers } from "@/service/api/projects"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useOrProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
+import ProjectMemberPicker from "./project-member-picker.vue"
 
 defineOptions({ name: "ProjectMembers" })
 
 const { projectInfo } = useOrProvideProjectInfoStore(null)
 const projectId = computed(() => projectInfo.value?.id)
-const { canShowSettings } = useProjectPermissions(projectInfo)
+const instance = useInstanceStore()
+const { canShowSettings, canSetManager } = useProjectPermissions(projectInfo)
 const canAddMembers = computed(() => canShowSettings.value || LAB_OWNER_AND_MANAGER.includes(projectInfo.value?.user_lab_role))
 const team = ref<ProjectTeam>()
 const members = ref<Api.Project.MemberListItem[]>([])
@@ -87,16 +90,27 @@ watch([projectId, page, revision], async ([id, currentPage], _, onCleanup) => {
   <div class="min-w-0 space-y-5" data-testid="project-team">
     <section class="team-section" aria-labelledby="project-team-accounts" data-testid="team-accounts">
       <header class="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="project-team-accounts" class="aira-type-section-title m-0">{{ $t("page.projectTeam.accessMembers") }}</h2>
-        <global-add-member-table-modal
-          v-if="canAddMembers && projectInfo" :id="projectInfo.id" show-icon
-          :trigger="$t('common.addMember')" type="project" :is-private="projectInfo.type === ProjectType.PRIVATE"
-          @modal:new-member="reload"
-        />
+        <h2 id="project-team-accounts" class="aira-type-section-title m-0">
+          {{ $t("page.projectTeam.accessMembers") }}
+        </h2>
+        <div v-if="canAddMembers && projectInfo" class="flex flex-wrap items-center gap-2">
+          <project-member-picker
+            :key="projectInfo.id" :project-id="projectInfo.id" :is-private="projectInfo.type === ProjectType.PRIVATE"
+            :can-set-manager="canSetManager || LAB_OWNER_AND_MANAGER.includes(projectInfo.user_lab_role)"
+            @added="reload"
+          />
+          <global-add-member-table-modal
+            v-if="!instance.isSingleLab" :id="projectInfo.id" :show-icon="false" :button-props="{ text: true }"
+            :trigger="$t('page.projectTeam.lookupAccount')" type="project" :is-private="projectInfo.type === ProjectType.PRIVATE"
+            @modal:new-member="reload"
+          />
+        </div>
       </header>
       <n-alert v-if="membersFailed || teamFailed" type="error">
         {{ $t("page.projectTeam.loadFailed") }}
-        <n-button text @click="reload">{{ $t("common.retry") }}</n-button>
+        <n-button text @click="reload">
+          {{ $t("common.retry") }}
+        </n-button>
       </n-alert>
       <global-member-list
         v-if="projectId && members.length" :id="projectId" :list="members" type="project"
@@ -111,21 +125,29 @@ watch([projectId, page, revision], async ([id, currentPage], _, onCleanup) => {
           <span class="aira-type-meta">{{ $t("page.projectTeam.otherAccess") }}</span>
         </li>
       </ul>
-      <p v-if="loadingMembers || (!team && !teamFailed)" class="aira-type-meta" role="status">{{ $t("page.projectTeam.loading") }}</p>
+      <p v-if="loadingMembers || (!team && !teamFailed)" class="aira-type-meta" role="status">
+        {{ $t("page.projectTeam.loading") }}
+      </p>
       <p v-else-if="team && !membersFailed && !members.length && !team.additional_members.length" class="aira-type-meta">
         {{ $t("page.projectTeam.noMembers") }}
       </p>
     </section>
     <section aria-labelledby="project-team-names" class="team-section" data-testid="team-participants">
-      <h2 id="project-team-names" class="aira-type-section-title m-0">{{ $t("page.projectTeam.namedParticipants") }}</h2>
-      <p class="aira-type-meta m-0">{{ $t("page.projectTeam.namedHint") }}</p>
+      <h2 id="project-team-names" class="aira-type-section-title m-0">
+        {{ $t("page.projectTeam.namedParticipants") }}
+      </h2>
+      <p class="aira-type-meta m-0">
+        {{ $t("page.projectTeam.namedHint") }}
+      </p>
       <ul v-if="team?.participants.length" class="team-list">
         <li v-for="person in team.participants" :key="person.id">
           <span class="break-words">{{ person.name }}</span>
           <span v-if="person.organization" class="aira-type-meta break-words">{{ person.organization }}</span>
         </li>
       </ul>
-      <p v-else-if="team" class="aira-type-meta">{{ $t("page.projectTeam.noParticipants") }}</p>
+      <p v-else-if="team" class="aira-type-meta">
+        {{ $t("page.projectTeam.noParticipants") }}
+      </p>
     </section>
   </div>
 </template>

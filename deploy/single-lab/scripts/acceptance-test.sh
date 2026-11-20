@@ -67,7 +67,7 @@ owner_project_invite_code="$(curl "${curl_args[@]}" --silent --output /dev/null 
   -H 'Content-Type: application/json' \
   -H "Auth-Token: $owner_token" \
   -X POST \
-  -d "$(jq -n --arg email owner-role@acceptance.example.com '{email:$email,lab_role:3,project_role:1}')" \
+  -d "$(jq -n --arg email owner-role@acceptance.example.com '{display_name:"Acceptance member",email:$email,lab_role:3,project_role:1}')" \
   "$api_url/instance/invitations")"
 [[ "$owner_project_invite_code" == "400" ]] || die "invitation unexpectedly granted default Project ownership"
 
@@ -76,7 +76,7 @@ invitation="$(request \
   -H 'Content-Type: application/json' \
   -H "Auth-Token: $owner_token" \
   -X POST \
-  -d "$(jq -n --arg email "$member_email" '{email:$email,lab_role:3,project_role:40}')" \
+  -d "$(jq -n --arg email "$member_email" '{display_name:"Acceptance member",email:$email,lab_role:3,project_role:40}')" \
   "$api_url/instance/invitations")"
 invite_url="$(jq -r '.url' <<<"$invitation")"
 invite_token="${invite_url##*token=}"
@@ -204,7 +204,7 @@ permission_code="$(curl "${curl_args[@]}" --silent --output /dev/null --write-ou
   -H 'Content-Type: application/json' \
   -H "Auth-Token: $member_token" \
   -X POST \
-  -d "$(jq -n --arg email blocked@acceptance.example.com '{email:$email,lab_role:3,project_role:40}')" \
+  -d "$(jq -n --arg email blocked@acceptance.example.com '{display_name:"Acceptance member",email:$email,lab_role:3,project_role:40}')" \
   "$api_url/instance/invitations")"
 [[ "$permission_code" == "403" ]] || die "ordinary member unexpectedly created an invitation"
 
@@ -268,7 +268,7 @@ manager_invitation="$(request \
   -H 'Content-Type: application/json' \
   -H "Auth-Token: $final_member_token" \
   -X POST \
-  -d "$(jq -n --arg email demoted-manager-invite@acceptance.example.com '{email:$email,lab_role:3,project_role:40}')" \
+  -d "$(jq -n --arg email demoted-manager-invite@acceptance.example.com '{display_name:"Acceptance member",email:$email,lab_role:3,project_role:40}')" \
   "$api_url/instance/invitations")"
 manager_invite_url="$(jq -r '.url' <<<"$manager_invitation")"
 manager_invite_token="${manager_invite_url##*token=}"
@@ -277,7 +277,7 @@ manager_role_invite_code="$(curl "${curl_args[@]}" --silent --output /dev/null -
   -H 'Content-Type: application/json' \
   -H "Auth-Token: $final_member_token" \
   -X POST \
-  -d "$(jq -n --arg email manager-role@acceptance.example.com '{email:$email,lab_role:2,project_role:40}')" \
+  -d "$(jq -n --arg email manager-role@acceptance.example.com '{display_name:"Acceptance member",email:$email,lab_role:2,project_role:40}')" \
   "$api_url/instance/invitations")"
 [[ "$manager_role_invite_code" == "403" ]] || die "manager unexpectedly invited another Lab manager"
 

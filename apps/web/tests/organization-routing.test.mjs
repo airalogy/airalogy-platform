@@ -42,7 +42,6 @@ const cases = [
   ["protocol-record-report", "/projects/project/protocols/protocol/v1.2.3/record/record/v2", { protocolUid: "protocol", protocolVersion: "1.2.3", recordId: "record", recordVersion: "2" }],
   ["protocol-editor", "/projects/project/protocol/editor/v1.2.3", { protocolUid: "protocol", protocolVersion: "1.2.3" }],
   ["lab-members", "/organization/members", {}],
-  ["lab-research-overview", "/organization/research-overview", {}],
   ["lab-settings", "/organization/settings", {}],
   ["lab-knowledge", "/organization/knowledge", {}],
   ["lab-resources", "/organization/resources/gateways", { section: "gateways" }],
@@ -77,6 +76,24 @@ for (const scope of [single, multi]) {
     }
   })
 }
+
+test("single organization research bookmarks open the Projects tab and multi-organization links keep their scope", async () => {
+  const one = makeRouter(single)
+  for (const path of ["/projects/research-overview", "/organization/research-overview", "/orgs/synthetic_org/research-overview", "/labs/synthetic_org/research-overview"]) {
+    await one.browserNavigate(`${path}?filter=recent#activity`)
+    assert.equal(one.currentRoute.value.fullPath, "/projects/research-overview?filter=recent#activity")
+    assert.equal(one.currentRoute.value.matched[0].name, "projects")
+  }
+  await one.push({ name: "lab-research-overview", params: { labUid: single.uid } })
+  assert.equal(one.currentRoute.value.name, "projects-research-overview")
+  await one.browserNavigate("/orgs/foreign/research-overview")
+  assert.equal(one.currentRoute.value.name, "lab-not-found")
+  const many = makeRouter(multi)
+  assert.equal(many.hasRoute("projects-research-overview"), false)
+  await many.browserNavigate("/labs/synthetic_org/research-overview?filter=recent#activity")
+  assert.equal(many.currentRoute.value.fullPath, "/orgs/synthetic_org/research-overview?filter=recent#activity")
+  assert.equal(many.currentRoute.value.name, "lab-research-overview")
+})
 
 test("single instance never resolves a foreign organization to the local project", async () => {
   const router = makeRouter(single)

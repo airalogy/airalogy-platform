@@ -30,12 +30,14 @@ export async function loadFixtures(): Promise<E2EFixtures> {
   ) as E2EFixtures
 }
 
-export async function mockAIEnabled(page: Page | BrowserContext, isEnabled: () => boolean) {
+export async function mockAIEnabled(page: Page | BrowserContext, isEnabled: () => boolean, modelNames?: Record<number, string>) {
   await page.route(/\/api\/(?:instance|organizations\/uid\/[^/]+\/ai-capabilities)(?:\?.*)?$/, async (route) => {
     const response = await route.fetch()
     const status = await response.json()
     const enabled = isEnabled()
-    await route.fulfill({ response, json: { ...status, ai_enabled: enabled, enabled_chat_models: enabled ? status.enabled_chat_models : [] } })
+    const names = modelNames ?? status.chat_model_names
+    const models = modelNames ? Object.keys(modelNames).map(Number) : status.enabled_chat_models
+    await route.fulfill({ response, json: { ...status, ai_enabled: enabled, enabled_chat_models: enabled ? models : [], chat_model_names: enabled ? names : {} } })
   })
 }
 

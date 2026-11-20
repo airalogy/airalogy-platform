@@ -124,6 +124,47 @@ def test_historical_upgrade_identity_foreign_keys_and_recovery():
     asyncio.run(run())
 
 
+def test_invitation_migration_preserves_private_notes_and_blocks_loss_of_names():
+    migration = import_module("migrations.versions.0095_invitation_display_name")
+
+    def rehearse(connection):
+        connection.execute(
+            text("CREATE TEMP TABLE account_tokens (invitation_note text)")
+        )
+        connection.execute(
+            text("INSERT INTO account_tokens VALUES ('Private legacy note')")
+        )
+        snapshot = text(
+            "SELECT invitation_note, invitation_display_name FROM account_tokens"
+        )
+        with Operations.context(MigrationContext.configure(connection)):
+            migration.upgrade()
+            assert connection.execute(snapshot).one() == ("Private legacy note", None)
+            migration.downgrade()
+            migration.upgrade()
+            connection.execute(
+                text(
+                    "UPDATE account_tokens SET invitation_display_name = 'Sample member'"
+                )
+            )
+            with pytest.raises(RuntimeError, match="Preserve invitation display names"):
+                migration.downgrade()
+            assert connection.execute(snapshot).one() == (
+                "Private legacy note",
+                "Sample member",
+            )
+
+    async def run():
+        engine = create_async_engine(os.environ["RESOURCE_TEST_DATABASE_URL"])
+        try:
+            async with engine.connect() as connection:
+                await connection.run_sync(rehearse)
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
+
+
 def test_canonical_and_legacy_apis_share_permissions_and_identity(monkeypatch):
     async def run():
         async with database() as sessions:
@@ -311,12 +352,14 @@ def test_company_bootstrap_private_project_and_legacy_invitation_default(
                         "/instance/bootstrap", json={**params, "project_name": "Do not rename"}
                     )
                 ).status_code == 409
-                invitation = instance.CreateInvitationParams(email="member@example.org")
+                invitation = instance.CreateInvitationParams(
+                    display_name="Member", email="member@example.org"
+                )
                 assert invitation.project_role.value == 30
                 monkeypatch.setattr(config, "DEPLOYMENT_MODE", "single_lab")
                 assert (
                     instance.CreateInvitationParams(
-                        email="member@example.org"
+                        display_name="Member", email="member@example.org"
                     ).project_role.value
                     == 40
                 )
@@ -367,28 +410,47 @@ def test_private_invitations_claim_history_and_revocation(monkeypatch):
                 base = "/instance/invitations"
 
                 async def issue(**fields):
-                    result = await http.post(base, headers=owner, json=fields)
+                    result = await http.post(
+                        base, headers=owner, json={"display_name": "Member", **fields}
+                    )
                     assert result.status_code == 200, result.text
                     invite = result.json()
                     token = parse_qs(urlsplit(invite["url"]).query)["token"][0]
                     return invite["id"], base + "/" + token
 
-                first, first_url = await issue(note="Private admin note")
+                for invalid in [
+                    {},
+                    {"display_name": ""},
+                    {"display_name": "　 "},
+                    {"display_name": "a" * 256},
+                ]:
+                    assert (
+                        await http.post(base, headers=owner, json=invalid)
+                    ).status_code == 422
+                first, first_url = await issue(
+                    display_name="  合成成员  ", note="Private admin note"
+                )
                 second, second_url = await issue()
                 old, old_url = await issue(email="future@example.org")
                 await issue(email="future@example.org")
                 expired, expired_url = await issue()
                 legacy, _ = await issue()
+                old_private, old_private_url = await issue(note="Internal legacy note")
                 async with sessions() as db:
                     (await db.get(AccountToken, UUID(expired))).expires_at = (
                         utcnow() - timedelta(seconds=1)
                     )
                     (await db.get(AccountToken, UUID(legacy))).consumed_at = utcnow()
+                    (
+                        await db.get(AccountToken, UUID(old_private))
+                    ).invitation_display_name = None
                     await db.commit()
 
                 for fields in [{"lab_role": 2}, {"project_role": 20}]:
                     assert (
-                        await http.post(base, headers=owner, json=fields)
+                        await http.post(
+                            base, headers=owner, json={"display_name": "Lead", **fields}
+                        )
                     ).status_code == 422
                 elevated, elevated_url = await issue(
                     lab_role=2, email="lead@example.org"
@@ -398,6 +460,11 @@ def test_private_invitations_claim_history_and_revocation(monkeypatch):
                 ).status_code == 403
                 assert (await http.get(base, headers=member)).status_code == 403
                 assert (
+                    await http.post(
+                        base, headers=member, json={"display_name": "Member"}
+                    )
+                ).status_code == 403
+                assert (
                     await http.post(base + "/" + second + "/revoke", headers=member)
                 ).status_code == 403
                 for _ in range(2):
@@ -405,6 +472,7 @@ def test_private_invitations_claim_history_and_revocation(monkeypatch):
                     assert (
                         preview.status_code == 200
                         and "Private admin note" not in preview.text
+                        and "合成成员" not in preview.text
                     )
                 assert (
                     await http.post(first_url + "/accept", headers=owner)
@@ -442,6 +510,9 @@ def test_private_invitations_claim_history_and_revocation(monkeypatch):
                 ).status_code == 404
                 rows = (await http.get(base, headers=owner)).json()["items"]
                 history = {r["id"]: r for r in rows}
+                assert history[first]["display_name"] == "合成成员"
+                assert history[old_private]["display_name"] is None
+                assert history[old_private]["note"] == "Internal legacy note"
                 assert history[first]["status"] == "claimed"
                 assert history[first]["claimed_by"] == seed.outsider.username
                 assert history[first]["note"] == "Private admin note"
@@ -452,5 +523,44 @@ def test_private_invitations_claim_history_and_revocation(monkeypatch):
                     and history[legacy]["claimed_by"] is None
                 )
                 assert all("url" not in row and "token_hash" not in row for row in rows)
+
+                async with sessions() as db:
+                    membership = await LabUser.find_by(
+                        db,
+                        [
+                            LabUser.user_id == seed.outsider.id,
+                            LabUser.lab_id == seed.lab.id,
+                        ],
+                    )
+                    assert membership.alias == "合成成员"
+                    assert (
+                        await db.get(User, seed.outsider.id)
+                    ).name == seed.outsider.name
+                # Losing a race for membership cannot overwrite the winning alias.
+                assert (
+                    await http.post(old_private_url + "/accept", headers=recipient)
+                ).status_code == 409
+                other = await seed_analysis(sessions)
+                other_account = {"Auth-Token": create_access_token(other.outsider)}
+                assert (
+                    await http.post(old_private_url + "/accept", headers=other_account)
+                ).status_code == 200
+                async with sessions() as db:
+                    membership = await LabUser.find_by(
+                        db,
+                        [
+                            LabUser.user_id == other.outsider.id,
+                            LabUser.lab_id == seed.lab.id,
+                        ],
+                    )
+                    assert membership.alias is None
+                    original = await LabUser.find_by(
+                        db,
+                        [
+                            LabUser.user_id == seed.outsider.id,
+                            LabUser.lab_id == seed.lab.id,
+                        ],
+                    )
+                    assert original.alias == "合成成员"
 
     asyncio.run(run())

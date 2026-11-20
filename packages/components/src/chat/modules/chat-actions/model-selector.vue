@@ -1,13 +1,15 @@
 <template>
-  <n-dropdown trigger="click" placement="bottom-start" :options="dropdownOptions" @select="handleSelect">
-    <div class="inline-flex">
+  <span v-if="modelOptions.length <= 1" data-testid="chat-model" :title="modelName" class="min-w-0 truncate px-1 text-sm">{{ modelName }}</span>
+  <n-dropdown v-else trigger="click" placement="bottom-start" :disabled="isRecording" :options="dropdownOptions" @select="handleSelect">
+    <div class="min-w-0 inline-flex">
       <n-button
         ghost :bordered="false" :class="buttonClass" :disabled="isRecording" :size="buttonSize"
         icon-placement="right"
+        data-testid="chat-model" :title="modelName"
         v-bind="buttonProps"
       >
         <component :is="modelIcon" v-if="modelIcon" class="mr-1" />
-        <span>{{ modelName }}</span>
+        <span class="truncate">{{ modelName }}</span>
         <template #icon>
           <n-icon :size="iconSize" v-bind="iconProps">
             <icon-ion-ios-arrow-down />

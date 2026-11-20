@@ -137,8 +137,6 @@ const tabs = computed((): TabPaneProps[] => {
       ? singleLabManagementEntries(instanceStore.isStructuredLab, canManageLab.value)
       : singleLabSharedEntries
     const result: TabPaneProps[] = entries.map(entry => ({ name: entry.name, tab: $t(entry.label) }))
-    if (name === "lab-research-overview" && !canManageLab.value)
-      result.push({ name, tab: $t("page.orgResearch.title") })
     if (operationsEnabled.value || name === "lab-operations")
       result.push({ name: "lab-operations", tab: $t("page.operations.overview") })
     return result
@@ -157,6 +155,7 @@ const tabs = computed((): TabPaneProps[] => {
       () => h(TabHintLabel, { label, hint })
     const list = [
       { name: "lab-projects", tab: $t("page.labs.projects") },
+      ...(canManageLab.value || name === "lab-research-overview" ? [{ name: "lab-research-overview", tab: $t("page.orgResearch.title") }] : []),
       { name: "lab-knowledge", tab: $t("page.knowledge.title") },
       { name: "lab-records", tab: $t("page.recordDiary.tab") },
       { name: "lab-resources", tab: $t("page.resourceLibrary.title") },
@@ -166,8 +165,6 @@ const tabs = computed((): TabPaneProps[] => {
       },
     ]
 
-    if (canManageLab.value || name === "lab-research-overview")
-      list.unshift({ name: "lab-research-overview", tab: $t("page.orgResearch.title") })
     if (operationsEnabled.value || name === "lab-operations")
       list.push({ name: "lab-operations", tab: $t("page.operations.overview") })
 

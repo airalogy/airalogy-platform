@@ -28,3 +28,24 @@ export interface ProjectTeam {
 export function getProjectTeam(projectId: string) {
   return documentRequest<ProjectTeam>({ url: "/project-people/team", params: { project_id: projectId } })
 }
+
+export interface ProjectMemberCandidate {
+  id: string
+  username: string
+  display_name: string
+}
+
+export function getProjectMemberCandidates(projectId: string, q: string, page: number) {
+  return documentRequest<{ users: ProjectMemberCandidate[], has_more: boolean }>({
+    url: `/projects/${projectId}/member-candidates`,
+    params: { q, page },
+  })
+}
+
+export function addOrganizationProjectMembers(projectId: string, members: { user_id: string, role: number }[]) {
+  return documentRequest<{ added: number, already_members: number }>({
+    url: `/projects/${projectId}/organization-members`,
+    method: "POST",
+    data: members,
+  })
+}

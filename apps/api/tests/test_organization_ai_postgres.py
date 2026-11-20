@@ -123,7 +123,11 @@ def test_organization_configuration_and_dispatch(monkeypatch):
                     f"/organizations/uid/{a.lab.uid}/ai-capabilities",
                     headers=auth(a.recorder),
                 )
-                assert caps.json() == {"ai_enabled": True, "enabled_chat_models": [2]}
+                assert caps.json() == {
+                    "ai_enabled": True,
+                    "enabled_chat_models": [2],
+                    "chat_model_names": {"2": "qwen3.5-plus"},
+                }
 
                 async with sessions() as db:
                     row = await db.get(OrganizationAI, a.lab.id)

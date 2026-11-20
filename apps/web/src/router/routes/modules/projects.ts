@@ -18,6 +18,12 @@ export const projectsRoute: CustomRoute<ProjectsNameKey> = {
       component: () => import("@/views/projects/dashboard.vue"),
     },
     {
+      path: "research-overview",
+      name: "projects-research-overview",
+      meta: { title: "Research overview", i18nKey: "page.orgResearch.title", allowGuest: false },
+      component: () => import("@/views/labs/research-overview.vue"),
+    },
+    {
       meta: {
         title: "Starred Projects",
         i18nKey: "page.project.tab.star",

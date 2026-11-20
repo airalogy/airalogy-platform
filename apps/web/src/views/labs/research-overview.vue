@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from "vue-router"
+import { useSingleLabWorkspace } from "@/composables/useSingleLabWorkspace"
 import { documentRequest } from "@/service/api/research-documents"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useI18n } from "vue-i18n"
 import ResearchActivity from "../research-activity/index.vue"
-import { useOrProvideLabInfoStore } from "./hooks/useLabsInfoStore"
+import { useLabInfoStore } from "./hooks/useLabsInfoStore"
 
 interface WorkLink { id: string, title: string }
 interface OverviewProject {
@@ -15,7 +17,7 @@ interface OverviewProject {
   next_steps: (WorkLink & { text: string })[]
   milestone: (WorkLink & { date: string | null }) | null
 }
-const { labInfo } = useOrProvideLabInfoStore(null)
+const labInfo = useInstanceStore().isSingleLab ? useSingleLabWorkspace().info : useLabInfoStore().labInfo
 const { t } = useI18n()
 const projects = ref<OverviewProject[]>([])
 const state = ref<"loading" | "ready" | "error">("loading")

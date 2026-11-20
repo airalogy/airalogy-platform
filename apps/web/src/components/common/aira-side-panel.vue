@@ -1,10 +1,63 @@
 <script setup lang="ts">
-import { useAiraNarrowScreen } from "@/composables/useWorkspaceAira"
+import { useAiraPanelSize } from "@/composables/useAiraPanelSize"
+import { useId } from "vue"
 
 const props = defineProps<{ open: boolean, label: string }>()
 const emit = defineEmits<{ close: [] }>()
-const narrow = useAiraNarrowScreen()
+const { drawer: narrow, phone, width, minimum, maximum, preview, save, reset } = useAiraPanelSize()
 const drawerBody = shallowRef<HTMLElement | null>(null)
+const contentId = useId()
+let drag: { id: number, x: number, width: number } | undefined
+
+function startResize(event: PointerEvent) {
+  if (event.button !== 0 || !event.isPrimary)
+    return
+  const handle = event.currentTarget as HTMLElement
+  handle.setPointerCapture(event.pointerId)
+  drag = { id: event.pointerId, x: event.clientX, width: width.value }
+}
+function moveResize(event: PointerEvent) {
+  if (drag?.id === event.pointerId)
+    preview.value = drag.width + drag.x - event.clientX
+}
+function cancelResize() {
+  if (drag) {
+    preview.value = null
+    drag = undefined
+  }
+}
+function finishResize(event: PointerEvent) {
+  if (!drag || drag.id !== event.pointerId)
+    return
+  if (drag.x !== event.clientX)
+    save(drag.width + drag.x - event.clientX)
+  cancelResize()
+}
+function onCaptureLost(event: PointerEvent) {
+  if (drag?.id === event.pointerId)
+    cancelResize()
+}
+function resizeWithKeyboard(event: KeyboardEvent) {
+  switch (event.key) {
+    case "ArrowLeft":
+      save(width.value + 16)
+      break
+    case "ArrowRight":
+      save(width.value - 16)
+      break
+    case "Home":
+      save(minimum)
+      break
+    case "End":
+      save(maximum.value)
+      break
+    default:
+      return
+  }
+  event.preventDefault()
+}
+watch([narrow, phone, () => props.open], cancelResize)
+onBeforeUnmount(cancelResize)
 
 const rail = shallowRef<HTMLElement | null>(null)
 // Some routes scroll the document and others scroll the shell. Follow the
@@ -51,7 +104,7 @@ function onEscape(event: KeyboardEvent) {
 
 <template>
   <n-drawer
-    :show="open && narrow" placement="right" width="var(--aira-drawer-width, min(100%, 460px))"
+    :show="open && narrow" placement="right" :width="phone ? '100%' : width"
     display-directive="show" :aria-label="label" :auto-focus="true"
     @update:show="shown => { if (!shown && narrow) emit('close') }"
   >
@@ -62,14 +115,44 @@ function onEscape(event: KeyboardEvent) {
     :aria-label="label" @keydown.esc.capture="onEditorEscape" @keydown.esc="onEscape"
   >
     <Teleport :to="drawerBody || 'body'" :disabled="!narrow || !drawerBody">
-      <slot />
+      <div
+        v-if="!phone" class="aira-resize-handle" role="separator" tabindex="0"
+        aria-orientation="vertical" :aria-controls="contentId" :aria-label="$t('common.resizeAiraPanel')"
+        :title="$t('common.resizeAiraHint')" :aria-valuemin="minimum" :aria-valuemax="maximum" :aria-valuenow="width"
+        @pointerdown="startResize" @pointermove="moveResize" @pointerup="finishResize"
+        @lostpointercapture="onCaptureLost" @dblclick="reset" @keydown="resizeWithKeyboard"
+      />
+      <div :id="contentId" class="h-full min-h-0"><slot /></div>
     </Teleport>
   </aside>
 </template>
 
 <style>
-@media (max-width: 599px) {
-  :root { --aira-drawer-width: 100%; }
+.aira-resize-handle {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.aira-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 1px;
+  width: 3px;
+  height: 28px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--aira-shell-border);
+}
+.aira-resize-handle:is(:hover, :active, :focus-visible)::after {
+  background: var(--primary-color, #2563eb);
+}
+@media (pointer: coarse) {
+  .aira-resize-handle { width: 16px; }
 }
 .aira-rail {
   position: fixed;

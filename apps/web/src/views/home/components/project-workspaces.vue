@@ -3,6 +3,7 @@ import type { PinnedItem } from "@/service/api/pinned-items"
 import type { WorkspaceProject } from "@/service/api/workspace"
 import type { ProjectCard } from "@/utils/projectWorkspace"
 import type { RouteLocationRaw } from "vue-router"
+import { useSingleLabWorkspace } from "@/composables/useSingleLabWorkspace"
 import { PinnedResourceType } from "@/service/api/pinned-items"
 import { fetchProjectList } from "@/service/api/projects"
 import { fetchUserProjects } from "@/service/api/users"
@@ -20,6 +21,7 @@ const props = defineProps<{ pins: PinnedItem[], pinningKeys: Set<string> }>()
 const emit = defineEmits<{ togglePin: [payload: { resourceType: PinnedResourceType, resourceId: string }] }>()
 const auth = useAuthStore()
 const instance = useInstanceStore()
+const { canManageLab } = useSingleLabWorkspace()
 const router = useRouter()
 const { t } = useI18n()
 const loading = ref(true)
@@ -125,9 +127,14 @@ onBeforeUnmount(() => sequence++)
       <h2 class="aira-type-section-title m-0">
         {{ t('page.home.workspace.projects') }}
       </h2>
-      <router-link :to="{ name: 'project-dashboard' }" class="text-primary hover:underline">
-        {{ t('page.home.workspace.allProjects') }} →
-      </router-link>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <router-link v-if="canManageLab" :to="{ name: 'projects-research-overview' }" class="text-primary hover:underline">
+          {{ t('page.orgResearch.title') }}
+        </router-link>
+        <router-link :to="{ name: 'project-dashboard' }" class="text-primary hover:underline">
+          {{ t('page.home.workspace.allProjects') }} →
+        </router-link>
+      </div>
     </div>
     <n-alert v-if="error" type="error" :title="t('page.home.workspace.loadError')" data-testid="home-project-error">
       <n-button size="small" @click="load">

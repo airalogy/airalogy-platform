@@ -11,11 +11,12 @@ for (const width of [1440, 876, 390]) {
     const question = "合成验收：怎样整理本周进展？"
     const answer = "可以先整理已完成的事项。"
     const id = randomUUID()
-    await mockAIEnabled(page, () => true)
+    await mockAIEnabled(page, () => true, { 2: "qwen3.5-plus" })
     await page.route("**/chats/qa/message", async (route) => {
       const payload = route.request().postDataJSON()
       expect(JSON.stringify(payload.message)).toContain(question)
       expect(payload.protocol_id).toBeUndefined()
+      expect(payload.model.model_type).toBe(2)
       await route.fulfill({
         contentType: "text/event-stream",
         body: [
@@ -33,6 +34,8 @@ for (const width of [1440, 876, 390]) {
     const input = panel.getByTestId("chat-input").locator("[contenteditable=true]")
     await trigger.click()
     await expect(input).toBeVisible()
+    await expect(panel.getByTestId("chat-model")).toHaveText("qwen3.5-plus")
+    await expect(panel.getByRole("button", { name: "qwen3.5-plus" })).toHaveCount(0)
     const bounds = await panel.boundingBox()
     const expectedWidth = width >= 900 ? 380 : Math.min(width, 460)
     expect(Math.round(bounds!.width)).toBe(expectedWidth)
@@ -77,6 +80,58 @@ for (const width of [1440, 876, 390]) {
     }
   })
 }
+
+test("Aira resizes its drawer and dock and shows the selected server model", async ({ page }, testInfo) => {
+  await mockAIEnabled(page, () => true, { 1: "qwen3.5-flash", 4: "gpt-4.1" })
+  await page.setViewportSize({ width: 878, height: 985 })
+  await page.goto("/home")
+  const open = page.getByTestId("home-aira")
+  await open.click()
+  const handle = page.getByRole("separator", { name: "调整 Aira 面板宽度" })
+  const panel = page.getByTestId("home-aira-panel")
+  const composer = panel.getByTestId("chat-input").locator("[contenteditable=true]")
+  const model = panel.getByTestId("chat-model")
+  await expect(model).toHaveText("qwen3.5-flash")
+  await model.click()
+  await page.locator(".n-dropdown-menu").getByText("gpt-4.1", { exact: true }).click()
+  await expect(model).toHaveText("gpt-4.1")
+  await composer.fill("合成草稿")
+  await expect(handle).toHaveAttribute("aria-valuenow", "460")
+  await handle.hover()
+  const box = (await handle.boundingBox())!
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x - 80, y, { steps: 6 })
+  await page.mouse.up()
+  await expect(handle).toHaveAttribute("aria-valuenow", "540")
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(540)
+  await page.screenshot({ path: testInfo.outputPath("aira-resized-878.png") })
+  await handle.press("ArrowRight")
+  await expect(handle).toHaveAttribute("aria-valuenow", "524")
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(handle).toHaveCount(0)
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(390)
+  await expect(composer).toHaveText("合成草稿")
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(handle).toHaveAttribute("aria-valuenow", "524")
+  await expect(composer).toHaveText("合成草稿")
+  await handle.press("End")
+  await expect(handle).toHaveAttribute("aria-valuenow", "720")
+  const main = await page.getByTestId("app-shell-content").boundingBox()
+  expect(main!.x + main!.width).toBeLessThanOrEqual((await handle.boundingBox())!.x + 1)
+  await page.reload()
+  await open.click()
+  await expect(handle).toHaveAttribute("aria-valuenow", "720")
+  await handle.press("Home")
+  await expect(handle).toHaveAttribute("aria-valuenow", "320")
+  await expect(panel.getByTestId("chat-submit")).toBeInViewport({ ratio: 1 })
+  await handle.dblclick()
+  await expect(handle).toHaveAttribute("aria-valuenow", "380")
+  await page.goto("/chat")
+  await expect(page.getByTestId("chat-model")).toHaveText("qwen3.5-flash")
+})
 
 test("Home Aira account history opens the same conversation on a fresh phone", async ({ page, browser }) => {
   await mockAIEnabled(page.context(), () => true)

@@ -2,10 +2,11 @@ import type { InjectionKey, Ref } from "vue"
 import { organizationUid } from "@/service/request/organization"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { createInjectionState, useMediaQuery } from "@vueuse/core"
+import { createInjectionState } from "@vueuse/core"
+import { useAiraPanelSize } from "./useAiraPanelSize"
 
 export function useAiraNarrowScreen() {
-  return useMediaQuery("(max-width: 899px)")
+  return useAiraPanelSize().drawer
 }
 
 export const projectAiraKey: InjectionKey<{ available: Ref<boolean>, visible: Ref<boolean>, open: (trigger?: HTMLElement) => void }> = Symbol("projectAira")

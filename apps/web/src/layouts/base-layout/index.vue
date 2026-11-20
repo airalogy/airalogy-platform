@@ -2,6 +2,7 @@
   <div class="relative" :class="[commonClass]" :style="cssVars">
     <div
       :id="isWrapperScroll ? scrollElId : undefined" class="workspace-shell h-full flex flex-col"
+      :style="{ '--aira-rail-width': `${airaWidth}px` }"
       :class="[commonClass, scrollWrapperClass, { 'overflow-y-auto min-h-screen': isWrapperScroll, 'max-h-screen': fullContent }]"
     >
       <!-- Header -->
@@ -125,6 +126,7 @@
 <script setup lang="ts">
 import type { AIRALayoutProps } from "../../types/layout"
 import type { Style } from "./utils/layoutType"
+import { useAiraPanelSize } from "@/composables/useAiraPanelSize"
 import { useElementSize } from "@vueuse/core"
 import styleRaw from "./utils/layout.module.css"
 import { createLayoutCssVars, LAYOUT_MAX_Z_INDEX, LAYOUT_SCROLL_EL_ID } from "./utils/shared"
@@ -164,6 +166,7 @@ const emit = defineEmits<Emits>()
 
 const slots = defineSlots<Slots>()
 
+const { width: airaWidth } = useAiraPanelSize()
 const style = styleRaw as any as Style
 
 interface Emits {
@@ -258,7 +261,6 @@ function handleClickMask() {
 </script>
 
 <style scoped>
-.workspace-shell { --aira-rail-width: clamp(320px, 28vw, 380px); }
 .workspace-body { display: contents; }
 .workspace-body:has(> [data-aira-docked="true"]) {
   display: flex;

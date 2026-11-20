@@ -6,6 +6,10 @@ export function workspaceDestination(name: string) {
     return "knowledge-home"
   if (["profile-records", "project-records", "lab-records"].includes(name))
     return "profile-records"
+  if (name === "projects-research-overview")
+    return "project-dashboard"
+  if (name === "lab-research-overview")
+    return "labs-my"
   if (name.includes("research"))
     return "research-tasks"
   if (name.includes("protocol"))

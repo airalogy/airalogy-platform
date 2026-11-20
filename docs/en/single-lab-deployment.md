@@ -93,7 +93,9 @@ The API serializes bootstrap requests and refuses setup if any user or Lab alrea
 
 ## Members And Accounts
 
-From Members, the owner or a manager can create a one-time link with an optional private note and send it directly to a member. New users choose their username and email. Existing users sign in and confirm which account will join. Opening a link leaves it available. An invitation can be restricted to an email and must be restricted for organization or default project managers. Invitation history shows pending, claimed, expired and revoked links, and the account that claimed each new invitation. Managers can revoke unused links within their authority. Earlier closed invitations have no recorded outcome. Links expire and only their hashes are stored.
+From Members, the owner or a manager enters the recipient’s organization display name and sends them a one-time link privately. This name appears in the member directory after they join. New users choose their own username and email. Existing users sign in and confirm which account will join. Ordinary member invitations can be restricted to an email address. An email address is required for organization or default project managers.
+
+Managers can add an optional private note. Invitation history shows the intended recipient, status, note, and the account that claimed the link. Managers can revoke pending links within their authority. Opening a link leaves it available until it is claimed, revoked, or expires. Existing links without a display name still work. Their notes remain private. Earlier closed invitations with no recorded outcome appear as historical. Only token hashes are stored.
 
 The owner or a manager can also create a one-time password-reset URL for an eligible member. Managers can manage ordinary members but not the owner or other managers. Changing or resetting a password revokes previously issued login tokens.
 

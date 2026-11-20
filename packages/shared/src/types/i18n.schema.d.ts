@@ -117,6 +117,8 @@ declare namespace I18n {
       chat: string
       organizationNav: string
       allChats: string
+      resizeAiraPanel: string
+      resizeAiraHint: string
       docs: string
       docsFull: string
       openDocs: string
@@ -874,6 +876,8 @@ declare namespace I18n {
         resetAction: string
         backToLogin: string
         inviteNote: string
+        invitationAdminNote: string
+        invitationClaimant: string
         privateInvite: string
         privateInviteHint: string
         bindInviteEmail: string
@@ -3345,6 +3349,7 @@ declare namespace I18n {
       project: {
         tab: {
           my: string
+          list: string
           star: string
           protocols: string
           members: string
@@ -5965,6 +5970,18 @@ declare namespace I18n {
         coverage: string
       }
       projectTeam: {
+        organizationMembers: string
+        searchDirectory: string
+        selection: string
+        selectedCount: string
+        noMatches: string
+        noCandidates: string
+        previousPage: string
+        nextPage: string
+        addSelected: string
+        addedCount: string
+        saveFailed: string
+        lookupAccount: string
         loading: string
         accessMembers: string
         namedParticipants: string
@@ -6284,6 +6301,7 @@ declare namespace I18n {
       hubSearchEnabled: string
       model: {
         select: string
+        unavailable: string
         basic: string
         plus: string
         pro: string

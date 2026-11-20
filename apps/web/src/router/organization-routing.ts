@@ -71,12 +71,20 @@ export function organizationRoutes<T extends RouteRecordRaw>(routes: T[], contex
       scoped = true
     }
     const meta = { ...route.meta, ...(scoped ? { organizationUid: context.uid } : {}) }
+    if (context.single && route.name === "project-dashboard") {
+      meta.i18nKey = "page.project.tab.list"
+      meta.breadcrumbI18nKey = "page.project.tab.list"
+    }
+    const children = route.children
+      ?.filter(child => context.single || child.name !== "projects-research-overview")
+      .map(child => transform(child as T, scoped ? context.uid : undefined))
     return {
       ...route,
       path,
       meta,
       ...(context.single && route.path === organizationPrefix ? { redirect: { name: "lab-settings" } } : {}),
-      ...(route.children ? { children: route.children.map(child => transform(child as T, scoped ? context.uid : undefined)) } : {}),
+      ...(context.single && route.name === "lab-research-overview" ? { redirect: { name: "projects-research-overview", params: {} } } : {}),
+      ...(children ? { children } : {}),
     } as T
   }
   return routes.map(route => transform(route))

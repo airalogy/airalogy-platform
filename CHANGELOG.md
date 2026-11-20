@@ -14,6 +14,14 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project managers can browse the organization directory, select several accounts and confirm their individual project roles in one step.
+
+- In single-organization deployments, owners and managers can open Research overview from Projects or beside All projects on Home. Existing overview bookmarks open the Projects tab.
+
+- Aira shows the server-configured model name in the composer. On desktops and tablets, drag the panel’s left edge or use the arrow keys to resize it. The browser remembers the width, and phones keep a full-width drawer.
+
+- Organization invitations require the member’s organization display name. Claiming the link applies it to their membership. Managers can distinguish the intended recipient, the claiming account, and an optional private note in invitation history. Existing links remain valid.
+
 - Aira now lists general chats and private project meeting conversations in one account history. Meeting drafts resume across devices on the same deployment and check current access before reading or sending.
 
 - Aira opens beside the workspace on wide screens and in a drawer on smaller screens. Project tabs share the open conversation and draft. Organization log titles, filters and record exports follow the deployment vocabulary.
