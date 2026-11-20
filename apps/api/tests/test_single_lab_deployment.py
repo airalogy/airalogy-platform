@@ -310,6 +310,9 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     meeting_chat_revision = import_module("migrations.versions.0094_meeting_conversations")
     assert meeting_chat_revision.down_revision == "0093_aira_memory_interaction"
     later_tables.add("meeting_conversations")
+    ledger_revision = import_module("migrations.versions.0096_external_project_ledger")
+    assert ledger_revision.down_revision == "0095_invitation_display_name"
+    later_tables.add("external_project_receipts")
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables
