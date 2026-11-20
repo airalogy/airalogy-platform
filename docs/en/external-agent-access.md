@@ -1,6 +1,6 @@
 # External Agent access
 
-Connect Codex or another MCP client to one authorized Project. Platform remains responsible for access control, strict data validation and Record revision history. These deterministic operations do not require Aira, Masterbrain or an enabled model service.
+Connect Codex or another MCP client to the projects authorized by the current user. Platform remains responsible for access control, strict data validation and Record revision history. These deterministic operations do not require Aira, Masterbrain or an enabled model service.
 
 This implements [Issue #11](https://github.com/airalogy/platform/issues/11) and the research workflows in [Issue #22](https://github.com/airalogy/platform/issues/22): scoped reads, imports/revisions, immutable analysis snapshots, private external results and reviewed Protocol publication. Organization project registration and project cash books have separate permissions. File downloads require separate authorization.
 
@@ -35,6 +35,8 @@ Search by exact name, UID or contract number, for example `{"by":"contract_numbe
 Supply integer CNY fen and the actual transaction date. A receipt of CNY 100 is `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"Example receipt","day":"2025-01-10","direction":"in","amount":10000}}`. Use `out` for a payment. Retry the same request with the same UUID. Changing the payload requires a new business decision, and conflicts with the original UUID. Check the returned ledger link or read the totals for receipts, payments and net cash.
 
 MCP clients use `/api/mcp`. With a personal delegated token, HTTP clients POST the same arguments to `/api/external-access/tools/<name>`. OAuth clients request organization scopes (`projects:find projects:create`) or project scopes (`cash:read cash:create`) in separate grants. Each employee authorizes their own connection. Revocation and current ledger roles apply to subsequent calls.
+
+A personal SDK key is for file and Record API calls. Use a dedicated delegated connection for external AI. In account settings or the OAuth consent screen, choose a single project, a fixed selection within one organization, or ongoing access within one organization. **Select all current projects** saves a snapshot. **Ongoing access** also covers projects the account can access later, until expiry or revocation. Existing credentials retain their original target. For multi-project connections, call `list_authorized_projects` and pass the chosen `project_id` to every project tool. Access and finance roles are checked at use time.
 
 ## Find reports and confirmations
 
@@ -94,7 +96,7 @@ All mutations and their idempotent receipt/audit commit together. The lock order
 
 ## Deployment and follow-up
 
-The complete feature needs migrations through `0082_external_research` and its matching web/API build. Follow the normal release and backup gates; this guide is not authorization to upgrade a live instance. Existing Labs remain disabled until explicitly configured. The independent `mcp` client is a development/test dependency only; the runtime transport uses the existing FastAPI stack.
+The complete feature needs migrations through `0097_external_project_coverage` and its matching web/API build. Follow the normal release and backup gates; this guide is not authorization to upgrade a live instance. Existing Labs remain disabled until explicitly configured. The independent `mcp` client is a development/test dependency only; the runtime transport uses the existing FastAPI stack.
 
 The integration suite covers real migration round trips, real CSV validation, atomic rollback, concurrent retries, Record history, permission changes, expiry, disclosure boundaries and an independent MCP SDK client. Browser coverage exercises grant creation, user confirmation and revocation in Chinese/English at phone/desktop widths. No production/customer data is needed.
 

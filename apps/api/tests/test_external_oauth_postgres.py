@@ -26,8 +26,10 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.parametrize("organization", [False, True])
-def test_pkce_consent_code_replay_and_resource_binding(organization):
+@pytest.mark.parametrize(
+    "coverage", ["single", "organization", "selected", "accessible"]
+)
+def test_pkce_consent_code_replay_and_resource_binding(coverage):
     async def scenario():
         async with database() as sessions, client(sessions) as http:
             scope = await seed(sessions)
@@ -69,7 +71,14 @@ def test_pkce_consent_code_replay_and_resource_binding(organization):
             )
             assert wrong_callback.status_code == 400
             target = {"project_id": str(scope.project.id)}
-            if organization:
+            if coverage in ("selected", "accessible"):
+                target = {
+                    "organization_id": str(scope.lab.id),
+                    "project_coverage": coverage,
+                }
+                if coverage == "selected":
+                    target["selected_project_ids"] = [str(scope.project.id)]
+            if coverage == "organization":
                 request["scope"] = "projects:find projects:create protocols:read"
                 target = {
                     "organization_id": str(scope.lab.id),
@@ -119,7 +128,7 @@ def test_pkce_consent_code_replay_and_resource_binding(organization):
             )
             assert sorted([first.status_code, second.status_code]) == [200, 400]
             credentials = first.json() if first.status_code == 200 else second.json()
-            if organization:
+            if coverage == "organization":
                 assert credentials["scope"] == "projects:find"
             token = credentials["access_token"]
             assert (
@@ -148,6 +157,11 @@ def test_pkce_consent_code_replay_and_resource_binding(organization):
             assert response.status_code == 200 and not response.json()["result"].get(
                 "isError"
             ), response.text
+            if coverage in ("selected", "accessible"):
+                assert (
+                    response.json()["result"]["structuredContent"]["project_coverage"]
+                    == coverage
+                )
             no_credential = await http.post("/mcp", json={})
             assert (
                 no_credential.status_code == 401

@@ -3,6 +3,7 @@ import type { ExternalAnalysis, ExternalDashboard, ExternalOperation } from "@/s
 import { decideExternalOperation, deleteExternalOAuthClient, downloadExternalAnalysisFile, getExternalAnalysis, getExternalDashboard, getExternalOperation, listExternalOAuthClients, registerExternalOAuthClient, revokeExternalGrant } from "@/service/api/external-access"
 import ExternalConnectionForm from "@/views/external-access/components/external-connection-form.vue"
 import ExternalGuideLink from "@/views/external-access/components/external-guide-link.vue"
+import { scopeLabel } from "@/views/external-access/components/project-coverage"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 import { copyToClip } from "@airalogy/shared/utils"
@@ -50,25 +51,6 @@ async function removeClient(id: string) {
   }
   catch { message.error($t("externalAccess.failed")) }
 }
-const scopeOptions = computed(() => [
-  { label: $t("externalAccess.readCollaboration"), value: "collaboration:read" },
-  { label: $t("externalAccess.writeCollaboration"), value: "collaboration:write" },
-  { label: $t("externalAccess.readProtocols"), value: "protocols:read", disabled: true },
-  { label: $t("externalAccess.readRecords"), value: "records:read" },
-  { label: $t("externalResearch.exportRecords"), value: "records:export" },
-  { label: $t("externalResearch.readAnalysis"), value: "analysis:read" },
-  { label: $t("externalResearch.writeAnalysis"), value: "analysis:write" },
-  { label: $t("externalResearch.complex"), value: "records:complex" },
-  { label: $t("externalResearch.knowledge"), value: "knowledge:read" },
-  { label: $t("externalResearch.documents"), value: "documents:read" },
-  { label: $t("externalResearch.materials"), value: "materials:read" },
-  { label: $t("externalResearch.files"), value: "files:read" },
-  { label: $t("externalResearch.readSource"), value: "protocols:source" },
-  { label: $t("externalResearch.candidate"), value: "protocols:candidate" },
-  { label: $t("externalResearch.publish"), value: "protocols:publish" },
-  { label: $t("externalAccess.importRecords"), value: "records:import" },
-  { label: $t("externalAccess.reviseRecords"), value: "records:revise" },
-])
 const states = computed<Record<string, string>>(() => ({
   pending: $t("externalAccess.pending"),
   approved: $t("externalAccess.approved"),
@@ -87,9 +69,6 @@ const auditLabels = computed<Record<string, string>>(() => ({
   "operation.executed": $t("externalAccess.succeeded"),
   "tool.denied": $t("externalAccess.accessDenied"),
 }))
-function scopeLabel(scope: string) {
-  return scopeOptions.value.find(option => option.value === scope)?.label || scope
-}
 const visibleOperations = computed(() => dashboard.value.operations.filter(item => showHistory.value || ["pending", "approved"].includes(item.state)))
 const visibleAnalyses = computed(() => (dashboard.value.analyses || []).filter(item => item.title.toLocaleLowerCase().includes(reportSearch.value.trim().toLocaleLowerCase())))
 const canDecide = computed(() => current.value?.state === "pending" && Date.parse(current.value.expires_at) > Date.now())
@@ -256,7 +235,12 @@ onMounted(async () => {
           {{ $t("externalOnboarding.manageConnections") }}
         </n-button>
       </div>
-      <external-connection-form v-else :key="connectionKey"  :organizations="dashboard.organizations" :projects="dashboard.projects" :failed="failed" @created="refresh" />
+      <template v-else>
+        <p class="text-sm color-text-secondary">
+          {{ $t("accountSettings.externalHint") }}
+        </p>
+        <external-connection-form :key="connectionKey" :organizations="dashboard.organizations" :projects="dashboard.projects" :failed="failed" @created="refresh" />
+      </template>
       <section class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h3 class="text-base font-semibold">
@@ -282,7 +266,7 @@ onMounted(async () => {
           </n-button>
         </div>
       </section>
-      <section class="space-y-3" data-testid="external-project-reports">
+      <section v-if="props.projectId" class="space-y-3" data-testid="external-project-reports">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h3 class="text-base font-semibold">
             {{ $t("externalResearch.analyses") }}
@@ -349,6 +333,8 @@ onMounted(async () => {
               {{ grant.name }}
             </div>
             <div class="text-sm color-text-secondary">
+              <span v-if="grant.project_coverage === 'accessible'">{{ $t("accountSettings.ongoingProjects") }} · </span>
+              <span v-else-if="grant.project_coverage === 'selected'">{{ $t("accountSettings.fixedCount", { count: grant.selected_project_ids?.length || 0 }) }} · </span>
               {{ grant.scopes.map(scopeLabel).join(' · ') }}
             </div>
             <div class="text-sm color-text-secondary">

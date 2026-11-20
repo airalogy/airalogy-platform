@@ -100,7 +100,7 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     await page.route(`${callback}*`, route => route.fulfill({ contentType: "text/plain", body: "Synthetic callback received" }))
     await page.goto(`/api/external-access/oauth/authorize?${query}`)
     await expect(page.getByText("Synthetic PKCE client", { exact: true })).toBeVisible()
-    const selector = page.locator(".n-select")
+    const selector = page.getByTestId("oauth-project")
     if (!(await selector.textContent() || "").includes("Quickstart Protocol Testing")) {
       await selector.click()
       await selectVisibleOption(page, "Quickstart Protocol Testing")

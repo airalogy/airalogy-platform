@@ -16,7 +16,7 @@ from fastapi import (
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from sqlalchemy import case, select, update
+from sqlalchemy import case, func, or_, select, update
 
 from app.build_info import resolve_build_info
 from app.config import config
@@ -90,6 +90,7 @@ async def dashboard(
     db: DBSession,
     user: CurrentUser,
     project_id: UUID | None = None,
+    include_reports: bool = True,
     analysis_offset: int = Query(default=0, ge=0, le=100000),
 ):
     await service.lock_user_calls(db, user.id)
@@ -103,6 +104,8 @@ async def dashboard(
             .order_by(Project.name)
         )
     ).all()
+    from app.services.research_runtime import has_research_capability
+
     choices = []
     for project in projects:
         try:
@@ -122,6 +125,15 @@ async def dashboard(
                 "enabled": bool(policy and policy.enabled),
                 "can_export": can_export,
                 "can_author": can_author,
+                "can_record": await can_act_on_protocol(
+                    db, user, project, "create_record", "create_record"
+                ),
+                "can_collaborate": await has_research_capability(
+                    db, user=user, project=project, capability="research.read"
+                ),
+                "can_write_collaboration": await has_research_capability(
+                    db, user=user, project=project, capability="log.write"
+                ),
                 "cash_role": await ledger.cash_role(db, user, project),
             }
         )
@@ -131,7 +143,18 @@ async def dashboard(
         await db.scalars(
             select(ExternalGrant)
             .where(ExternalGrant.user_id == user.id)
-            .where(ExternalGrant.project_id == project_id if project_id else True)
+            .where(
+                or_(
+                    ExternalGrant.project_id == project_id,
+                    (ExternalGrant.organization_id == projects[0].lab_id)
+                    & (
+                        (ExternalGrant.project_coverage == "accessible")
+                        | ExternalGrant.selected_project_ids.any(project_id)
+                    ),
+                )
+                if project_id
+                else True
+            )
             .order_by(ExternalGrant.created_at.desc())
             .limit(100)
         )
@@ -141,7 +164,12 @@ async def dashboard(
             select(ExternalOperation)
             .join(ExternalGrant)
             .where(ExternalGrant.user_id == user.id)
-            .where(ExternalGrant.project_id == project_id if project_id else True)
+            .where(
+                func.coalesce(ExternalOperation.project_id, ExternalGrant.project_id)
+                == project_id
+                if project_id
+                else True
+            )
             .order_by(
                 case(
                     (ExternalOperation.state == "pending", 0),
@@ -158,10 +186,13 @@ async def dashboard(
             select(ExternalAudit)
             .where(ExternalAudit.user_id == user.id)
             .where(
-                ExternalAudit.grant_id.in_(
-                    select(ExternalGrant.id).where(
-                        ExternalGrant.project_id == project_id
-                    )
+                or_(
+                    ExternalAudit.grant_id.in_(
+                        select(ExternalGrant.id).where(
+                            ExternalGrant.project_id == project_id
+                        )
+                    ),
+                    ExternalAudit.detail["project_id"].as_string() == str(project_id),
                 )
                 if project_id
                 else True
@@ -175,18 +206,22 @@ async def dashboard(
 
     analyses = []
     analysis_candidates = (
-        await db.scalars(
-            select(AnalysisRun)
-            .where(
-                AnalysisRun.created_by_user_id == user.id,
-                AnalysisRun.engine_version == ENGINE,
+        (
+            await db.scalars(
+                select(AnalysisRun)
+                .where(
+                    AnalysisRun.created_by_user_id == user.id,
+                    AnalysisRun.engine_version == ENGINE,
+                )
+                .where(AnalysisRun.project_id == project_id if project_id else True)
+                .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
+                .offset(analysis_offset)
+                .limit(51)
             )
-            .where(AnalysisRun.project_id == project_id if project_id else True)
-            .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
-            .offset(analysis_offset)
-            .limit(51)
-        )
-    ).all()
+        ).all()
+        if include_reports
+        else []
+    )
     for run in analysis_candidates[:50]:
         try:
             await get_run(db, user, run.id)
@@ -203,22 +238,24 @@ async def dashboard(
     organizations = []
     if not project_id:
         q = (
-            select(Lab, service.ExternalAccessPolicy.enabled)
+            select(Lab, service.ExternalAccessPolicy.enabled, LabUser.role)
             .join(LabUser, LabUser.lab_id == Lab.id)
             .outerjoin(
                 service.ExternalAccessPolicy,
                 service.ExternalAccessPolicy.lab_id == Lab.id,
             )
-            .where(
-                LabUser.user_id == user.id,
-                LabUser.role.in_([LabRole.OWNER, LabRole.MANAGER]),
-            )
+            .where(LabUser.user_id == user.id)
         )
         if config.is_single_lab:
             q = q.where(Lab.uid == config.SINGLE_LAB_UID)
         organizations = [
-            {"id": str(org.id), "name": org.name, "enabled": bool(enabled)}
-            for org, enabled in await db.execute(q.order_by(Lab.name))
+            {
+                "id": str(org.id),
+                "name": org.name,
+                "enabled": bool(enabled),
+                "can_register": role in (LabRole.OWNER, LabRole.MANAGER),
+            }
+            for org, enabled, role in await db.execute(q.order_by(Lab.name))
         ]
     # Details are loaded separately with current grant/object authorization.
     await db.commit()
@@ -312,6 +349,8 @@ async def own_operation(db, user, operation_id):
     if not op:
         service.fail("operation_not_found", 404)
     access = await service.authorize(db, grant_id=op.grant_id, owner_id=user.id)
+    if access.grant.project_coverage:
+        access = await service.select_project(db, access, op.project_id)
     op = await db.scalar(
         select(ExternalOperation)
         .where(ExternalOperation.id == operation_id)
@@ -435,6 +474,17 @@ TOOLS = {
 
 
 async def visible_tools(db, access):
+    if access.grant.project_coverage and not access.project:
+        names = {"access_context", "list_authorized_projects"}
+        async for project in service.accessible_projects(
+            db,
+            access.user,
+            access.grant.organization_id,
+            access.grant.selected_project_ids,
+        ):
+            scoped = service.Access(access.grant, access.user, project, access.policy)
+            names.update(await visible_tools(db, scoped))
+        return sorted(names)
     context = await service.tool_call(db, access, "access_context", service.ToolInput())
     if access.project is None:
         return ["access_context", *context["tools"]]
@@ -484,6 +534,27 @@ async def visible_tools(db, access):
     ):
         names.extend(["operation_status", "execute_operation"])
     return names
+
+
+def delegated_schema(name, multi):
+    if name == "list_authorized_projects":
+        return {
+            "name": name,
+            "description": "List currently accessible projects in this connection. Use a returned project_id for project tools.",
+            "inputSchema": ledger.CashPage.model_json_schema(),
+            "annotations": {"readOnlyHint": True},
+        }
+    result = tool_schema(name)
+    if multi:
+        schema = result["inputSchema"]
+        schema["properties"]["project_id"] = {
+            "type": "string",
+            "format": "uuid",
+            "description": "Project from list_authorized_projects",
+        }
+        if name != "access_context":
+            schema.setdefault("required", []).append("project_id")
+    return result
 
 
 def tool_schema(name):
@@ -555,10 +626,55 @@ def safe_error(error):
     }
 
 
+async def dispatch(db, access, name, arguments):
+    if not access.grant.project_coverage:
+        return await service.tool_call(db, access, name, parse_args(name, arguments))
+    if not isinstance(arguments, dict):
+        service.fail("invalid_tool_arguments", 422)
+    if name == "list_authorized_projects":
+        page = ledger.CashPage.model_validate(arguments)
+        rows = []
+        index = 0
+        async for project in service.accessible_projects(
+            db,
+            access.user,
+            access.grant.organization_id,
+            access.grant.selected_project_ids,
+        ):
+            if index >= page.offset:
+                rows.append({"id": str(project.id), "name": project.name})
+            if len(rows) == 51:
+                break
+            index += 1
+        return {
+            "items": rows[:50],
+            "next_offset": page.offset + 50 if len(rows) > 50 else None,
+        }
+    if name == "access_context" and not arguments:
+        context = await service.tool_call(db, access, name, service.ToolInput())
+        return {
+            **context,
+            "project_coverage": access.grant.project_coverage,
+            "tools": ["list_authorized_projects"],
+        }
+    args = dict(arguments)
+    try:
+        project_id = UUID(str(args.pop("project_id")))
+    except (ValueError, KeyError):
+        service.fail("project_id_required", 422)
+    scoped = await service.select_project(db, access, project_id)
+    return await service.tool_call(db, scoped, name, parse_args(name, args))
+
+
 async def committed_tool_call(db, access, name, arguments, background_tasks):
     try:
-        result = await service.tool_call(db, access, name, parse_args(name, arguments))
-        service.audit(db, access.user.id, "tool." + name, access.grant.id)
+        result = await dispatch(db, access, name, arguments)
+        detail = (
+            {"project_id": str(arguments["project_id"])}
+            if access.grant.project_coverage and "project_id" in arguments
+            else {}
+        )
+        service.audit(db, access.user.id, "tool." + name, access.grant.id, **detail)
         await db.commit()
         db.info.pop("external_uploaded_keys", None)
         db.info.pop("external_protocol_artifacts", None)
@@ -726,7 +842,10 @@ async def mcp(
             result = {}
         elif method == "tools/list":
             result = {
-                "tools": [tool_schema(name) for name in await visible_tools(db, access)]
+                "tools": [
+                    delegated_schema(name, access.grant.project_coverage)
+                    for name in await visible_tools(db, access)
+                ]
             }
         elif method == "tools/call":
             name = params.get("name")

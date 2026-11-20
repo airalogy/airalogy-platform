@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select, update
@@ -249,5 +249,161 @@ def test_personal_roles_project_registration_and_cash():
                 )
             )["isError"]
             assert (await call(http, finance, "list_project_cash")).status_code == 200
+
+    asyncio.run(scenario())
+
+
+def test_fixed_and_ongoing_project_coverage():
+    from sqlalchemy import delete
+    from app.models.project import ProjectUser, ProjectRole
+
+    async def scenario():
+        async with database() as sessions, client(sessions) as http:
+            s = await seed(sessions)
+            await grant(http, s, scopes=["protocols:read"])
+            org = {"organization_id": str(s.lab.id)}
+            selected = {
+                **org,
+                "project_coverage": "selected",
+                "selected_project_ids": [str(s.project.id)],
+            }
+            ongoing = {**org, "project_coverage": "accessible"}
+            fixed = (await issue(http, s.analyst, selected, ["protocols:read"])).json()[
+                "token"
+            ]
+            future = (await issue(http, s.analyst, ongoing, ["protocols:read"])).json()
+            assert (
+                await issue(
+                    http,
+                    s.analyst,
+                    {
+                        **ongoing,
+                        "selected_project_ids": selected["selected_project_ids"],
+                    },
+                    ["protocols:read"],
+                )
+            ).status_code == 422
+            assert (
+                await issue(http, s.analyst, ongoing, ["projects:create"])
+            ).status_code == 422
+            assert (
+                await issue(
+                    http,
+                    s.analyst,
+                    {**selected, "selected_project_ids": [str(uuid4())]},
+                    ["protocols:read"],
+                )
+            ).status_code == 403
+            assert (await call(http, fixed, "list_protocols")).status_code == 422
+            registry = (await issue(http, s.owner, org, ["projects:create"])).json()[
+                "token"
+            ]
+            created = (
+                await call(
+                    http,
+                    registry,
+                    "create_private_project",
+                    name="Synthetic second project",
+                    uid="second_" + uuid4().hex[:8],
+                    request_id=str(uuid4()),
+                )
+            ).json()["id"]
+
+            async def ids(token):
+                response = await call(http, token, "list_authorized_projects")
+                assert response.status_code == 200, response.text
+                return {row["id"] for row in response.json()["items"]}
+
+            assert created not in await ids(future["token"])
+            async with sessions() as db:
+                db.add(
+                    ProjectUser(
+                        project_id=UUID(created),
+                        user_id=s.analyst.id,
+                        role=ProjectRole.COLLABORATOR,
+                        create_user_id=s.owner.id,
+                    )
+                )
+                await db.commit()
+            assert created not in await ids(fixed)
+            assert created in await ids(future["token"])
+            # Confirmations keep their original project even under a connection spanning both.
+            from tests.test_external_access_postgres import CSV
+
+            writer = (
+                await issue(
+                    http, s.analyst, ongoing, ["protocols:read", "records:import"]
+                )
+            ).json()["token"]
+            preview = await call(
+                http,
+                writer,
+                "preview_import",
+                project_id=str(s.project.id),
+                protocol_id=str(s.protocol.id),
+                csv=CSV,
+                request_key="project-bound-preview",
+            )
+            assert preview.status_code == 200, preview.text
+            operation_id = preview.json()["id"]
+            other = await call(
+                http,
+                writer,
+                "operation_status",
+                project_id=created,
+                operation_id=operation_id,
+            )
+            assert other.status_code == 404
+            own = await http.get(
+                "/external-access/operations/" + operation_id,
+                headers=browser(s.analyst),
+                params={"project_id": str(s.project.id)},
+            )
+            assert own.status_code == 200, own.text
+            assert (
+                await call(http, fixed, "list_protocols", project_id=created)
+            ).status_code == 403
+            tools = (await rpc(http, future["token"], "tools/list"))["tools"]
+            assert (
+                "project_id"
+                in next(t for t in tools if t["name"] == "list_protocols")[
+                    "inputSchema"
+                ]["required"]
+            )
+            result = await rpc(
+                http,
+                future["token"],
+                "tools/call",
+                name="access_context",
+                arguments={"project_id": created},
+            )
+            assert result["structuredContent"]["project"]["id"] == created
+            async with sessions() as db:
+                await db.execute(
+                    delete(ProjectUser).where(
+                        ProjectUser.project_id == UUID(created),
+                        ProjectUser.user_id == s.analyst.id,
+                    )
+                )
+                await db.commit()
+            assert created not in await ids(future["token"])
+            assert (
+                await call(http, future["token"], "list_protocols", project_id=created)
+            ).status_code == 403
+            assert (
+                await http.delete(
+                    "/external-access/grants/" + future["grant"]["id"],
+                    headers=browser(s.owner),
+                )
+            ).status_code == 404
+            assert (
+                await http.delete(
+                    "/external-access/grants/" + future["grant"]["id"],
+                    headers=browser(s.analyst),
+                )
+            ).status_code == 200
+            assert (
+                await call(http, future["token"], "list_authorized_projects")
+            ).status_code == 401
 
     asyncio.run(scenario())

@@ -11,7 +11,9 @@ from sqlalchemy import (
     ForeignKey,
     String,
     UniqueConstraint,
+    Uuid,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -34,6 +36,10 @@ class ExternalGrant(Base):
             "num_nonnulls(project_id, organization_id) = 1",
             name="ck_external_grant_target",
         ),
+        CheckConstraint(
+            "(project_coverage IS NULL AND selected_project_ids IS NULL) OR (project_coverage IS NOT NULL AND organization_id IS NOT NULL AND ((project_coverage = 'selected' AND selected_project_ids IS NOT NULL AND cardinality(selected_project_ids) > 0) OR (project_coverage = 'accessible' AND selected_project_ids IS NULL)))",
+            name="ck_external_project_coverage",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -43,6 +49,8 @@ class ExternalGrant(Base):
     organization_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("labs.id", ondelete="CASCADE")
     )
+    project_coverage: Mapped[str | None] = mapped_column(String(12))
+    selected_project_ids: Mapped[list[UUID] | None] = mapped_column(ARRAY(Uuid()))
     project_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
@@ -73,6 +81,9 @@ class ExternalOperation(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     grant_id: Mapped[UUID] = mapped_column(
         ForeignKey("external_grants.id", ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE")
     )
     request_key: Mapped[str] = mapped_column(String(100))
     kind: Mapped[str] = mapped_column(String(32))

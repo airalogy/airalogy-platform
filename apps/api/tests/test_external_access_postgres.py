@@ -656,7 +656,11 @@ def test_migration_roundtrip_preserves_existing_records():
                                 "audience",
                                 "oauth_client_id",
                                 "organization_id",
+                                "project_coverage",
+                                "selected_project_ids",
                             }
+                        if model is ExternalOperation:
+                            expected.discard("project_id")
                         assert {c["name"] for c in columns} == expected
 
                 await connection.run_sync(roundtrip)

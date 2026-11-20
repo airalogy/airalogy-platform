@@ -5,14 +5,14 @@
     </template>
     <template #header-extra>
       <n-button type="primary" :loading="loading" :disabled="!hasChanges" @click="handleSubmit">
-        Save
+        {{ $t("common.save") }}
       </n-button>
     </template>
     <n-list show-divider>
       <n-list-item>
         <template #prefix>
           <h4 class="w-40 text-4 color-text-secondary">
-            Avatar
+            {{ $t("common.avatar") }}
           </h4>
         </template>
         <div class="avatar-container">
@@ -39,21 +39,21 @@
               <n-upload-trigger>
                 <div class="avatar-overlay">
                   <n-button size="small" type="primary">
-                    Change
+                    {{ $t("common.edit") }}
                   </n-button>
                 </div>
               </n-upload-trigger>
             </div>
           </n-upload>
           <n-button v-if="avatarRef" size="small" text class="delete-btn" @click="handleDeleteAvatar">
-            Reset
+            {{ $t("accountSettings.reset") }}
           </n-button>
         </div>
       </n-list-item>
       <n-list-item>
         <template #prefix>
           <h4 class="w-40 text-4 color-text-secondary">
-            User ID
+            {{ $t("page.instance.username") }}
           </h4>
         </template>
         <n-input
@@ -68,7 +68,7 @@
       <n-list-item>
         <template #prefix>
           <h4 class="w-40 text-4 color-text-secondary">
-            User Name
+            {{ $t("page.instance.displayName") }}
           </h4>
         </template>
         <n-input
@@ -83,14 +83,14 @@
           <div class="min-w-40 text-right">
             <template v-if="userInfo.name.editing">
               <n-button ghost :bordered="false" @click="cancelEdit('name')">
-                Cancel
+                {{ $t("common.cancel") }}
               </n-button>
               <n-button ghost type="primary" @click="confirmEdit('name')">
-                Confirm
+                {{ $t("common.confirm") }}
               </n-button>
             </template>
             <n-button v-else ghost :bordered="false" @click="toggleEdit('name')">
-              Edit
+              {{ $t("common.edit") }}
             </n-button>
           </div>
         </template>
@@ -98,7 +98,7 @@
       <!-- <n-list-item>
         <template #prefix>
           <h4 class="w-40 text-4 color-text-secondary">
-            Phone Number
+            {{ $t("accountSettings.phone") }}
           </h4>
         </template>
         <country-phone-input
@@ -115,14 +115,14 @@
           <div class="min-w-40 text-right">
             <template v-if="userInfo.phone.editing">
               <n-button ghost :bordered="false" @click="cancelEdit('phone')">
-                Cancel
+                {{ $t("common.cancel") }}
               </n-button>
               <n-button ghost type="primary" @click="confirmEdit('phone')">
-                Change
+                {{ $t("common.edit") }}
               </n-button>
             </template>
             <n-button v-else ghost :bordered="false" @click="toggleEdit('phone')">
-              Edit
+              {{ $t("common.edit") }}
             </n-button>
           </div>
         </template>
@@ -130,7 +130,7 @@
       <n-list-item>
         <template #prefix>
           <h4 class="w-40 text-4 color-text-secondary">
-            E-mail
+            {{ $t("common.email") }}
           </h4>
         </template>
         <n-input
@@ -144,14 +144,14 @@
           <div class="min-w-40 text-right">
             <template v-if="userInfo.email.editing">
               <n-button ghost :bordered="false" @click="cancelEdit('email')">
-                Cancel
+                {{ $t("common.cancel") }}
               </n-button>
               <n-button ghost type="primary" @click="confirmEdit('email')">
-                Change
+                {{ $t("common.edit") }}
               </n-button>
             </template>
             <n-button v-else ghost :bordered="false" @click="toggleEdit('email')">
-              Edit
+              {{ $t("common.edit") }}
             </n-button>
           </div>
         </template>
@@ -159,7 +159,7 @@
       <n-list-item>
         <template #prefix>
           <h4 class="w-40 text-4 color-text-secondary">
-            Bio
+            {{ $t("accountSettings.bio") }}
           </h4>
         </template>
         <n-input
@@ -170,7 +170,7 @@
           :minlength="1"
           :maxlength="500"
           show-count
-          placeholder="Tell us about yourself (at least 1 character)..."
+          :placeholder="$t('accountSettings.bioPlaceholder')"
           class="!w-80"
           :disabled="!userInfo.bio.editing"
         />
@@ -178,14 +178,14 @@
           <div class="min-w-40 text-right">
             <template v-if="userInfo.bio.editing">
               <n-button ghost :bordered="false" @click="cancelEdit('bio')">
-                Cancel
+                {{ $t("common.cancel") }}
               </n-button>
               <n-button ghost type="primary" @click="confirmEdit('bio')">
-                Confirm
+                {{ $t("common.confirm") }}
               </n-button>
             </template>
             <n-button v-else ghost :bordered="false" @click="toggleEdit('bio')">
-              Edit
+              {{ $t("common.edit") }}
             </n-button>
           </div>
         </template>
@@ -207,6 +207,7 @@ import { baseURL } from "@/service/request"
 import { useAuthStore } from "@/store/modules/auth"
 import { localStg } from "@/utils/storage"
 import { useClosableMessage } from "@airalogy/composables"
+import { $t } from "@airalogy/shared/locales"
 
 defineOptions({ name: "EditProfile" })
 
@@ -340,7 +341,7 @@ async function confirmEdit(field: IFieldKey) {
 //       "Once the account is deleted, all data will be permanently erased and cannot be recovered. Please proceed with caution.",
 //     positiveText: "DELETE",
 //     onPositiveClick: async () => {
-//       message.success("Your account has been successfully deleted.")
+//       message.success($t("accountSettings.deleted"))
 //       await authStore.resetStore()
 //     },
 //   })
@@ -390,7 +391,7 @@ async function handleSubmit() {
   const avatarFile = avatar?.file instanceof File ? avatar.file : undefined
 
   if (!name) {
-    message.warning("Please enter display name.")
+    message.warning($t("accountSettings.requireName"))
     return
   }
 
@@ -398,7 +399,7 @@ async function handleSubmit() {
   if (bio.changed) {
     const trimmedBio = bio.value.trim()
     if (trimmedBio.length === 0) {
-      message.warning("Bio must contain at least 1 character.")
+      message.warning($t("accountSettings.requireBio"))
       return
     }
   }
@@ -423,14 +424,14 @@ async function handleSubmit() {
 
     if (newUserInfo) {
       localStg.set("userInfo", newUserInfo)
-      message.success("Profile updated successfully. Refreshing page...")
+      message.success($t("accountSettings.saved"))
       // Force browser reload to ensure all components show the new avatar
       setTimeout(() => {
         window.location.reload()
       }, 500)
     }
     else {
-      message.error("Failed to update profile.")
+      message.error($t("accountSettings.saveFailed"))
     }
   }
   catch (e) {

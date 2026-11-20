@@ -406,7 +406,9 @@ async def new_operation(
         )
     )
     if existing:
-        if existing.digest != fingerprint:
+        if (
+            existing.project_id or access.grant.project_id
+        ) != access.project.id or existing.digest != fingerprint:
             boundary.fail("idempotency_key_conflict", 409)
         await authorize_operation(db, access, existing)
         return boundary.operation_view(existing)
@@ -422,6 +424,7 @@ async def new_operation(
     if count >= 10:
         boundary.fail("pending_operation_limit", 429)
     op = ExternalOperation(
+        project_id=access.project.id,
         grant_id=access.grant.id,
         request_key=key,
         kind=kind,

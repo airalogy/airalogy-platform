@@ -774,12 +774,12 @@ function resetForm() {
 
 async function handleResendCode(type: "current" | "new") {
   if (type === "current" && isCurrActive.value) {
-    message.warning(`Please wait ${currRemaining} seconds before sending again`)
+    message.warning($t("accountSettings.smsWait", { seconds: currRemaining }))
     return
   }
 
   if (type === "new" && isNewActive.value) {
-    message.warning(`Please wait ${newRemaining.value} seconds before sending again`)
+    message.warning($t("accountSettings.smsWait", { seconds: newRemaining.value }))
     return
   }
 
@@ -818,7 +818,7 @@ async function handleResendCode(type: "current" | "new") {
     }
   }
   catch (error: any) {
-    message.error(error?.response?.data?.detail || error?.message || "Failed to send verification code")
+    message.error(error?.response?.data?.detail || error?.message || $t("page.login.common.sendCodeFailure"))
   }
   finally {
     endTargetLoading("submit")

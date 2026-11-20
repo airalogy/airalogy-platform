@@ -1,14 +1,17 @@
 <template>
   <n-card>
     <template #header>
-      <span class="list__title ml-3.5 capitalize !text-2xl">API Key Settings</span>
+      <span class="list__title ml-3.5 capitalize !text-2xl">{{ $t("accountSettings.sdkTitle") }}</span>
     </template>
+    <p class="mb-3 text-sm color-text-secondary">
+      {{ $t("accountSettings.sdkHint") }}
+    </p>
     <n-form ref="formRef" :show-label="false" :model="model" :show-require-mark="false">
       <n-list show-divider>
         <n-list-item>
           <template #prefix>
             <h4 class="w-40 text-4 color-text-secondary">
-              API Key
+              {{ $t("accountSettings.sdkKey") }}
             </h4>
           </template>
           <n-form-item path="apiKey" :show-feedback="false" :class="!isKeyVisible && 'w-fit'">
@@ -18,22 +21,21 @@
               disabled
               autosize
               required
-              :placeholder="$t('page.login.common.passwordPlaceholder')"
             />
           </n-form-item>
           <template #suffix>
             <div class="flex items-center gap-2">
               <n-button v-if="model.apiKey && isKeyVisible" quaternary @click="copyToClipboard">
-                Copy
+                {{ $t("accountSettings.copy") }}
               </n-button>
               <n-button quaternary @click="toggleKeyVisibility">
-                {{ isKeyVisible ? 'Hide' : 'Show' }}
+                {{ $t(isKeyVisible ? "accountSettings.hide" : "accountSettings.show") }}
               </n-button>
               <n-popconfirm @positive-click="handleSubmit">
-                Are you sure you want to regenerate the API key?
+                {{ $t("accountSettings.sdkConfirm") }}
                 <template #trigger>
                   <n-button type="error" class="mr-2" :loading="loading">
-                    Regenerate
+                    {{ $t("accountSettings.regenerate") }}
                   </n-button>
                 </template>
               </n-popconfirm>
@@ -48,14 +50,11 @@
 <script setup lang="ts">
 import { useLoading, useNaiveForm } from "@/composables"
 import { getUserAPIKey, putGenerateAPIKey } from "@/service/api/auth"
-import { useAuthStore } from "@/store/modules/auth"
 import { useClosableMessage } from "@airalogy/composables"
+import { $t } from "@airalogy/shared/locales"
 import { copyToClip } from "@airalogy/shared/utils"
-import { useDialog } from "naive-ui"
 
 defineOptions({ name: "ApiKeySettings" })
-
-const authStore = useAuthStore()
 
 interface FormModel {
   apiKey: string
@@ -77,7 +76,6 @@ function toggleKeyVisibility() {
 }
 
 const message = useClosableMessage()
-const dialog = useDialog()
 
 const { formRef, validate } = useNaiveForm()
 const { loading, startLoading, endLoading } = useLoading()
@@ -89,7 +87,7 @@ async function handleSubmit() {
     const { data } = await putGenerateAPIKey()
     if (data) {
       model.apiKey = data.api_key
-      message.success("API Key regenerated successfully")
+      message.success($t("accountSettings.sdkDone"))
     }
   }
   catch (e) {
@@ -102,7 +100,7 @@ async function handleSubmit() {
 
 async function copyToClipboard() {
   await copyToClip(model.apiKey)
-  message.success("Copied to clipboard")
+  message.success($t("externalAccess.copied"))
 }
 
 onMounted(async () => {

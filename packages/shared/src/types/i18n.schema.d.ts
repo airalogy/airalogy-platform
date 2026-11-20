@@ -3,6 +3,44 @@
 
 declare namespace I18n {
   interface Schema {
+    accountSettings: {
+      oneProject: string
+      selectedProjects: string
+      ongoingProjects: string
+      allCurrent: string
+      ongoingHint: string
+      snapshotHint: string
+      allScopes: string
+      clear: string
+      dayCount: string
+      customDays: string
+      sdkTitle: string
+      sdkHint: string
+      externalHint: string
+      sdkConfirm: string
+      sdkDone: string
+      regenerate: string
+      show: string
+      hide: string
+      copy: string
+      sdkKey: string
+      security: string
+      phone: string
+      loginPassword: string
+      deleteAccount: string
+      deleteHint: string
+      account: string
+      deleted: string
+      reset: string
+      bio: string
+      bioPlaceholder: string
+      requireName: string
+      requireBio: string
+      saved: string
+      saveFailed: string
+      smsWait: string
+      fixedCount: string
+    }
     externalAccess: {
       firstOrganizationTask: string
       firstCashTask: string

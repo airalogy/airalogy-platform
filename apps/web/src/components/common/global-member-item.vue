@@ -10,8 +10,8 @@
         <template #trigger>
           <router-link :to="userRoute" class="!hover:router-link">
             <span v-if="showAtSymbol">@</span>
-            <template v-if="showAlias">
-              <span>{{ displayAlias }}</span>
+            <template v-if="directoryEntry || showAlias">
+              <span v-if="displayAlias || item.name">{{ displayAlias || item.name }}</span>
               <span v-if="item.username" class="text-xs text-gray-500"> @{{ item.username }}</span>
             </template>
             <span v-else>{{ baseName }}</span>
@@ -28,7 +28,7 @@
               object-fit="cover"
             />
             <div class="min-w-0">
-              <div class="truncate text-sm font-medium text-gray-900">
+              <div class="truncate text-sm text-gray-900 font-medium">
                 {{ displayAlias || baseName || item.username }}
               </div>
               <div v-if="item.username" class="text-xs text-gray-500">
@@ -71,6 +71,7 @@ export interface IProps {
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem | Api.Profile.User | { name: string, username: string, avatar_url: string, alias?: string, id: string, user_alias?: string, lab_alias?: string }
   type: "lab" | "group" | "project"
   isCompact?: boolean
+  directoryEntry?: boolean
   showAtSymbol?: boolean
   isOwner?: boolean
   projectType?: ProjectType

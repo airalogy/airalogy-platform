@@ -79,7 +79,7 @@ class Authorization(service.StrictModel):
     resource: str = Field(max_length=2048)
 
 
-class Consent(Authorization):
+class Consent(Authorization, service.ProjectCoverage):
     approved_scopes: list[str] | None = Field(default=None, min_length=1, max_length=32)
     project_id: UUID | None = None
     organization_id: UUID | None = None
@@ -190,6 +190,8 @@ async def consent(params: Consent, db: DBSession, user: CurrentUser):
             name=client.name,
             project_id=params.project_id,
             organization_id=params.organization_id,
+            project_coverage=params.project_coverage,
+            selected_project_ids=params.selected_project_ids,
             scopes=sorted(approved),
             expires_in_days=params.expires_in_days,
         ),

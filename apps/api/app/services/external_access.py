@@ -12,6 +12,7 @@ import math
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import UUID
 
 from fastapi import BackgroundTasks, HTTPException, UploadFile
@@ -94,7 +95,14 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
-class GrantInput(StrictModel):
+class ProjectCoverage(StrictModel):
+    project_coverage: Literal["selected", "accessible"] | None = None
+    selected_project_ids: list[UUID] | None = Field(
+        default=None, min_length=1, max_length=10000
+    )
+
+
+class GrantInput(ProjectCoverage):
     organization_id: UUID | None = None
     project_id: UUID | None = None
     name: str = Field(min_length=1, max_length=100)
@@ -229,8 +237,14 @@ async def create_grant(db, user, params):
     scopes = set(params.scopes)
     if bool(params.organization_id) == bool(params.project_id):
         fail("choose_one_grant_target", 422)
-    if (params.organization_id and not scopes <= ORG_SCOPES) or (
-        params.project_id and scopes & ORG_SCOPES
+    multi = params.project_coverage is not None
+    if (params.project_coverage == "selected") != (
+        params.selected_project_ids is not None
+    ) or (multi and not params.organization_id):
+        fail("invalid_project_coverage", 422)
+    registry = bool(params.organization_id) and not multi
+    if (registry and not scopes <= ORG_SCOPES) or (
+        not registry and scopes & ORG_SCOPES
     ):
         fail("invalid_scopes_for_target", 422)
     project = None
@@ -246,10 +260,29 @@ async def create_grant(db, user, params):
         lab_id = project.lab_id
     await lock_user_calls(db, user.id)
     policy = await policy_for(db, lab_id, lock=True, shared=True)
-    await lab_member(db, lab_id, user.id, manager=bool(params.organization_id))
+    await lab_member(db, lab_id, user.id, manager=registry)
     if not policy or not policy.enabled:
         fail("lab_external_access_disabled")
-    if project:
+    if multi:
+        checked = set()
+        cash_allowed = False
+        async for candidate in accessible_projects(
+            db, user, lab_id, params.selected_project_ids
+        ):
+            checked.add(candidate.id)
+            if scopes & CASH_SCOPES:
+                role = await cash_role(db, user, candidate)
+                allowed = bool(role) and (
+                    "cash:create" not in scopes or role == "finance"
+                )
+                if not allowed and params.project_coverage == "selected":
+                    fail("cash_role_required")
+                cash_allowed |= allowed
+        if params.selected_project_ids and checked != set(params.selected_project_ids):
+            fail("external_access_forbidden")
+        if scopes & CASH_SCOPES and not cash_allowed:
+            fail("cash_role_required")
+    elif project:
         await check_user_permission(db, project, user, "read_project")
         if scopes & CASH_SCOPES:
             role = await cash_role(db, user, project)
@@ -275,6 +308,10 @@ async def create_grant(db, user, params):
         user_id=user.id,
         project_id=params.project_id,
         organization_id=params.organization_id,
+        project_coverage=params.project_coverage,
+        selected_project_ids=sorted(set(params.selected_project_ids))
+        if params.selected_project_ids
+        else None,
         name=params.name.strip(),
         scopes=sorted(set(params.scopes)),
         token_hash=hashlib.sha256(token.encode()).hexdigest(),
@@ -293,6 +330,7 @@ async def create_grant(db, user, params):
         project_id=str(params.project_id) if project else None,
         organization_id=str(params.organization_id) if params.organization_id else None,
         scopes=grant.scopes,
+        project_coverage=grant.project_coverage,
     )
     return {"grant": grant.as_dict(), "token": token}
 
@@ -338,7 +376,12 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=No
     user = await db.get(User, grant.user_id)
     if not user or grant.auth_version != await get_auth_version(db, user.id):
         fail("invalid_external_token", 401)
-    await lab_member(db, lab_id, user.id, manager=bool(grant.organization_id))
+    await lab_member(
+        db,
+        lab_id,
+        user.id,
+        manager=bool(grant.organization_id and not grant.project_coverage),
+    )
     if project:
         await check_user_permission(db, project, user, "read_project")
     else:
@@ -357,6 +400,36 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=No
     if recent >= 120:
         fail("external_rate_limit", 429)
     return Access(grant, user, project, policy)
+
+
+async def accessible_projects(db, user, organization_id, selected_ids=None):
+    query = select(Project).where(
+        Project.lab_id == organization_id, Project.deleted_at.is_(None)
+    )
+    if selected_ids is not None:
+        query = query.where(Project.id.in_(selected_ids))
+    for project in await db.scalars(query.order_by(Project.name, Project.id)):
+        try:
+            await check_user_permission(db, project, user, "read_project")
+        except HTTPException as exc:
+            if exc.status_code not in (403, 404):
+                raise
+            continue
+        yield project
+
+
+async def select_project(db, access, project_id):
+    grant = access.grant
+    if not grant.project_coverage or (
+        grant.project_coverage == "selected"
+        and project_id not in grant.selected_project_ids
+    ):
+        fail("external_access_forbidden")
+    async for project in accessible_projects(
+        db, access.user, grant.organization_id, [project_id]
+    ):
+        return Access(grant, access.user, project, access.policy)
+    fail("external_access_forbidden")
 
 
 def scope(access, required):
@@ -690,7 +763,9 @@ async def preview_operation(db, access, args, kind):
         )
     )
     if existing:
-        if existing.digest != fingerprint:
+        if (
+            existing.project_id or access.grant.project_id
+        ) != access.project.id or existing.digest != fingerprint:
             fail("idempotency_key_conflict", 409)
         if existing.policy_revision != access.policy.revision:
             fail("policy_changed_preview_again", 409)
@@ -762,6 +837,7 @@ async def preview_operation(db, access, args, kind):
             "reason": args.reason,
         }
     op = ExternalOperation(
+        project_id=access.project.id,
         grant_id=access.grant.id,
         request_key=args.request_key,
         kind=kind,
@@ -1098,7 +1174,7 @@ async def tool_call(db, access, name, args):
             )
             .with_for_update()
         )
-        if not op:
+        if not op or (op.project_id or access.grant.project_id) != access.project.id:
             fail("operation_not_found", 404)
         if op.kind not in ("import", "revision"):
             from app.services.external_research import authorize_operation

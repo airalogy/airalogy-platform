@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { ExternalDashboard } from "@/service/api/external-access"
+import type { ProjectTarget } from "./project-coverage"
 import { createExternalGrant } from "@/service/api/external-access"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 import { copyToClip } from "@airalogy/shared/utils"
 import ExternalGuideLink from "./external-guide-link.vue"
+import GrantDuration from "./grant-duration.vue"
+import { coveredProjects, eligibleScope, externalScopes, projectTarget, scopeLabel } from "./project-coverage"
+import ProjectCoveragePicker from "./project-coverage-picker.vue"
 
 const props = defineProps<{ projects: ExternalDashboard["projects"], organizations?: ExternalDashboard["organizations"], projectId?: string, failed: boolean }>()
 const emit = defineEmits<{ created: [] }>()
@@ -12,6 +16,11 @@ const message = useClosableMessage()
 const route = useRoute()
 const name = ref("")
 const projectId = ref<string | null>(props.projectId || null)
+const target = ref<ProjectTarget>({ mode: "single", organization: null, ids: [] })
+const destinations = computed(() => coveredProjects(target.value, projectId.value, props.projects))
+function allowed(scope: string) {
+  return eligibleScope(scope, destinations.value, target.value.mode === "accessible")
+}
 const days = ref<number | null>(7)
 const preset = ref("read")
 const selectedScopes = ref(["protocols:read", "records:read"])
@@ -26,7 +35,7 @@ const command = `codex mcp add airalogy --url ${JSON.stringify(endpoint)} --bear
 const organizationMode = ref(false)
 const organizationId = ref<string | null>(null)
 const organization = computed(() => props.organizations?.find(org => org.id === organizationId.value))
-const organizationOptions = computed(() => (props.organizations || []).map(org => ({ value: org.id, label: org.name, disabled: !org.enabled })))
+const organizationOptions = computed(() => (props.organizations || []).filter(o => o.can_register !== false).map(org => ({ value: org.id, label: org.name, disabled: !org.enabled })))
 function changeTarget(value: boolean) {
   organizationMode.value = value
   if (value && !organizationId.value && organizationOptions.value.filter(o => !o.disabled).length === 1)
@@ -43,42 +52,16 @@ const presets: Record<string, string[]> = {
   analyze: ["protocols:read", "records:read", "records:export", "analysis:read", "analysis:write"],
   author: ["protocols:read", "protocols:source", "protocols:candidate", "protocols:publish"],
 }
-const orgScopeOptions = computed(() => [
-  { label: $t("externalAccess.findProject"), value: "projects:find" },
-  { label: $t("externalAccess.registerProject"), value: "projects:create" },
-])
-const scopeOptions = computed(() => organizationMode.value
-  ? orgScopeOptions.value
-  : [
-      { label: $t("externalAccess.readCash"), value: "cash:read", disabled: !selectedProject.value?.cash_role },
-      { label: $t("externalAccess.postCash"), value: "cash:create", disabled: selectedProject.value?.cash_role !== "finance" },
-      { label: $t("externalAccess.readCollaboration"), value: "collaboration:read" },
-      { label: $t("externalAccess.writeCollaboration"), value: "collaboration:write" },
-      { label: $t("externalAccess.readProtocols"), value: "protocols:read" },
-      { label: $t("externalAccess.readRecords"), value: "records:read" },
-      { label: $t("externalResearch.exportRecords"), value: "records:export" },
-      { label: $t("externalResearch.readAnalysis"), value: "analysis:read" },
-      { label: $t("externalResearch.writeAnalysis"), value: "analysis:write" },
-      { label: $t("externalResearch.complex"), value: "records:complex" },
-      { label: $t("externalResearch.knowledge"), value: "knowledge:read" },
-      { label: $t("externalResearch.documents"), value: "documents:read" },
-      { label: $t("externalResearch.materials"), value: "materials:read" },
-      { label: $t("externalResearch.files"), value: "files:read" },
-      { label: $t("externalResearch.readSource"), value: "protocols:source" },
-      { label: $t("externalResearch.candidate"), value: "protocols:candidate" },
-      { label: $t("externalResearch.publish"), value: "protocols:publish" },
-      { label: $t("externalAccess.importRecords"), value: "records:import" },
-      { label: $t("externalAccess.reviseRecords"), value: "records:revise" },
-    ])
-function scopeLabel(scope: string) {
-  return scopeOptions.value.find(item => item.value === scope)?.label || scope
-}
+const scopeOptions = computed(() => externalScopes.filter(scope => scope.startsWith("projects:") === organizationMode.value)
+  .map(scope => ({ label: scopeLabel(scope), value: scope })))
 const firstTask = computed(() => organizationMode.value ? $t("externalAccess.firstOrganizationTask") : selectedScopes.value.some(s => s.startsWith("cash:")) ? $t("externalAccess.firstCashTask") : $t("externalOnboarding.firstTask"))
-const permissionUnavailable = computed(() => (selectedScopes.value.some(s => ["records:export", "analysis:read", "analysis:write"].includes(s)) && !selectedProject.value?.can_export)
-  || (selectedScopes.value.some(s => ["protocols:candidate", "protocols:publish"].includes(s)) && !selectedProject.value?.can_author))
-const canCreate = computed(() => name.value.trim() && selectedScopes.value.length && (organizationMode.value ? organization.value : selectedProject.value)?.enabled
-  && (!selectedScopes.value.includes("cash:create") || selectedProject.value?.cash_role === "finance")
-  && (!selectedScopes.value.includes("cash:read") || selectedProject.value?.cash_role) && days.value && !busy.value && !props.failed && !permissionUnavailable.value)
+const permissionUnavailable = computed(() => !organizationMode.value && destinations.value.length > 0 && selectedScopes.value.some(scope => !allowed(scope)))
+const canCreate = computed(() => Boolean(name.value.trim() && selectedScopes.value.length && (organizationMode.value ? organization.value?.enabled && organization.value.can_register !== false : destinations.value.length)
+  && days.value && !busy.value && !props.failed && !permissionUnavailable.value))
+function allEligible() {
+  preset.value = "custom"
+  selectedScopes.value = scopeOptions.value.map(option => option.value).filter(scope => organizationMode.value || allowed(scope))
+}
 watch(() => props.projects, () => {
   const requested = props.projectId || (typeof route.query.project_id === "string" ? route.query.project_id : null)
   if (requested && props.projects.some(p => p.id === requested))
@@ -112,8 +95,8 @@ async function create() {
     return
   busy.value = true
   try {
-    const result = await createExternalGrant({ name: name.value.trim(), ...(organizationMode.value ? { organization_id: organizationId.value! } : { project_id: projectId.value! }), scopes: selectedScopes.value, expires_in_days: days.value! })
-    issuedProject.value = (organizationMode.value ? organization.value : selectedProject.value)!.name
+    const result = await createExternalGrant({ name: name.value.trim(), ...(organizationMode.value ? { organization_id: organizationId.value! } : projectTarget(target.value, projectId.value)), scopes: selectedScopes.value, expires_in_days: days.value! })
+    issuedProject.value = organizationMode.value ? organization.value!.name : target.value.mode === "accessible" ? $t("accountSettings.ongoingProjects") : destinations.value.map(p => p.name).join(", ")
     token.value = result.token
     emit("created")
   }
@@ -155,9 +138,13 @@ onBeforeUnmount(dismiss)
       {{ $t("externalOnboarding.steps") }} <external-guide-link v-if="props.projectId" />
     </p>
     <n-form v-if="!token" label-placement="top" @submit.prevent="create">
-      <n-radio-group v-if="!props.projectId && organizations?.length" :value="organizationMode" class="mb-4" :aria-label="$t('externalAccess.target')" @update:value="changeTarget">
-        <n-radio-button :value="false">{{ $t("externalAccess.project") }}</n-radio-button>
-        <n-radio-button :value="true">{{ $t("externalAccess.organizationProjects") }}</n-radio-button>
+      <n-radio-group v-if="!props.projectId && organizationOptions.length" :value="organizationMode" class="mb-4" :aria-label="$t('externalAccess.target')" @update:value="changeTarget">
+        <n-radio-button :value="false">
+          {{ $t("externalAccess.project") }}
+        </n-radio-button>
+        <n-radio-button :value="true">
+          {{ $t("externalAccess.organizationProjects") }}
+        </n-radio-button>
       </n-radio-group>
       <div class="grid gap-x-4 sm:grid-cols-2">
         <n-form-item :label="organizationMode ? $t('externalAccess.organization') : $t('externalAccess.project')">
@@ -165,7 +152,9 @@ onBeforeUnmount(dismiss)
           <div v-else-if="props.projectId" class="break-words font-medium" data-testid="external-fixed-project">
             {{ selectedProject?.name }}
           </div>
-          <n-select v-else v-model:value="projectId" data-testid="external-grant-project" :options="projectOptions" filterable :placeholder="$t('externalAccess.projectHint')" />
+          <project-coverage-picker v-else v-model="target" :projects="projects" :organizations="organizations">
+            <n-select v-model:value="projectId" data-testid="external-grant-project" :options="projectOptions" filterable :placeholder="$t('externalAccess.projectHint')" />
+          </project-coverage-picker>
         </n-form-item>
         <n-form-item :label="$t('externalAccess.name')">
           <n-input v-model:value="name" data-testid="external-grant-name" :maxlength="100" :placeholder="$t('externalAccess.nameHint')" />
@@ -176,7 +165,7 @@ onBeforeUnmount(dismiss)
       </n-alert>
       <n-form-item v-if="!organizationMode" :label="$t('externalOnboarding.purpose')">
         <div class="grid w-full gap-2 sm:grid-cols-2">
-          <n-button v-for="kind in ['collaborate', 'read', 'analyze', 'author', ...(selectedProject?.cash_role ? ['cash'] : [])]" :key="kind" :data-testid="`external-preset-${kind}`" :aria-pressed="preset === kind" :type="preset === kind ? 'primary' : 'default'" :secondary="preset === kind" class="min-h-12 h-auto! whitespace-normal! py-2!" :disabled="(kind === 'analyze' && !selectedProject?.can_export) || (kind === 'author' && !selectedProject?.can_author)" @click="applyPreset(kind)">
+          <n-button v-for="kind in ['collaborate', 'read', 'analyze', 'author', ...(allowed('cash:read') ? ['cash'] : [])]" :key="kind" :data-testid="`external-preset-${kind}`" :aria-pressed="preset === kind" :type="preset === kind ? 'primary' : 'default'" :secondary="preset === kind" class="min-h-12 h-auto! whitespace-normal! py-2!" :disabled="(kind === 'analyze' && !allowed('records:export')) || (kind === 'author' && !allowed('protocols:candidate'))" @click="applyPreset(kind)">
             {{ $t(kind === 'cash' ? 'externalAccess.readCash' : kind === 'collaborate' ? 'externalOnboarding.collaborate' : kind === 'read' ? 'externalOnboarding.read' : kind === 'analyze' ? 'externalOnboarding.analyze' : 'externalOnboarding.author') }}
           </n-button>
         </div>
@@ -192,8 +181,16 @@ onBeforeUnmount(dismiss)
       </p>
       <n-collapse class="mb-4">
         <n-collapse-item :title="$t('externalOnboarding.customScopes')" name="scopes">
+          <div class="mb-2 flex gap-3">
+            <n-button text type="primary" @click="allEligible">
+              {{ $t("accountSettings.allScopes") }}
+            </n-button>
+            <n-button text @click="selectedScopes = []; preset = 'custom'">
+              {{ $t("accountSettings.clear") }}
+            </n-button>
+          </div>
           <n-checkbox-group v-model:value="selectedScopes" class="flex flex-wrap gap-3" @update:value="preset = 'custom'">
-            <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value" :disabled="'disabled' in option && Boolean(option.disabled)">
+            <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value" :disabled="!organizationMode && !allowed(option.value)">
               {{ option.label }}
             </n-checkbox>
           </n-checkbox-group>
@@ -203,7 +200,7 @@ onBeforeUnmount(dismiss)
         {{ $t("externalOnboarding.permissionUnavailable") }}
       </n-alert>
       <n-form-item :label="$t('externalAccess.days')">
-        <n-input-number v-model:value="days" :min="1" :max="90" class="max-w-60 w-full" />
+        <grant-duration v-model="days" :max="90" />
       </n-form-item>
       <p class="mb-4 text-sm color-text-secondary">
         {{ $t("externalAccess.policyHint") }}
@@ -243,7 +240,9 @@ onBeforeUnmount(dismiss)
       <n-button data-testid="external-test-connection" :loading="checking" @click="testConnection">
         {{ $t("externalResearch.testConnection") }}
       </n-button>
-      <p class="text-sm color-text-secondary">{{ $t("externalOnboarding.clientProof") }}</p>
+      <p class="text-sm color-text-secondary">
+        {{ $t("externalOnboarding.clientProof") }}
+      </p>
       <n-alert v-if="connectionStatus" type="success" data-testid="external-connection-result">
         {{ $t("externalOnboarding.tokenVerified") }} {{ connectionStatus }}
       </n-alert>

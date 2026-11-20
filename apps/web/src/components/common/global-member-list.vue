@@ -14,6 +14,7 @@
       </template>
       <global-member-item
         :item="item"
+        directory-entry
         :is-compact="false"
         :type="props.type"
         :project-type="projectInfo?.type"

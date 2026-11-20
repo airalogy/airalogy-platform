@@ -608,7 +608,7 @@ async function handleResendCode() {
   }
 
   if (isCountdownActive.value) {
-    message.warning(`Please wait ${countdownRemainingSeconds.value} seconds before sending again`)
+    message.warning($t("accountSettings.smsWait", { seconds: countdownRemainingSeconds.value }))
     return
   }
 

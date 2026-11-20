@@ -1,6 +1,6 @@
 # 外部 Agent 接入
 
-用户可以让 Codex 或其他 MCP 客户端访问自己获授权的一个 Project。Platform 统一执行权限、严格数据校验和 Record 修订留痕。这些确定性操作不依赖 Aira、Masterbrain 或模型服务是否开启。
+用户可以让 Codex 或其他 MCP 客户端访问本人获授权的项目。Platform 统一执行权限、严格数据校验和 Record 修订留痕。这些确定性操作不依赖 Aira、Masterbrain 或模型服务是否开启。
 
 本功能覆盖 [Issue #11](https://github.com/airalogy/platform/issues/11) 和 [Issue #22](https://github.com/airalogy/platform/issues/22) 的科研闭环：限权读取、导入和修订、不可变分析快照、私有外部分析成果与经确认的 Protocol 发布。项目登记、经营收支和文件下载各有独立权限。
 
@@ -19,6 +19,8 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 通过客户端的安全环境配置设置 `AIRALOGY_PLATFORM_TOKEN`。不要把令牌粘贴进对话、代码仓库、共享文档或连接命令。桌面应用不一定继承已打开终端的环境变量，配置后需从正确环境重启。客户端配置详见 [Codex MCP 文档](https://developers.openai.com/codex/mcp/)。
 
 撤销后，后续调用立即失效，未执行请求同时取消。服务端每次重新检查令牌到期、账号凭据失效、Lab/Project 成员关系和策略。撤销前已经提交的操作仍是普通 Record，历史保留。
+
+个人 SDK 密钥用于文件和实验记录接口。连接外部 AI 时请单独授权。在个人设置或 OAuth 确认页可选择单个项目、同一组织内的指定项目，或明确选择持续授权。「全选当前项目」只保存本次名单。「持续授权」在连接到期或撤销前，自动纳入账号以后在该组织获得访问权的项目。已有连接保留原授权范围。多项目连接先调用 `list_authorized_projects`，再将选定的 `project_id` 传给项目工具。每次调用都检查当前账号的项目权限，财务操作还会检查对应项目的账簿角色。
 
 ## 为自己的账号连接外部 AI
 
@@ -94,7 +96,7 @@ MCP 使用 JSON 响应，客户端需接受 `application/json, text/event-stream
 
 ## 部署与后续
 
-完整功能上线需执行至 `0082_external_research` 迁移，并部署匹配的前后端构建，遵循现有发布、备份和验证流程。本文不代表已授权或已完成线上升级。既有 Lab 默认仍关闭外部访问。独立 `mcp` 客户端仅是开发/测试依赖，生产传输使用现有 FastAPI。
+完整功能上线需执行至 `0097_external_project_coverage` 迁移，并部署匹配的前后端构建，遵循现有发布、备份和验证流程。本文不代表已授权或已完成线上升级。既有 Lab 默认仍关闭外部访问。独立 `mcp` 客户端仅是开发/测试依赖，生产传输使用现有 FastAPI。
 
 集成测试覆盖真实迁移往返、CSV 校验、失败回滚、并发重试、修订历史、权限变化、过期、数据限制及独立 MCP SDK。浏览器测试覆盖中英文、手机/桌面下创建授权、确认和撤销；无需生产或客户数据。
 

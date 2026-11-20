@@ -6,6 +6,8 @@ export interface ExternalGrant {
   name: string
   project_id: string | null
   organization_id?: string | null
+  project_coverage?: "selected" | "accessible" | null
+  selected_project_ids?: string[] | null
   scopes: string[]
   token_prefix: string
   expires_at: string
@@ -43,8 +45,8 @@ export interface ExternalOperation {
   result?: { links?: string[] }
 }
 export interface ExternalDashboard {
-  organizations?: Array<{ id: string, name: string, enabled: boolean }>
-  projects: Array<{ cash_role?: string | null, id: string, name: string, lab_id: string, enabled: boolean, can_export: boolean, can_author: boolean }>
+  organizations?: Array<{ id: string, name: string, enabled: boolean, can_register?: boolean }>
+  projects: Array<{ cash_role?: string | null, id: string, name: string, lab_id: string, enabled: boolean, can_export: boolean, can_author: boolean, can_record?: boolean, can_collaborate?: boolean, can_write_collaboration?: boolean }>
   grants: ExternalGrant[]
   operations: ExternalOperation[]
   analysis_next_offset?: number | null
@@ -59,8 +61,8 @@ async function data<T>(options: Parameters<typeof request<T>>[0]): Promise<T> {
   return result.data
 }
 
-export const getExternalDashboard = (projectId?: string, analysisOffset = 0) => data<ExternalDashboard>({ url: "/external-access/dashboard", params: { project_id: projectId, analysis_offset: analysisOffset } })
-export function createExternalGrant(payload: { name: string, project_id?: string, organization_id?: string, scopes: string[], expires_in_days: number }) {
+export const getExternalDashboard = (projectId?: string, analysisOffset = 0) => data<ExternalDashboard>({ url: "/external-access/dashboard", params: { project_id: projectId, analysis_offset: analysisOffset, include_reports: Boolean(projectId) } })
+export function createExternalGrant(payload: { name: string, project_id?: string, organization_id?: string, project_coverage?: "selected" | "accessible", selected_project_ids?: string[], scopes: string[], expires_in_days: number }) {
   return data<{ grant: ExternalGrant, token: string }>({ url: "/external-access/grants", method: "POST", data: payload })
 }
 export const revokeExternalGrant = (id: string) => data<{ revoked: boolean }>({ url: `/external-access/grants/${id}`, method: "DELETE" })
