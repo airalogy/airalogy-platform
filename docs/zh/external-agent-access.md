@@ -64,7 +64,7 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 
 ## 范围与限制
 
-- 每个令牌只绑定一个 Project，必须包含 `protocols:read`；新增能力须明确勾选，旧令牌不自动扩权。修订同时要求读取权限。完整权限见下表。
+- 项目连接可以授权单个项目、固定名单或同一组织内持续可访问的项目。组织建项使用单独的组织授权。每项操作都需要相应权限，例如修订实验记录同时需要 `records:read` 和 `records:revise`。
 - API 同时检查 Lab 字段限制及现有 Protocol/Record 权限。公共可见性不能绕过 Lab 成员资格或外部访问策略。
 - Protocol 读取只提供字段 ID、标题、必填状态、基本类型和支持的校验限制。不返回 AIMD、执行代码、环境变量、模型提示、默认值或示例值。CSV 模板仅含表头。
 - Record 默认开放基本类型变量及支持的日期时间字符串。明确授权 `records:complex` 后，可读取具有明确结构的数组和对象，最多四层；不支持的引用、资源、文件类型和值仍不返回。附件走独立文件接口，不返回长期下载地址。含文件地址的字符串被省略，并在 `withheld_fields` 标明，不会改写成科学意义上的空值。工具不得推测被省略内容。

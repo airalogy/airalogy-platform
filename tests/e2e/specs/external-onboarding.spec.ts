@@ -64,3 +64,34 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     }
   })
 }
+
+test("selecting multiple projects before the directory loads selects the sole eligible organization", async ({ page }) => {
+  let releaseDirectory!: () => void
+  const pendingDirectory = new Promise<void>((resolve) => {
+    releaseDirectory = resolve
+  })
+  await page.route("**/external-access/dashboard?*", async (route) => {
+    await pendingDirectory
+    await route.fulfill({ json: {
+      organizations: [{ id: "org-a", name: "Synthetic organization", enabled: true }],
+      projects: [{ id: "project-a", name: "Synthetic project", lab_id: "org-a", enabled: true }],
+      operations: [],
+      grants: [],
+      audit: [],
+    } })
+  })
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "en-US", expire: null })))
+  try {
+    await page.goto("/users/dev_owner/settings#external-access")
+    const form = page.getByTestId("external-connection-setup")
+    await form.getByText("One project", { exact: true }).click()
+    await page.locator(".n-base-select-option").getByText("Selected projects", { exact: true }).click()
+    await expect(form.getByRole("button", { name: /Select all current projects/ })).toBeDisabled()
+    releaseDirectory()
+    await form.getByRole("button", { name: "Select all current projects (1)" }).click()
+    await expect(form.getByText("Synthetic project", { exact: true })).toBeVisible()
+  }
+  finally {
+    releaseDirectory()
+  }
+})

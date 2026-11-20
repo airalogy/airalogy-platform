@@ -14,7 +14,7 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
-- Account settings distinguish SDK keys from external AI connections. Project selection can cover a fixed list or, by explicit consent, current and future accessible projects within one organization. Member directories show account handles consistently.
+- Account settings distinguish SDK keys from external AI connections. Project selection can cover a fixed list or, by explicit consent, current and future accessible projects within one organization. The only eligible organization is selected as soon as the project list loads. Member directories show account handles consistently.
 
 - External AI connections can find and register private projects or read and post project cash with separate, personal grants. HTTP and MCP enforce current roles, writes support safe retries, and setup links are available before authorization.
 

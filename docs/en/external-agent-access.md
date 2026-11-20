@@ -64,7 +64,7 @@ The user reviews the before/after values in Platform. After approval, execution 
 
 ## Disclosure and operation limits
 
-- Each token is bound to exactly one Project. `protocols:read` is required. Additional scopes are listed below; existing credentials gain none automatically. Revision also requires Record read scope.
+- A project connection can cover one project, a fixed selection, or ongoing access within one organization. Project registration uses a separate organization grant. Each operation requires its own scopes. For example, revising a Record requires both `records:read` and `records:revise`.
 - Lab field restrictions and existing Protocol/Record permissions are checked in the API. Public visibility alone does not allow an external token to skip Lab membership or policy.
 - Protocol reads expose field IDs, titles, required status, primitive types and supported validation limits. They do not expose AIMD, executable code, environment variables, model prompts or defaults/examples. CSV templates contain headers only.
 - Record reads expose primitive variables by default, including supported date/time strings. Explicit `records:complex` permits bounded arrays/objects with concrete schemas (up to four levels); unsupported references, resource/file types and values are withheld. Attachments use the separate file tools. Permanent signed URLs are never returned. Unsafe string values are omitted and named in `withheld_fields`; they are not rewritten as scientific null values. Omitted fields must not be inferred.

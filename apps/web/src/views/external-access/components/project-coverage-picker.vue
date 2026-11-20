@@ -13,8 +13,12 @@ const modeOptions = computed(() => [
 const orgOptions = computed(() => (props.organizations || []).filter(o => o.enabled).map(o => ({ label: o.name, value: o.id })))
 const choices = computed(() => props.projects.filter(p => p.enabled && p.lab_id === target.value.organization).map(p => ({ label: p.name, value: p.id })))
 function changeMode(mode: Coverage) {
-  target.value = { mode, organization: target.value.organization || (orgOptions.value.length === 1 ? orgOptions.value[0].value : null), ids: [] }
+  target.value = { ...target.value, mode, ids: [] }
 }
+watch([() => target.value.mode, orgOptions], ([mode, options]) => {
+  if (mode !== "single" && !target.value.organization && options.length === 1)
+    target.value = { ...target.value, organization: options[0].value }
+}, { immediate: true })
 </script>
 
 <template>
