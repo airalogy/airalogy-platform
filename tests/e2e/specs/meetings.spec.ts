@@ -507,55 +507,59 @@ for (const width of [1440, 390]) {
   })
 }
 
-test("project managers select multiple organization members without typing their accounts", async ({ page }, testInfo) => {
-  const { headers, path, projectId } = await createMeetingProject(page.request)
-  const candidates = `/api/projects/${projectId}/member-candidates`
-  const batch = `/api/projects/${projectId}/organization-members`
-  const accounts = page.getByTestId("team-accounts")
-  const directory = page.getByTestId("project-member-directory")
-  const login = await page.request.post("/api/signin_by_email", { data: { email: "dev.viewer@airalogy.dev", password: "AiralogyDev123!" } })
-  const viewerHeaders = { "Auth-Token": (await login.json()).token }
-  expect((await page.request.get(candidates, { headers: viewerHeaders })).ok()).toBe(false)
-  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
-  await page.goto("/login")
-  if (await page.getByTestId("login-email").isVisible()) {
+test.describe("Project member directory", () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test("project managers select multiple organization members without typing their accounts", async ({ page }, testInfo) => {
+    const { headers, path, projectId } = await createMeetingProject(page.request)
+    const candidates = `/api/projects/${projectId}/member-candidates`
+    const batch = `/api/projects/${projectId}/organization-members`
+    const accounts = page.getByTestId("team-accounts")
+    const directory = page.getByTestId("project-member-directory")
+    const login = await page.request.post("/api/signin_by_email", { data: { email: "dev.viewer@airalogy.dev", password: "AiralogyDev123!" } })
+    const viewerHeaders = { "Auth-Token": (await login.json()).token }
+    expect((await page.request.get(candidates, { headers: viewerHeaders })).ok()).toBe(false)
+    await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+    await page.goto("/login")
     await page.getByTestId("login-email").locator("input").fill("dev.owner@airalogy.dev")
     await page.getByTestId("login-password").locator("input").fill("AiralogyDev123!")
     await page.getByTestId("login-submit").click()
     await expect(page).not.toHaveURL(/\/login/)
-  }
-  await page.goto(`${path}/members`)
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: width === 390 ? 844 : 980 })
-    await accounts.getByRole("button", { name: "添加成员", exact: true }).click()
-    await expect(directory.getByRole("checkbox", { name: /dev_viewer/ })).toBeVisible()
-    await expect(directory.getByRole("checkbox", { name: /dev_owner/ })).toHaveCount(0)
-    await directory.getByRole("checkbox", { name: /dev_viewer/ }).check()
-    await page.getByPlaceholder("搜索组织内显示名或用户名").fill("dev_collaborator")
-    await expect(directory.getByRole("checkbox")).toHaveCount(1)
-    await directory.getByRole("checkbox", { name: /dev_collaborator/ }).check()
-    await page.getByRole("button", { name: "查看已选（2）" }).click()
-    await expect(directory.getByRole("checkbox", { checked: true })).toHaveCount(2)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
-    await page.screenshot({ path: testInfo.outputPath(`organization-picker-${width}.png`) })
-    if (width === 1440) {
-      await page.getByRole("button", { name: "取消", exact: true }).click()
-      continue
+    await page.goto(`${path}/members`)
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 980 })
+      await accounts.getByRole("button", { name: "添加成员", exact: true }).click()
+      await expect(directory.getByRole("checkbox", { name: /dev_viewer/ })).toBeVisible()
+      await expect(directory.getByRole("checkbox", { name: /dev_owner/ })).toHaveCount(0)
+      await directory.getByRole("checkbox", { name: /dev_viewer/ }).check()
+      await page.getByPlaceholder("搜索组织内显示名或用户名").fill("dev_collaborator")
+      await expect(directory.getByRole("checkbox")).toHaveCount(1)
+      await directory.getByRole("checkbox", { name: /dev_collaborator/ }).check()
+      await page.getByRole("button", { name: "查看已选（2）" }).click()
+      await expect(directory.getByRole("checkbox", { checked: true })).toHaveCount(2)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+      const modalWidth = (await page.locator(".n-modal").boundingBox())!.width
+      expect(modalWidth).toBeLessThanOrEqual(Math.min(550, width - 16))
+      await page.screenshot({ path: testInfo.outputPath(`organization-picker-${width}.png`), animations: "disabled" })
+      if (width === 1440) {
+        await page.getByRole("button", { name: "取消", exact: true }).click()
+        continue
+      }
+      const posted = page.waitForResponse(r => r.url().endsWith(batch) && r.request().method() === "POST")
+      await page.getByRole("button", { name: "添加成员（2）" }).click()
+      const response = await posted
+      expect(await response.json()).toEqual({ added: 2, already_members: 0 })
+      const payload = response.request().postDataJSON()
+      const duplicate = await page.request.post(batch, { headers, data: payload })
+      expect(await duplicate.json()).toEqual({ added: 0, already_members: 2 })
+      expect((await page.request.post(batch, { headers: viewerHeaders, data: payload })).ok()).toBe(false)
+      const invalid = await page.request.post(batch, { headers, data: [{ user_id: crypto.randomUUID(), role: 40 }] })
+      expect(invalid.status()).toBe(409)
+      await page.reload()
+      await expect(accounts).toContainText("Dev Collaborator")
+      await accounts.getByRole("button", { name: "添加成员", exact: true }).click()
+      await expect(directory.getByText("暂无可添加的组织成员").or(directory.getByRole("checkbox").first())).toBeVisible()
+      await expect(directory.getByRole("checkbox", { name: /dev_viewer|dev_collaborator/ })).toHaveCount(0)
     }
-    const posted = page.waitForResponse(r => r.url().endsWith(batch) && r.request().method() === "POST")
-    await page.getByRole("button", { name: "添加成员（2）" }).click()
-    const response = await posted
-    expect(await response.json()).toEqual({ added: 2, already_members: 0 })
-    const payload = response.request().postDataJSON()
-    const duplicate = await page.request.post(batch, { headers, data: payload })
-    expect(await duplicate.json()).toEqual({ added: 0, already_members: 2 })
-    expect((await page.request.post(batch, { headers: viewerHeaders, data: payload })).ok()).toBe(false)
-    const invalid = await page.request.post(batch, { headers, data: [{ user_id: crypto.randomUUID(), role: 40 }] })
-    expect(invalid.status()).toBe(409)
-    await page.reload()
-    await expect(accounts).toContainText("Dev Collaborator")
-    await accounts.getByRole("button", { name: "添加成员", exact: true }).click()
-    await expect(directory.getByText("暂无可添加的组织成员").or(directory.getByRole("checkbox").first())).toBeVisible()
-    await expect(directory.getByRole("checkbox", { name: /dev_viewer|dev_collaborator/ })).toHaveCount(0)
-  }
+  })
 })

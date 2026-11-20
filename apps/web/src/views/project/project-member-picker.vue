@@ -122,7 +122,7 @@ async function save() {
     </template>
     {{ $t("common.addMember") }}
   </n-button>
-  <n-modal v-model:show="open" preset="card" :title="$t('common.addMember')" class="project-picker" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving">
+  <n-modal v-model:show="open" preset="card" :title="$t('common.addMember')" style="width: min(34rem, calc(100vw - 1.5rem))" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving">
     <n-input v-if="!selectedOnly" v-model:value="query" clearable :maxlength="255" :placeholder="$t('page.projectTeam.searchDirectory')" :aria-label="$t('page.projectTeam.searchDirectory')" />
     <div class="my-2 flex flex-wrap items-center justify-between gap-2">
       <strong>{{ selectedOnly ? $t("page.projectTeam.selection") : $t("page.projectTeam.organizationMembers") }}</strong>
@@ -176,7 +176,6 @@ async function save() {
 </template>
 
 <style scoped>
-.project-picker { width: min(34rem, calc(100vw - 1.5rem)); }
 .picker-list { overflow-y: auto; max-height: min(48dvh, 24rem); }
 .picker-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem 0; border-bottom: 1px solid var(--n-border-color); }
 .picker-role { width: 8.5rem; flex-shrink: 0; }
