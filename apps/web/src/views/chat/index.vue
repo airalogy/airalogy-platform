@@ -16,11 +16,11 @@
       <div v-if="!embedded" class="flex items-center justify-between border-b border-gray-200 px-3 py-1">
         <span v-if="!appStore.isMobile" class="font-semibold">Aira</span>
         <n-button v-if="appStore.isMobile" size="small" @click="showMobileHistory = true">
-          {{ $t('chat.history') }}
+          {{ $t('chat.accountHistory') }}
         </n-button>
         <div id="page-aira-memory-actions" class="ml-auto" />
         <n-drawer v-model:show="showMobileHistory" placement="left" width="min(85%, 300px)">
-          <n-drawer-content :title="$t('common.allChats')" closable :native-scrollbar="false">
+          <n-drawer-content :title="$t('chat.accountHistory')" closable :native-scrollbar="false">
             <chat-menu mobile @opened="showMobileHistory = false" />
           </n-drawer-content>
         </n-drawer>

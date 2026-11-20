@@ -1,6 +1,6 @@
 <template>
   <div
-    ref="dropZoneRef" data-testid="chat-input" class="tiptap-dropzone tiptap-container tiptap-input-container relative cursor-text rounded-xl p-2"
+    ref="dropZoneRef" :data-chat-suggestions-open="inDropdownRef" data-testid="chat-input" class="tiptap-dropzone tiptap-container tiptap-input-container relative cursor-text rounded-xl p-2"
     :class="{
       'tiptap-container--focus': focusedRef,
       'tiptap-container--empty': editor?.isEmpty,

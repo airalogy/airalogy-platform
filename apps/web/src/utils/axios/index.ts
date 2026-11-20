@@ -39,10 +39,12 @@ function createCommonRequest<ResponseData = any>(
     const requestId = conf.metadata?.requestId || nanoid()
     config.headers.set(REQUEST_ID_KEY, requestId)
 
-    // config cancel token
-    const { signal: cancelSignal, controller: cancelController } = newAbortSignal()
-    config.signal = cancelSignal
-    cancelControllerMap.set(requestId, cancelController)
+    // A caller-owned signal follows its component across route changes.
+    if (!conf.signal) {
+      const { signal, controller } = newAbortSignal()
+      config.signal = signal
+      cancelControllerMap.set(requestId, controller)
+    }
 
     // handle config by hook
     const handledConfig = opts.onRequest?.(config) || config

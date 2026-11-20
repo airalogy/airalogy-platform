@@ -41,7 +41,10 @@
         :class="props.headerClass"
       />
     </template>
-    <workspace-aira v-if="aira.mounted.value" />
+    <template #assistant>
+      <slot v-if="aira.projectAvailable.value" name="assistant" />
+      <workspace-aira v-else-if="aira.mounted.value" />
+    </template>
     <slot>
       <global-content v-if="appStore.isSpinWrapper" :container-content-class="themeStore.content.containerContentClass" :content-class="themeStore.content.contentClass" :show-spin="true" />
       <global-content v-else />

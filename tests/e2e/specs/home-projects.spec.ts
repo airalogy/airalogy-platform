@@ -29,13 +29,25 @@ for (const width of [1440, 876, 390]) {
     await page.goto("/home")
     const url = page.url()
     const trigger = page.getByTestId("home-aira")
-    const panel = page.getByRole("dialog", { name: "Aira", exact: true })
+    const panel = page.getByRole(width >= 900 ? "complementary" : "dialog", { name: "Aira", exact: true })
     const input = panel.getByTestId("chat-input").locator("[contenteditable=true]")
     await trigger.click()
     await expect(input).toBeVisible()
     const bounds = await panel.boundingBox()
-    expect(Math.round(bounds!.width)).toBe(Math.min(width, 460))
-    await expect.poll(async () => Math.round((await panel.boundingBox())!.x)).toBe(width - Math.min(width, 460))
+    const expectedWidth = width >= 900 ? 380 : Math.min(width, 460)
+    expect(Math.round(bounds!.width)).toBe(expectedWidth)
+    await expect.poll(async () => Math.round((await panel.boundingBox())!.x)).toBe(width - expectedWidth)
+    if (width >= 900) {
+      const main = await page.getByTestId("app-shell-content").boundingBox()
+      expect(main!.x + main!.width).toBeLessThanOrEqual(bounds!.x + 1)
+      const resources = page.getByTestId("home-resources").locator("details")
+      await resources.locator("summary").click()
+      await expect(resources).toHaveAttribute("open", "")
+      const history = panel.getByTestId("open-aira-history")
+      await expect(history).toBeInViewport({ ratio: 1 })
+      await expect(panel.getByTestId("chat-submit")).toBeInViewport({ ratio: 1 })
+      await expect(page.locator(".n-drawer-mask:visible")).toHaveCount(0)
+    }
     await input.fill(question)
     await page.keyboard.press("Escape")
     await expect(panel).toBeHidden()
@@ -59,9 +71,9 @@ for (const width of [1440, 876, 390]) {
       // The synthetic model response is stored on this device only.
       await page.goto("/chat")
       await expect(page).toHaveURL(/\/chat(?:\?|$)/)
-      await page.getByText("此设备", { exact: true }).click()
-      await page.locator(".chat-history-sidebar").getByText(question, { exact: true }).click()
-      await expect(page.getByText(answer, { exact: true })).toBeVisible()
+      await expect(page.getByTestId("account-chat-history")).toBeVisible()
+      await expect(page.getByRole("tab", { name: "此设备" })).toHaveCount(0)
+      await expect(page.getByTestId("account-chat-history").locator(`[data-chat-id="${id}"]`)).toHaveCount(0)
     }
   })
 }
@@ -118,7 +130,7 @@ test("Home Aira account history opens the same conversation on a fresh phone", a
     // An older device retains an unscoped cache. Import only sessions whose owner
     // is confirmed by the API; a new device can open the same history without it.
     await fresh.goto("/chat")
-    await fresh.getByRole("button", { name: "聊天记录", exact: true }).click()
+    await fresh.getByRole("button", { name: "对话历史", exact: true }).click()
     const history = fresh.getByTestId("account-chat-history")
     const mobileTitle = history.locator(`[data-chat-id="${id}"]`)
     await expect(mobileTitle).toHaveText("个人记忆请求")

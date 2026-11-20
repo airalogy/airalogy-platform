@@ -36,7 +36,7 @@
         <global-add-new />
         <n-button
           v-if="!isMobile && instanceStore.aiEnabled" :theme-overrides="buttonThemeOverrides"
-          :aria-current="inChat ? 'page' : undefined" data-testid="header-aira"
+          :aria-expanded="inChat ? undefined : aira?.expanded.value" :aria-current="inChat ? 'page' : undefined" data-testid="header-aira"
           @click="openAira($event.currentTarget as HTMLElement)"
         >
           Aira

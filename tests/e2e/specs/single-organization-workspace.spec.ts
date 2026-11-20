@@ -38,6 +38,23 @@ test("company home, navigation and management remain usable at mobile and deskto
   await expect(page.getByRole("dialog")).not.toContainText("实验室")
 })
 
+test("organization log and export use the organization vocabulary", async ({ page }) => {
+  await page.goto("/organization/records")
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 860 })
+    await expect(page.getByRole("heading", { name: "组织日志", exact: true })).toBeVisible()
+    const trigger = page.getByTestId("record-export-trigger")
+    await expect(trigger).toHaveText("导出实验记录")
+    await trigger.click()
+    const modal = page.getByTestId("record-export-modal")
+    await expect(modal).toContainText("仅组织所有者可以导出本组织的原始实验记录")
+    await modal.getByRole("button", { name: "取消", exact: true }).click()
+  }
+  await page.setViewportSize({ width: 1440, height: 860 })
+  await changeAccountLanguage(page, "English")
+  await expect(page.getByRole("heading", { name: "Organization log", exact: true })).toBeVisible()
+})
+
 test("the Airalogy product wordmark and a configured organization logo have separate identities", async ({ page }, testInfo) => {
   const original = (await (await page.request.get("/api/instance")).json()).organization
   const company = { ...original, uid: "airalogy", name: "Airalogy" }

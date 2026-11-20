@@ -6,10 +6,11 @@ import { localizeMemoryTitle } from "@airalogy/components/chat/utils/memory-hist
 
 const emit = defineEmits<{ opened: [] }>()
 const store = useChatStore()
+const router = useRouter()
 const { loading: responding } = useChatInfoStore()!
 const items = ref<AccountChatSummary[]>([])
 const displayItems = computed(() => items.value.map(item => ({
-  id: item.id,
+  ...item,
   title: localizeMemoryTitle(item.title, item.title_is_memory_request),
 })))
 const page = ref(1)
@@ -38,10 +39,16 @@ async function load(next: boolean) {
   finally { busy.value = false }
 }
 
-async function select(id: string) {
+async function select(item: AccountChatSummary) {
+  const { id } = item
   const current = ++sequence
   openError.value = false
   try {
+    if (item.kind === "meeting") {
+      await router.push({ name: "project-meetings", params: { labUid: item.lab_uid, projectUid: item.project_uid }, query: { aira: id, meeting: item.meeting_id || undefined } })
+      emit("opened")
+      return
+    }
     const detail = await getChatConversation(id)
     if (sequence !== current || responding.value)
       return
@@ -67,8 +74,11 @@ onBeforeUnmount(() => sequence++)
 
 <template>
   <section data-testid="account-chat-history" class="min-h-0 flex flex-col gap-1 overflow-auto px-2">
-    <n-button v-for="item in displayItems" :key="item.id" :data-chat-id="item.id" :disabled="responding" quaternary class="!justify-start" :title="item.title" @click="select(item.id)">
-      <span class="block truncate">{{ item.title || $t('chat.newChatButton') }}</span>
+    <n-button v-for="item in displayItems" :key="item.id" :data-chat-id="item.id" :disabled="responding" :class="{ '!h-auto py-1': item.kind === 'meeting' }" quaternary class="!justify-start" :title="item.title" @click="select(item)">
+      <span class="min-w-0 text-left">
+        <span class="block truncate">{{ item.title || $t('chat.newChatButton') }}</span>
+        <small v-if="item.kind === 'meeting'" class="block truncate color-text-secondary">{{ $t('page.meetings.title') }} · {{ item.project_name }}</small>
+      </span>
     </n-button>
     <p v-if="openError" role="alert">
       {{ $t("chat.historyUnavailable") }}

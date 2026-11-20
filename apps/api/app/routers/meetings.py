@@ -17,6 +17,7 @@ from app.models.meeting import (
     Meeting,
     MeetingAccess,
     MeetingComment,
+    MeetingConversation,
     MeetingParticipant,
     MeetingWorkLink,
 )
@@ -34,7 +35,7 @@ from app.services.project_people import organization_accounts, organization_name
 from app.services.document_browse import date_bounds
 from app.services.knowledge import canonical_digest
 from app.services.chat_models import require_ai_enabled
-from app.services.meeting_drafts import DraftReply, DraftTurn, draft_meeting
+from app.services.meeting_drafts import ConversationTurn, DraftTurn, draft_meeting
 from app.services.model_usage import create_usage_context
 from app.services.meetings import (
     MeetingContent,
@@ -429,14 +430,93 @@ async def meeting_draft_availability(
     }
 
 
-@router.post("/aira/draft", response_model=DraftReply)
-async def prepare_meeting_draft(
-    data: DraftTurn, current_user: CurrentUser, db_session: DBSession
+class MeetingChatRequest(DraftTurn):
+    conversation_id: UUID | None = None
+    request_id: UUID | None = None
+    expected_turns: int = Field(0, ge=0, le=8)
+    meeting_id: UUID | None = None
+
+
+def conversation_detail(chat):
+    return {
+        "id": chat.id,
+        "project_id": chat.project_id,
+        "meeting_id": chat.meeting_id,
+        "turns": [{"user": t["user"], "reply": t["reply"]} for t in chat.turns],
+        "proposal": chat.proposal,
+    }
+
+
+async def chat_scope(db, user, project_id, meeting_id):
+    project = await project_context(db, user, project_id, write=True)
+    if meeting_id:
+        _, _, meeting_project = await context(db, user, meeting_id)
+        if meeting_project.id != project.id:
+            raise HTTPException(404, "Conversation unavailable")
+    return project
+
+
+@router.get("/aira/conversations/{chat_id}")
+async def get_meeting_conversation(
+    chat_id: UUID, current_user: CurrentUser, db_session: DBSession
 ):
-    project = await project_context(
-        db_session, current_user, data.project_id, write=True
+    chat = await db_session.scalar(
+        select(MeetingConversation).where(
+            MeetingConversation.id == chat_id,
+            MeetingConversation.user_id == current_user.id,
+        )
+    )
+    if chat is None:
+        raise HTTPException(404, "Conversation unavailable")
+    await chat_scope(db_session, current_user, chat.project_id, chat.meeting_id)
+    return conversation_detail(chat)
+
+
+@router.post("/aira/draft")
+async def prepare_meeting_draft(
+    data: MeetingChatRequest, current_user: CurrentUser, db_session: DBSession
+):
+    project = await chat_scope(
+        db_session, current_user, data.project_id, data.meeting_id
     )
     require_ai_enabled()
+    chat_id = data.conversation_id or uuid4()
+    request_id = str(data.request_id or uuid4())
+    # Serialize first sends as well as continuations, including lost-response retries.
+    lock_key = int.from_bytes(chat_id.bytes[:8], "big", signed=True)
+    if not await db_session.scalar(select(func.pg_try_advisory_xact_lock(lock_key))):
+        raise HTTPException(409, "Conversation is being updated")
+    chat = await db_session.get(MeetingConversation, chat_id)
+    if chat and (
+        chat.user_id != current_user.id
+        or chat.project_id != project.id
+        or chat.meeting_id != data.meeting_id
+    ):
+        raise HTTPException(404, "Conversation unavailable")
+    turns = chat.turns if chat else []
+    for previous_turn in turns:
+        if previous_turn["request_id"] == request_id:
+            if previous_turn["user"] != data.message:
+                raise HTTPException(409, "Request has different content")
+            return {
+                "message": previous_turn["reply"],
+                "draft": chat.proposal,
+                **conversation_detail(chat),
+            }
+    if data.expected_turns != len(turns) or len(turns) >= 8:
+        raise HTTPException(409, "Reload conversation before continuing")
+    # Older clients supply a temporary draft. Never adopt their local transcript
+    # as verified account history. New clients reconstruct context from the database.
+    model_turn = DraftTurn(
+        project_id=project.id,
+        message=data.message,
+        history=[ConversationTurn(user=t["user"], reply=t["reply"]) for t in turns]
+        if data.conversation_id
+        else data.history,
+        previous=chat.proposal
+        if chat
+        else (None if data.conversation_id else data.previous),
+    )
     usage = create_usage_context(
         feature="meeting.draft",
         user_id=current_user.id,
@@ -448,15 +528,35 @@ async def prepare_meeting_draft(
         if config.qwen_chat_configured
         else ChatModel(model_type=ChatModelType.GPT).name
     )
-    await db_session.commit()
     try:
         async with asyncio.timeout(90):
-            reply = await draft_meeting(data, model, usage)
+            reply = await draft_meeting(model_turn, model, usage)
     except (TimeoutError, ValueError, httpx.HTTPError, HTTPException) as exc:
         raise HTTPException(502, "Aira could not prepare a meeting draft") from exc
-    await project_context(db_session, current_user, data.project_id, write=True)
+    db_session.expire_all()
+    await db_session.refresh(current_user)
+    if chat is not None:
+        await db_session.refresh(chat)
+    await chat_scope(db_session, current_user, data.project_id, data.meeting_id)
     require_ai_enabled()
-    return reply
+    if chat is None:
+        chat = MeetingConversation(
+            id=chat_id,
+            user_id=current_user.id,
+            project_id=data.project_id,
+            meeting_id=data.meeting_id,
+            title=data.message[:120],
+        )
+        db_session.add(chat)
+    chat.turns = [
+        *turns,
+        {"request_id": request_id, "user": data.message, "reply": reply.message},
+    ]
+    if reply.draft:
+        chat.proposal = reply.draft.model_dump(mode="json")
+    detail = conversation_detail(chat)
+    await db_session.commit()
+    return {**reply.model_dump(mode="json"), **detail}
 
 
 @router.post("")

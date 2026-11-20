@@ -8,3 +8,4 @@ export interface MeetingHandoff {
 }
 
 export const meetingHandoffKey: InjectionKey<Ref<MeetingHandoff | null>> = Symbol("meetingHandoff")
+export const meetingNameKey: InjectionKey<Ref<string>> = Symbol("meetingName")

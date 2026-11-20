@@ -113,14 +113,16 @@ import type {
   ResearchLogTimelineItem,
 } from "@/service/api/research-log"
 import type { RouteLocationRaw } from "vue-router"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { markdownSummary } from "@/utils/markdown-summary"
-import { $t } from "@airalogy/shared/locales"
 import { formatDate } from "@airalogy/shared/utils"
 import { useI18n } from "vue-i18n"
 import ResearchLogField from "./research-log-field.vue"
 
 const props = withDefaults(defineProps<{ items: ResearchLogTimelineItem[], compact?: boolean, showProject?: boolean }>(), { compact: false })
 const emit = defineEmits<{ edit: [entry: ResearchLogManualEntry] }>()
+
+const { t: $t } = useOrganizationTranslation()
 
 function dateOnly(item: ResearchLogTimelineItem) {
   return item.entry_type === "manual" && item.meeting_time_precision === "date"

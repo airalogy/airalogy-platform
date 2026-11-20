@@ -106,7 +106,7 @@ onBeforeUnmount(() => sequence++)
           {{ t('page.home.workspace.description') }}
         </p>
       </div>
-      <n-button v-if="instanceStore.aiEnabled && authStore.userInfo.id" secondary type="primary" data-testid="home-aira" aria-haspopup="dialog" :aria-expanded="airaVisible" @click="openAira($event.currentTarget as HTMLElement)">
+      <n-button v-if="instanceStore.aiEnabled && authStore.userInfo.id" secondary type="primary" data-testid="home-aira" :aria-expanded="airaVisible" @click="openAira($event.currentTarget as HTMLElement)">
         {{ t('page.home.workspace.askAira') }}
       </n-button>
     </div>

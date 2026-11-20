@@ -14,11 +14,9 @@
 
     <!-- Menu Navigation -->
     <nav class="flex-1 overflow-hidden">
-      <div v-if="!appStore.siderCollapse || mobile" class="h-full">
-        <n-tabs v-model:value="historyTab" class="h-full" type="line" size="small" pane-class="min-h-0 flex-1 overflow-auto">
-          <n-tab-pane name="account" :tab="$t('chat.accountHistory')"><account-history @opened="emit('opened')" /></n-tab-pane>
-          <n-tab-pane name="device" :tab="$t('chat.deviceHistory')"><chat-history-sidebar @opened="emit('opened')" /></n-tab-pane>
-        </n-tabs>
+      <div v-if="!appStore.siderCollapse || mobile" class="h-full flex flex-col">
+        <h2 v-if="!mobile" class="mx-2 mb-1 mt-3 text-sm font-semibold">{{ $t("chat.accountHistory") }}</h2>
+        <account-history @opened="emit('opened')" />
       </div>
       <div v-else class="mt-3">
         <tooltip-button
@@ -117,13 +115,11 @@ import { useDialog } from "naive-ui"
 import { nanoid } from "nanoid"
 import { useOpenNewTab } from "../../composables"
 import AccountHistory from "./account-history.vue"
-import ChatHistorySidebar from "./chat-history-sidebar.vue"
 
 defineOptions({ name: "GlobalMenu" })
 
 defineProps<{ mobile?: boolean }>()
 const emit = defineEmits<{ opened: [] }>()
-const historyTab = ref("account")
 const appStore = useAppStore()
 const dialog = useDialog()
 

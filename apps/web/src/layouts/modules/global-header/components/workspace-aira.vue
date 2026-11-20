@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AiraSidePanel from "@/components/common/aira-side-panel.vue"
 import { useProvideChatConfigStore } from "@/composables"
 import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { useProvideChatProvider } from "@airalogy/components/chat/providers/useChatProvider"
@@ -16,13 +17,14 @@ chatConfig.mode.value = "embedded"
 useProvideChatProvider(chatConfig)
 
 const { visible, restoreFocus } = useWorkspaceAira()!
+function close() {
+  visible.value = false
+  nextTick(restoreFocus)
+}
 </script>
 
 <template>
-  <n-drawer
-    v-model:show="visible" placement="right" width="min(100%, 460px)"
-    display-directive="show" aria-labelledby="home-aira-title" @after-leave="restoreFocus"
-  >
+  <aira-side-panel :open="visible" label="Aira" @close="close">
     <section class="h-full min-h-0 flex flex-col" data-testid="home-aira-panel">
       <header class="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
         <h2 id="home-aira-title" class="aira-type-card-title m-0 flex items-center gap-2">
@@ -35,7 +37,7 @@ const { visible, restoreFocus } = useWorkspaceAira()!
           {{ $t("common.allChats") }} ↗
         </router-link>
         <div id="home-aira-memory-actions" class="shrink-0" />
-        <n-button size="small" quaternary circle :aria-label="$t('common.close')" @click="visible = false">
+        <n-button size="small" quaternary circle :aria-label="$t('common.close')" @click="close">
           <template #icon>
             <n-icon><icon-tabler-x /></n-icon>
           </template>
@@ -45,5 +47,5 @@ const { visible, restoreFocus } = useWorkspaceAira()!
         <chat-view embedded />
       </div>
     </section>
-  </n-drawer>
+  </aira-side-panel>
 </template>

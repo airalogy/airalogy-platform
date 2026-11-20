@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -115,3 +116,18 @@ class MeetingActionBatch(Base):
     )
     actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
     digest: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class MeetingConversation(Base):
+    """Private drafting history. Publishing minutes is a separate operation."""
+
+    __tablename__ = "meeting_conversations"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), index=True)
+    meeting_id: Mapped[UUID | None] = mapped_column(ForeignKey("meetings.document_id"))
+    title: Mapped[str] = mapped_column(String(120))
+    turns: Mapped[list[dict]] = mapped_column(JSON)
+    proposal: Mapped[dict | None] = mapped_column(JSON)
+    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now)

@@ -3,17 +3,23 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, literal, or_, select, union_all
 
 from app.database import DBSession
 from app.models.chat import (
     Chat,
     ChatType,
 )
+from app.models.lab import Lab
+from app.models.meeting import MeetingConversation
+from app.models.project import Project
+from app.models.research_log import ResearchLogEntry
 from app.routers.chats.utils import UsageLimit
 from app.routers.depends import CurrentUser, get_current_user
 from app.services.aira_memory import is_memory_turn
 from app.services.chat_models import enabled_chat_model_types
+from app.services.meetings import meeting_read_condition
+from app.services.research_runtime import has_research_capability
 
 router = APIRouter(
     dependencies=[Depends(get_current_user)],
@@ -66,30 +72,112 @@ async def list_account_conversations(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
 ):
-    rows = (await db_session.execute(
-        select(Chat.id, Chat.updated_at, Chat.messages)
-        .where(
-            Chat.user_id == current_user.id,
-            Chat.protocol_id.is_(None),
-            Chat.type == ChatType.QA,
+    meeting = MeetingConversation
+    # Resolve each distinct project with the same capability as the project panel.
+    projects = (
+        await db_session.scalars(
+            select(Project).where(
+                Project.deleted_at.is_(None),
+                Project.id.in_(
+                    select(meeting.project_id).where(meeting.user_id == current_user.id)
+                ),
+            )
         )
-        .order_by(Chat.updated_at.desc(), Chat.id.desc())
+    ).all()
+    allowed = [
+        project.id
+        for project in projects
+        if await has_research_capability(
+            db_session, user=current_user, project=project, capability="log.write"
+        )
+    ]
+    general_rows = select(
+        Chat.id, Chat.updated_at, literal("general").label("kind")
+    ).where(
+        Chat.user_id == current_user.id,
+        Chat.protocol_id.is_(None),
+        Chat.type == ChatType.QA,
+    )
+    meeting_rows = select(
+        meeting.id, meeting.updated_at, literal("meeting").label("kind")
+    ).where(
+        meeting.user_id == current_user.id,
+        meeting.project_id.in_(allowed),
+        or_(
+            meeting.meeting_id.is_(None),
+            meeting.meeting_id.in_(
+                select(ResearchLogEntry.id).where(
+                    ResearchLogEntry.archived_at.is_(None),
+                    meeting_read_condition(current_user.id),
+                )
+            ),
+        ),
+    )
+    history = union_all(general_rows, meeting_rows).subquery()
+    window = (
+        select(history)
+        .order_by(history.c.updated_at.desc(), history.c.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size + 1)
-    )).all()
+        .subquery()
+    )
+    rows = (
+        await db_session.execute(
+            select(
+                window,
+                Chat.messages,
+                meeting.title,
+                meeting.meeting_id,
+                Project.name.label("project_name"),
+                Project.uid.label("project_uid"),
+                Lab.uid.label("lab_uid"),
+            )
+            .outerjoin(Chat, (window.c.kind == "general") & (Chat.id == window.c.id))
+            .outerjoin(
+                meeting, (window.c.kind == "meeting") & (meeting.id == window.c.id)
+            )
+            .outerjoin(Project, Project.id == meeting.project_id)
+            .outerjoin(Lab, Lab.id == Project.lab_id)
+            .order_by(window.c.updated_at.desc(), window.c.id.desc())
+        )
+    ).all()
     items = []
-    for chat_id, updated_at, messages in rows[:page_size]:
-        first_index = next((i for i, m in enumerate(messages) if m.get("role") == "user"), -1)
+    for row in rows[:page_size]:
+        if row.kind == "meeting":
+            items.append(
+                {
+                    "id": row.id,
+                    "title": row.title,
+                    "kind": row.kind,
+                    "updated_at": row.updated_at,
+                    "project_name": row.project_name,
+                    "project_uid": row.project_uid,
+                    "lab_uid": row.lab_uid,
+                    "meeting_id": row.meeting_id,
+                }
+            )
+            continue
+        messages = row.messages
+        first_index = next(
+            (i for i, m in enumerate(messages) if m.get("role") == "user"), -1
+        )
         first = messages[first_index] if first_index >= 0 else {}
         title = first.get("content") or next(
-            (f.get("file_name") for f in (first.get("files") or []) if f.get("file_name")), ""
+            (
+                f.get("file_name")
+                for f in (first.get("files") or [])
+                if f.get("file_name")
+            ),
+            "",
         )
-        items.append({
-            "id": chat_id,
-            "title": str(title)[:120],
-            "title_is_memory_request": is_memory_turn(messages, first_index),
-            "updated_at": updated_at,
-        })
+        items.append(
+            {
+                "id": row.id,
+                "title": str(title)[:120],
+                "title_is_memory_request": is_memory_turn(messages, first_index),
+                "updated_at": row.updated_at,
+            }
+        )
     return {"items": items, "has_more": len(rows) > page_size}
 
 

@@ -5414,6 +5414,9 @@ declare namespace I18n {
           page_instance_resetDescription: string
           page_instance_inviteDescription: string
           page_instance_labRole: string
+          recordDiaryAllOrganizations: string
+          recordDiaryFilterOrganization: string
+          recordExportOrganizationScope: string
           page_singleLabWorkspace_log: string
           page_singleLabWorkspace_management: string
           page_singleLabWorkspace_shared: string
@@ -6177,6 +6180,8 @@ declare namespace I18n {
       clearDeviceHistory: string
       clearDeviceConfirm: string
       accountHistory: string
+      changedOnServer: string
+      sendUnconfirmed: string
       deviceHistory: string
       noAccountHistory: string
       historyUnavailable: string

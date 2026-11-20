@@ -14,7 +14,9 @@ Meeting lists, document reads/history/browsing, activity counts and work evidenc
 
 ## Meeting drafts with Aira
 
-When AI is available, project writers can open Aira on the right, paste their discussion, and request revisions. Only the text supplied in the conversation and the current proposal are sent. Choose **Review minutes and actions** to open the meeting form. Confirm the date, audience, and any tasks or assignments, then save. The draft stays in the current page session until saved.
+When AI is available, project writers can open Aira on the right, paste their discussion, and request revisions. Only the text supplied in the conversation and the current proposal are sent. Choose **Review minutes and actions** to open the meeting form. Confirm the date, audience, and any tasks or assignments, then save. Your conversation and proposed draft are saved privately on this deployment. Reopen them from Conversation history while you still have access. Minutes and tasks are published to the project only when you review and save them.
+
+On a wide screen you can edit the meeting beside Aira while it replies. Switching tabs within that project keeps the chat and unsent text. On a phone, close the full-screen chat to return to the meeting and reopen it to continue.
 
 ## Minutes, comments and actions
 

@@ -200,6 +200,7 @@ import type {
   RecordExportScope,
   RecordExportStatus,
 } from "@/service/api/record-exports"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import {
   createRecordExport,
   deleteRecordExport,
@@ -210,7 +211,6 @@ import {
 import { downloadAsUrl } from "@airalogy/shared/utils"
 import dayjs from "dayjs"
 import { type TagProps, useMessage } from "naive-ui"
-import { useI18n } from "vue-i18n"
 
 defineOptions({ name: "RecordExportModal" })
 
@@ -229,7 +229,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ created: [item: RecordExportItem] }>()
-const { t } = useI18n()
+const { t } = useOrganizationTranslation()
 const message = useMessage()
 const show = ref(false)
 const activeTab = ref<"create" | "history">("create")

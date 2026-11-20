@@ -142,15 +142,28 @@ export interface MeetingProposal {
   actions: string[]
 }
 
-export function meetingDraftAvailability(projectId: string) {
-  return documentRequest<{ available: boolean }>({ url: "/meetings/aira/availability", params: { project_id: projectId } })
+export function meetingDraftAvailability(projectId: string, signal: AbortSignal) {
+  return documentRequest<{ available: boolean }>({ url: "/meetings/aira/availability", signal, params: { project_id: projectId } })
 }
 
-export function requestMeetingDraft(projectId: string, message: string, history: { user: string, reply: string }[], previous: MeetingProposal | null) {
-  return documentRequest<{ message: string, draft: MeetingProposal | null }>({
+export interface MeetingConversation {
+  id: string
+  project_id: string
+  meeting_id: string | null
+  turns: { user: string, reply: string }[]
+  proposal: MeetingProposal | null
+}
+
+export function getMeetingConversation(id: string, signal: AbortSignal) {
+  return documentRequest<MeetingConversation>({ url: `/meetings/aira/conversations/${id}`, signal })
+}
+
+export function requestMeetingDraft(projectId: string, message: string, conversationId: string, meetingId: string | null, expectedTurns: number, requestId: string, signal: AbortSignal) {
+  return documentRequest<MeetingConversation>({
     url: "/meetings/aira/draft",
+    signal,
     timeout: 100_000,
     method: "POST",
-    data: { project_id: projectId, message, history, previous },
+    data: { project_id: projectId, message, conversation_id: conversationId, meeting_id: meetingId, expected_turns: expectedTurns, request_id: requestId },
   })
 }

@@ -30,7 +30,7 @@ import { useI18n } from "vue-i18n"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import ActionBatch from "./action-batch.vue"
-import { meetingHandoffKey } from "./aira-handoff"
+import { meetingHandoffKey, meetingNameKey } from "./aira-handoff"
 import PreviousMeetingWork from "./previous-meeting-work.vue"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
 
@@ -68,6 +68,15 @@ const form = ref<MeetingContent>()
 const saved = ref("")
 const creationId = ref("")
 const handoff = inject(meetingHandoffKey, null)
+const meetingName = inject(meetingNameKey, null)
+watchEffect((cleanup) => {
+  if (!meetingName)
+    return
+  meetingName.value = form.value ? form.value.title.trim() || t("page.meetings.new") : ""
+  cleanup(() => {
+    meetingName.value = ""
+  })
+})
 const initialActionTitles = ref<string[]>([])
 const editorMode = ref<"wysiwyg" | "source">("wysiwyg")
 const comment = ref("")

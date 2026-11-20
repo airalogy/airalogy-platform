@@ -292,6 +292,7 @@ import type { RouteLocationRaw } from "vue-router"
 import LoadingListWrapper from "@/components/common/loading-list-wrapper.vue"
 import TimelineListItem from "@/components/common/protocol-timeline/timeline-list-item.vue"
 import RecordExportModal from "@/components/common/record-export-modal.vue"
+import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { LabRole, ProjectRole } from "@/enum"
 import { fetchProjectList } from "@/service/api/projects"
@@ -304,7 +305,6 @@ import { useProfileStore } from "@/views/profile/hooks/useProfileStore"
 import { useOrProvideProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import { createProtocolRecordData } from "@/views/project-protocols/utils"
 import ResearchActivity from "@/views/research-activity/index.vue"
-import { $t } from "@airalogy/shared/locales"
 import { formatDate } from "@airalogy/shared/utils"
 import RecordDiaryCalendar from "./modules/record-diary-calendar.vue"
 import RecordDiaryHeatmap from "./modules/record-diary-heatmap.vue"
@@ -312,6 +312,8 @@ import ResearchLogEntryModal from "./modules/research-log-entry-modal.vue"
 import ResearchLogList from "./modules/research-log-list.vue"
 
 defineOptions({ name: "RecordDiary" })
+
+const { t: $t } = useOrganizationTranslation()
 
 type RecordDiaryReportTarget = RecordDiaryItem | RecordDiaryEventItem
 type RecordDiaryViewMode = "heatmap" | "calendar"

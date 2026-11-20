@@ -60,6 +60,11 @@ export async function verifyOwnedChatIds(ids: string[]) {
 }
 
 export interface AccountChatSummary {
+  kind?: "general" | "meeting"
+  project_name?: string
+  project_uid?: string
+  lab_uid?: string
+  meeting_id?: string | null
   title_is_memory_request?: boolean
   id: string
   title: string

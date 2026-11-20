@@ -1,7 +1,7 @@
 <template>
   <div class="relative" :class="[commonClass]" :style="cssVars">
     <div
-      :id="isWrapperScroll ? scrollElId : undefined" class="h-full flex flex-col"
+      :id="isWrapperScroll ? scrollElId : undefined" class="workspace-shell h-full flex flex-col"
       :class="[commonClass, scrollWrapperClass, { 'overflow-y-auto min-h-screen': isWrapperScroll, 'max-h-screen': fullContent }]"
     >
       <!-- Header -->
@@ -76,21 +76,24 @@
       </template>
 
       <!-- Main Content -->
-      <main
-        :id="isContentScroll ? scrollElId : undefined"
-        data-testid="app-shell-content"
-        class="flex flex-grow flex-col"
-        :style="containerStyle"
-        :class="[
-          commonClass,
-          contentClass,
-          leftGapClass,
-          isContentScroll ? 'overflow-y-auto' : 'overflow-y-hidden',
-          isContainer ? 'container aira-content-shell' : '',
-        ]"
-      >
-        <slot />
-      </main>
+      <div class="workspace-body">
+        <main
+          :id="isContentScroll ? scrollElId : undefined"
+          data-testid="app-shell-content"
+          class="flex flex-grow flex-col"
+          :style="containerStyle"
+          :class="[
+            commonClass,
+            contentClass,
+            leftGapClass,
+            isContentScroll ? 'overflow-y-auto' : 'overflow-y-hidden',
+            isContainer ? 'container aira-content-shell' : '',
+          ]"
+        >
+          <slot />
+        </main>
+        <slot name="assistant" />
+      </div>
 
       <!-- Footer -->
       <template v-if="showFooter">
@@ -173,6 +176,7 @@ type SlotFn = (props?: Record<string, unknown>) => any
 interface Slots {
   /** Main */
   default?: SlotFn
+  assistant?: SlotFn
   /** Header */
   header?: SlotFn
   /** Tab */
@@ -253,4 +257,21 @@ function handleClickMask() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.workspace-shell { --aira-rail-width: clamp(320px, 28vw, 380px); }
+.workspace-body { display: contents; }
+.workspace-body:has(> [data-aira-docked="true"]) {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding-inline-end: var(--aira-rail-width);
+}
+.workspace-body:has(> [data-aira-docked="true"]) ~ footer {
+  margin-inline-end: var(--aira-rail-width);
+}
+.workspace-body:has(> [data-aira-docked="true"]) > main {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+</style>

@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Aira now lists general chats and private project meeting conversations in one account history. Meeting drafts resume across devices on the same deployment and check current access before reading or sending.
+
+- Aira opens beside the workspace on wide screens and in a drawer on smaller screens. Project tabs share the open conversation and draft. Organization log titles, filters and record exports follow the deployment vocabulary.
+
 - Personal memory summaries and automatic titles in existing Aira conversations now follow the interface language when switching languages or reopening history.
 
 - Aira keeps conversation memory options in the header on Home and All chats. Explicit future preferences can be saved and undone. Repeated style requests offer a choice before saving.

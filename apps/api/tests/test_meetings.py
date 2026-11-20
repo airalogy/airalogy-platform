@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 
 from app.database import get_db_session
-from app.models.meeting import MeetingWorkLink
+from app.models.meeting import MeetingAccess, MeetingWorkLink
 from app.models.project import ProjectUser
 from app.models.research import ResearchTask
 from app.routers import (
@@ -25,6 +25,7 @@ from app.routers import (
     research_log,
     user_aliases,
 )
+from app.routers.chats import index as chat_history
 from app.routers.depends import create_access_token
 from app.services.meetings import MeetingContent
 from tests.test_record_analysis_postgres import database, seed_analysis
@@ -72,6 +73,8 @@ async def client(sessions):
         user_aliases,
     ]:
         app.include_router(module.router)
+
+    app.include_router(chat_history.router, prefix="/chats")
 
     async def session():
         async with sessions() as db:
@@ -672,10 +675,106 @@ def test_aira_meeting_draft_checks_writer_and_instance_and_only_returns_proposal
                 assert response.json()["draft"]["occurred_on"] is None
                 assert calls[0].project_id == project_id
                 assert calls[0].tenant_id == str(seed.project.lab_id)
+                chat_id = response.json()["id"]
+                detail_path = f"/meetings/aira/conversations/{chat_id}"
+                listed_history = await http.get("/chats/history/global", headers=owner)
+                assert listed_history.status_code == 200, listed_history.text
+                assert [row["id"] for row in listed_history.json()["items"]] == [
+                    chat_id
+                ]
+                row = listed_history.json()["items"][0]
+                assert (
+                    row["kind"] == "meeting" and row["project_uid"] == seed.project.uid
+                )
+                assert (
+                    await http.get(detail_path, headers=outsider)
+                ).status_code == 404
+                assert not (
+                    await http.get("/chats/history/global", headers=outsider)
+                ).json()["items"]
+                first = (await http.get(detail_path, headers=owner)).json()
+                assert first["turns"] == [
+                    {"user": "Synthetic discussion", "reply": "Review your draft"}
+                ]
+                resume = {
+                    **data,
+                    "message": "Synthetic discussion continued",
+                    "conversation_id": chat_id,
+                    "expected_turns": 1,
+                    "request_id": str(uuid4()),
+                }
+                continued = await http.post(endpoint, headers=owner, json=resume)
+                assert continued.status_code == 200, continued.text
+                assert len(continued.json()["turns"]) == 2
+                assert (
+                    await http.post(endpoint, headers=owner, json=resume)
+                ).json() == continued.json()
+                assert len(calls) == 2
+                assert (
+                    await http.post(
+                        endpoint,
+                        headers=owner,
+                        json={**resume, "request_id": str(uuid4())},
+                    )
+                ).status_code == 409
+                assert (await http.get(detail_path, headers=owner)).json()["proposal"][
+                    "title"
+                ] == "Synthetic draft"
                 listed = await http.get(
                     "/meetings", headers=owner, params={"project_id": project_id}
                 )
                 assert listed.json()["total"] == 0
+
+                # A project writer's personal history still respects a private
+                # meeting grant when its author later withdraws that grant.
+                writer = {"Auth-Token": create_access_token(seed.analyst)}
+                meeting_id = str(uuid4())
+                meeting = await http.post(
+                    "/meetings",
+                    headers=owner,
+                    json={
+                        "id": meeting_id,
+                        "project_id": project_id,
+                        "title": "Synthetic restricted meeting",
+                        "status": "planned",
+                        "visibility": "selected",
+                        "access": [{"user_id": str(seed.analyst.id), "role": "viewer"}],
+                    },
+                )
+                assert meeting.status_code == 200, meeting.text
+                scoped = {**data, "meeting_id": meeting_id}
+                saved = await http.post(endpoint, headers=writer, json=scoped)
+                assert saved.status_code == 200, saved.text
+                saved_id = saved.json()["id"]
+                assert [
+                    item["id"]
+                    for item in (
+                        await http.get("/chats/history/global", headers=writer)
+                    ).json()["items"]
+                ] == [saved_id]
+                async with sessions() as db:
+                    await db.execute(
+                        delete(MeetingAccess).where(
+                            MeetingAccess.meeting_id == UUID(meeting_id),
+                            MeetingAccess.user_id == seed.analyst.id,
+                        )
+                    )
+                    await db.commit()
+                assert not (
+                    await http.get("/chats/history/global", headers=writer)
+                ).json()["items"]
+                assert (
+                    await http.get(
+                        f"/meetings/aira/conversations/{saved_id}", headers=writer
+                    )
+                ).status_code == 404
+                denied = await http.post(
+                    endpoint,
+                    headers=writer,
+                    json={**scoped, "conversation_id": saved_id, "expected_turns": 1},
+                )
+                assert denied.status_code == 404
+                assert len(calls) == 3
 
     asyncio.run(run())
 

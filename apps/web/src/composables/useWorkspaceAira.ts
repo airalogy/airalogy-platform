@@ -2,9 +2,13 @@ import type { InjectionKey, Ref } from "vue"
 import { organizationUid } from "@/service/request/organization"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
-import { createInjectionState } from "@vueuse/core"
+import { createInjectionState, useMediaQuery } from "@vueuse/core"
 
-export const projectAiraKey: InjectionKey<{ available: Ref<boolean>, open: (trigger?: HTMLElement) => void }> = Symbol("projectAira")
+export function useAiraNarrowScreen() {
+  return useMediaQuery("(max-width: 899px)")
+}
+
+export const projectAiraKey: InjectionKey<{ available: Ref<boolean>, visible: Ref<boolean>, open: (trigger?: HTMLElement) => void }> = Symbol("projectAira")
 
 export const [provideWorkspaceAira, useWorkspaceAira] = createInjectionState(() => {
   const project = inject(projectAiraKey, null)
@@ -34,5 +38,13 @@ export const [provideWorkspaceAira, useWorkspaceAira] = createInjectionState(() 
     if (!visible.value && opener?.isConnected)
       opener.focus({ preventScroll: true })
   }
-  return { mounted, visible, open, restoreFocus }
+  const projectAvailable = computed(() => project?.available.value ?? false)
+  watch(projectAvailable, (available) => {
+    if (available) {
+      visible.value = false
+      mounted.value = false
+    }
+  })
+  const expanded = computed(() => projectAvailable.value ? project!.visible.value : visible.value)
+  return { mounted, visible, expanded, projectAvailable, open, restoreFocus }
 })
