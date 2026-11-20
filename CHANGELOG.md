@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Move R&D work across board columns by dragging a card or choosing its destination. Blockers, completion conditions and version conflicts are checked before the card moves.
+
 - Project managers can browse the organization directory, select several accounts and confirm their individual project roles in one step.
 
 - In single-organization deployments, owners and managers can open Research overview from Projects or beside All projects on Home. Existing overview bookmarks open the Projects tab.

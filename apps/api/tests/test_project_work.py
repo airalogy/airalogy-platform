@@ -617,3 +617,96 @@ def test_private_viewer_opens_project_metadata_without_protocol_or_write_access(
                 ).status_code == 403
 
     asyncio.run(run())
+
+
+@integration
+def test_board_moves_preserve_content_and_enforce_revision_permissions_and_dependencies():
+    async def run():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions)
+            owner = {"Auth-Token": create_access_token(seed.owner)}
+            outsider = {"Auth-Token": create_access_token(seed.outsider)}
+            async with client(sessions) as http:
+
+                async def create(**changes):
+                    response = await http.post(
+                        "/project-work",
+                        headers=owner,
+                        json=draft(seed.project, **changes),
+                    )
+                    assert response.status_code == 200, response.text
+                    return response.json()
+
+                def move(item, target, **changes):
+                    return {
+                        "state": target,
+                        "expected_revision": item["revision"],
+                        "request_id": str(uuid4()),
+                        "change_reason": "Move on synthetic board",
+                        **changes,
+                    }
+
+                parent = await create()
+                item = await create(
+                    goal="Retain these notes", dependency_ids=[parent["id"]]
+                )
+                path = f"/project-work/{item['id']}/state"
+                payload = move(item, "in_progress")
+                assert (
+                    await http.patch(path, headers=outsider, json=payload)
+                ).status_code == 403
+                first = await http.patch(path, headers=owner, json=payload)
+                assert first.status_code == 200, first.text
+                started = first.json()
+                assert (
+                    started["goal"] == item["goal"]
+                    and started["dependency_ids"] == item["dependency_ids"]
+                )
+                assert started["revision"] == item["revision"] + 1
+                assert (
+                    await http.patch(path, headers=owner, json=payload)
+                ).json() == started
+                assert (
+                    await http.patch(path, headers=owner, json=move(item, "pending"))
+                ).status_code == 409
+                assert (
+                    await http.patch(path, headers=owner, json=move(started, "blocked"))
+                ).status_code == 422
+                blocked = (
+                    await http.patch(
+                        path,
+                        headers=owner,
+                        json=move(started, "blocked", blocker="Awaiting parts"),
+                    )
+                ).json()
+                assert blocked["blocker"] == "Awaiting parts"
+                assert (
+                    await http.patch(path, headers=owner, json=move(blocked, "done"))
+                ).status_code == 422
+                complete = move(blocked, "done", acceptance="Reviewed against criteria")
+                assert (
+                    await http.patch(path, headers=owner, json=complete)
+                ).status_code == 409
+                parent_path = f"/project-work/{parent['id']}/state"
+                parent = (
+                    await http.patch(
+                        parent_path,
+                        headers=owner,
+                        json=move(parent, "done", acceptance="Bench checked"),
+                    )
+                ).json()
+                finished = (await http.patch(path, headers=owner, json=complete)).json()
+                assert finished["state"] == "done" and finished["completed_at"]
+                assert (
+                    await http.patch(
+                        parent_path, headers=owner, json=move(parent, "in_progress")
+                    )
+                ).status_code == 409
+                events = (
+                    await http.get(
+                        f"/project-work/{item['id']}/activity", headers=owner
+                    )
+                ).json()["events"]
+                assert len(events) == 4
+
+    asyncio.run(run())

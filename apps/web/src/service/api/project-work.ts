@@ -155,6 +155,17 @@ export function saveProjectWork(
     },
   })
 }
+export function moveProjectWork(id: string, data: {
+  state: WorkState
+  expected_revision: number
+  request_id: string
+  change_reason: string
+  blocker?: string
+  acceptance?: string
+}) {
+  return documentRequest<ProjectWork>({ url: `/project-work/${id}/state`, method: "PATCH", data })
+}
+
 export async function projectWorkMembers(projectId: string) {
   const result = await documentRequest<{ members: { id: string, name: string, username: string, display_name?: string }[] }>({
     url: "/project-work/members",

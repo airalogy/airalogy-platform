@@ -29,6 +29,7 @@ from app.services.project_work_contracts import (
     WorkActivity,
     WorkCreate,
     WorkState,
+    WorkStateChange,
     WorkUpdate,
 )
 from app.services.research_runtime import (
@@ -232,31 +233,37 @@ async def validate_content(db, user, project, data, task_id):
         if identity:
             await require_person(db, project.id, identity)
     await validate_evidence(db, user, project, data.evidence)
+    await validate_dependencies(
+        db, project.id, task_id, data.state, data.dependency_ids
+    )
+
+
+async def validate_dependencies(db, project_id, task_id, state, dependency_ids):
     rows = (
         await db.execute(
             select(ResearchTask, ProjectWork)
             .join(ProjectWork, ProjectWork.task_id == ResearchTask.id)
             .where(
-                ResearchTask.project_id == project.id,
+                ResearchTask.project_id == project_id,
                 ResearchTask.archived_at.is_(None),
             )
         )
     ).all()
     graph = {str(t.id): list(d.dependency_ids) for t, d in rows}
     states = {str(t.id): t.status for t, _ in rows}
-    dependencies = [str(identity) for identity in data.dependency_ids]
+    dependencies = [str(identity) for identity in dependency_ids]
     if any(identity not in graph for identity in dependencies):
         raise HTTPException(
             422, "Dependencies must be existing work items in this Project"
         )
-    if data.state == "done" and any(
+    if state == "done" and any(
         states[identity] != "completed" for identity in dependencies
     ):
         raise HTTPException(
             409, "Complete dependencies before completing this work item"
         )
     if (
-        data.state != "done"
+        state != "done"
         and states.get(str(task_id)) == "completed"
         and any(
             states[child] == "completed" and str(task_id) in parents
@@ -284,16 +291,20 @@ async def validate_content(db, user, project, data, task_id):
     visit(str(task_id))
 
 
-def apply_content(task, detail, data):
+def apply_state(task, state):
     previous = task.status
+    task.status = STORED_STATES[state]
+    task.updated_at = datetime.now(UTC)
+    if state == "done" and previous != "completed":
+        task.completed_at = task.updated_at
+    elif state != "done":
+        task.completed_at = None
+
+
+def apply_content(task, detail, data):
     task.title, task.goal = data.title, data.goal
     task.success_criteria = [data.acceptance] if data.acceptance else []
-    task.status = STORED_STATES[data.state]
-    task.updated_at = datetime.now(UTC)
-    if data.state == "done" and previous != "completed":
-        task.completed_at = datetime.now(UTC)
-    elif data.state != "done":
-        task.completed_at = None
+    apply_state(task, data.state)
     for key in (
         "kind",
         "priority",
@@ -515,6 +526,54 @@ async def update_work(
     return result
 
 
+@router.patch("/{task_id}/state")
+async def move_work(
+    task_id: UUID,
+    data: WorkStateChange,
+    current_user: CurrentUser,
+    db_session: DBSession,
+):
+    task, detail, project = await work_context(
+        db_session, current_user, task_id, write=True
+    )
+    digest = canonical_digest({"operation": "move", **data.model_dump(mode="json")})
+    if await replay(db_session, current_user, data.request_id, task_id, digest):
+        return await visible_snapshot(
+            db_session, current_user, project, work_snapshot(task, detail)
+        )
+    if task.revision != data.expected_revision:
+        raise HTTPException(
+            409, "Work changed in another window. Reload before moving it."
+        )
+    if task.status == STORED_STATES[data.state]:
+        return await visible_snapshot(
+            db_session, current_user, project, work_snapshot(task, detail)
+        )
+    blocker = detail.blocker if data.blocker is None else data.blocker
+    acceptance = (
+        "\n".join(task.success_criteria) if data.acceptance is None else data.acceptance
+    )
+    if data.state == "blocked" and not blocker.strip():
+        raise HTTPException(422, "Explain the blocker and what is needed next")
+    if data.state == "done" and not acceptance.strip():
+        raise HTTPException(
+            422, "Record the acceptance conditions before completing work"
+        )
+    await validate_dependencies(
+        db_session, project.id, task_id, data.state, detail.dependency_ids
+    )
+    if data.blocker is not None:
+        detail.blocker = data.blocker.strip()
+    if data.acceptance is not None:
+        task.success_criteria = [data.acceptance.strip()]
+    apply_state(task, data.state)
+    result = await finish_update(
+        db_session, current_user, project, task, detail, data, digest, True
+    )
+    await db_session.commit()
+    return result
+
+
 @router.get("/{task_id}/activity")
 async def activity(
     task_id: UUID,
@@ -704,6 +763,14 @@ async def update_work_impl(
         if identity
         for p in [await require_person(db_session, project.id, identity)]
     ]
+    return await finish_update(
+        db_session, current_user, project, task, detail, data, digest, state_changed
+    )
+
+
+async def finish_update(
+    db_session, current_user, project, task, detail, data, digest, state_changed
+):
     task.revision += 1
     await db_session.flush()
     snapshot = work_snapshot(task, detail)

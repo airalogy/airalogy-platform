@@ -4,6 +4,8 @@ Open **Project → R&D work** to create requirements, tasks, issues and mileston
 
 Under **Organization management → Members**, owners and authorized administrators can set an organization display name. Clearing it restores the member’s profile name. Personal notes are visible only to their author. Meeting and work-item pickers show the organization display name and store the account ID. Renaming a member preserves existing assignments and the participant names recorded in earlier meetings.
 
+Drag a board card to another status column or use its Move to menu. Moving to Blocked requires a blocker. Completing work requires acceptance conditions and completed dependencies. The change appears in the item history.
+
 ## Start with a concrete goal
 
 For a glasses prototype, create a work item such as “Verify the first optical prototype.” Define the goal and completion conditions, optionally assign a responsible person and collaborators, and enter priority and planned dates. Let the team determine scientific thresholds; the platform does not invent acceptance criteria.

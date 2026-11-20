@@ -5545,6 +5545,13 @@
       "retry": "重试"
     },
     "projectWork": {
+      "moveTo": "移动到",
+      "moveItem": "移动「{title}」",
+      "boardTransition": "看板状态由「{from}」改为「{to}」",
+      "moved": "已将「{title}」移至「{to}」",
+      "finishDependencies": "请先完成所有前置事项。",
+      "reopenDependents": "请先重开依赖此事项的已完成事项。",
+      "staleMove": "此事项已被修改，请关闭提示并核对最新状态后再移动。",
       "title": "研发事项",
       "new": "新建事项",
       "detail": "事项详情",

@@ -6,6 +6,7 @@ import { listProjectPeople } from "@/service/api/project-people"
 import { listProjectWork, projectWorkMembers, workStates } from "@/service/api/project-work"
 import { useProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import { useI18n } from "vue-i18n"
+import WorkBoard from "./work-board.vue"
 import WorkEditor from "./work-editor.vue"
 
 const { projectInfo } = useProjectInfoStore()
@@ -273,40 +274,17 @@ onBeforeUnmount(() => sequence++)
           >
         </button>
       </div>
-      <div
-        v-else-if="view === 'board'"
-        class="max-w-full overflow-x-auto pb-4"
-        tabindex="0"
-        :aria-label="t('page.projectWork.views.board')"
-      >
-        <div class="grid grid-cols-6 min-w-300 gap-3">
-          <section
-            v-for="state in workStates"
-            :key="state"
-            class="min-w-0 rounded-lg bg-gray-50 p-3"
-            :aria-label="t(`page.projectWork.states.${state}`)"
-          >
-            <h2 class="m-0 mb-3 text-sm font-semibold"
-            >{{ t(`page.projectWork.states.${state}`) }} ·
-              {{ items.filter(item => item.state === state).length }}</h2
-            >
-            <button
-              v-for="item in items.filter(item => item.state === state)"
-              :key="item.id"
-              type="button"
-              class="mb-3 w-full rounded border border-gray-200 bg-white p-3 text-left hover:border-primary"
-              @click="open(item.id)"
-            >
-              <small>{{ t(`page.projectWork.kinds.${item.kind}`) }}</small
-              ><strong class="my-2 block break-words">{{ item.title }}</strong
-              ><span class="text-sm text-gray-500">{{ owner(item) }}</span
-              ><time v-if="item.planned_end" class="mt-1 block text-xs">{{
-                item.planned_end
-              }}</time>
-            </button>
-          </section>
-        </div>
-      </div>
+      <work-board
+        v-else-if="view === 'board' && projectInfo"
+        :key="projectInfo.id"
+        :project-id="projectInfo.id"
+        :items="items"
+        :loading="loading"
+        :can-write="canWrite"
+        :owner="owner"
+        @open="open"
+        @saved="load"
+      />
       <div v-else-if="view === 'plan'" class="rounded-lg border border-gray-200 p-4">
         <p class="mt-0 text-sm text-gray-500">{{ t("page.projectWork.planHint") }}</p>
         <div v-if="plan.length" class="overflow-x-auto" tabindex="0">

@@ -5549,6 +5549,13 @@ declare namespace I18n {
         retry: string
       }
       projectWork: {
+        moveTo: string
+        moveItem: string
+        boardTransition: string
+        moved: string
+        finishDependencies: string
+        reopenDependents: string
+        staleMove: string
         title: string
         new: string
         detail: string

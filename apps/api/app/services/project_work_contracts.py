@@ -116,6 +116,26 @@ class WorkUpdate(WorkContent):
         return self
 
 
+class WorkStateChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    state: WorkState
+    expected_revision: int = Field(ge=1)
+    request_id: UUID
+    change_reason: str = Field(min_length=1, max_length=4000)
+    blocker: str | None = Field(default=None, max_length=4000)
+    acceptance: str | None = Field(default=None, max_length=10000)
+
+    @model_validator(mode="after")
+    def relevant_fields(self):
+        if not self.change_reason.strip():
+            raise ValueError("Explain the change")
+        if self.blocker is not None and self.state != "blocked":
+            raise ValueError("Only a blocked move can change the blocker")
+        if self.acceptance is not None and self.state != "done":
+            raise ValueError("Only completion can supply acceptance conditions")
+        return self
+
+
 class WorkActivity(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_id: UUID

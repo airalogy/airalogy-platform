@@ -5545,6 +5545,13 @@
       "retry": "Try again"
     },
     "projectWork": {
+      "moveTo": "Move to",
+      "moveItem": "Move {title}",
+      "boardTransition": "Changed board status from {from} to {to}",
+      "moved": "Moved {title} to {to}",
+      "finishDependencies": "Complete all prerequisites first.",
+      "reopenDependents": "Reopen completed dependent items first.",
+      "staleMove": "This item changed. Close this message and review its current state before moving it.",
       "title": "R&D work",
       "new": "New work item",
       "detail": "Work item",
