@@ -24,6 +24,7 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     await expect(page).toHaveURL(new RegExp(`${project}/analysis\\?view=external`))
     await page.getByTestId("external-connect-project").click()
     const setup = page.getByTestId("external-connection-setup")
+    await expect(setup.getByRole("link", { name: language.externalAccess.documentation })).toHaveAttribute("href", /external-agent-access/)
     await expect(setup.getByTestId("external-fixed-project")).toContainText("Quickstart Protocol Testing")
     await expect(setup.getByTestId("external-grant-project")).toHaveCount(0)
     await expect(setup.getByTestId("external-selected-scopes")).not.toContainText(language.externalResearch.exportRecords)

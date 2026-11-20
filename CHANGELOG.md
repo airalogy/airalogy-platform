@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- External AI connections can find and register private projects or read and post project cash with separate, personal grants. HTTP and MCP enforce current roles, writes support safe retries, and setup links are available before authorization.
+
 - Move R&D work across board columns by dragging a card or choosing its destination. Blockers, completion conditions and version conflicts are checked before the card moves.
 
 - Project managers can browse the organization directory, select several accounts and confirm their individual project roles in one step.

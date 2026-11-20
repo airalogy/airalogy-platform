@@ -26,7 +26,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_pkce_consent_code_replay_and_resource_binding():
+@pytest.mark.parametrize("organization", [False, True])
+def test_pkce_consent_code_replay_and_resource_binding(organization):
     async def scenario():
         async with database() as sessions, client(sessions) as http:
             scope = await seed(sessions)
@@ -67,10 +68,28 @@ def test_pkce_consent_code_replay_and_resource_binding():
                 params={**request, "redirect_uri": "https://example.test/steal"},
             )
             assert wrong_callback.status_code == 400
+            target = {"project_id": str(scope.project.id)}
+            if organization:
+                request["scope"] = "projects:find projects:create protocols:read"
+                target = {
+                    "organization_id": str(scope.lab.id),
+                    "approved_scopes": ["projects:find"],
+                }
+            excess = await http.post(
+                "/external-access/oauth/consent",
+                headers=browser(scope.owner),
+                json={
+                    **request,
+                    **target,
+                    "approved_scopes": ["cash:create"],
+                    "approve": True,
+                },
+            )
+            assert excess.status_code == 400
             consent = await http.post(
                 "/external-access/oauth/consent",
                 headers=browser(scope.owner),
-                json={**request, "project_id": str(scope.project.id), "approve": True},
+                json={**request, **target, "approve": True},
             )
             assert consent.status_code == 200, consent.text
             query = parse_qs(urlsplit(consent.json()["redirect_to"]).query)
@@ -100,6 +119,8 @@ def test_pkce_consent_code_replay_and_resource_binding():
             )
             assert sorted([first.status_code, second.status_code]) == [200, 400]
             credentials = first.json() if first.status_code == 200 else second.json()
+            if organization:
+                assert credentials["scope"] == "projects:find"
             token = credentials["access_token"]
             assert (
                 "no-store"

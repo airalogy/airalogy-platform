@@ -59,8 +59,8 @@ async def project_access(
         db, user=user, project=project, capability="research.read"
     ):
         raise HTTPException(404, "Project unavailable")
-    book = await db.get(OperationsBook, pid)
-    grant = await db.get(OperationsGrant, (pid, user.id))
+    book = await db.get(OperationsBook, pid, populate_existing=True)
+    grant = await db.get(OperationsGrant, (pid, user.id), populate_existing=True)
     enabled = bool(settings and settings.enabled)
     role = grant.role if enabled and book and book.enabled and grant else None
     if not discovery and (not enabled or not (management or role)):
@@ -191,7 +191,7 @@ async def validate_sources(db, user, project, data):
             db.add(OperationsProof(file_id=file.id, project_id=project.id))
 
 
-async def save(db, user, pid, change: Change):
+async def save(db, user, pid, change: Change, *, commit=True):
     project, _, role, _, _ = await project_access(db, user, pid, write=True)
     if role == "viewer":
         raise HTTPException(403, "Read-only operations access")
@@ -285,5 +285,6 @@ async def save(db, user, pid, change: Change):
             after=after,
         )
     )
-    await db.commit()
+    if commit:
+        await db.commit()
     return {"id": after["id"], "revision": after["revision"]}

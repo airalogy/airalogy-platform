@@ -1,5 +1,14 @@
 {
   "externalAccess": {
+    "firstOrganizationTask": "请核对当前账号、组织和授权范围，再问我要查找的项目名、项目标识或合同号。",
+    "firstCashTask": "请核对当前账号、项目和收支权限。如果有读取权限，显示当前项目的总收款、总付款及净现金。",
+    "findProject": "查找组织内可访问的项目",
+    "registerProject": "创建私有项目",
+    "readCash": "查看项目收支",
+    "postCash": "登记实际收付款",
+    "target": "授权范围",
+    "organizationProjects": "组织建项",
+    "organization": "组织",
     "destination": "保存位置",
     "rowCount": "新增记录数",
     "protocolVersion": "Protocol 版本",
@@ -24,7 +33,7 @@
     "readRecords": "读取记录",
     "importRecords": "导入记录",
     "reviseRecords": "修订我的记录",
-    "policyHint": "实验室所有者或管理员需先在实验室设置中开启外部访问。修订同时需要记录读取权限。只有组织允许该工具处理这些数据时，才应授权。",
+    "policyHint": "由组织所有者或管理员开启外部访问。连接仅在本人当前权限和所选授权范围内有效。",
     "labDisabled": "实验室未开启外部访问",
     "create": "创建限权令牌",
     "oneTime": "令牌只展示一次，请安全保存。不要粘贴到 AI 对话、代码仓库或共享文档中；它不同于账号密码和旧 API Key。",

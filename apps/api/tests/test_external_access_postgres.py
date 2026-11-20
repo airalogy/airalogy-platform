@@ -149,7 +149,11 @@ async def grant(http, scope, *, user=None, scopes=None):
         json={
             "project_id": str(scope.project.id),
             "name": "Synthetic Agent",
-            "scopes": scopes or sorted(service.SCOPES),
+            "scopes": scopes
+            or sorted(
+                service.SCOPES
+                - {"projects:find", "projects:create", "cash:read", "cash:create"}
+            ),
             "expires_in_days": 1,
         },
     )
@@ -158,9 +162,9 @@ async def grant(http, scope, *, user=None, scopes=None):
     return response.json()
 
 
-async def call(http, token, name, **arguments):
+async def call(http, token, tool_name, **arguments):
     return await http.post(
-        f"/external-access/tools/{name}", headers=delegated(token), json=arguments
+        f"/external-access/tools/{tool_name}", headers=delegated(token), json=arguments
     )
 
 
@@ -648,7 +652,11 @@ def test_migration_roundtrip_preserves_existing_records():
                         columns = inspect(connection).get_columns(model.__tablename__)
                         expected = set(model.__table__.c.keys())
                         if model is ExternalGrant:
-                            expected -= {"audience", "oauth_client_id"}
+                            expected -= {
+                                "audience",
+                                "oauth_client_id",
+                                "organization_id",
+                            }
                         assert {c["name"] for c in columns} == expected
 
                 await connection.run_sync(roundtrip)

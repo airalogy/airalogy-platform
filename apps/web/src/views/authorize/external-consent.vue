@@ -1,17 +1,39 @@
 <script setup lang="ts">
+import type { ExternalDashboard } from "@/service/api/external-access"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { consentExternalOAuth, getExternalDashboard, readExternalOAuthRequest } from "@/service/api/external-access"
 import { useAuthStore } from "@/store/modules/auth"
+import ExternalGuideLink from "@/views/external-access/components/external-guide-link.vue"
 import { $t } from "@airalogy/shared/locales"
 
 const route = useRoute()
 const auth = useAuthStore()
 const { routerPushByKey } = useRouterPush()
 const info = ref<{ client_name: string, redirect_uri: string, resource: string, scopes: string[] }>()
-const projects = ref<Array<{ value: string, label: string }>>([])
+const organizationMode = ref(false)
+const dashboard = ref<ExternalDashboard>()
 const projectId = ref<string | null>(null)
-const days = ref(1)
+const hasOrganizationScopes = computed(() => info.value?.scopes.some(s => s.startsWith("projects:")))
+const hasProjectScopes = computed(() => info.value?.scopes.some(s => !s.startsWith("projects:")))
+const projects = computed(() => (organizationMode.value ? dashboard.value?.organizations || [] : dashboard.value?.projects || []).filter(p => p.enabled).map(p => ({ value: p.id, label: p.name })))
+const requestedScopes = computed(() => info.value?.scopes.filter(s => s.startsWith("projects:") === organizationMode.value) || [])
+const approvedScopes = ref<string[]>([])
 const reviewed = ref(false)
+function eligible(scope: string) {
+  const project = dashboard.value?.projects.find(p => p.id === projectId.value)
+  return (scope !== "cash:create" || project?.cash_role === "finance") && (scope !== "cash:read" || Boolean(project?.cash_role))
+}
+watch(projects, (items) => {
+  projectId.value = items.length === 1 ? items[0].value : null
+})
+watch([requestedScopes, projectId], () => {
+  approvedScopes.value = requestedScopes.value.filter(eligible)
+  reviewed.value = false
+})
+watch(approvedScopes, () => {
+  reviewed.value = false
+})
+const days = ref(1)
 const busy = ref(false)
 const failed = ref(false)
 const fields = ["response_type", "client_id", "redirect_uri", "state", "scope", "resource", "code_challenge", "code_challenge_method"]
@@ -25,10 +47,8 @@ async function load() {
   failed.value = false
   try {
     info.value = await readExternalOAuthRequest(params.value)
-    const dashboard = await getExternalDashboard()
-    projects.value = dashboard.projects.filter(p => p.enabled).map(p => ({ value: p.id, label: p.name }))
-    if (projects.value.length === 1)
-      projectId.value = projects.value[0].value
+    dashboard.value = await getExternalDashboard()
+    organizationMode.value = Boolean(hasOrganizationScopes.value && !hasProjectScopes.value)
   }
   catch { failed.value = true }
   finally { busy.value = false }
@@ -38,7 +58,7 @@ async function decide(approve: boolean) {
     return
   busy.value = true
   try {
-    const result = await consentExternalOAuth({ ...params.value, approve, project_id: projectId.value || "00000000-0000-0000-0000-000000000000", expires_in_days: days.value })
+    const result = await consentExternalOAuth({ ...params.value, approve, approved_scopes: approve ? approvedScopes.value : undefined, [organizationMode.value ? "organization_id" : "project_id"]: projectId.value, expires_in_days: days.value })
     // Server has validated this exact registered callback. Never redirect to a raw query value.
     window.location.assign(result.redirect_to)
   }
@@ -51,6 +71,7 @@ onMounted(load)
 <template>
   <main class="mx-auto max-w-2xl min-h-screen p-4 sm:p-8">
     <n-card :title="$t('externalResearch.oauthConsent')">
+      <template #header-extra><external-guide-link /></template>
       <n-alert v-if="failed" type="error">
         {{ $t("externalAccess.failed") }}
       </n-alert>
@@ -68,19 +89,23 @@ onMounted(load)
         <n-alert type="warning">
           {{ $t("externalResearch.oauthWarning") }}
         </n-alert>
-        <n-form-item :label="$t('externalAccess.project')">
+        <n-radio-group v-if="hasProjectScopes && hasOrganizationScopes" v-model:value="organizationMode" :aria-label="$t('externalAccess.target')">
+          <n-radio-button :value="false">{{ $t("externalAccess.project") }}</n-radio-button>
+          <n-radio-button :value="true">{{ $t("externalAccess.organizationProjects") }}</n-radio-button>
+        </n-radio-group>
+        <n-form-item :label="$t(organizationMode ? 'externalAccess.organization' : 'externalAccess.project')">
           <n-select v-model:value="projectId" :options="projects" />
         </n-form-item>
         <n-form-item :label="$t('externalResearch.oauthDays')">
           <n-input-number v-model:value="days" :min="1" :max="7" />
         </n-form-item>
         <h3>{{ $t("externalAccess.scopes") }}</h3>
-        <ul class="list-disc list-inside">
-          <li v-for="scope in info.scopes" :key="scope">
-            {{ scope === "collaboration:read" ? $t("externalAccess.readCollaboration") : scope === "collaboration:write" ? $t("externalAccess.writeCollaboration") : scope }}
-          </li>
-        </ul>
-        <p v-if="info.scopes.includes('collaboration:write')" class="text-sm text-gray-600">
+        <n-checkbox-group v-model:value="approvedScopes" class="flex flex-wrap gap-3">
+          <n-checkbox v-for="scope in requestedScopes" :key="scope" :value="scope" :disabled="!eligible(scope)">
+            {{ scope }}
+          </n-checkbox>
+        </n-checkbox-group>
+        <p v-if="approvedScopes.includes('collaboration:write')" class="text-sm text-gray-600">
           {{ $t("externalAccess.collaborationWriteHint") }}
         </p>
         <n-checkbox v-model:checked="reviewed">
@@ -90,7 +115,7 @@ onMounted(load)
           <n-button :disabled="busy" @click="decide(false)">
             {{ $t("externalAccess.reject") }}
           </n-button>
-          <n-button type="primary" :disabled="!reviewed || !projectId" :loading="busy" @click="decide(true)">
+          <n-button type="primary" :disabled="!reviewed || !projectId || !approvedScopes.length" :loading="busy" @click="decide(true)">
             {{ $t("externalAccess.approve") }}
           </n-button>
         </div>

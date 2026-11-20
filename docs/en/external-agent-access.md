@@ -2,7 +2,7 @@
 
 Connect Codex or another MCP client to one authorized Project. Platform remains responsible for access control, strict data validation and Record revision history. These deterministic operations do not require Aira, Masterbrain or an enabled model service.
 
-This implements [Issue #11](https://github.com/airalogy/platform/issues/11) and the research workflows in [Issue #22](https://github.com/airalogy/platform/issues/22): scoped reads, imports/revisions, immutable analysis snapshots, private external results and reviewed Protocol publication. Administrative and instrument-control access are excluded. File downloads require separate authorization.
+This implements [Issue #11](https://github.com/airalogy/platform/issues/11) and the research workflows in [Issue #22](https://github.com/airalogy/platform/issues/22): scoped reads, imports/revisions, immutable analysis snapshots, private external results and reviewed Protocol publication. Organization project registration and project cash books have separate permissions. File downloads require separate authorization.
 
 ## Enable and connect
 
@@ -19,6 +19,22 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 Set `AIRALOGY_PLATFORM_TOKEN` using your client's secure environment configuration. Do not paste the token into chat, source control or shared documents; do not place it literally in the registration command. A desktop application does not necessarily inherit variables from an already-open terminal: restart it with the configured environment. See the [Codex MCP documentation](https://developers.openai.com/codex/mcp/) for client configuration.
 
 Revocation takes effect on subsequent calls and cancels unexecuted requests. Expiry, account credential invalidation, loss of Lab/Project membership and policy changes are checked server-side on each request. An operation already committed before revocation remains a normal Record, with its history.
+
+## Connect an individual account
+
+Each person connects to the same instance endpoint with their own OAuth consent or personal delegated token. The organization policy, the current account permissions and the target and scopes on the grant must all allow the action. Check the identity and target with `access_context`. Refresh the MCP tool list after a role change. Both transports enforce current permissions even when a client caches the list.
+
+| Task | Account settings → External AI tools | Tool |
+| --- | --- | --- |
+| Find or register a private project | An organization owner or manager selects **Organization project registration**, one organization and the required scopes | `find_organization_project`, `create_private_project` |
+| Read actual cash and net cash | Select one project and **View project cash ledger**. The account needs project access and a role on its enabled book | `list_project_cash` |
+| Post actual receipts and payments | A finance member explicitly selects **Post actual receipts and payments** in custom permissions | `record_project_cash` |
+
+Search by exact name, UID or contract number, for example `{"by":"contract_number","query":"DEMO-001"}`. To register, supply a UUID `request_id`, project `uid` and `name`, and optionally `description` and `contract_number`. Follow the returned project link. A registration reference does not record a signed contract. Enable the book and assign finance access in Platform when required.
+
+Supply integer CNY fen and the actual transaction date. A receipt of CNY 100 is `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"Example receipt","day":"2025-01-10","direction":"in","amount":10000}}`. Use `out` for a payment. Retry the same request with the same UUID. Changing the payload requires a new business decision, and conflicts with the original UUID. Check the returned ledger link or read the totals for receipts, payments and net cash.
+
+MCP clients use `/api/mcp`. With a personal delegated token, HTTP clients POST the same arguments to `/api/external-access/tools/<name>`. OAuth clients request organization scopes (`projects:find projects:create`) or project scopes (`cash:read cash:create`) in separate grants. Each employee authorizes their own connection. Revocation and current ledger roles apply to subsequent calls.
 
 ## Find reports and confirmations
 

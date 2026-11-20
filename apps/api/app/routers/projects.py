@@ -520,7 +520,17 @@ class ProjectCreateParams(BaseModel):
 async def create_project(
     params: ProjectCreateParams, current_user: CurrentUser, db_session: DBSession
 ):
-    lab = await Lab.find(db_session, id=params.lab_id)
+    project, lab = await create_project_transaction(params, current_user, db_session)
+    await db_session.commit()
+    return await project_response(project, lab, current_user, db_session)
+
+
+async def create_project_transaction(params, current_user, db_session):
+    lab = await db_session.scalar(
+        select(Lab).where(Lab.id == params.lab_id).with_for_update()
+    )
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
     if config.is_single_lab and lab.uid != config.SINGLE_LAB_UID:
         raise HTTPException(status_code=404, detail="Lab not found")
     if config.is_single_lab and params.type != ProjectType.PRIVATE:
@@ -545,7 +555,9 @@ async def create_project(
     if proj:
         raise HTTPException(status_code=400, detail="Project name already exists")
 
-    parent_project = await get_parent_project_for_create(params, current_user, db_session)
+    parent_project = await get_parent_project_for_create(
+        params, current_user, db_session
+    )
     if (
         config.is_single_lab
         and parent_project is not None
@@ -613,9 +625,8 @@ async def create_project(
         db_session,
         where_conditions=[Project.lab_id == lab.id, Project.deleted_at.is_(None)],
     )
-    await db_session.commit()
-
-    return await project_response(project, lab, current_user, db_session)
+    await db_session.flush()
+    return project, lab
 
 
 class ProjectUpdateParams(BaseModel):

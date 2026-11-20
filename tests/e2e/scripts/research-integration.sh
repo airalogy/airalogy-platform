@@ -35,6 +35,7 @@ test_files=(
   tests/test_research_documents_postgres.py
   tests/test_research_document_migration_postgres.py
   tests/test_external_access_postgres.py
+  tests/test_external_project_ledger_postgres.py
   tests/test_external_research_postgres.py
   tests/test_external_onboarding_postgres.py
   tests/test_research_integration.py

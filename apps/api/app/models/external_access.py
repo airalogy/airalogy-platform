@@ -4,7 +4,14 @@ from datetime import datetime
 from typing import ClassVar
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -22,11 +29,21 @@ class ExternalAccessPolicy(Base):
 
 class ExternalGrant(Base):
     __tablename__ = "external_grants"
+    __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(project_id, organization_id) = 1",
+            name="ck_external_grant_target",
+        ),
+    )
+
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    project_id: Mapped[UUID] = mapped_column(
+    organization_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("labs.id", ondelete="CASCADE")
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
     oauth_client_id: Mapped[UUID | None] = mapped_column(
@@ -88,3 +105,22 @@ class ExternalAudit(Base):
     event: Mapped[str] = mapped_column(String(80))
     detail: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ExternalProjectReceipt(Base):
+    __tablename__ = "external_project_receipts"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "contract_number", name="uq_external_project_contract"
+        ),
+    )
+    organization_id: Mapped[UUID] = mapped_column(
+        ForeignKey("labs.id", ondelete="CASCADE"), primary_key=True
+    )
+    request_id: Mapped[UUID] = mapped_column(primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), unique=True
+    )
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    digest: Mapped[str] = mapped_column(String(64))
+    contract_number: Mapped[str | None] = mapped_column(String(128))

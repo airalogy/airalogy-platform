@@ -39,6 +39,10 @@ from app.services.browser_paths import project_browser_path
 from app.services.record_imports import import_fields, template_csv
 
 SCOPES = {
+    "projects:find",
+    "projects:create",
+    "cash:read",
+    "cash:create",
     "collaboration:read",
     "collaboration:write",
     "protocols:read",
@@ -91,7 +95,8 @@ class StrictModel(BaseModel):
 
 
 class GrantInput(StrictModel):
-    project_id: UUID
+    organization_id: UUID | None = None
+    project_id: UUID | None = None
     name: str = Field(min_length=1, max_length=100)
     scopes: list[str] = Field(min_length=1, max_length=32)
     expires_in_days: int = Field(default=7, ge=1, le=90)
@@ -121,7 +126,7 @@ class ToolInput(StrictModel):
 class Access:
     grant: ExternalGrant
     user: User
-    project: Project
+    project: Project | None
     policy: ExternalAccessPolicy
 
 
@@ -219,19 +224,41 @@ async def create_grant(db, user, params):
         fail("grant_name_required", 422)
     if not set(params.scopes) <= SCOPES:
         fail("invalid_scopes", 422)
-    project = await db.scalar(
-        select(Project).where(
-            Project.id == params.project_id, Project.deleted_at.is_(None)
+    from app.services.external_project_ledger import CASH_SCOPES, ORG_SCOPES, cash_role
+
+    scopes = set(params.scopes)
+    if bool(params.organization_id) == bool(params.project_id):
+        fail("choose_one_grant_target", 422)
+    if (params.organization_id and not scopes <= ORG_SCOPES) or (
+        params.project_id and scopes & ORG_SCOPES
+    ):
+        fail("invalid_scopes_for_target", 422)
+    project = None
+    lab_id = params.organization_id
+    if params.project_id:
+        project = await db.scalar(
+            select(Project).where(
+                Project.id == params.project_id, Project.deleted_at.is_(None)
+            )
         )
-    )
-    if not project:
-        fail("project_not_found", 404)
+        if not project:
+            fail("project_not_found", 404)
+        lab_id = project.lab_id
     await lock_user_calls(db, user.id)
-    policy = await policy_for(db, project.lab_id, lock=True, shared=True)
-    await lab_member(db, project.lab_id, user.id)
+    policy = await policy_for(db, lab_id, lock=True, shared=True)
+    await lab_member(db, lab_id, user.id, manager=bool(params.organization_id))
     if not policy or not policy.enabled:
         fail("lab_external_access_disabled")
-    await check_user_permission(db, project, user, "read_project")
+    if project:
+        await check_user_permission(db, project, user, "read_project")
+        if scopes & CASH_SCOPES:
+            role = await cash_role(db, user, project)
+            if not role or ("cash:create" in scopes and role != "finance"):
+                fail("cash_role_required")
+    else:
+        from app.services.project_operations import organization
+
+        await organization(db, user, lab_id, manage=True)
     count = await db.scalar(
         select(func.count())
         .select_from(ExternalGrant)
@@ -246,7 +273,8 @@ async def create_grant(db, user, params):
     token = "apl_" + secrets.token_urlsafe(36)
     grant = ExternalGrant(
         user_id=user.id,
-        project_id=project.id,
+        project_id=params.project_id,
+        organization_id=params.organization_id,
         name=params.name.strip(),
         scopes=sorted(set(params.scopes)),
         token_hash=hashlib.sha256(token.encode()).hexdigest(),
@@ -262,7 +290,8 @@ async def create_grant(db, user, params):
         user.id,
         "grant.created",
         grant.id,
-        project_id=str(project.id),
+        project_id=str(params.project_id) if project else None,
+        organization_id=str(params.organization_id) if params.organization_id else None,
         scopes=grant.scopes,
     )
     return {"grant": grant.as_dict(), "token": token}
@@ -285,15 +314,19 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=No
         token is not None and grant.audience is not None and grant.audience != audience
     ):
         fail("invalid_external_token", 401)
-    project = await db.scalar(
-        select(Project).where(
-            Project.id == grant.project_id, Project.deleted_at.is_(None)
+    project = None
+    lab_id = grant.organization_id
+    if grant.project_id:
+        project = await db.scalar(
+            select(Project).where(
+                Project.id == grant.project_id, Project.deleted_at.is_(None)
+            )
         )
-    )
-    if not project:
-        fail("external_access_forbidden")
+        if not project:
+            fail("external_access_forbidden")
+        lab_id = project.lab_id
     await lock_user_calls(db, grant.user_id)
-    policy = await policy_for(db, project.lab_id, lock=True, shared=True)
+    policy = await policy_for(db, lab_id, lock=True, shared=True)
     # Refresh after acquiring the policy lock; revocation may have occurred while waiting.
     grant = await db.scalar(
         query.with_for_update().execution_options(populate_existing=True)
@@ -305,8 +338,13 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=No
     user = await db.get(User, grant.user_id)
     if not user or grant.auth_version != await get_auth_version(db, user.id):
         fail("invalid_external_token", 401)
-    await lab_member(db, project.lab_id, user.id)
-    await check_user_permission(db, project, user, "read_project")
+    await lab_member(db, lab_id, user.id, manager=bool(grant.organization_id))
+    if project:
+        await check_user_permission(db, project, user, "read_project")
+    else:
+        from app.routers.labs import require_configured_single_lab
+
+        require_configured_single_lab(await db.get(Lab, lab_id))
     recent = await db.scalar(
         select(func.count())
         .select_from(ExternalAudit)
@@ -842,6 +880,37 @@ async def execute_operation(db, access, op):
 async def tool_call(db, access, name, args):
     from app.services.external_collaboration import COLLABORATION_TOOLS
 
+    from app.services import external_project_ledger as ledger
+
+    if name in ledger.TOOLS:
+        try:
+            return await ledger.call(db, access, name, args)
+        except HTTPException as error:
+            if isinstance(error.detail, dict):
+                raise
+            fail(
+                {
+                    403: "project_access_forbidden",
+                    404: "project_resource_unavailable",
+                    409: "project_write_conflict",
+                    422: "invalid_project_data",
+                }.get(error.status_code, "project_request_failed"),
+                error.status_code,
+            )
+    if access.project is None:
+        if name != "access_context":
+            fail("insufficient_scope")
+        org = await db.get(Lab, access.grant.organization_id)
+        return {
+            "organization": {"id": str(org.id), "name": org.name},
+            "user": {"id": str(access.user.id), "username": access.user.username},
+            "instance": {"site_url": config.SITE_URL},
+            "scopes": access.grant.scopes,
+            "tools": [
+                t for t, s in ledger.REQUIRED.items() if s in access.grant.scopes
+            ],
+            "expires_at": access.grant.expires_at.isoformat(),
+        }
     if name not in COLLABORATION_TOOLS and name != "access_context":
         scope(access, "protocols:read")
     await expire_operations(db, access.grant.id)
@@ -890,6 +959,7 @@ async def tool_call(db, access, name, args):
             "result_limit_bytes": 1024 * 1024,
             "project": {"id": str(access.project.id), "name": access.project.name},
             "scopes": access.grant.scopes,
+            "cash_tools": await available_cash_tools(db, access),
             "collaboration_tools": [
                 name
                 for name, (_, _, readonly) in COLLABORATION_TOOLS.items()
@@ -1056,3 +1126,19 @@ async def tool_call(db, access, name, args):
             else operation_view(op)
         )
     fail("unknown_tool", 404)
+
+
+async def available_cash_tools(db, access):
+    from app.services.external_project_ledger import CASH_SCOPES, REQUIRED, cash_role
+
+    scopes = CASH_SCOPES.intersection(access.grant.scopes)
+    if not scopes:
+        return []
+    role = await cash_role(db, access.user, access.project)
+    return [
+        name
+        for name, permission in REQUIRED.items()
+        if permission in scopes
+        and role
+        and (permission != "cash:create" or role == "finance")
+    ]

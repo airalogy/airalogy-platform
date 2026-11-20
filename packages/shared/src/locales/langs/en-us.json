@@ -1,5 +1,14 @@
 {
   "externalAccess": {
+    "firstOrganizationTask": "Check my account, organization and authorized scopes, then ask which project name, UID or contract reference to look up.",
+    "firstCashTask": "Check my account, project and cash permissions. If read access is available, show total receipts, payments and net cash.",
+    "findProject": "Find accessible projects",
+    "registerProject": "Create private projects",
+    "readCash": "View project cash ledger",
+    "postCash": "Post actual receipts and payments",
+    "target": "Authorization target",
+    "organizationProjects": "Organization project registration",
+    "organization": "Organization",
     "destination": "Save to",
     "rowCount": "New Records",
     "protocolVersion": "Protocol version",

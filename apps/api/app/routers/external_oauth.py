@@ -80,7 +80,9 @@ class Authorization(service.StrictModel):
 
 
 class Consent(Authorization):
-    project_id: UUID
+    approved_scopes: list[str] | None = Field(default=None, min_length=1, max_length=32)
+    project_id: UUID | None = None
+    organization_id: UUID | None = None
     expires_in_days: int = Field(default=1, ge=1, le=7)
     approve: bool
 
@@ -175,13 +177,20 @@ async def consent(params: Consent, db: DBSession, user: CurrentUser):
             + "?"
             + urlencode({"error": "access_denied", "state": params.state})
         }
+    requested = set(params.scope.split())
+    approved = (
+        set(params.approved_scopes) if params.approved_scopes is not None else requested
+    )
+    if not approved <= requested:
+        raise HTTPException(400, "invalid_scope")
     created = await service.create_grant(
         db,
         user,
         service.GrantInput(
             name=client.name,
             project_id=params.project_id,
-            scopes=sorted(set(params.scope.split())),
+            organization_id=params.organization_id,
+            scopes=sorted(approved),
             expires_in_days=params.expires_in_days,
         ),
     )

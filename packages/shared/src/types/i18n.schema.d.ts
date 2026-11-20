@@ -4,6 +4,15 @@
 declare namespace I18n {
   interface Schema {
     externalAccess: {
+      firstOrganizationTask: string
+      firstCashTask: string
+      findProject: string
+      registerProject: string
+      readCash: string
+      postCash: string
+      target: string
+      organizationProjects: string
+      organization: string
       destination: string
       rowCount: string
       protocolVersion: string

@@ -2,6 +2,7 @@
 import type { ExternalAnalysis, ExternalDashboard, ExternalOperation } from "@/service/api/external-access"
 import { decideExternalOperation, deleteExternalOAuthClient, downloadExternalAnalysisFile, getExternalAnalysis, getExternalDashboard, getExternalOperation, listExternalOAuthClients, registerExternalOAuthClient, revokeExternalGrant } from "@/service/api/external-access"
 import ExternalConnectionForm from "@/views/external-access/components/external-connection-form.vue"
+import ExternalGuideLink from "@/views/external-access/components/external-guide-link.vue"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 import { copyToClip } from "@airalogy/shared/utils"
@@ -239,7 +240,7 @@ onMounted(async () => {
     </template>
     <div class="min-w-0 space-y-5">
       <p class="color-text-secondary">
-        {{ $t("externalOnboarding.workspaceHint") }}
+        {{ $t("externalOnboarding.workspaceHint") }} <external-guide-link />
       </p>
       <n-alert v-if="failed" type="error">
         {{ $t("externalAccess.failed") }}
@@ -255,7 +256,7 @@ onMounted(async () => {
           {{ $t("externalOnboarding.manageConnections") }}
         </n-button>
       </div>
-      <external-connection-form v-else :key="connectionKey" :projects="dashboard.projects" :failed="failed" @created="refresh" />
+      <external-connection-form v-else :key="connectionKey"  :organizations="dashboard.organizations" :projects="dashboard.projects" :failed="failed" @created="refresh" />
       <section class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h3 class="text-base font-semibold">

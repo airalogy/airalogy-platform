@@ -22,7 +22,7 @@ from app.build_info import resolve_build_info
 from app.config import config
 from app.database import DBSession
 from app.models.external_access import ExternalAudit, ExternalGrant, ExternalOperation
-from app.models.lab import LabUser
+from app.models.lab import Lab, LabRole, LabUser
 from app.models.project import Project
 from app.routers.depends import CurrentUser
 from app.routers.permission import check_user_permission
@@ -30,10 +30,59 @@ from app.services import external_access as service
 from app.services.external_collaboration import COLLABORATION_TOOLS
 from app.services.external_research_contracts import RESEARCH_TOOLS
 
-SCOPED_TOOLS = {**RESEARCH_TOOLS, **COLLABORATION_TOOLS}
+from app.services import external_project_ledger as ledger
+
+SCOPED_TOOLS = {**RESEARCH_TOOLS, **COLLABORATION_TOOLS, **ledger.TOOLS}
 
 router = APIRouter(prefix="/external-access", tags=["external-access"])
 mcp_router = APIRouter(tags=["external-access"])
+
+
+async def can_export_records(db, user, project):
+    from app.routers.record_exports import (
+        RecordExportParams,
+        _resolve_scope_and_authorize,
+    )
+
+    try:
+        await _resolve_scope_and_authorize(
+            db,
+            RecordExportParams(
+                scope_type="project", lab_id=project.lab_id, project_id=project.id
+            ),
+            user.id,
+        )
+        return True
+    except HTTPException as error:
+        if error.status_code not in (400, 403, 404):
+            raise
+        return False
+
+
+async def can_act_on_protocol(db, user, project, action, protocol_action):
+    from app.models.protocol import Protocol
+
+    try:
+        await check_user_permission(db, project, user, action)
+        return True
+    except HTTPException as error:
+        if error.status_code not in (400, 403, 404):
+            raise
+    # Object-specific rights may be broader than the project default.
+    for protocol in await db.scalars(
+        select(Protocol).where(
+            Protocol.project_id == project.id, Protocol.deleted_at.is_(None)
+        )
+    ):
+        try:
+            await check_user_permission(
+                db, project, user, protocol_action, protocol=protocol
+            )
+            return True
+        except HTTPException as error:
+            if error.status_code not in (400, 403, 404):
+                raise
+    return False
 
 
 @router.get("/dashboard")
@@ -60,50 +109,10 @@ async def dashboard(
             await check_user_permission(db, project, user, "read_project")
         except HTTPException:
             continue
-        from app.routers.record_exports import (
-            RecordExportParams,
-            _resolve_scope_and_authorize,
+        can_export = await can_export_records(db, user, project)
+        can_author = await can_act_on_protocol(
+            db, user, project, "create_protocol", "update_protocol"
         )
-
-        can_export = False
-        try:
-            await _resolve_scope_and_authorize(
-                db,
-                RecordExportParams(
-                    scope_type="project",
-                    lab_id=project.lab_id,
-                    project_id=project.id,
-                ),
-                user.id,
-            )
-            can_export = True
-        except HTTPException:
-            pass
-        can_author = False
-        try:
-            await check_user_permission(db, project, user, "create_protocol")
-            can_author = True
-        except HTTPException:
-            # A protocol-specific editor may update an existing Protocol even
-            # when the Project does not allow creating new ones.
-            from app.models.protocol import Protocol
-
-            for protocol in (
-                await db.scalars(
-                    select(Protocol).where(
-                        Protocol.project_id == project.id,
-                        Protocol.deleted_at.is_(None),
-                    )
-                )
-            ).all():
-                try:
-                    await check_user_permission(
-                        db, project, user, "update_protocol", protocol=protocol
-                    )
-                    can_author = True
-                    break
-                except HTTPException:
-                    continue
         policy = await service.policy_for(db, project.lab_id)
         choices.append(
             {
@@ -113,6 +122,7 @@ async def dashboard(
                 "enabled": bool(policy and policy.enabled),
                 "can_export": can_export,
                 "can_author": can_author,
+                "cash_role": await ledger.cash_role(db, user, project),
             }
         )
     if project_id and not choices:
@@ -190,10 +200,31 @@ async def dashboard(
                 "created_at": run.created_at,
             }
         )
+    organizations = []
+    if not project_id:
+        q = (
+            select(Lab, service.ExternalAccessPolicy.enabled)
+            .join(LabUser, LabUser.lab_id == Lab.id)
+            .outerjoin(
+                service.ExternalAccessPolicy,
+                service.ExternalAccessPolicy.lab_id == Lab.id,
+            )
+            .where(
+                LabUser.user_id == user.id,
+                LabUser.role.in_([LabRole.OWNER, LabRole.MANAGER]),
+            )
+        )
+        if config.is_single_lab:
+            q = q.where(Lab.uid == config.SINGLE_LAB_UID)
+        organizations = [
+            {"id": str(org.id), "name": org.name, "enabled": bool(enabled)}
+            for org, enabled in await db.execute(q.order_by(Lab.name))
+        ]
     # Details are loaded separately with current grant/object authorization.
     await db.commit()
     return {
         "projects": choices,
+        "organizations": organizations,
         "analyses": analyses,
         "analysis_next_offset": analysis_offset + 50
         if len(analysis_candidates) > 50
@@ -361,7 +392,10 @@ async def decide(
 
 
 TOOLS = {
-    "access_context": ("Show this credential's project, scope and restrictions.", []),
+    "access_context": (
+        "Show this credential's account, authorized organization or project, scopes and restrictions.",
+        [],
+    ),
     "list_protocols": (
         "List accessible Protocols in the authorized project, 50 at a time.",
         ["offset"],
@@ -398,6 +432,58 @@ TOOLS = {
         ["operation_id"],
     ),
 }
+
+
+async def visible_tools(db, access):
+    context = await service.tool_call(db, access, "access_context", service.ToolInput())
+    if access.project is None:
+        return ["access_context", *context["tools"]]
+    scopes = set(access.grant.scopes)
+    names = ["access_context", *context["collaboration_tools"], *context["cash_tools"]]
+    if "protocols:read" not in scopes:
+        return names
+    if "records:export" in scopes and not await can_export_records(
+        db, access.user, access.project
+    ):
+        scopes.remove("records:export")
+    if scopes.intersection(
+        {"records:revise", "records:import"}
+    ) and not await can_act_on_protocol(
+        db, access.user, access.project, "create_record", "create_record"
+    ):
+        scopes.difference_update({"records:import", "records:revise"})
+    if "protocols:candidate" in scopes and not await can_act_on_protocol(
+        db, access.user, access.project, "create_protocol", "update_protocol"
+    ):
+        scopes.remove("protocols:candidate")
+    names.extend(["list_protocols", "get_protocol"])
+    required = {
+        "list_records": {"records:read"},
+        "preview_import": {"records:import"},
+        "preview_revision": {"records:revise", "records:read"},
+        "list_record_files": {"files:read", "records:read", "records:export"},
+        "read_research_file": {"files:read"},
+        "download_protocol_source": {"protocols:source"},
+        "preview_protocol_candidate": {"protocols:source", "protocols:candidate"},
+        "create_snapshot": {"records:read", "records:export"},
+        "read_snapshot": {"records:read", "records:export"},
+        "snapshot_changes": {"records:read", "records:export"},
+        "preview_analysis": {"analysis:write", "records:read", "records:export"},
+        "get_external_analysis": {"analysis:read", "records:read", "records:export"},
+    }
+    names.extend(name for name, needed in required.items() if needed <= scopes)
+    if scopes.intersection({"documents:read", "materials:read", "knowledge:read"}):
+        names.extend(["list_context_assets", "read_context_asset"])
+    if set(names).intersection(
+        {
+            "preview_import",
+            "preview_revision",
+            "preview_analysis",
+            "preview_protocol_candidate",
+        }
+    ):
+        names.extend(["operation_status", "execute_operation"])
+    return names
 
 
 def tool_schema(name):
@@ -639,7 +725,9 @@ async def mcp(
         elif method == "ping":
             result = {}
         elif method == "tools/list":
-            result = {"tools": [tool_schema(name) for name in [*TOOLS, *SCOPED_TOOLS]]}
+            result = {
+                "tools": [tool_schema(name) for name in await visible_tools(db, access)]
+            }
         elif method == "tools/call":
             name = params.get("name")
             result_data = await committed_tool_call(

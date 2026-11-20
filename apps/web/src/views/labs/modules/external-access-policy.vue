@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ExternalPolicy } from "@/service/api/external-access"
 import { getExternalPolicy, saveExternalPolicy } from "@/service/api/external-access"
+import ExternalGuideLink from "@/views/external-access/components/external-guide-link.vue"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 
@@ -41,6 +42,7 @@ watch(() => props.labId, load, { immediate: true })
 
 <template>
   <n-card data-testid="external-policy" :title="$t('externalAccess.policyTitle')" class="my-4">
+    <template #header-extra><external-guide-link /></template>
     <n-alert type="warning" class="mb-4">
       {{ $t("externalAccess.policyDescription") }}
     </n-alert>

@@ -2,11 +2,11 @@
 
 用户可以让 Codex 或其他 MCP 客户端访问自己获授权的一个 Project。Platform 统一执行权限、严格数据校验和 Record 修订留痕。这些确定性操作不依赖 Aira、Masterbrain 或模型服务是否开启。
 
-本功能覆盖 [Issue #11](https://github.com/airalogy/platform/issues/11) 和 [Issue #22](https://github.com/airalogy/platform/issues/22) 的科研闭环：限权读取、导入和修订、不可变分析快照、私有外部分析成果与经确认的 Protocol 发布。不授予管理权限或仪器控制权限；文件下载需单独授权。
+本功能覆盖 [Issue #11](https://github.com/airalogy/platform/issues/11) 和 [Issue #22](https://github.com/airalogy/platform/issues/22) 的科研闭环：限权读取、导入和修订、不可变分析快照、私有外部分析成果与经确认的 Protocol 发布。项目登记、经营收支和文件下载各有独立权限。
 
 ## 开启与连接
 
-1. Lab Owner 或 Manager 在**实验室设置 → 外部工具访问策略**开启访问，默认关闭。需先确认组织允许外部工具及其模型提供方处理返回的数据。
+1. 组织所有者或管理员在**组织管理 → 设置 → 外部工具访问策略**开启访问，默认关闭。需先确认组织允许外部工具及其模型提供方处理返回的数据。
 2. 可填写禁止外部读取的顶层 Record 变量 ID，每行一个，适用于整个 Lab，包括公共 Project。修改策略会使尚未执行的确认失效。
 3. 进入**项目 → 分析 → 分析报告 → 连接外部 AI**，当前 Project 自动带入。选择**只读查看**、**分析并回存报告**或**编写协议**，核对显示的权限、填写授权名称及 1–90 天有效期。额外操作可通过**自定义权限**选择；**账号设置 → 外部 AI 工具**仍可跨项目管理连接。用户必须仍是 Lab 成员并有权访问该 Project；令牌不会扩大本人权限。
 4. 令牌只显示一次，请安全保存。服务端仅保存 SHA-256 摘要。不要使用网页登录令牌或旧 API Key 替代。
@@ -19,6 +19,22 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 通过客户端的安全环境配置设置 `AIRALOGY_PLATFORM_TOKEN`。不要把令牌粘贴进对话、代码仓库、共享文档或连接命令。桌面应用不一定继承已打开终端的环境变量，配置后需从正确环境重启。客户端配置详见 [Codex MCP 文档](https://developers.openai.com/codex/mcp/)。
 
 撤销后，后续调用立即失效，未执行请求同时取消。服务端每次重新检查令牌到期、账号凭据失效、Lab/Project 成员关系和策略。撤销前已经提交的操作仍是普通 Record，历史保留。
+
+## 为自己的账号连接外部 AI
+
+组织开关允许成员建立连接。每位成员在自己的账号设置中授权，连接使用该成员当前的项目和业务权限。客户端共用同一个 MCP 地址，各成员分别登录授权或私下配置自己的令牌。请勿共用令牌。可以先调用 `access_context` 核对账号、目标和授权范围。在客户端刷新工具列表可查看连接目前支持的操作。服务端会在每次调用时重新校验，即使客户端还保留着旧工具列表。
+
+| 要做的事 | 设置入口及权限 | 调用 |
+| --- | --- | --- |
+| 查项目、建私有项目 | 账号设置 → 外部 AI 工具 → 组织建项。组织所有者或管理员选择一个组织，勾选查找、创建所需权限 | `find_organization_project`、`create_private_project` |
+| 查项目收支、净现金 | 为目标项目创建连接，选择「查看项目收支」。账号须有项目访问权和已启用账本的经营角色 | `list_project_cash` |
+| 登记实际到账或付款 | 财务成员在同一项目的「自定义权限」中勾选「登记实际收付款」 | `record_project_cash` |
+
+例如先用 `{"by":"contract_number","query":"DEMO-001"}` 查重。支持精确项目名、标识和已登记的合同号。建项需要稳定的 UUID 格式 `request_id`、项目 `uid` 和 `name`，可附 `description`、`contract_number`。合同号用于查重和查找，签约状态仍由商务流程记录。成功后打开返回的项目链接核对，按需在平台启用账本和分配财务角色。
+
+收支金额使用人民币整数分。例如收到 100 元，发送 `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"示例收款","day":"2025-01-10","direction":"in","amount":10000}}`。每笔新业务生成新的 UUID；网络重试沿用原请求与 UUID。相同请求返回原结果，修改内容后复用 UUID 会被拒绝。付款方向为 `out`。核对返回的账本链接，或用 `list_project_cash` 检查总收款、总付款及净现金。
+
+支持 MCP 的客户端连接当前实例的 `/api/mcp`。使用受限令牌的 HTTP 客户端也可以向 `/api/external-access/tools/<工具名>` POST 同一份 JSON。OAuth 客户端在发起授权时分别请求组织权限 `projects:find projects:create` 或项目权限 `cash:read cash:create`，在浏览器完成个人授权。管理员撤销成员角色或关闭账本后，原连接的相应操作立即失效。
 
 ## 查看报告和确认操作
 
