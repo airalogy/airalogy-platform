@@ -305,6 +305,25 @@ async def instrument_case():
             r = await write(finance, "cash", receipt)
             assert (await totals())["contracts"][a]["outstanding"] == 10600000
             amounts(await totals(), unmatched=30000, received=30000)
+            refund = {
+                "title": "押金退回",
+                "direction": "in",
+                "receipt_purpose": "other_income",
+                "amount": 10000,
+                "day": "2026-11-09",
+            }
+            refund_entry = await write(finance, "cash", refund)
+            summary = await totals()
+            amounts(summary, received=30100, unmatched=30000)
+            assert refund_entry["entry_id"] not in summary["sources"]["unmatched"]
+            assert summary["contracts"][a]["outstanding"] == 10600000
+            await call("POST", book + "/entries", finance, refund_entry)
+            await write(finance, "cash", {**refund, "installment_id": first}, status=422)
+            await write(finance, "cash", {**refund, "direction": "out"}, status=422)
+            await write(
+                finance, "cash", None, eid=refund_entry["entry_id"],
+                rev=1, action="void", reason="虚构验收撤销",
+            )
             matched = await write(
                 finance,
                 "cash",

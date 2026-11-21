@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project operations exposes cash entry and setup from project navigation. Finance can distinguish customer payments from other inflows such as returned deposits in the project and portfolio totals.
+
 - External OAuth clients such as ChatGPT can open the consent page when they include optional interface language hints.
 
 - Account settings distinguish SDK keys from external AI connections. Project selection can cover a fixed list or, by explicit consent, current and future accessible projects within one organization. The only eligible organization is selected as soon as the project list loads. Member directories show account handles consistently.

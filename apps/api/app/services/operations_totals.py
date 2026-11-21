@@ -87,7 +87,12 @@ def summarize(records, today: date):
             "cost": total(assigned, "direct"),
             "entries": [i, *ids(scheduled), *ids(matched), *ids(assigned)],
         }
-    unmatched = [r for r in received if not r["data"]["installment_id"]]
+    unmatched = [
+        r
+        for r in received
+        if not r["data"]["installment_id"]
+        and r["data"].get("receipt_purpose") != "other_income"
+    ]
     shared = [r for r in verified if not r["data"]["contract_id"]]
     sources = {
         "gross": ids(signed.values()),

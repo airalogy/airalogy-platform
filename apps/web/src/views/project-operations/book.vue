@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Book, Entry, Kind, Metric, Revision, Value } from "@/service/api/project-operations"
+import { LAB_OWNER_AND_MANAGER } from "@/composables/useLabPermissions"
 import { money, readOps } from "@/service/api/project-operations"
 import { request } from "@/service/request"
 import { localDocumentDate } from "@/utils/documentBrowse"
+import { isAxiosError } from "axios"
 import { useOrProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import EntryEditor from "./entry-editor.vue"
 import { amountFields, enums, fields, useOpsText } from "./fields"
@@ -14,12 +16,14 @@ const router = useRouter()
 const route = useRoute()
 const book = ref<Book>()
 const error = ref("")
+const accessDenied = ref(false)
 const notice = ref("")
 const loading = ref(false)
 const selected = ref("")
 const asOf = ref(String(route.query.as_of || localDocumentDate()))
 const filter = ref("")
 const query = ref("")
+const entriesPanel = ref<HTMLElement>()
 const history = ref<Revision[]>([])
 const preview = ref("")
 const editor = ref<{ kind: Kind, entry?: Entry, action: "save" | "void" | "return" | "verify" }>()
@@ -31,16 +35,18 @@ async function load() {
   if (!id)
     return
   loading.value = true
+  accessDenied.value = false
   error.value = ""
   try {
     const b = await readOps<Book>(`/projects/${id}`, { as_of: asOf.value || localDocumentDate() })
     if (token === requestNumber)
       book.value = b
   }
-  catch {
+  catch (e) {
     if (token === requestNumber) {
+      accessDenied.value = isAxiosError(e) && e.response?.status === 403
       book.value = undefined
-      error.value = tr("unavailable")
+      error.value = accessDenied.value ? tr("bookAccessHint") : tr("unavailable")
     }
   }
   finally {
@@ -120,6 +126,13 @@ function pick(id: string) {
   history.value = []
   preview.value = ""
   editor.value = undefined
+}
+async function showCashEntries() {
+  filter.value = "cash"
+  query.value = ""
+  pick("")
+  await nextTick()
+  entriesPanel.value?.scrollIntoView({ block: "start" })
 }
 function selectMetric(metric: Metric) {
   filter.value = metric
@@ -219,7 +232,7 @@ const createKinds = computed<Kind[]>(() =>
   book.value?.role === "lead"
     ? ["cost", "contract", "installment", "forecast"]
     : book.value?.role === "finance"
-      ? ["cash", "closing", "cost"]
+      ? ["closing", "cost"]
       : [],
 )
 </script>
@@ -238,10 +251,42 @@ const createKinds = computed<Kind[]>(() =>
     <p v-if="error" role="alert">
       {{ error }}
     </p>
+    <router-link
+      v-if="accessDenied && projectInfo && LAB_OWNER_AND_MANAGER.includes(projectInfo.user_lab_role)"
+      class="text-primary" :to="{ name: 'lab-settings', params: { labUid: projectInfo.lab_uid }, query: { operationsProject: pid }, hash: '#project-operations' }"
+    >
+      {{ tr("orgSettings") }}
+    </router-link>
     <p v-if="loading" role="status">
       {{ tr("loading") }}
     </p>
     <template v-if="book">
+      <div class="ops-line">
+        <h3>{{ tr("cash") }}</h3>
+        <button v-if="book.role === 'finance'" type="button" class="ops-cash-action" data-testid="new-cash" @click="open('cash')">
+          {{ tr("addCash") }}
+        </button>
+        <button type="button" @click="showCashEntries">
+          {{ tr("cashEntries") }}
+        </button>
+      </div>
+      <div class="ops-actions">
+        <button v-for="k in createKinds" :key="k" :data-testid="`new-${k}`" @click="open(k)">
+          {{ tr(k) }} +
+        </button>
+      </div>
+      <p v-if="notice" role="status">
+        {{ notice }}
+      </p>
+      <entry-editor
+        v-if="editor && pid"
+        :key="editor.kind + editor.action + (editor.entry?.id || '')"
+        :pid="pid"
+        :book="book"
+        v-bind="editor"
+        @saved="saved"
+        @close="editor = undefined"
+      />
       <div class="ops-line">
         <label>
           {{ tr("overdueDate") }}
@@ -267,24 +312,7 @@ const createKinds = computed<Kind[]>(() =>
           </strong>
         </button>
       </div>
-      <div class="ops-actions">
-        <button v-for="k in createKinds" :key="k" :data-testid="`new-${k}`" @click="open(k)">
-          {{ tr(k) }} +
-        </button>
-      </div>
-      <p v-if="notice" role="status">
-        {{ notice }}
-      </p>
-      <entry-editor
-        v-if="editor && pid"
-        :key="editor.kind + editor.action + (editor.entry?.id || '')"
-        :pid="pid"
-        :book="book"
-        v-bind="editor"
-        @saved="saved"
-        @close="editor = undefined"
-      />
-      <div class="ops-panel">
+      <div ref="entriesPanel" class="ops-panel">
         <div class="ops-line">
           <h3>{{ tr("entries") }}</h3>
           <select v-model="filter" :aria-label="tr('filter')">

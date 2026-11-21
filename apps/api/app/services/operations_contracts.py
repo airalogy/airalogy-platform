@@ -88,6 +88,10 @@ class Cash(Form):
     title: Title
     day: date
     direction: Literal["in", "out"]
+    # Omitted on older clients. Preserve the original idempotency digest on retries.
+    receipt_purpose: Literal["customer_receipt", "other_income"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     amount: PositiveMoney
     installment_id: UUID | None = None
     cost_id: UUID | None = None
@@ -96,6 +100,14 @@ class Cash(Form):
 
     @model_validator(mode="after")
     def direction_matches(self):
+        if self.receipt_purpose and self.direction != "in":
+            raise ValueError("Receipt purpose applies only to incoming cash")
+        if self.receipt_purpose == "other_income" and (
+            self.installment_id or self.contract_id
+        ):
+            raise ValueError(
+                "Only customer receipts can be assigned to a contract or installment"
+            )
         if self.direction == "out" and (self.installment_id or self.contract_id):
             raise ValueError("Payment may only be assigned to a cost")
         if self.direction == "in" and self.cost_id:

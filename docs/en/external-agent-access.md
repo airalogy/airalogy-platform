@@ -28,11 +28,11 @@ Each person connects to the same instance endpoint with their own OAuth consent 
 | --- | --- | --- |
 | Find or register a private project | An organization owner or manager selects **Organization project registration**, one organization and the required scopes | `find_organization_project`, `create_private_project` |
 | Read actual cash and net cash | Select one project and **View project cash ledger**. The account needs project access and a role on its enabled book | `list_project_cash` |
-| Post actual receipts and payments | A finance member explicitly selects **Post actual receipts and payments** in custom permissions | `record_project_cash` |
+| Post actual receipts and payments | A finance member explicitly selects **Record project cash flow** in custom permissions | `record_project_cash` |
 
 Search by exact name, UID or contract number, for example `{"by":"contract_number","query":"DEMO-001"}`. To register, supply a UUID `request_id`, project `uid` and `name`, and optionally `description` and `contract_number`. Follow the returned project link. A registration reference does not record a signed contract. Enable the book and assign finance access in Platform when required.
 
-Supply integer CNY fen and the actual transaction date. A receipt of CNY 100 is `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"Example receipt","day":"2025-01-10","direction":"in","amount":10000}}`. Use `out` for a payment. Retry the same request with the same UUID. Changing the payload requires a new business decision, and conflicts with the original UUID. Check the returned ledger link or read the totals for receipts, payments and net cash.
+Supply integer CNY fen and the actual transaction date. A receipt of CNY 100 is `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"Example receipt","day":"2025-01-10","direction":"in","receipt_purpose":"customer_receipt","amount":10000}}`. Set `receipt_purpose` to `customer_receipt` for a customer payment or `other_income` for an inflow such as a returned deposit. Use `out` for spending. Retry the same request with the same UUID. Changing the payload requires a new business decision, and conflicts with the original UUID. Check the returned ledger link or read the totals for receipts, payments and net cash.
 
 MCP clients use `/api/mcp`. With a personal delegated token, HTTP clients POST the same arguments to `/api/external-access/tools/<name>`. OAuth clients request organization scopes (`projects:find projects:create`) or project scopes (`cash:read cash:create`) in separate grants. Each employee authorizes their own connection. Revocation and current ledger roles apply to subsequent calls.
 

@@ -8,9 +8,13 @@
     <content-layout :title="projectTitle" :tabs="tabs" compact-header>
       <template v-if="authStore.isLogin" #suffix>
         <div class="flex flex-wrap items-center justify-end gap-2">
-          <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="headerTrigger = undefined; assistantOpen = !assistantOpen">Aira</n-button>
+          <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="headerTrigger = undefined; assistantOpen = !assistantOpen">
+            Aira
+          </n-button>
           <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
-            <n-button>{{ $t('common.more') }}</n-button>
+            <n-button data-testid="project-more">
+              {{ $t('common.more') }}
+            </n-button>
           </n-dropdown>
           <add-protocol-modal
             v-if="route.name === 'project-protocols' && canCreateProtocol"
@@ -41,7 +45,7 @@
               <h2 class="m-0 min-w-0 break-words !text-xl !leading-8">
                 {{ projectTitle }}
               </h2>
-              <p v-if="description" ref="descriptionElement" class="mb-0 mt-1 text-sm leading-5 color-text-secondary" :class="{ 'line-clamp-2': !descriptionExpanded }" data-testid="project-description">
+              <p v-if="description" ref="descriptionElement" class="mb-0 mt-1 text-sm color-text-secondary leading-5" :class="{ 'line-clamp-2': !descriptionExpanded }" data-testid="project-description">
                 {{ description }}
               </p>
               <button v-if="description && (descriptionOverflow || descriptionExpanded)" type="button" class="mt-1 text-xs text-primary" :aria-expanded="descriptionExpanded" @click="descriptionExpanded = !descriptionExpanded">
@@ -230,7 +234,9 @@ async function reviewProposal(proposal: MeetingProposal) {
   }
 }
 
+const canManageOperations = computed(() => LAB_OWNER_AND_MANAGER.includes(projectInfo.value?.user_lab_role))
 const canViewBook = ref(false)
+const showOperations = computed(() => canViewBook.value || canManageOperations.value)
 watch(() => [projectInfo.value?.id, authStore.userInfo.id] as const, async ([id], _, cleanup) => {
   let current = true
   cleanup(() => {
@@ -263,7 +269,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
       { name: "project-knowledge", tab: $t("page.knowledge.title") },
       { name: "project-analysis", tab: $t("page.analysis.title") },
     )
-    if (canViewBook.value || route.name === "project-operations")
+    if (showOperations.value || route.name === "project-operations")
       tabs.push({ name: "project-operations", tab: $t("page.operations.book") })
     const additional = [
       { name: "project-research", tab: $t("page.research.title") },
@@ -283,6 +289,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
 const tabs = baseTabs
 const workspaceNavigation = computed(() => [
   { key: "activity", type: "group", label: $t("page.researchDocuments.title"), children: [
+    ...(showOperations.value ? [{ key: "project-operations", label: $t("page.operations.book") }] : []),
     { key: "project-records", label: $t("page.recordDiary.tab") },
     { key: "project-scenarios", label: $t("page.scenarioKits.workbench") },
   ] },

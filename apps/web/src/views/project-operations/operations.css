@@ -48,6 +48,11 @@
 .ops button:focus-visible {
   border-color: #4472b7;
 }
+.ops .ops-cash-action {
+  color: white;
+  background: #195ec7;
+  border-color: #195ec7;
+}
 .ops button:disabled {
   opacity: 0.55;
   cursor: default;

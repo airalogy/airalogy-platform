@@ -21,6 +21,7 @@ export const fields: Record<Kind, string[]> = {
   cost: ["title", "day", "category", "days", "rate", "direct", "payable", "contract_id"],
   cash: [
     "direction",
+    "receipt_purpose",
     "title",
     "day",
     "amount",
@@ -50,6 +51,7 @@ export const dateFields = new Set([
 ])
 export const enums: Record<string, string[]> = {
   direction: ["in", "out"],
+  receipt_purpose: ["customer_receipt", "other_income"],
   state: ["draft", "signed"],
   category: ["labor", "subcontract", "material", "cloud", "travel", "other"],
 }

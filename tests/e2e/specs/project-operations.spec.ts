@@ -44,7 +44,7 @@ async function save(page: Page, fields: Input = {}, reason?: string) {
     const control = editor.getByTestId(`field-${name}`)
     if (name.endsWith("_id"))
       await control.selectOption({ label: text })
-    else if (["direction", "state", "category"].includes(name))
+    else if (["direction", "receipt_purpose", "state", "category"].includes(name))
       await control.selectOption(text)
     else
       await control.fill(text)
@@ -133,7 +133,9 @@ test("the instrument project goes from its first purchase to management review a
       await settings.getByRole("button", { name: labels.saveAccess }).click()
       await expect(settings.getByRole("status")).toHaveText(labels.saved)
     }
-    await openSettings()
+    await lead.goto(book, { waitUntil: "domcontentloaded" })
+    await lead.getByRole("link", { name: labels.orgSettings, exact: true }).click()
+    await expect(settings.getByLabel(labels.project, { exact: true })).toHaveValue(project.id)
     await settings.getByRole("checkbox").check()
     await settings.getByLabel(/@dev_owner/).selectOption("lead")
     await settings.getByLabel(/@dev_collaborator/).selectOption("finance")
@@ -169,7 +171,7 @@ test("the instrument project goes from its first purchase to management review a
       await create(lead, "installment", { contract_id: contract.title, title: "首期", amount: "50000", due: "2026-11-10" })
       await create(lead, "installment", { contract_id: contract.title, title: "尾款", amount: "56000", condition: "客户签回验收单后 30 天" })
       await finance.reload({ waitUntil: "domcontentloaded" })
-      receiptRequest = await create(finance, "cash", { title: "首期回款", direction: "in", day: "2026-11-09", amount: "30000" })
+      receiptRequest = await create(finance, "cash", { title: "首期回款", direction: "in", receipt_purpose: "customer_receipt", day: "2026-11-09", amount: "30000" })
       await amounts(finance, { unmatched: 30000, received: 30000 })
       await edit(finance, "首期回款", { contract_id: contract.title, installment_id: "首期" }, "核销到首期")
       await finance.reload({ waitUntil: "domcontentloaded" })
@@ -215,7 +217,7 @@ test("the instrument project goes from its first purchase to management review a
       await expect(lead.getByTestId("new-cash")).toHaveCount(0)
       async function denied(page: Page) {
         await page.goto(book, { waitUntil: "domcontentloaded" })
-        await expect(page.getByTestId("operations-book").getByRole("alert")).toContainText(labels.unavailable)
+        await expect(page.getByTestId("operations-book").getByRole("alert")).toContainText(labels.bookAccessHint)
         await expect(page.getByTestId("metric-profit")).toHaveCount(0)
         await page.goto(overview, { waitUntil: "domcontentloaded" })
         await expect(page.getByTestId("ops-coverage")).toBeVisible()
@@ -228,7 +230,7 @@ test("the instrument project goes from its first purchase to management review a
       await denied(ceo)
     })
     await test.step("逾期明细只含选定日及之前的收款", async () => {
-      await create(finance, "cash", { title: "后续收款", direction: "in", day: "2026-11-12", amount: "5000", installment_id: "首期" })
+      await create(finance, "cash", { title: "后续收款", direction: "in", receipt_purpose: "customer_receipt", day: "2026-11-12", amount: "5000", installment_id: "首期" })
       await finance.getByLabel(labels.overdueDate).fill("2026-11-11")
       await amounts(finance, { overdue: 20000 })
       await finance.getByTestId("metric-overdue").click()
@@ -238,6 +240,19 @@ test("the instrument project goes from its first purchase to management review a
       await finance.getByLabel(labels.overdueDate).fill("2026-11-12")
       await amounts(finance, { overdue: 15000 })
       await expect(entry(finance, "后续收款")).toBeVisible()
+    })
+    await test.step("手机端从项目导航进入账本并登记其他收入", async () => {
+      await finance.setViewportSize({ width: 390, height: 844 })
+      await finance.goto(book.replace(/operations$/, "overview"), { waitUntil: "domcontentloaded" })
+      await finance.getByTestId("project-more").click()
+      await finance.locator(".n-dropdown-option").getByText(labels.book, { exact: true }).click()
+      await expect(finance.getByRole("button", { name: labels.addCash })).toBeVisible()
+      await create(finance, "cash", { title: "押金退回", direction: "in", receipt_purpose: "other_income", day: "2026-11-13", amount: "125" })
+      await finance.reload({ waitUntil: "domcontentloaded" })
+      await amounts(finance, { received: 35125, unmatched: 0 })
+      await finance.getByRole("button", { name: labels.cashEntries }).click()
+      await expect(entry(finance, "押金退回")).toBeVisible()
+      await expect(entry(finance, equipment)).toHaveCount(0)
     })
   }
   finally {

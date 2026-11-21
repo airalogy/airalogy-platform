@@ -42,7 +42,9 @@ for (const key of fields[props.kind]) {
           : String(v)
   }
   else {
-    form[key] = enums[key]?.[0] ?? ""
+    form[key] = key === "receipt_purpose"
+      ? (props.entry?.data.contract_id || props.entry?.data.installment_id ? "customer_receipt" : "")
+      : enums[key]?.[0] ?? ""
   }
 }
 const choices = ref<Choices>({ work: [], documents: [], files: [] })
@@ -95,9 +97,11 @@ const visible = computed(() =>
       return form.category === "labor"
     if (props.kind !== "cash")
       return true
-    return form.direction === "in"
-      ? k !== "cost_id"
-      : !["installment_id", "contract_id"].includes(k)
+    if (k === "receipt_purpose")
+      return form.direction === "in"
+    if (k === "installment_id" || k === "contract_id")
+      return form.direction === "in" && form.receipt_purpose !== "other_income"
+    return k !== "cost_id" || form.direction === "out"
   }),
 )
 const calculatedLabor = computed(() => {
@@ -208,6 +212,9 @@ function compareDone() {
 <template>
   <form class="ops-panel" data-testid="ops-editor" @submit.prevent="save">
     <h3>{{ tr(action) }} · {{ tr(kind) }}</h3>
+    <p v-if="kind === 'cash' && action === 'save'" class="text-secondary text-sm">
+      {{ tr("cashHint") }}
+    </p>
     <div v-if="action === 'save'" class="ops-grid">
       <label v-for="key in visible" :key="key">
         {{ tr(key) }}
@@ -215,7 +222,7 @@ function compareDone() {
           v-if="options(key)"
           v-model="form[key]"
           :data-testid="`field-${key}`"
-          :required="mandatory.has(key) || (key === 'contract_id' && kind === 'installment')"
+          :required="mandatory.has(key) || (key === 'receipt_purpose' && !entry) || (key === 'contract_id' && kind === 'installment')"
         >
           <option value="">—</option>
           <option v-for="o in options(key)" :key="o.value" :value="o.value">{{ o.label }}</option>

@@ -5,6 +5,8 @@ import { useOpsText } from "./fields"
 
 const props = defineProps<{ orgId: string }>()
 const tr = useOpsText()
+const route = useRoute()
+const panel = ref<HTMLElement>()
 const org = ref<{ enabled: boolean, revision: number }>()
 const projects = ref<{ id: string, name: string }[]>([])
 const pid = ref("")
@@ -21,7 +23,11 @@ async function load() {
     ? (await readOps<{ projects: typeof projects.value }>(`/organizations/${id}/projects`)).projects
     : []
   if (!projects.value.some(p => p.id === pid.value))
-    pid.value = ""
+    pid.value = projects.value.find(p => p.id === route.query.operationsProject)?.id ?? ""
+  if (route.hash === "#project-operations") {
+    await nextTick()
+    panel.value?.scrollIntoView({ block: "start" })
+  }
 }
 watch(
   () => props.orgId,
@@ -85,7 +91,7 @@ const roles: BusinessRole[] = ["lead", "finance", "viewer"]
 </script>
 
 <template>
-  <section class="ops-panel ops" data-testid="ops-settings">
+  <section id="project-operations" ref="panel" class="ops-panel ops" data-testid="ops-settings">
     <h2>{{ tr("orgSettings") }}</h2>
     <div v-if="org" class="ops-line">
       <span>{{ tr(org.enabled ? "enabled" : "disabled") }}</span>

@@ -6022,6 +6022,13 @@ declare namespace I18n {
         needsCheck: string
         unknown: string
         coverage: string
+        addCash: string
+        cashEntries: string
+        receipt_purpose: string
+        customer_receipt: string
+        other_income: string
+        cashHint: string
+        bookAccessHint: string
       }
       projectTeam: {
         organizationMembers: string

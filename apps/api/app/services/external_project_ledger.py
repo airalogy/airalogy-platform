@@ -74,7 +74,7 @@ TOOLS = {
         True,
     ),
     "record_project_cash": (
-        "Post a confirmed actual receipt or payment in integer CNY fen. Supply its actual date and reuse request_id on retry.",
+        "Record an actual inflow or outflow in integer CNY fen on its actual date. For inflows specify receipt_purpose: customer_receipt or other_income. Reuse request_id on retry.",
         RecordCash,
         False,
     ),

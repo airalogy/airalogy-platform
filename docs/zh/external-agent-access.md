@@ -30,11 +30,11 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 | --- | --- | --- |
 | 查项目、建私有项目 | 账号设置 → 外部 AI 工具 → 组织建项。组织所有者或管理员选择一个组织，勾选查找、创建所需权限 | `find_organization_project`、`create_private_project` |
 | 查项目收支、净现金 | 为目标项目创建连接，选择「查看项目收支」。账号须有项目访问权和已启用账本的经营角色 | `list_project_cash` |
-| 登记实际到账或付款 | 财务成员在同一项目的「自定义权限」中勾选「登记实际收付款」 | `record_project_cash` |
+| 登记实际到账或付款 | 财务成员在同一项目的「自定义权限」中勾选「登记项目收支」 | `record_project_cash` |
 
 例如先用 `{"by":"contract_number","query":"DEMO-001"}` 查重。支持精确项目名、标识和已登记的合同号。建项需要稳定的 UUID 格式 `request_id`、项目 `uid` 和 `name`，可附 `description`、`contract_number`。合同号用于查重和查找，签约状态仍由商务流程记录。成功后打开返回的项目链接核对，按需在平台启用账本和分配财务角色。
 
-收支金额使用人民币整数分。例如收到 100 元，发送 `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"示例收款","day":"2025-01-10","direction":"in","amount":10000}}`。每笔新业务生成新的 UUID；网络重试沿用原请求与 UUID。相同请求返回原结果，修改内容后复用 UUID 会被拒绝。付款方向为 `out`。核对返回的账本链接，或用 `list_project_cash` 检查总收款、总付款及净现金。
+收支金额使用人民币整数分。例如收到 100 元，发送 `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"示例收款","day":"2025-01-10","direction":"in","receipt_purpose":"customer_receipt","amount":10000}}`。每笔新业务生成新的 UUID；网络重试沿用原请求与 UUID。相同请求返回原结果，修改内容后复用 UUID 会被拒绝。客户回款用途为 `customer_receipt`，押金退回等其他收入用 `other_income`，并计入现金流。支出方向用 `out`。核对返回的账本链接，或用 `list_project_cash` 检查总收款、总付款及净现金。
 
 支持 MCP 的客户端连接当前实例的 `/api/mcp`。使用受限令牌的 HTTP 客户端也可以向 `/api/external-access/tools/<工具名>` POST 同一份 JSON。OAuth 客户端在发起授权时分别请求组织权限 `projects:find projects:create` 或项目权限 `cash:read cash:create`，在浏览器完成个人授权。管理员撤销成员角色或关闭账本后，原连接的相应操作立即失效。
 
