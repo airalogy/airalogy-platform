@@ -139,7 +139,7 @@ test("the instrument project goes from its first purchase to management review a
     await lead.getByRole("link", { name: labels.orgSettings, exact: true }).click()
     await expect(settings.getByLabel(labels.project, { exact: true })).toHaveValue(project.id)
     await settings.getByRole("checkbox").check()
-    await settings.getByLabel(/@dev_owner/).selectOption("lead")
+    await expect(settings.getByLabel(/@dev_owner/)).toHaveValue("inherit")
     await settings.getByLabel(/@dev_collaborator/).selectOption("finance")
     await settings.getByLabel(/@dev_viewer/).selectOption("viewer")
     await saveGrants()
@@ -223,7 +223,7 @@ test("the instrument project goes from its first purchase to management review a
       await detail(ceo).getByRole("button", { name: labels.history }).click()
       await expect(detail(ceo).locator("details")).toHaveCount(2)
       await expect(ceo.getByTestId("new-cash")).toHaveCount(0)
-      await expect(lead.getByTestId("new-cash")).toHaveCount(0)
+      await expect(lead.getByTestId("new-cash")).toBeVisible()
       async function denied(page: Page) {
         await page.goto(book, { waitUntil: "domcontentloaded" })
         await expect(page.getByTestId("operations-book").getByRole("alert")).toContainText(labels.bookAccessHint)
