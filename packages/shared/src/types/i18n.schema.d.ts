@@ -50,6 +50,11 @@ declare namespace I18n {
       readContracts: string
       createContracts: string
       contractReceiptProjectRequired: string
+      originalConnection: string
+      startFresh: string
+      chooseConnection: string
+      keepScopes: string
+      addScopes: string
       contractReceiptPreset: string
       clientMissingScopes: string
       accountMissingScopes: string

@@ -13,7 +13,7 @@ import { $t } from "@airalogy/shared/locales"
 const route = useRoute()
 const auth = useAuthStore()
 const { routerPushByKey } = useRouterPush()
-const info = ref<{ client_name: string, redirect_uri: string, resource: string, scopes: string[] }>()
+const info = ref<Awaited<ReturnType<typeof readExternalOAuthRequest>>>()
 const organizationMode = ref(false)
 const dashboard = ref<ExternalDashboard>()
 const projectId = ref<string | null>(null)
@@ -30,14 +30,51 @@ function eligible(scope: string) {
   return organizationMode.value || eligibleScope(scope, destinations.value, target.value.mode === "accessible")
 }
 const showContractPreset = computed(() => !organizationMode.value && requestedScopes.value.some(s => contractReceiptScopes.includes(s)))
-const missingClientScopes = computed(() => contractReceiptScopes.filter(s => !requestedScopes.value.includes(s)))
-const missingAccountScopes = computed(() => contractReceiptScopes.filter(s => !eligible(s)))
-const canSelectContractPreset = computed(() => hasTarget.value && !missingClientScopes.value.length && canRegisterAndLink(destinations.value, target.value.mode === "accessible"))
+const sameTargetGrants = computed(() => {
+  if (!hasTarget.value || !showContractPreset.value)
+    return []
+  const selected = projectTarget(target.value, projectId.value)
+  return (info.value?.prior_grants || []).filter((grant) => {
+    const ids = grant.selected_project_ids || []
+    const targetIds = selected.selected_project_ids || []
+    return (grant.project_id ?? undefined) === selected.project_id
+      && (grant.organization_id ?? undefined) === selected.organization_id
+      && (grant.project_coverage ?? undefined) === selected.project_coverage
+      && ids.length === targetIds.length && ids.every(id => targetIds.includes(id))
+  })
+})
+const sourceId = ref<string | null>(null)
+const newGrant = "new"
+const original = computed(() => sameTargetGrants.value.find(g => g.id === sourceId.value))
+const sourceOptions = computed(() => [
+  ...sameTargetGrants.value.map(g => ({ value: g.id, label: `#${g.id.slice(0, 8)} · ${g.scopes.map(scopeLabel).join(" · ")}` })),
+  { value: newGrant, label: $t("externalAccess.startFresh") },
+])
+watch(sameTargetGrants, (grants) => {
+  sourceId.value = grants.length === 1 ? grants[0].id : grants.length ? null : newGrant
+}, { immediate: true })
+const baseline = computed(() => original.value?.scopes || [])
+const additions = computed(() => contractReceiptScopes.filter(s => !baseline.value.includes(s)))
+const presetScopes = computed(() => [...new Set([...baseline.value, ...contractReceiptScopes])])
+const missingClientScopes = computed(() => presetScopes.value.filter(s => !requestedScopes.value.includes(s)))
+const missingAccountScopes = computed(() => presetScopes.value.filter(s => !eligible(s)))
+const canSelectContractPreset = computed(() => hasTarget.value && sourceId.value !== null && !missingClientScopes.value.length && !missingAccountScopes.value.length && canRegisterAndLink(destinations.value, target.value.mode === "accessible"))
 watch(projects, (items) => {
   projectId.value = items.length === 1 ? items[0].value : null
 })
-watch([requestedScopes, projectId, target], () => {
-  approvedScopes.value = requestedScopes.value.filter(s => eligible(s) && !["contracts:read", "contracts:create", "cash:link"].includes(s))
+const sourceReady = computed(() => !showContractPreset.value || (sourceId.value !== null && baseline.value.every(s => approvedScopes.value.includes(s))))
+function setScopes(scopes: string[]) {
+  approvedScopes.value = [...new Set([...baseline.value.filter(s => requestedScopes.value.includes(s) && eligible(s)), ...scopes])]
+}
+function applyPreset() {
+  if (!canSelectContractPreset.value)
+    return
+  approvedScopes.value = presetScopes.value
+}
+watch([requestedScopes, projectId, target, sourceId], () => {
+  approvedScopes.value = sameTargetGrants.value.length && sourceId.value !== newGrant
+    ? baseline.value.filter(s => requestedScopes.value.includes(s) && eligible(s))
+    : requestedScopes.value.filter(s => eligible(s) && !["contracts:read", "contracts:create", "cash:link"].includes(s))
   reviewed.value = false
 })
 watch(approvedScopes, () => {
@@ -67,11 +104,11 @@ async function load() {
   finally { busy.value = false }
 }
 async function decide(approve: boolean) {
-  if (!info.value || (approve && (!reviewed.value || !hasTarget.value || !days.value)))
+  if (!info.value || (approve && (!sourceReady.value || !reviewed.value || !hasTarget.value || !days.value)))
     return
   busy.value = true
   try {
-    const result = await consentExternalOAuth({ ...params.value, approve, approved_scopes: approve ? approvedScopes.value : undefined, ...(organizationMode.value ? { organization_id: projectId.value } : projectTarget(target.value, projectId.value)), expires_in_days: days.value })
+    const result = await consentExternalOAuth({ ...params.value, approve, prior_grant_id: approve ? original.value?.id : undefined, approved_scopes: approve ? approvedScopes.value : undefined, ...(organizationMode.value ? { organization_id: projectId.value } : projectTarget(target.value, projectId.value)), expires_in_days: days.value })
     // Server has validated this exact registered callback. Never redirect to a raw query value.
     window.location.assign(result.redirect_to)
   }
@@ -123,15 +160,24 @@ onMounted(load)
         </n-form-item>
         <div class="flex flex-wrap items-center gap-3">
           <h3>{{ $t("externalAccess.scopes") }}</h3>
-          <n-button text type="primary" :disabled="!hasTarget" @click="approvedScopes = requestedScopes.filter(eligible)">
+          <n-button text type="primary" :disabled="!hasTarget" @click="setScopes(requestedScopes.filter(eligible))">
             {{ $t("accountSettings.allScopes") }}
           </n-button>
-          <n-button text :disabled="!approvedScopes.length" @click="approvedScopes = []">
+          <n-button text :disabled="!approvedScopes.some(s => !baseline.includes(s))" @click="setScopes([])">
             {{ $t("accountSettings.clear") }}
           </n-button>
         </div>
         <div v-if="showContractPreset" class="space-y-1">
-          <n-button data-testid="oauth-contract-receipt" :disabled="!canSelectContractPreset" @click="approvedScopes = [...contractReceiptScopes]">
+          <n-form-item v-if="sameTargetGrants.length" :label="$t('externalAccess.originalConnection')">
+            <n-select v-model:value="sourceId" data-testid="oauth-source" :options="sourceOptions" :placeholder="$t('externalAccess.chooseConnection')" />
+          </n-form-item>
+          <template v-if="original">
+            <p>{{ $t("externalAccess.keepScopes", { scopes: baseline.map(scopeLabel).join(" · ") }) }}</p>
+            <p v-if="additions.length">
+              {{ $t("externalAccess.addScopes", { scopes: additions.map(scopeLabel).join(" · ") }) }}
+            </p>
+          </template>
+          <n-button data-testid="oauth-contract-receipt" :disabled="!canSelectContractPreset" @click="applyPreset">
             {{ $t("externalAccess.contractReceiptPreset") }}
           </n-button>
           <p v-if="missingClientScopes.length" class="break-words text-sm" role="status">
@@ -140,12 +186,12 @@ onMounted(load)
           <p v-else-if="hasTarget && missingAccountScopes.length" class="break-words text-sm" role="status">
             {{ $t("externalAccess.accountMissingScopes", { scopes: missingAccountScopes.map(scopeLabel).join(" · ") }) }}
           </p>
-          <p v-else-if="hasTarget && !canSelectContractPreset" class="text-sm" role="status">
+          <p v-else-if="hasTarget && sourceId !== null && !canSelectContractPreset" class="text-sm" role="status">
             {{ $t("externalAccess.contractReceiptProjectRequired") }}
           </p>
         </div>
-        <n-checkbox-group v-model:value="approvedScopes" class="flex flex-wrap gap-3">
-          <n-checkbox v-for="scope in requestedScopes" :key="scope" :value="scope" :disabled="!eligible(scope)">
+        <n-checkbox-group :value="approvedScopes" class="flex flex-wrap gap-3" @update:value="values => setScopes(values.map(String))">
+          <n-checkbox v-for="scope in requestedScopes" :key="scope" :value="scope" :disabled="!eligible(scope) || baseline.includes(scope)">
             {{ scopeLabel(scope) }}
           </n-checkbox>
         </n-checkbox-group>
@@ -159,7 +205,7 @@ onMounted(load)
           <n-button :disabled="busy" @click="decide(false)">
             {{ $t("externalAccess.reject") }}
           </n-button>
-          <n-button type="primary" :disabled="!reviewed || !hasTarget || !days || !approvedScopes.length" :loading="busy" @click="decide(true)">
+          <n-button type="primary" :disabled="!reviewed || !hasTarget || !days || !approvedScopes.length || !sourceReady" :loading="busy" @click="decide(true)">
             {{ $t("externalAccess.approve") }}
           </n-button>
         </div>

@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, select, update
 
 from app.config import config
 from app.database import DBSession
-from app.models.external_access import ExternalGrant, ExternalOperation
+from app.models.external_access import ExternalAudit, ExternalGrant, ExternalOperation
 from app.models.external_research import ExternalOAuthClient, ExternalOAuthCode
 from app.routers.depends import CurrentUser
 from app.services import external_access as service
@@ -85,6 +85,7 @@ class AuthorizationQuery(Authorization):
 
 
 class Consent(Authorization, service.ProjectCoverage):
+    prior_grant_id: UUID | None = None
     approved_scopes: list[str] | None = Field(default=None, min_length=1, max_length=32)
     project_id: UUID | None = None
     organization_id: UUID | None = None
@@ -150,10 +151,40 @@ async def clients(db: DBSession, user: CurrentUser):
     }
 
 
+async def active_client_grants_query(db, user, params):
+    return select(ExternalGrant).where(
+        ExternalGrant.user_id == user.id,
+        ExternalGrant.auth_version == await service.get_auth_version(db, user.id),
+        ExternalGrant.oauth_client_id == params.client_id,
+        ExternalGrant.id.in_(
+            select(ExternalAudit.grant_id).where(
+                ExternalAudit.user_id == user.id,
+                ExternalAudit.event == "oauth.exchanged",
+            )
+        ),
+        ExternalGrant.audience == params.resource,
+        ExternalGrant.revoked_at.is_(None),
+        ExternalGrant.expires_at > service.now(),
+    )
+
+
 @router.post("/request")
 async def request_info(params: Authorization, db: DBSession, user: CurrentUser):
     client = await checked_client(db, params)
+    query = await active_client_grants_query(db, user, params)
+    previous = (await db.scalars(query.order_by(ExternalGrant.created_at.desc()))).all()
     return {
+        "prior_grants": [
+            {
+                "id": str(g.id),
+                "project_id": g.project_id,
+                "organization_id": g.organization_id,
+                "project_coverage": g.project_coverage,
+                "selected_project_ids": g.selected_project_ids,
+                "scopes": g.scopes,
+            }
+            for g in previous
+        ],
         "client_name": client.name,
         "redirect_uri": params.redirect_uri,
         "resource": params.resource,
@@ -188,6 +219,20 @@ async def consent(params: Consent, db: DBSession, user: CurrentUser):
     )
     if not approved <= requested:
         raise HTTPException(400, "invalid_scope")
+    if params.prior_grant_id is not None:
+        await service.lock_user_calls(db, user.id)
+        query = await active_client_grants_query(db, user, params)
+        prior = await db.scalar(query.where(ExternalGrant.id == params.prior_grant_id))
+        if (
+            prior is None
+            or prior.project_id != params.project_id
+            or prior.organization_id != params.organization_id
+            or prior.project_coverage != params.project_coverage
+            or set(prior.selected_project_ids or [])
+            != set(params.selected_project_ids or [])
+            or not set(prior.scopes) <= approved
+        ):
+            raise HTTPException(409, "prior_grant_changed_review_again")
     created = await service.create_grant(
         db,
         user,

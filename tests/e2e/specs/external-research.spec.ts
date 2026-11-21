@@ -124,5 +124,16 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     const codeValue = new URL(page.url()).searchParams.get("code")!
     const exchanged = await request.post(`${api}/external-access/oauth/token`, { form: { grant_type: "authorization_code", client_id: clientId, redirect_uri: callback, code: codeValue, code_verifier: verifier, resource: `${origin}/api/mcp` } })
     expect(exchanged.ok(), await exchanged.text()).toBeTruthy()
+    const reconnect = new URLSearchParams(query)
+    reconnect.set("scope", "protocols:read records:read cash:read contracts:read contracts:create cash:link")
+    await page.goto(`/api/external-access/oauth/authorize?${reconnect}`)
+    if (!(await selector.textContent() || "").includes("Quickstart Protocol Testing")) {
+      await selector.click()
+      await selectVisibleOption(page, "Quickstart Protocol Testing")
+    }
+    await expect(page.getByTestId("oauth-source")).toContainText(strings.readProtocols)
+    await expect(page.getByRole("checkbox", { name: strings.readProtocols, exact: true })).toBeChecked()
+    await expect(page.getByRole("checkbox", { name: strings.readRecords, exact: true })).toBeChecked()
+    await expect(page.getByRole("checkbox", { name: strings.createContracts, exact: true })).not.toBeChecked()
   })
 }

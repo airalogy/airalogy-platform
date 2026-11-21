@@ -98,7 +98,8 @@ export async function downloadExternalAnalysisFile(runId: string, fileId: string
   return result.data
 }
 
-export const readExternalOAuthRequest = (payload: Record<string, unknown>) => data<{ client_name: string, redirect_uri: string, resource: string, scopes: string[] }>({ url: "/external-access/oauth/request", method: "POST", data: payload })
+type PriorOAuthGrant = Pick<ExternalGrant, "id" | "scopes" | "project_id" | "organization_id" | "project_coverage" | "selected_project_ids">
+export const readExternalOAuthRequest = (payload: Record<string, unknown>) => data<{ client_name: string, redirect_uri: string, resource: string, scopes: string[], prior_grants?: PriorOAuthGrant[] }>({ url: "/external-access/oauth/request", method: "POST", data: payload })
 export const consentExternalOAuth = (payload: Record<string, unknown>) => data<{ redirect_to: string }>({ url: "/external-access/oauth/consent", method: "POST", data: payload })
 export const registerExternalOAuthClient = (name: string, redirectUri: string) => data<{ client_id: string }>({ url: "/external-access/oauth/clients", method: "POST", data: { name, redirect_uris: [redirectUri] } })
 export const listExternalOAuthClients = () => data<{ items: Array<{ client_id: string, name: string, redirect_uris: string[] }> }>({ url: "/external-access/oauth/clients" })

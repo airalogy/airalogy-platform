@@ -140,6 +140,52 @@ def test_pkce_consent_code_replay_and_resource_binding(coverage):
             )
             assert sorted([first.status_code, second.status_code]) == [200, 400]
             credentials = first.json() if first.status_code == 200 else second.json()
+
+            async def originals(user):
+                response = await http.post(
+                    "/external-access/oauth/request",
+                    headers=browser(user),
+                    json=request,
+                )
+                assert response.status_code == 200
+                return response.json()["prior_grants"]
+
+            assert await originals(scope.outsider) == []
+            (prior,) = await originals(scope.owner)
+            assert set(prior["scopes"]) == set(credentials["scope"].split())
+            supplement = {
+                **request,
+                **target,
+                "approve": True,
+                "prior_grant_id": prior["id"],
+            }
+            if coverage != "organization":
+                supplement["scope"] += " documents:read"
+                supplement["approved_scopes"] = [*prior["scopes"], "documents:read"]
+            for mismatch in [
+                {"prior_grant_id": str(uuid4())},
+                {"project_id": str(uuid4())},
+                *(
+                    [{"approved_scopes": ["documents:read"]}]
+                    if coverage != "organization"
+                    else []
+                ),
+            ]:
+                rejected = await http.post(
+                    "/external-access/oauth/consent",
+                    headers=browser(scope.owner),
+                    json={**supplement, **mismatch},
+                )
+                assert rejected.status_code == 409, rejected.text
+            reviewed = await http.post(
+                "/external-access/oauth/consent",
+                headers=browser(scope.owner),
+                json=supplement,
+            )
+            assert reviewed.status_code == 200, reviewed.text
+            assert await originals(scope.owner) == [
+                prior
+            ]  # Unredeemed approvals are not connections.
             if coverage == "organization":
                 assert credentials["scope"] == "projects:find"
             token = credentials["access_token"]

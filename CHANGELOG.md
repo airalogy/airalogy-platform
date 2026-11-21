@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- MCP contract lookups now distinguish matching signed contracts from project totals. OAuth consent can keep the original connection’s permissions and select only those missing for contract and receipt work.
+
 - MCP reports the exact connection scopes missing for contract registration and receipt linking. Supported OAuth clients can reauthorize the current connection, and a consent preset selects the four workflow permissions.
 
 - Project owners inherit contract and cash access in enabled project books, subject to explicit view-only access. OAuth consent can select all available permissions for the chosen target in one step.

@@ -579,14 +579,52 @@ def test_contract_and_existing_receipt_in_one_connection():
             ).status_code == 409
             rows = (await call(http, token, "list_project_cash")).json()["items"]
             assert len(rows) == 1 and rows[0]["data"]["contract_id"] == first["id"]
+            other = await call(
+                http,
+                token,
+                "register_project_contract",
+                request_id=str(uuid4()),
+                contract={**contract["contract"], "number": "TEST-002", "gross": 33000},
+            )
+            assert other.status_code == 200, other.text
             summary = (
                 await call(http, token, "list_project_contracts", **lookup)
             ).json()
-            assert summary["totals"] == {
-                "gross": 24700,
+            assert summary["project_totals"] == {
+                "gross": 57700,
                 "contract_received": 24700,
-                "contract_remaining": 0,
+                "contract_remaining": 33000,
             }
+            complete = (await call(http, token, "list_project_contracts")).json()
+            assert (
+                complete["matched_totals"]
+                == complete["project_totals"]
+                == summary["project_totals"]
+            )
+            empty = (
+                await call(http, token, "list_project_contracts", number="absent")
+            ).json()
+            assert not empty["items"]
+            assert empty["project_totals"] == summary["project_totals"]
+            assert empty["matched_totals"] == dict.fromkeys(
+                summary["project_totals"], 0
+            )
+            later = (
+                await call(http, token, "list_project_contracts", **lookup, offset=50)
+            ).json()
+            assert (
+                not later["items"]
+                and later["matched_totals"] == summary["matched_totals"]
+            )
+            assert (
+                summary["totals"]
+                == summary["matched_totals"]
+                == {
+                    "gross": 24700,
+                    "contract_received": 24700,
+                    "contract_remaining": 0,
+                }
+            )
             assert [
                 (r["id"], r["received"], r["remaining"]) for r in summary["items"]
             ] == [(first["id"], 24700, 0)]

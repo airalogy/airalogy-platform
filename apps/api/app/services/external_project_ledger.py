@@ -99,7 +99,7 @@ TOOLS = {
         True,
     ),
     "list_project_contracts": (
-        "List active project contracts or look up an exact contract number. Amounts and collections are integer CNY fen.",
+        "List active project contracts or look up an exact contract number. Amounts are integer CNY fen. matched_totals (also totals) covers every matching signed contract before pagination; project_totals covers the whole project.",
         ContractPage,
         True,
     ),
@@ -167,6 +167,7 @@ def contract_receipt_access(access, role):
             s for s in CONTRACT_RECEIPT_SCOPES if not allows_ledger_scope(role, s)
         ],
         "check_tool": CHECK_CONTRACT_RECEIPT,
+        "connection_reference": str(access.grant.id),
     }
 
 
@@ -324,14 +325,23 @@ async def list_contracts(db, pid, args, url):
                 "url": url + "?entry=" + row["id"],
             }
         )
+    project_totals = {
+        k: totals[k] for k in ("gross", "contract_received", "contract_remaining")
+    }
+    signed_matches = [item for item in items if item["state"] == "signed"]
+    matched_totals = {
+        "gross": sum(item["gross"] for item in signed_matches),
+        "contract_received": sum(item["received"] for item in signed_matches),
+        "contract_remaining": sum(item["remaining"] for item in signed_matches),
+    }
     end = args.offset + 50
     return {
         "unit": "CNY_fen",
         "items": items[args.offset : end],
         "next_offset": end if len(items) > end else None,
-        "totals": {
-            k: totals[k] for k in ("gross", "contract_received", "contract_remaining")
-        },
+        "matched_totals": matched_totals,
+        "project_totals": project_totals,
+        "totals": matched_totals,
     }
 
 
