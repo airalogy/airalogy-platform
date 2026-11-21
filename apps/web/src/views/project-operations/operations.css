@@ -143,3 +143,27 @@
 .ops .meta {
   color: #526170;
 }
+
+.ops-cash-metrics button {
+  background: #f5f8fc;
+}
+.ops-contracts {
+  margin-bottom: 0.8rem;
+}
+.ops-contract-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ops-contract-list li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+  border-bottom: 1px solid #e1e6eb;
+  padding: 0.55rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.ops-contract-list button {
+  overflow-wrap: anywhere;
+}

@@ -43,7 +43,7 @@ for (const key of fields[props.kind]) {
   }
   else {
     form[key] = key === "receipt_purpose"
-      ? (props.entry?.data.contract_id || props.entry?.data.installment_id ? "customer_receipt" : "")
+      ? ""
       : enums[key]?.[0] ?? ""
   }
 }

@@ -71,24 +71,16 @@ watch(
   () => route.query,
   (q) => {
     asOf.value = String(q.as_of || localDocumentDate())
-    filter.value = String(q.metric || "")
+    filter.value = String(q.metric || (q.entry ? "" : "cash"))
     selected.value = String(q.entry || "")
   },
   { immediate: true },
 )
-const metrics: Metric[] = [
-  "gross",
-  "received",
-  "paid",
-  "net_cash",
-  "direct",
-  "profit",
-  "unpaid",
-  "overdue",
-  "unmatched",
-  "pending",
-  "shared",
-]
+const cashMetrics = ["received", "paid", "net_cash"] as const
+const contractMetrics = ["gross", "contract_received", "contract_remaining"] as const
+const extraMetrics = ["direct", "profit", "unpaid", "overdue", "unmatched", "pending", "shared"] as const
+const metrics: Metric[] = [...cashMetrics, ...contractMetrics, ...extraMetrics]
+const contracts = computed(() => book.value?.entries.filter(e => e.kind === "contract" && e.status !== "void") ?? [])
 const rows = computed(() =>
   (book.value?.entries ?? []).filter((r) => {
     const s = book.value!.summary
@@ -127,16 +119,12 @@ function pick(id: string) {
   preview.value = ""
   editor.value = undefined
 }
-async function showCashEntries() {
-  filter.value = "cash"
+async function showEntries(scope: string) {
+  filter.value = scope
   query.value = ""
   pick("")
   await nextTick()
   entriesPanel.value?.scrollIntoView({ block: "start" })
-}
-function selectMetric(metric: Metric) {
-  filter.value = metric
-  pick("")
 }
 function open(kind: Kind) {
   const existing = ["forecast", "closing"].includes(kind)
@@ -266,13 +254,8 @@ const createKinds = computed<Kind[]>(() =>
         <button v-if="book.role === 'finance'" type="button" class="ops-cash-action" data-testid="new-cash" @click="open('cash')">
           {{ tr("addCash") }}
         </button>
-        <button type="button" @click="showCashEntries">
+        <button type="button" @click="showEntries('cash')">
           {{ tr("cashEntries") }}
-        </button>
-      </div>
-      <div class="ops-actions">
-        <button v-for="k in createKinds" :key="k" :data-testid="`new-${k}`" @click="open(k)">
-          {{ tr(k) }} +
         </button>
       </div>
       <p v-if="notice" role="status">
@@ -287,34 +270,42 @@ const createKinds = computed<Kind[]>(() =>
         @saved="saved"
         @close="editor = undefined"
       />
-      <div class="ops-line">
-        <label>
-          {{ tr("overdueDate") }}
-          <input v-model="asOf" type="date">
-        </label>
+      <div class="ops-metrics ops-cash-metrics">
+        <button v-for="m in cashMetrics" :key="m" :data-testid="`metric-${m}`" @click="showEntries(m)">
+          {{ tr(m) }}
+          <strong :class="{ loss: book.summary[m] < 0 }">{{ money(book.summary[m]) }}</strong>
+        </button>
       </div>
-      <div class="ops-metrics">
-        <button
-          v-for="m in metrics"
-          :key="m"
-          :data-testid="`metric-${m}`"
-          @click="selectMetric(m)"
-        >
-          {{ tr(m === "direct" ? "verifiedCost" : m) }}
-          <strong :class="{ loss: (book.summary[m] ?? 0) < 0 }">
-            {{
-              m === "pending"
-                ? book.summary[m]
-                : book.summary[m] === null
-                  ? tr("unknown")
-                  : money(book.summary[m])
-            }}
-          </strong>
+      <section v-if="contracts.length" class="ops-contracts" data-testid="contract-summary">
+        <div class="ops-metrics">
+          <button v-for="m in contractMetrics" :key="m" :data-testid="`metric-${m}`" @click="showEntries(m)">
+            {{ tr(m === "gross" ? "signedGross" : m) }}
+            <strong>{{ money(book.summary[m]) }}</strong>
+          </button>
+        </div>
+        <details>
+          <summary>{{ tr("contractDetails") }} ({{ contracts.length }})</summary>
+          <ul class="ops-contract-list">
+            <li v-for="e in contracts" :key="e.id">
+              <button type="button" class="link" :aria-label="`${tr('entryDetails')} · ${caption(e)}`" @click="showEntries(e.id)">
+                {{ caption(e) }}
+              </button>
+              <span>{{ tr(String(e.data.state)) }}</span>
+              <span>{{ tr("signedGross") }} {{ money(e.data.state === 'signed' ? Number(e.data.gross) : null) }}</span>
+              <span>{{ tr("contract_received") }} {{ money(book.summary.contracts[e.id].received) }}</span>
+              <span>{{ tr("contract_remaining") }} {{ money(book.summary.contracts[e.id].outstanding) }}</span>
+            </li>
+          </ul>
+        </details>
+      </section>
+      <div class="ops-actions">
+        <button v-for="k in createKinds" :key="k" :data-testid="`new-${k}`" @click="open(k)">
+          {{ tr(k) }} +
         </button>
       </div>
       <div ref="entriesPanel" class="ops-panel">
         <div class="ops-line">
-          <h3>{{ tr("entries") }}</h3>
+          <h3>{{ tr(filter === "cash" ? "cashDetailTitle" : "entries") }}</h3>
           <select v-model="filter" :aria-label="tr('filter')">
             <option value="">
               {{ tr("all") }}
@@ -322,8 +313,8 @@ const createKinds = computed<Kind[]>(() =>
             <option v-for="(_, k) in fields" :key="k" :value="k">
               {{ tr(k) }}
             </option>
-            <option v-for="m in metrics" :key="m" :value="m">
-              {{ tr(m) }}
+            <option v-for="m in metrics.filter(m => contracts.length || !contractMetrics.some(c => c === m))" :key="m" :value="m">
+              {{ tr(m === "gross" ? "signedGross" : m) }}
             </option>
             <option
               v-for="e in book.entries.filter(r => r.kind === 'contract')"
@@ -356,7 +347,7 @@ const createKinds = computed<Kind[]>(() =>
                     {{ caption(e) }}
                   </button>
                 </td>
-                <td>{{ tr(e.kind) }}</td>
+                <td>{{ tr(e.kind === "cash" ? String(e.data.direction) : e.kind) }}</td>
                 <td>{{ e.data.day || e.data.signed_date || e.data.due || "—" }}</td>
                 <td>
                   {{
@@ -483,6 +474,34 @@ const createKinds = computed<Kind[]>(() =>
           </dl>
         </details>
       </article>
+      <details data-testid="more-metrics">
+        <summary>{{ tr("moreMetrics") }}</summary>
+        <div class="ops-line">
+          <label>
+            {{ tr("overdueDate") }}
+            <input v-model="asOf" type="date">
+          </label>
+        </div>
+        <div class="ops-metrics">
+          <button
+            v-for="m in extraMetrics"
+            :key="m"
+            :data-testid="`metric-${m}`"
+            @click="showEntries(m)"
+          >
+            {{ tr(m === "direct" ? "verifiedCost" : m) }}
+            <strong :class="{ loss: (book.summary[m] ?? 0) < 0 }">
+              {{
+                m === "pending"
+                  ? book.summary[m]
+                  : book.summary[m] === null
+                    ? tr("unknown")
+                    : money(book.summary[m])
+              }}
+            </strong>
+          </button>
+        </div>
+      </details>
     </template>
   </section>
 </template>

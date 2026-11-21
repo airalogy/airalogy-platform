@@ -3399,6 +3399,8 @@ declare namespace I18n {
           list: string
           star: string
           protocols: string
+          work: string
+          operations: string
           members: string
           membersHint: string
           diary: string
@@ -6023,6 +6025,13 @@ declare namespace I18n {
         unknown: string
         coverage: string
         addCash: string
+        signedGross: string
+        contract_received: string
+        contract_remaining: string
+        contractDetails: string
+        moreMetrics: string
+        entryDetails: string
+        cashDetailTitle: string
         cashEntries: string
         receipt_purpose: string
         customer_receipt: string

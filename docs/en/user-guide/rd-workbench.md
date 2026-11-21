@@ -1,6 +1,6 @@
 # Coordinate R&D in a Project
 
-Open **Project → R&D work** to create requirements, tasks, issues and milestones. A Protocol, automated Run or AI service is not required. Protocols remain a prominent Project entry and can be linked when repeatable execution is useful.
+Open **Project → Work items** to create requirements, tasks, issues and milestones. A Protocol, automated Run or AI service is not required. Protocols remain a prominent Project entry and can be linked when repeatable execution is useful.
 
 Under **Organization management → Members**, owners and authorized administrators can set an organization display name. Clearing it restores the member’s profile name. Personal notes are visible only to their author. Meeting and work-item pickers show the organization display name and store the account ID. Renaming a member preserves existing assignments and the participant names recorded in earlier meetings.
 

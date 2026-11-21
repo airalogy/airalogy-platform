@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project operations opens on cash totals and entries. Projects with contracts also show signed tax-inclusive value, attributable receipts and remaining collections, with drill-downs by amount and contract.
+
+- Project navigation now uses “Work items” and “Operations”, including “Operations” in the More menu.
+
 - Project operations exposes cash entry and setup from project navigation. Finance can distinguish customer payments from other inflows such as returned deposits in the project and portfolio totals.
 
 - External OAuth clients such as ChatGPT can open the consent page when they include optional interface language hints.

@@ -26,7 +26,11 @@ def summarize(records, today: date):
     def contract_of(row):
         data = row["data"]
         term = dues.get(data.get("installment_id"))
-        return term["data"]["contract_id"] if term else None
+        if term:
+            return term["data"]["contract_id"]
+        if data.get("receipt_purpose") == "customer_receipt":
+            return data.get("contract_id")
+        return None
 
     verified_cost_ids = set(ids(verified))
     unpaid = total(verified, "payable") - total(
@@ -75,12 +79,17 @@ def summarize(records, today: date):
             "conditional": data["due"] is None,
         }
     by_contract = {}
+    signed_receipts = []
     for i, r in contracts.items():
         matched = [c for c in received if contract_of(c) == i]
         scheduled = [v for v in dues.values() if v["data"]["contract_id"] == i]
         assigned = [c for c in verified if c["data"]["contract_id"] == i]
+        received_amount = total(matched, "amount")
+        if i in signed:
+            signed_receipts.extend(matched)
         by_contract[i] = {
-            "outstanding": r["data"]["gross"] - total(matched, "amount")
+            "received": received_amount if i in signed else None,
+            "outstanding": max(r["data"]["gross"] - received_amount, 0)
             if i in signed
             else None,
             "unscheduled": r["data"]["gross"] - total(scheduled, "amount"),
@@ -96,6 +105,8 @@ def summarize(records, today: date):
     shared = [r for r in verified if not r["data"]["contract_id"]]
     sources = {
         "gross": ids(signed.values()),
+        "contract_received": ids(signed_receipts),
+        "contract_remaining": ids(signed.values()) + ids(signed_receipts),
         "received": ids(received),
         "paid": ids(paid),
         "net_cash": ids(cash),
@@ -112,6 +123,8 @@ def summarize(records, today: date):
     }
     return {
         "gross": gross,
+        "contract_received": total(signed_receipts, "amount"),
+        "contract_remaining": sum(by_contract[i]["outstanding"] for i in signed),
         "received": total(received, "amount"),
         "paid": total(paid, "amount"),
         "net_cash": total(received, "amount") - total(paid, "amount"),

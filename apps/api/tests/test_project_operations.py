@@ -314,7 +314,20 @@ async def instrument_case():
             }
             refund_entry = await write(finance, "cash", refund)
             summary = await totals()
-            amounts(summary, received=30100, unmatched=30000)
+            amounts(summary, received=30100, unmatched=30000, contract_received=0, contract_remaining=106000)
+            direct_receipt = await write(
+                finance, "cash", {**receipt, "receipt_purpose": "customer_receipt"}
+            )
+            summary = await totals()
+            amounts(summary, contract_received=30000, contract_remaining=76000)
+            assert summary["sources"]["contract_received"] == [direct_receipt["entry_id"]]
+            assert summary["contracts"][a]["received"] == 3000000
+            await write(
+                finance, "cash", None, eid=direct_receipt["entry_id"],
+                rev=1, action="void", reason="撤销虚构合同收款",
+            )
+            summary = await totals()
+            amounts(summary, contract_received=0, contract_remaining=106000)
             assert refund_entry["entry_id"] not in summary["sources"]["unmatched"]
             assert summary["contracts"][a]["outstanding"] == 10600000
             await call("POST", book + "/entries", finance, refund_entry)
@@ -337,7 +350,7 @@ async def instrument_case():
             ] == 2
             assert (await call("POST", book + "/entries", finance, r))["revision"] == 1
             t = await totals()
-            amounts(t, overdue=20000, received=30000, net_cash=26000, profit=60000)
+            amounts(t, overdue=20000, received=30000, contract_received=30000, contract_remaining=76000, net_cash=26000, profit=60000)
             assert (
                 t["contracts"][a]["outstanding"] == 7600000
                 and t["installments"][tail]["conditional"]

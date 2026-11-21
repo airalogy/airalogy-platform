@@ -261,7 +261,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
   if (authStore.isLogin) {
     tabs.unshift({ name: "project-overview", tab: $t("page.researchDocuments.overview") })
     tabs.push(
-      { name: "project-work", tab: $t("page.projectWork.title") },
+      { name: "project-work", tab: $t("page.project.tab.work") },
       { name: "project-meetings", tab: $t("page.meetings.title") },
       { name: "project-members", tab: $t("page.project.members") },
       { name: "project-documents", tab: $t("page.documentUx.documents") },
@@ -270,7 +270,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
       { name: "project-analysis", tab: $t("page.analysis.title") },
     )
     if (showOperations.value || route.name === "project-operations")
-      tabs.push({ name: "project-operations", tab: $t("page.operations.book") })
+      tabs.push({ name: "project-operations", tab: $t("page.project.tab.operations") })
     const additional = [
       { name: "project-research", tab: $t("page.research.title") },
       { name: "project-workflows", tab: $t("page.workflowDefinitions.title") },
@@ -289,7 +289,7 @@ const baseTabs = computed<(TabPaneProps & { name: App.Global.TabKey })[]>(() => 
 const tabs = baseTabs
 const workspaceNavigation = computed(() => [
   { key: "activity", type: "group", label: $t("page.researchDocuments.title"), children: [
-    ...(showOperations.value ? [{ key: "project-operations", label: $t("page.operations.book") }] : []),
+    ...(showOperations.value ? [{ key: "project-operations", label: $t("page.project.tab.operations") }] : []),
     { key: "project-records", label: $t("page.recordDiary.tab") },
     { key: "project-scenarios", label: $t("page.scenarioKits.workbench") },
   ] },

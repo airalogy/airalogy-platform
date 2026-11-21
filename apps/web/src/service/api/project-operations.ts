@@ -22,6 +22,8 @@ export interface Entry {
 }
 export interface Summary {
   gross: number
+  contract_received: number
+  contract_remaining: number
   received: number
   paid: number
   net_cash: number
@@ -37,7 +39,7 @@ export interface Summary {
   verified_through: string | null
   contracts: Record<
     string,
-    { outstanding: number | null, unscheduled: number, cost: number, entries: string[] }
+    { received: number | null, outstanding: number | null, unscheduled: number, cost: number, entries: string[] }
   >
   installments: Record<
     string,
@@ -46,6 +48,8 @@ export interface Summary {
   sources: Record<string, string[]>
 }
 export type Metric =
+  | "contract_received"
+  | "contract_remaining"
   | "gross"
   | "received"
   | "paid"
