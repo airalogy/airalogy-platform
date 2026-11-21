@@ -60,11 +60,23 @@ def test_pkce_consent_code_replay_and_resource_binding(coverage):
                 "scope": "protocols:read records:read",
                 "resource": config.SITE_URL.rstrip("/") + "/api/mcp",
             }
-            authorize = await http.get(
-                "/external-access/oauth/authorize", params=request
+            for hints in ({}, {"ui_locales": "zh-CN en", "display": "page"}):
+                authorize = await http.get(
+                    "/external-access/oauth/authorize", params={**request, **hints}
+                )
+                assert authorize.status_code == 303, authorize.text
+                location = urlsplit(authorize.headers["location"])
+                assert location.path == "/authorize"
+                assert parse_qs(location.query) == {
+                    **{key: [value] for key, value in request.items()},
+                    "external": ["1"],
+                }
+            strict_request = await http.post(
+                "/external-access/oauth/request",
+                headers=browser(scope.owner),
+                json={**request, "ui_locales": "zh-CN"},
             )
-            assert authorize.status_code == 303, authorize.text
-            assert "external=1" in authorize.headers["location"]
+            assert strict_request.status_code == 422
             wrong_callback = await http.get(
                 "/external-access/oauth/authorize",
                 params={**request, "redirect_uri": "https://example.test/steal"},

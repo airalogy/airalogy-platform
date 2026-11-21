@@ -14,7 +14,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Form, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 from sqlalchemy import delete, func, select, update
 
 from app.config import config
@@ -77,6 +77,11 @@ class Authorization(service.StrictModel):
     state: str = Field(min_length=16, max_length=512)
     scope: str = Field(default="protocols:read", max_length=1024)
     resource: str = Field(max_length=2048)
+
+
+class AuthorizationQuery(Authorization):
+    # RFC 6749 section 3.1 requires ignoring unrecognized authorization parameters.
+    model_config = ConfigDict(extra="ignore")
 
 
 class Consent(Authorization, service.ProjectCoverage):
@@ -157,7 +162,7 @@ async def request_info(params: Authorization, db: DBSession, user: CurrentUser):
 
 
 @router.get("/authorize")
-async def authorize(db: DBSession, params: Annotated[Authorization, Query()]):
+async def authorize(db: DBSession, params: Annotated[AuthorizationQuery, Query()]):
     await checked_client(db, params)
     return RedirectResponse(
         origin()
