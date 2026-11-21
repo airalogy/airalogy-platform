@@ -5920,6 +5920,8 @@ declare namespace I18n {
         noAccess: string
         saveAccess: string
         lead: string
+        projectOwner: string
+        ownerDefaultAccess: string
         lead_finance: string
         finance: string
         viewer: string

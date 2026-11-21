@@ -105,6 +105,11 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
       await selector.click()
       await selectVisibleOption(page, "Quickstart Protocol Testing")
     }
+    await page.getByRole("button", { name: language.accountSettings.clear, exact: true }).click()
+    await expect(page.getByRole("checkbox", { name: strings.readProtocols, exact: true })).not.toBeChecked()
+    await page.getByRole("button", { name: language.accountSettings.allScopes, exact: true }).click()
+    await expect(page.getByRole("checkbox", { name: strings.readProtocols, exact: true })).toBeChecked()
+    await expect(page.getByRole("button", { name: strings.approve, exact: true })).toBeDisabled()
     await page.getByRole("checkbox", { name: strings.authorizationReviewed, exact: true }).check()
     await page.getByRole("button", { name: strings.approve, exact: true }).click()
     await expect(page).toHaveURL(/127\.0\.0\.1:8765\/callback\?code=/)

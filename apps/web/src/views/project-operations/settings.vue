@@ -115,7 +115,11 @@ const roles: BusinessRole[] = ["lead", "finance", "lead_finance", "viewer"]
         <div v-for="u in settings.people" :key="u.id" class="ops-line">
           <label>
             {{ u.name }} · @{{ u.username }}
-            <select v-model="settings.grants[u.id]">
+            <select v-if="u.is_owner" :value="settings.grants[u.id] === 'viewer' ? 'viewer' : 'inherit'" @change="settings.grants[u.id] = ($event.target as HTMLSelectElement).value as 'inherit' | 'viewer'">
+              <option value="inherit">{{ tr("ownerDefaultAccess") }}</option>
+              <option value="viewer">{{ tr("viewer") }}</option>
+            </select>
+            <select v-else v-model="settings.grants[u.id]">
               <option value="">{{ tr("noAccess") }}</option>
               <option v-for="r in roles" :key="r" :value="r">{{ tr(r) }}</option>
             </select>

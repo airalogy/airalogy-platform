@@ -235,7 +235,8 @@ const createKinds = computed<Kind[]>(() => {
     <div class="ops-line">
       <h2>{{ tr("book") }}</h2>
       <template v-if="book && projectInfo">
-        <span>{{ book.owner?.name }} · {{ tr(book.role) }}</span>
+        <span v-if="book.owner">{{ tr("projectOwner") }} · {{ book.owner.name }}</span>
+        <span v-if="!book.is_project_owner || book.role !== 'lead_finance'">{{ tr(book.role) }}</span>
         <router-link :to="{ name: 'lab-operations', params: { labUid: projectInfo.lab_uid } }">
           {{ tr("overview") }}
         </router-link>

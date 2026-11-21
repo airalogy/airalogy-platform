@@ -77,6 +77,7 @@ export interface Person {
 }
 export interface Book {
   owner: Person | null
+  is_project_owner: boolean
   role: BusinessRole
   entries: Entry[]
   people: Record<string, string>
@@ -111,8 +112,8 @@ export interface Revision {
 export interface Settings {
   enabled: boolean
   revision: number
-  people: Person[]
-  grants: Record<string, BusinessRole>
+  people: (Person & { is_owner: boolean })[]
+  grants: Record<string, BusinessRole | "inherit">
 }
 const prefix = "/project-operations"
 export function readOps<T>(path: string, params?: Record<string, string>) {

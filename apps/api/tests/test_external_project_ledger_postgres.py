@@ -136,7 +136,7 @@ def test_personal_roles_project_registration_and_cash():
                 await db.commit()
             assert (
                 await issue(http, s.owner, project, ["cash:create"])
-            ).status_code == 403
+            ).status_code == 200
             assert (
                 await issue(http, s.recorder, project, ["cash:create"])
             ).status_code == 403
@@ -442,6 +442,10 @@ def test_contract_and_existing_receipt_in_one_connection():
                     http, s, user=s.analyst, scopes=["cash:read", "cash:create"]
                 )
             )["token"]
+            owner_token = (await issue(http, s.owner, project, scopes)).json()["token"]
+            assert (
+                await call(http, owner_token, "list_project_contracts")
+            ).status_code == 200
             assert (await issue(http, s.analyst, project, scopes)).status_code == 403
             async with sessions() as db:
                 grant_row = await db.get(OperationsGrant, (s.project.id, s.analyst.id))

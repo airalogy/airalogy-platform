@@ -1,17 +1,18 @@
 """Organization settings, explicit book grants, and gated commercial drill-downs."""
 
 from datetime import date
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.database import DBSession
 from app.models.knowledge import ResearchFile
 from app.models.lab import LabUser
-from app.models.project import Project
+from app.models.project import Project, ProjectUser
 from app.models.project_operations import (
     OperationsBook,
     OperationsEntry,
@@ -43,19 +44,26 @@ class Switch(Form):
 
 
 class BookSettings(Switch):
-    grants: dict[UUID, Role]
+    grants: dict[UUID, Role | Literal["inherit"]]
 
 
 def granted_projects(org_id, user_id):
+    explicit = select(OperationsGrant.user_id).where(
+        OperationsGrant.project_id == Project.id, OperationsGrant.user_id == user_id
+    )
     return (
         select(Project)
         .join(OperationsBook, OperationsBook.project_id == Project.id)
-        .join(OperationsGrant, OperationsGrant.project_id == Project.id)
         .where(
             Project.lab_id == org_id,
             Project.deleted_at.is_(None),
             OperationsBook.enabled.is_(True),
-            OperationsGrant.user_id == user_id,
+            or_(
+                exists(explicit),
+                exists(
+                    ops.project_owners(Project.id).where(ProjectUser.user_id == user_id)
+                ),
+            ),
         )
         .order_by(Project.name, Project.id)
     )
@@ -128,8 +136,14 @@ async def book_settings(pid: UUID, current_user: CurrentUser, db_session: DBSess
         db_session, current_user, pid, management=True
     )
     users = await db_session.execute(organization_accounts(project.lab_id))
+    owners = set(await db_session.scalars(ops.project_owners(pid)))
     eligible = [
-        {"id": str(u.id), "name": name, "username": u.username}
+        {
+            "id": str(u.id),
+            "name": name,
+            "username": u.username,
+            "is_owner": u.id in owners,
+        }
         for u, name in users
         if await has_research_capability(
             db_session, user=u, project=project, capability="research.read"
@@ -181,10 +195,22 @@ async def configure_book(
             select(OperationsGrant).where(OperationsGrant.project_id == pid)
         )
     }
+    owners = set(await db_session.scalars(ops.project_owners(pid)))
     for uid, g in grants.items():
-        if uid not in form.grants:
+        if uid not in form.grants and uid in owners and g.role == "viewer":
+            raise HTTPException(
+                409,
+                "Choose owner access explicitly before removing a read-only restriction",
+            )
+        if uid not in form.grants or form.grants[uid] == "inherit":
             await db_session.delete(g)
     for uid, role in form.grants.items():
+        if role == "inherit" and uid not in owners:
+            raise HTTPException(
+                422, "Owner access setting requires current project ownership"
+            )
+        if role == "inherit":
+            continue
         grant = grants.get(uid) or OperationsGrant(project_id=pid, user_id=uid)
         grant.role = role
         db_session.add(grant)
@@ -276,6 +302,13 @@ async def ledger(
     return {
         "role": role,
         "owner": await ops.owner(db_session, project),
+        "is_project_owner": bool(
+            await db_session.scalar(
+                ops.project_owners(pid)
+                .where(ProjectUser.user_id == current_user.id)
+                .limit(1)
+            )
+        ),
         "entries": rows,
         "people": people,
         "summary": summarize(rows, as_of or date.today()),

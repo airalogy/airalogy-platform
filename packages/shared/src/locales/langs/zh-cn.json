@@ -5917,6 +5917,8 @@
       "noAccess": "无经营权限",
       "saveAccess": "保存项目授权",
       "lead": "商务 / 项目负责人",
+      "projectOwner": "项目所有者",
+      "ownerDefaultAccess": "项目所有者 · 合同与收支",
       "lead_finance": "负责人兼财务",
       "finance": "财务",
       "viewer": "经营查看",

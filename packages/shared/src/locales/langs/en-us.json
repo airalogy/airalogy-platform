@@ -5917,6 +5917,8 @@
       "noAccess": "No operations access",
       "saveAccess": "Save project access",
       "lead": "Business or project lead",
+      "projectOwner": "Project owner",
+      "ownerDefaultAccess": "Project owner · contracts and cash",
       "lead_finance": "Project lead and finance",
       "finance": "Finance",
       "viewer": "Read only",

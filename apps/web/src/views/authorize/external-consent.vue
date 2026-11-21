@@ -117,7 +117,15 @@ onMounted(load)
         <n-form-item :label="$t('externalResearch.oauthDays')">
           <grant-duration v-model="days" :max="7" />
         </n-form-item>
-        <h3>{{ $t("externalAccess.scopes") }}</h3>
+        <div class="flex flex-wrap items-center gap-3">
+          <h3>{{ $t("externalAccess.scopes") }}</h3>
+          <n-button text type="primary" :disabled="!hasTarget" @click="approvedScopes = requestedScopes.filter(eligible)">
+            {{ $t("accountSettings.allScopes") }}
+          </n-button>
+          <n-button text :disabled="!approvedScopes.length" @click="approvedScopes = []">
+            {{ $t("accountSettings.clear") }}
+          </n-button>
+        </div>
         <n-checkbox-group v-model:value="approvedScopes" class="flex flex-wrap gap-3">
           <n-checkbox v-for="scope in requestedScopes" :key="scope" :value="scope" :disabled="!eligible(scope)">
             {{ scopeLabel(scope) }}

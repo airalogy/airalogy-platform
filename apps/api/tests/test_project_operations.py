@@ -153,6 +153,8 @@ async def instrument_case():
                 {"enabled": True, "expected_revision": 0, "grants": grants},
             )
             people = (await call("GET", book + "/settings", ceo))["people"]
+            assert next(u for u in people if u["id"] == str(seed.owner.id))["is_owner"]
+            assert (await call("GET", book + "/access", ceo))["role"] == "viewer"
             assert (
                 next(u["name"] for u in people if u["id"] == str(seed.recorder.id))
                 == "核账员"
@@ -314,28 +316,48 @@ async def instrument_case():
             }
             refund_entry = await write(finance, "cash", refund)
             summary = await totals()
-            amounts(summary, received=30100, unmatched=30000, contract_received=0, contract_remaining=106000)
+            amounts(
+                summary,
+                received=30100,
+                unmatched=30000,
+                contract_received=0,
+                contract_remaining=106000,
+            )
             direct_receipt = await write(
                 finance, "cash", {**receipt, "receipt_purpose": "customer_receipt"}
             )
             summary = await totals()
             amounts(summary, contract_received=30000, contract_remaining=76000)
-            assert summary["sources"]["contract_received"] == [direct_receipt["entry_id"]]
+            assert summary["sources"]["contract_received"] == [
+                direct_receipt["entry_id"]
+            ]
             assert summary["contracts"][a]["received"] == 3000000
             await write(
-                finance, "cash", None, eid=direct_receipt["entry_id"],
-                rev=1, action="void", reason="撤销虚构合同收款",
+                finance,
+                "cash",
+                None,
+                eid=direct_receipt["entry_id"],
+                rev=1,
+                action="void",
+                reason="撤销虚构合同收款",
             )
             summary = await totals()
             amounts(summary, contract_received=0, contract_remaining=106000)
             assert refund_entry["entry_id"] not in summary["sources"]["unmatched"]
             assert summary["contracts"][a]["outstanding"] == 10600000
             await call("POST", book + "/entries", finance, refund_entry)
-            await write(finance, "cash", {**refund, "installment_id": first}, status=422)
+            await write(
+                finance, "cash", {**refund, "installment_id": first}, status=422
+            )
             await write(finance, "cash", {**refund, "direction": "out"}, status=422)
             await write(
-                finance, "cash", None, eid=refund_entry["entry_id"],
-                rev=1, action="void", reason="虚构验收撤销",
+                finance,
+                "cash",
+                None,
+                eid=refund_entry["entry_id"],
+                rev=1,
+                action="void",
+                reason="虚构验收撤销",
             )
             matched = await write(
                 finance,
@@ -350,7 +372,15 @@ async def instrument_case():
             ] == 2
             assert (await call("POST", book + "/entries", finance, r))["revision"] == 1
             t = await totals()
-            amounts(t, overdue=20000, received=30000, contract_received=30000, contract_remaining=76000, net_cash=26000, profit=60000)
+            amounts(
+                t,
+                overdue=20000,
+                received=30000,
+                contract_received=30000,
+                contract_remaining=76000,
+                net_cash=26000,
+                profit=60000,
+            )
             assert (
                 t["contracts"][a]["outstanding"] == 7600000
                 and t["installments"][tail]["conditional"]
@@ -487,6 +517,9 @@ async def instrument_case():
                     "grants": {str(seed.owner.id): "finance"},
                 },
             )
+            assert (await call("GET", stopped_url + "/access", ceo))[
+                "role"
+            ] == "lead_finance"
             body = {
                 "request_id": str(uuid4()),
                 "entry_id": str(uuid4()),
@@ -547,6 +580,7 @@ async def instrument_case():
             await call("GET", token, ceo, status=404)
             await call("PUT", org, ceo, {"enabled": True, "expected_revision": 2})
             amounts(await totals(), direct=7000)
+            # Omitting an existing read-only owner in an older client must never expand their access.
             await call(
                 "PUT",
                 book + "/settings",
@@ -558,11 +592,39 @@ async def instrument_case():
                         k: v for k, v in grants.items() if k != str(seed.owner.id)
                     },
                 },
+                409,
             )
+            assert (await call("GET", book + "/access", ceo))["role"] == "viewer"
+            # Restore inheritance without storing a permanent finance assignment.
+            await call(
+                "PUT",
+                book + "/settings",
+                ceo,
+                {
+                    "enabled": True,
+                    "expected_revision": 1,
+                    "grants": {**grants, str(seed.owner.id): "inherit"},
+                },
+            )
+            assert (await call("GET", book + "/access", ceo))["role"] == "lead_finance"
+            assert (
+                str(seed.owner.id)
+                not in (await call("GET", book + "/settings", ceo))["grants"]
+            )
+            assert len((await call("GET", org + "/overview", ceo))["projects"]) == 2
+            async with sessions() as db:
+                await db.execute(
+                    update(ProjectUser)
+                    .where(
+                        ProjectUser.project_id == seed.project.id,
+                        ProjectUser.user_id == seed.owner.id,
+                    )
+                    .values(role=ProjectRole.COLLABORATOR)
+                )
+                await db.commit()
             await call("GET", book, ceo, status=403)
             assert [
-                row["id"]
-                for row in (await call("GET", org + "/overview", ceo))["projects"]
+                p["id"] for p in (await call("GET", org + "/overview", ceo))["projects"]
             ] == [str(stopped.id)]
             await call("GET", token, ceo, status=404)
             await call(

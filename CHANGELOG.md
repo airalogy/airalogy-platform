@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project owners inherit contract and cash access in enabled project books, subject to explicit view-only access. OAuth consent can select all available permissions for the chosen target in one step.
+
 - Project ledger roles can combine contract management and cash posting. One project-scoped MCP connection can look up and register signed contracts, link an existing customer receipt, and check collections with separately approved scopes.
 
 - Project operations opens on cash totals and entries. Projects with contracts also show signed tax-inclusive value, attributable receipts and remaining collections, with drill-downs by amount and contract.

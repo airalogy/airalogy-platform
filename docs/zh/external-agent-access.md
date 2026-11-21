@@ -36,6 +36,8 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 
 同一账号需要同时处理合同和收支时，在该项目的经营设置选择「负责人兼财务」。在原有 MCP 连接上重新授权同一项目，勾选「查看项目合同及收款汇总」「登记已签合同」「查看项目收支」和「关联已有收入到合同」。还要录入新流水时再勾选「登记实际收付款」。先用 `list_project_contracts` 按合同号查重，再用 `register_project_contract` 填入含税金额及实际签署日期。通过 `list_project_cash` 取得已有客户收入的 ID 和版本，调用 `link_project_receipt` 后回读原流水及合同汇总。每次写入使用独立的 request_id，重试原操作时沿用该 ID。
 
+项目开账后，项目所有者默认可以管理合同和收支。授权时先选择项目，再点「全选可用权限」，也可以逐项取消。确认后仅向该连接授予勾选的权限。已授权的连接需要重新确认才能增加权限。
+
 收支金额使用人民币整数分。例如收到 100 元，发送 `{"request_id":"11111111-1111-4111-8111-111111111111","cash":{"kind":"cash","title":"示例收款","day":"2025-01-10","direction":"in","receipt_purpose":"customer_receipt","amount":10000}}`。每笔新业务生成新的 UUID；网络重试沿用原请求与 UUID。相同请求返回原结果，修改内容后复用 UUID 会被拒绝。客户回款用途为 `customer_receipt`，押金退回等其他收入用 `other_income`，并计入现金流。支出方向用 `out`。核对返回的账本链接，或用 `list_project_cash` 检查总收款、总付款及净现金。
 
 支持 MCP 的客户端连接当前实例的 `/api/mcp`。使用受限令牌的 HTTP 客户端也可以向 `/api/external-access/tools/<工具名>` POST 同一份 JSON。OAuth 客户端在发起授权时分别请求组织权限 `projects:find projects:create` 或项目权限 `cash:read cash:create`，在浏览器完成个人授权。管理员撤销成员角色或关闭账本后，原连接的相应操作立即失效。

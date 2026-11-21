@@ -46,6 +46,12 @@ async def organization(db, user, org_id, *, manage=False, write=False):
     return org, admin, settings
 
 
+def project_owners(pid):
+    return select(ProjectUser.user_id).where(
+        ProjectUser.project_id == pid, ProjectUser.role == ProjectRole.OWNER
+    )
+
+
 async def project_access(
     db, user, pid, *, write=False, management=False, discovery=False
 ):
@@ -66,7 +72,15 @@ async def project_access(
     book = await db.get(OperationsBook, pid, populate_existing=True)
     grant = await db.get(OperationsGrant, (pid, user.id), populate_existing=True)
     enabled = bool(settings and settings.enabled)
-    role = grant.role if enabled and book and book.enabled and grant else None
+    role = None
+    if enabled and book and book.enabled:
+        assigned = grant.role if grant else None
+        if assigned != "viewer" and await db.scalar(
+            project_owners(pid).where(ProjectUser.user_id == user.id).limit(1)
+        ):
+            role = "lead_finance"
+        else:
+            role = assigned
     if not discovery and (not enabled or not (management or role)):
         raise HTTPException(403, "Project operations unavailable")
     return project, book, role, enabled, admin
