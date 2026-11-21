@@ -1,5 +1,6 @@
 import type { ExternalDashboard } from "@/service/api/external-access"
 
+import { canManageCash, canManageContracts } from "@/service/api/project-operations"
 import { $t } from "@airalogy/shared/locales"
 
 export type Coverage = "single" | "selected" | "accessible"
@@ -31,9 +32,11 @@ export function eligibleScope(scope: string, projects: Project[], ongoing: boole
       return p.can_collaborate !== false
     if (scope === "collaboration:write")
       return p.can_collaborate !== false && p.can_write_collaboration !== false
-    if (scope === "cash:create")
-      return p.cash_role === "finance"
-    if (scope === "cash:read")
+    if (scope === "contracts:create")
+      return canManageContracts(p.cash_role)
+    if (scope === "cash:create" || scope === "cash:link")
+      return canManageCash(p.cash_role)
+    if (scope === "cash:read" || scope === "contracts:read")
       return Boolean(p.cash_role)
     if (["records:export", "analysis:read", "analysis:write"].includes(scope))
       return p.can_export
@@ -49,6 +52,9 @@ const scopeLabels = {
   "projects:create": "externalAccess.registerProject",
   "cash:read": "externalAccess.readCash",
   "cash:create": "externalAccess.postCash",
+  "contracts:read": "externalAccess.readContracts",
+  "contracts:create": "externalAccess.createContracts",
+  "cash:link": "externalAccess.linkReceipt",
   "collaboration:read": "externalAccess.readCollaboration",
   "collaboration:write": "externalAccess.writeCollaboration",
   "protocols:read": "externalAccess.readProtocols",

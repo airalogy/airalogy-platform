@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Book, Entry, Kind, Metric, Revision, Value } from "@/service/api/project-operations"
 import { LAB_OWNER_AND_MANAGER } from "@/composables/useLabPermissions"
-import { money, readOps } from "@/service/api/project-operations"
+import { canManageCash, canManageContracts, money, readOps } from "@/service/api/project-operations"
 import { request } from "@/service/request"
 import { localDocumentDate } from "@/utils/documentBrowse"
 import { isAxiosError } from "axios"
@@ -209,20 +209,25 @@ async function openEvidence(e: Entry, field: string, download = false) {
     error.value = tr("unavailable")
   }
 }
+const canLead = computed(() => canManageContracts(book.value?.role))
+const canFinance = computed(() => canManageCash(book.value?.role))
 function canEdit(e: Entry) {
   if (!book.value || book.value.role === "viewer" || e.status === "void")
     return false
-  return book.value.role === "finance"
-    ? ["cost", "cash", "closing"].includes(e.kind)
-    : !["cash", "closing"].includes(e.kind)
+  if (e.kind === "cost")
+    return true
+  return ["cash", "closing"].includes(e.kind) ? canFinance.value : canLead.value
 }
-const createKinds = computed<Kind[]>(() =>
-  book.value?.role === "lead"
-    ? ["cost", "contract", "installment", "forecast"]
-    : book.value?.role === "finance"
-      ? ["closing", "cost"]
-      : [],
-)
+const createKinds = computed<Kind[]>(() => {
+  const kinds: Kind[] = []
+  if (canLead.value)
+    kinds.push("contract", "installment", "forecast")
+  if (canFinance.value)
+    kinds.push("closing")
+  if (canLead.value || canFinance.value)
+    kinds.push("cost")
+  return kinds
+})
 </script>
 
 <template>
@@ -251,7 +256,7 @@ const createKinds = computed<Kind[]>(() =>
     <template v-if="book">
       <div class="ops-line">
         <h3>{{ tr("cash") }}</h3>
-        <button v-if="book.role === 'finance'" type="button" class="ops-cash-action" data-testid="new-cash" @click="open('cash')">
+        <button v-if="canFinance" type="button" class="ops-cash-action" data-testid="new-cash" @click="open('cash')">
           {{ tr("addCash") }}
         </button>
         <button type="button" @click="showEntries('cash')">
@@ -434,7 +439,7 @@ const createKinds = computed<Kind[]>(() =>
               {{ tr("edit") }}
             </button>
             <button
-              v-if="book.role === 'finance' || current.status !== 'verified'"
+              v-if="canFinance || current.status !== 'verified'"
               @click="editor = { entry: current, kind: current.kind, action: 'void' }"
             >
               {{ tr("void") }}
@@ -442,7 +447,7 @@ const createKinds = computed<Kind[]>(() =>
           </template>
           <template
             v-if="
-              book.role === 'finance'
+              canFinance
                 && current.kind === 'cost'
                 && ['pending', 'returned'].includes(current.status)
             "

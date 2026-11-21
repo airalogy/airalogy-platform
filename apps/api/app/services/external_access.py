@@ -44,6 +44,9 @@ SCOPES = {
     "projects:create",
     "cash:read",
     "cash:create",
+    "contracts:read",
+    "contracts:create",
+    "cash:link",
     "collaboration:read",
     "collaboration:write",
     "protocols:read",
@@ -232,7 +235,12 @@ async def create_grant(db, user, params):
         fail("grant_name_required", 422)
     if not set(params.scopes) <= SCOPES:
         fail("invalid_scopes", 422)
-    from app.services.external_project_ledger import CASH_SCOPES, ORG_SCOPES, cash_role
+    from app.services.external_project_ledger import (
+        LEDGER_SCOPES,
+        ORG_SCOPES,
+        allows_ledger_scope,
+        cash_role,
+    )
 
     scopes = set(params.scopes)
     if bool(params.organization_id) == bool(params.project_id):
@@ -270,23 +278,23 @@ async def create_grant(db, user, params):
             db, user, lab_id, params.selected_project_ids
         ):
             checked.add(candidate.id)
-            if scopes & CASH_SCOPES:
+            if scopes & LEDGER_SCOPES:
                 role = await cash_role(db, user, candidate)
-                allowed = bool(role) and (
-                    "cash:create" not in scopes or role == "finance"
+                allowed = all(
+                    allows_ledger_scope(role, s) for s in scopes & LEDGER_SCOPES
                 )
                 if not allowed and params.project_coverage == "selected":
                     fail("cash_role_required")
                 cash_allowed |= allowed
         if params.selected_project_ids and checked != set(params.selected_project_ids):
             fail("external_access_forbidden")
-        if scopes & CASH_SCOPES and not cash_allowed:
+        if scopes & LEDGER_SCOPES and not cash_allowed:
             fail("cash_role_required")
     elif project:
         await check_user_permission(db, project, user, "read_project")
-        if scopes & CASH_SCOPES:
+        if scopes & LEDGER_SCOPES:
             role = await cash_role(db, user, project)
-            if not role or ("cash:create" in scopes and role != "finance"):
+            if not all(allows_ledger_scope(role, s) for s in scopes & LEDGER_SCOPES):
                 fail("cash_role_required")
     else:
         from app.services.project_operations import organization
@@ -1205,16 +1213,19 @@ async def tool_call(db, access, name, args):
 
 
 async def available_cash_tools(db, access):
-    from app.services.external_project_ledger import CASH_SCOPES, REQUIRED, cash_role
+    from app.services.external_project_ledger import (
+        LEDGER_SCOPES,
+        REQUIRED,
+        allows_ledger_scope,
+        cash_role,
+    )
 
-    scopes = CASH_SCOPES.intersection(access.grant.scopes)
+    scopes = LEDGER_SCOPES.intersection(access.grant.scopes)
     if not scopes:
         return []
     role = await cash_role(db, access.user, access.project)
     return [
         name
         for name, permission in REQUIRED.items()
-        if permission in scopes
-        and role
-        and (permission != "cash:create" or role == "finance")
+        if permission in scopes and allows_ledger_scope(role, permission)
     ]

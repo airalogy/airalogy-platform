@@ -12,7 +12,7 @@ from app.config import config
 from app.models.external_access import ExternalProjectReceipt
 from app.models.lab import Lab
 from app.models.project import Project, ProjectType
-from app.models.project_operations import OperationsEntry
+from app.models.project_operations import OperationsEntry, OperationsEvent
 from app.routers.utils import UidStr
 from app.services import project_operations as ops
 from app.services.browser_paths import project_browser_path
@@ -23,7 +23,13 @@ from app.services.external_access import (
     fail,
     scope,
 )
-from app.services.operations_contracts import Cash, Change
+from app.services.operations_contracts import (
+    Cash,
+    Change,
+    Contract,
+    can_manage_cash,
+    can_manage_contracts,
+)
 from app.services.operations_totals import summarize
 
 Lookup = Annotated[
@@ -57,7 +63,43 @@ class RecordCash(StrictModel):
     cash: Cash
 
 
+class ContractPage(CashPage):
+    number: Lookup | None = None
+
+
+class SignedContract(Contract):
+    state: Literal["signed"]
+    number: Lookup
+
+
+class RegisterContract(StrictModel):
+    request_id: UUID
+    contract: SignedContract
+
+
+class LinkReceipt(StrictModel):
+    request_id: UUID
+    cash_id: UUID
+    contract_id: UUID
+    expected_revision: int = Field(ge=1)
+
+
 TOOLS = {
+    "list_project_contracts": (
+        "List active project contracts or look up an exact contract number. Amounts and collections are integer CNY fen.",
+        ContractPage,
+        True,
+    ),
+    "register_project_contract": (
+        "Register a signed contract with its actual signing date and gross amount in CNY fen. Check its number first. This creates no cash. Reuse request_id on retry.",
+        RegisterContract,
+        False,
+    ),
+    "link_project_receipt": (
+        "Assign an existing customer receipt to a signed contract without creating cash. Supply its current revision. Reuse request_id on retry.",
+        LinkReceipt,
+        False,
+    ),
     "find_organization_project": (
         "Find a readable project by exact name, UID or contract number in the authorized organization.",
         FindProject,
@@ -80,13 +122,26 @@ TOOLS = {
     ),
 }
 REQUIRED = {
+    "list_project_contracts": "contracts:read",
+    "register_project_contract": "contracts:create",
+    "link_project_receipt": "cash:link",
     "find_organization_project": "projects:find",
     "create_private_project": "projects:create",
     "list_project_cash": "cash:read",
     "record_project_cash": "cash:create",
 }
 ORG_SCOPES = {"projects:find", "projects:create"}
-CASH_SCOPES = {"cash:read", "cash:create"}
+LEDGER_SCOPES = set(REQUIRED.values()) - ORG_SCOPES
+
+
+def allows_ledger_scope(role, permission):
+    if permission in {"cash:read", "contracts:read"}:
+        return role in {"lead", "finance", "lead_finance", "viewer"}
+    if permission == "contracts:create":
+        return can_manage_contracts(role)
+    if permission in {"cash:create", "cash:link"}:
+        return can_manage_cash(role)
+    return False
 
 
 async def cash_role(db, user, project):
@@ -211,6 +266,107 @@ async def register(db, user, org, args):
     return project_info(org, project)
 
 
+async def list_contracts(db, pid, args, url):
+    rows = await ops.records(db, pid)
+    totals = summarize(rows, date.today())
+    number = args.number.casefold() if args.number else None
+    items = []
+    for row in rows:
+        data = row["data"]
+        if row["kind"] != "contract" or row["status"] == "void":
+            continue
+        if number and number != data.get("number", "").strip().casefold():
+            continue
+        amounts = totals["contracts"][row["id"]]
+        items.append(
+            {
+                "id": row["id"],
+                "revision": row["revision"],
+                **{
+                    k: data.get(k)
+                    for k in (
+                        "number",
+                        "title",
+                        "customer",
+                        "state",
+                        "signed_date",
+                        "gross",
+                    )
+                },
+                "received": amounts["received"],
+                "remaining": amounts["outstanding"],
+                "url": url + "?entry=" + row["id"],
+            }
+        )
+    end = args.offset + 50
+    return {
+        "unit": "CNY_fen",
+        "items": items[args.offset : end],
+        "next_offset": end if len(items) > end else None,
+        "totals": {
+            k: totals[k] for k in ("gross", "contract_received", "contract_remaining")
+        },
+    }
+
+
+async def link_receipt(db, user, project, args):
+    # Project writes and grant changes share the same project lock with the browser.
+    prior = await db.scalar(
+        select(OperationsEvent).where(
+            OperationsEvent.project_id == project.id,
+            OperationsEvent.request_id == args.request_id,
+        )
+    )
+    cash = await db.get(OperationsEntry, args.cash_id, populate_existing=True)
+    if not cash or cash.project_id != project.id or cash.kind != "cash":
+        fail("receipt_unavailable", 404)
+    if prior:
+        if prior.entry_id != cash.id or prior.actor_id != user.id or not prior.before:
+            fail("request_id_conflict", 409)
+        source = prior.before["data"]
+    else:
+        if cash.revision != args.expected_revision:
+            fail("receipt_revision_conflict", 409)
+        target = await db.get(OperationsEntry, args.contract_id)
+        if (
+            not target
+            or target.project_id != project.id
+            or target.kind != "contract"
+            or target.status == "void"
+            or target.data["state"] != "signed"
+        ):
+            fail("signed_contract_unavailable", 404)
+        source = cash.data
+        if (
+            cash.status != "verified"
+            or source["direction"] != "in"
+            or source.get("receipt_purpose") == "other_income"
+        ):
+            fail("customer_receipt_required", 422)
+        if source.get("installment_id") or source.get("contract_id"):
+            fail("receipt_already_assigned", 409)
+    data = Cash.model_validate(
+        {
+            **source,
+            "contract_id": args.contract_id,
+            "receipt_purpose": "customer_receipt",
+        }
+    )
+    return await ops.save(
+        db,
+        user,
+        project.id,
+        Change(
+            request_id=args.request_id,
+            entry_id=args.cash_id,
+            expected_revision=args.expected_revision,
+            reason="Link receipt to signed contract",
+            data=data,
+        ),
+        commit=False,
+    )
+
+
 async def call(db, access, name, args):
     required = REQUIRED[name]
     scope(access, required)
@@ -230,7 +386,7 @@ async def call(db, access, name, args):
     if not access.project:
         fail("insufficient_scope")
     project, _, role, _, _ = await ops.project_access(
-        db, access.user, access.project.id
+        db, access.user, access.project.id, write=name == "link_project_receipt"
     )
     org = await db.get(Lab, project.lab_id)
     url = (
@@ -238,9 +394,18 @@ async def call(db, access, name, args):
         + project_browser_path(org.uid, project.uid)
         + "/operations"
     )
-    if name == "record_project_cash":
-        if role != "finance":
-            fail("cash_finance_role_required")
+    if not allows_ledger_scope(role, required):
+        fail(
+            "cash_finance_role_required"
+            if required in {"cash:create", "cash:link"}
+            else "ledger_role_required"
+        )
+    if name == "list_project_contracts":
+        return await list_contracts(db, project.id, args, url)
+    if name == "link_project_receipt":
+        result = await link_receipt(db, access.user, project, args)
+        return {**result, "url": url + "?entry=" + result["id"]}
+    if name in {"register_project_contract", "record_project_cash"}:
         result = await ops.save(
             db,
             access.user,
@@ -249,7 +414,7 @@ async def call(db, access, name, args):
                 request_id=args.request_id,
                 entry_id=uuid5(project.id, str(args.request_id)),
                 expected_revision=0,
-                data=args.cash,
+                data=args.cash if name == "record_project_cash" else args.contract,
             ),
             commit=False,
         )

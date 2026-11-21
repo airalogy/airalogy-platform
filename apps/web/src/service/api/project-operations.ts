@@ -1,6 +1,15 @@
 import { documentRequest } from "./research-documents"
 
-export type BusinessRole = "lead" | "finance" | "viewer"
+export type BusinessRole = "lead" | "finance" | "lead_finance" | "viewer"
+
+export function canManageContracts(role?: string | null) {
+  return role === "lead" || role === "lead_finance"
+}
+
+export function canManageCash(role?: string | null) {
+  return role === "finance" || role === "lead_finance"
+}
+
 export type Kind = "contract" | "installment" | "cost" | "cash" | "forecast" | "closing"
 export interface DocRef {
   id: string

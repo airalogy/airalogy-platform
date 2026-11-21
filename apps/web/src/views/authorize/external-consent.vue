@@ -33,7 +33,7 @@ watch(projects, (items) => {
   projectId.value = items.length === 1 ? items[0].value : null
 })
 watch([requestedScopes, projectId, target], () => {
-  approvedScopes.value = requestedScopes.value.filter(eligible)
+  approvedScopes.value = requestedScopes.value.filter(s => eligible(s) && !["contracts:read", "contracts:create", "cash:link"].includes(s))
   reviewed.value = false
 })
 watch(approvedScopes, () => {

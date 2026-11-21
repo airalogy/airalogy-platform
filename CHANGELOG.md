@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project ledger roles can combine contract management and cash posting. One project-scoped MCP connection can look up and register signed contracts, link an existing customer receipt, and check collections with separately approved scopes.
+
 - Project operations opens on cash totals and entries. Projects with contracts also show signed tax-inclusive value, attributable receipts and remaining collections, with drill-downs by amount and contract.
 
 - Project navigation now uses “Work items” and “Operations”, including “Operations” in the More menu.

@@ -41,6 +41,7 @@ from app.models.user import User
 from app.routers import external_access as api
 from app.routers.depends import create_access_token
 from app.services import external_access as service
+from app.services.external_project_ledger import LEDGER_SCOPES, ORG_SCOPES
 from app.services.account_security import bump_auth_version
 from tests.test_record_analysis_postgres import add_record, database, seed_analysis
 
@@ -151,8 +152,7 @@ async def grant(http, scope, *, user=None, scopes=None):
             "name": "Synthetic Agent",
             "scopes": scopes
             or sorted(
-                service.SCOPES
-                - {"projects:find", "projects:create", "cash:read", "cash:create"}
+                service.SCOPES - ORG_SCOPES - LEDGER_SCOPES
             ),
             "expires_in_days": 1,
         },

@@ -21,7 +21,11 @@ from app.models.project_work import ProjectWork
 from app.models.user import User
 from app.routers.labs import require_configured_single_lab, require_lab_membership
 from app.services.knowledge import authorize_research_file, canonical_digest
-from app.services.operations_contracts import Change
+from app.services.operations_contracts import (
+    Change,
+    can_manage_cash,
+    can_manage_contracts,
+)
 from app.services.project_people import organization_display_name
 from app.services.project_work import evidence_view
 from app.services.research_runtime import has_research_capability
@@ -218,9 +222,9 @@ async def save(db, user, pid, change: Change, *, commit=True):
     data = change.data.model_dump(mode="json") if change.data else entry.data
     if data["kind"] != kind or (entry and entry.status == "void"):
         raise HTTPException(409, "Record cannot be changed")
-    if role == "finance" and kind not in {"cost", "cash", "closing"}:
+    if not can_manage_contracts(role) and kind not in {"cost", "cash", "closing"}:
         raise HTTPException(403, "Project lead authorization required")
-    if role != "finance" and (
+    if not can_manage_cash(role) and (
         kind in {"cash", "closing"} or change.action in {"verify", "return"}
     ):
         raise HTTPException(403, "Finance authorization required")
@@ -230,10 +234,10 @@ async def save(db, user, pid, change: Change, *, commit=True):
             raise HTTPException(409, "Only submitted costs can be reviewed")
         status = "verified" if change.action == "verify" else "returned"
     elif change.action == "void":
-        if status == "verified" and role != "finance":
+        if status == "verified" and not can_manage_cash(role):
             raise HTTPException(403, "Finance authorization required")
         status = "void"
-    elif kind == "cost" and status == "verified" and role != "finance":
+    elif kind == "cost" and status == "verified" and not can_manage_cash(role):
         if {k: v for k, v in data.items() if k != "contract_id"} != {
             k: v for k, v in entry.data.items() if k != "contract_id"
         }:
@@ -245,6 +249,21 @@ async def save(db, user, pid, change: Change, *, commit=True):
     elif kind in {"cash", "closing"}:
         status = "verified"
     rows = await records(db, pid)
+    if (
+        kind == "contract"
+        and status != "void"
+        and (number := data.get("number", "").strip().casefold())
+    ):
+        if any(
+            r["kind"] == "contract"
+            and r["status"] != "void"
+            and r["id"] != str(change.entry_id)
+            and r["data"].get("number", "").strip().casefold() == number
+            for r in rows
+        ):
+            raise HTTPException(
+                409, "Contract number already registered in this project"
+            )
     if kind in {"forecast", "closing"} and any(
         r["kind"] == kind and r["status"] != "void" and r["id"] != str(change.entry_id)
         for r in rows
@@ -265,7 +284,7 @@ async def save(db, user, pid, change: Change, *, commit=True):
     entry.data = data
     entry.status = status
     entry.revision += 1
-    if status == "verified" and role == "finance":
+    if status == "verified" and can_manage_cash(role):
         entry.verified_by = user.id
         entry.verified_at = datetime.now(UTC)
     after = snapshot(entry)

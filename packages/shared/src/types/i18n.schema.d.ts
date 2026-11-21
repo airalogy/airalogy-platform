@@ -47,6 +47,9 @@ declare namespace I18n {
       findProject: string
       registerProject: string
       readCash: string
+      readContracts: string
+      createContracts: string
+      linkReceipt: string
       postCash: string
       target: string
       organizationProjects: string
@@ -5917,6 +5920,7 @@ declare namespace I18n {
         noAccess: string
         saveAccess: string
         lead: string
+        lead_finance: string
         finance: string
         viewer: string
         gross: string

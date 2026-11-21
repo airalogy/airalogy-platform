@@ -9,7 +9,17 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Money = Annotated[int, Field(strict=True, ge=0, le=999_999_999_999)]
 PositiveMoney = Annotated[int, Field(strict=True, gt=0, le=999_999_999_999)]
-Role = Literal["lead", "finance", "viewer"]
+Role = Literal["lead", "finance", "lead_finance", "viewer"]
+
+
+def can_manage_contracts(role):
+    return role in {"lead", "lead_finance"}
+
+
+def can_manage_cash(role):
+    return role in {"finance", "lead_finance"}
+
+
 Title = Annotated[str, Field(min_length=1, max_length=255)]
 Note = Annotated[str, Field(max_length=4000)]
 

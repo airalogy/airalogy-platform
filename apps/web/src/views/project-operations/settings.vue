@@ -87,7 +87,7 @@ async function save(scope: "org" | "book") {
     busy.value = false
   }
 }
-const roles: BusinessRole[] = ["lead", "finance", "viewer"]
+const roles: BusinessRole[] = ["lead", "finance", "lead_finance", "viewer"]
 </script>
 
 <template>
