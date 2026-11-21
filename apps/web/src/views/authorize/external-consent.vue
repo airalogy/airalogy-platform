@@ -6,7 +6,7 @@ import { consentExternalOAuth, getExternalDashboard, readExternalOAuthRequest } 
 import { useAuthStore } from "@/store/modules/auth"
 import ExternalGuideLink from "@/views/external-access/components/external-guide-link.vue"
 import GrantDuration from "@/views/external-access/components/grant-duration.vue"
-import { coveredProjects, eligibleScope, projectTarget, scopeLabel } from "@/views/external-access/components/project-coverage"
+import { canRegisterAndLink, contractReceiptScopes, coveredProjects, eligibleScope, projectTarget, scopeLabel } from "@/views/external-access/components/project-coverage"
 import ProjectCoveragePicker from "@/views/external-access/components/project-coverage-picker.vue"
 import { $t } from "@airalogy/shared/locales"
 
@@ -29,6 +29,10 @@ const reviewed = ref(false)
 function eligible(scope: string) {
   return organizationMode.value || eligibleScope(scope, destinations.value, target.value.mode === "accessible")
 }
+const showContractPreset = computed(() => !organizationMode.value && requestedScopes.value.some(s => contractReceiptScopes.includes(s)))
+const missingClientScopes = computed(() => contractReceiptScopes.filter(s => !requestedScopes.value.includes(s)))
+const missingAccountScopes = computed(() => contractReceiptScopes.filter(s => !eligible(s)))
+const canSelectContractPreset = computed(() => hasTarget.value && !missingClientScopes.value.length && canRegisterAndLink(destinations.value, target.value.mode === "accessible"))
 watch(projects, (items) => {
   projectId.value = items.length === 1 ? items[0].value : null
 })
@@ -125,6 +129,20 @@ onMounted(load)
           <n-button text :disabled="!approvedScopes.length" @click="approvedScopes = []">
             {{ $t("accountSettings.clear") }}
           </n-button>
+        </div>
+        <div v-if="showContractPreset" class="space-y-1">
+          <n-button data-testid="oauth-contract-receipt" :disabled="!canSelectContractPreset" @click="approvedScopes = [...contractReceiptScopes]">
+            {{ $t("externalAccess.contractReceiptPreset") }}
+          </n-button>
+          <p v-if="missingClientScopes.length" class="break-words text-sm" role="status">
+            {{ $t("externalAccess.clientMissingScopes", { scopes: missingClientScopes.map(scopeLabel).join(" · ") }) }}
+          </p>
+          <p v-else-if="hasTarget && missingAccountScopes.length" class="break-words text-sm" role="status">
+            {{ $t("externalAccess.accountMissingScopes", { scopes: missingAccountScopes.map(scopeLabel).join(" · ") }) }}
+          </p>
+          <p v-else-if="hasTarget && !canSelectContractPreset" class="text-sm" role="status">
+            {{ $t("externalAccess.contractReceiptProjectRequired") }}
+          </p>
         </div>
         <n-checkbox-group v-model:value="approvedScopes" class="flex flex-wrap gap-3">
           <n-checkbox v-for="scope in requestedScopes" :key="scope" :value="scope" :disabled="!eligible(scope)">

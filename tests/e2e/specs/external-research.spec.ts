@@ -98,7 +98,15 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     const query = new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: callback, state: randomUUID(), code_challenge: createHash("sha256").update(verifier).digest("base64url"), code_challenge_method: "S256", resource: `${origin}/api/mcp`, scope: "protocols:read records:read" })
     // Intercept only the loopback delivery; all consent and code exchange use the real API.
     await page.route(`${callback}*`, route => route.fulfill({ contentType: "text/plain", body: "Synthetic callback received" }))
+    const cashOnly = new URLSearchParams(query)
+    cashOnly.set("scope", "cash:read")
+    await page.goto(`/api/external-access/oauth/authorize?${cashOnly}`)
+    await expect(page.getByTestId("oauth-contract-receipt")).toBeDisabled()
+    const missing = page.getByRole("status").filter({ hasText: strings.createContracts })
+    await expect(missing).toContainText(strings.readContracts)
+    await expect(missing).toContainText(strings.linkReceipt)
     await page.goto(`/api/external-access/oauth/authorize?${query}`)
+    await expect(page.getByTestId("oauth-contract-receipt")).toHaveCount(0)
     await expect(page.getByText("Synthetic PKCE client", { exact: true })).toBeVisible()
     const selector = page.getByTestId("oauth-project")
     if (!(await selector.textContent() || "").includes("Quickstart Protocol Testing")) {

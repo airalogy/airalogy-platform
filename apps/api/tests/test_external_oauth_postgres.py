@@ -174,6 +174,54 @@ def test_pkce_consent_code_replay_and_resource_binding(coverage):
                     response.json()["result"]["structuredContent"]["project_coverage"]
                     == coverage
                 )
+            if coverage != "organization":
+                from app.models.project_operations import (
+                    OperationsBook,
+                    OperationsOrganization,
+                )
+
+                async with sessions() as db:
+                    db.add(
+                        OperationsOrganization(
+                            organization_id=scope.lab.id, enabled=True, revision=1
+                        )
+                    )
+                    await db.flush()
+                    db.add(
+                        OperationsBook(
+                            project_id=scope.project.id, enabled=True, revision=1
+                        )
+                    )
+                    await db.commit()
+                checked = await http.post(
+                    "/mcp",
+                    headers=headers,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "check_contract_receipt_access",
+                            "arguments": (
+                                {"project_id": str(scope.project.id)}
+                                if coverage != "single"
+                                else {}
+                            ),
+                        },
+                    },
+                )
+                result = checked.json()["result"]
+                assert result["isError"]
+                challenge = checked.headers["www-authenticate"]
+                assert result["_meta"]["mcp/www_authenticate"] == [challenge]
+                assert 'error="insufficient_scope"' in challenge
+                assert set(challenge.split('scope="')[1].split('"')[0].split()) == {
+                    *credentials["scope"].split(),
+                    "contracts:read",
+                    "contracts:create",
+                    "cash:read",
+                    "cash:link",
+                }
             no_credential = await http.post("/mcp", json={})
             assert (
                 no_credential.status_code == 401

@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- MCP reports the exact connection scopes missing for contract registration and receipt linking. Supported OAuth clients can reauthorize the current connection, and a consent preset selects the four workflow permissions.
+
 - Project owners inherit contract and cash access in enabled project books, subject to explicit view-only access. OAuth consent can select all available permissions for the chosen target in one step.
 
 - Project ledger roles can combine contract management and cash posting. One project-scoped MCP connection can look up and register signed contracts, link an existing customer receipt, and check collections with separately approved scopes.

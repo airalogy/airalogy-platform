@@ -47,6 +47,13 @@ export function eligibleScope(scope: string, projects: Project[], ongoing: boole
   return projects.length > 0 && (ongoing ? projects.some(allows) : projects.every(allows))
 }
 
+export const contractReceiptScopes = ["contracts:read", "contracts:create", "cash:read", "cash:link"]
+
+export function canRegisterAndLink(projects: Project[], ongoing: boolean) {
+  const allows = (p: Project) => canManageContracts(p.cash_role) && canManageCash(p.cash_role)
+  return projects.length > 0 && (ongoing ? projects.some(allows) : projects.every(allows))
+}
+
 const scopeLabels = {
   "projects:find": "externalAccess.findProject",
   "projects:create": "externalAccess.registerProject",

@@ -1,6 +1,7 @@
 """One organization, several accounts, both external transports and live role changes."""
 
 import asyncio
+import json
 import os
 from uuid import UUID, uuid4
 
@@ -238,7 +239,11 @@ def test_personal_roles_project_registration_and_cash():
             ).status_code == 403
             assert {
                 t["name"] for t in (await rpc(http, finance, "tools/list"))["tools"]
-            } == {"access_context", "list_project_cash"}
+            } == {
+                "access_context",
+                "check_contract_receipt_access",
+                "list_project_cash",
+            }
             assert (
                 await rpc(
                     http,
@@ -442,6 +447,12 @@ def test_contract_and_existing_receipt_in_one_connection():
                     http, s, user=s.analyst, scopes=["cash:read", "cash:create"]
                 )
             )["token"]
+            check = "check_contract_receipt_access"
+            before = await rpc(http, old, "tools/call", name=check, arguments={})
+            denied = json.loads(before["content"][0]["text"])
+            assert before["isError"] and "_meta" not in before
+            assert denied["unavailable_to_account"] == ["contracts:create"]
+            assert denied["code"] == "ledger_role_required"
             owner_token = (await issue(http, s.owner, project, scopes)).json()["token"]
             assert (
                 await call(http, owner_token, "list_project_contracts")
@@ -459,6 +470,27 @@ def test_contract_and_existing_receipt_in_one_connection():
                 "list_project_contracts",
             } <= names
             assert (await call(http, old, "list_project_contracts")).status_code == 403
+            diagnostic = await call(http, old, check)
+            missing = ["contracts:read", "contracts:create", "cash:link"]
+            assert diagnostic.status_code == 403
+            assert diagnostic.json()["detail"]["missing_scopes"] == missing
+            tool_list = (await rpc(http, old, "tools/list"))["tools"]
+            descriptor = next(t for t in tool_list if t["name"] == check)
+            assert descriptor["annotations"]["readOnlyHint"]
+            assert (
+                descriptor["_meta"]["securitySchemes"] == descriptor["securitySchemes"]
+            )
+            assert set(descriptor["securitySchemes"][0]["scopes"]) == set(scopes) - {
+                "cash:create"
+            }
+            assert not any(t["name"] == "register_project_contract" for t in tool_list)
+            preflight = await rpc(http, old, "tools/call", name=check, arguments={})
+            assert preflight["isError"] and "_meta" not in preflight
+            assert (
+                json.loads(preflight["content"][0]["text"])["missing_scopes"] == missing
+            )
+            ready = (await call(http, token, check)).json()
+            assert ready["missing_scopes"] == ready["unavailable_to_account"] == []
             lookup = {"number": "  Test-001 "}
             assert (await call(http, token, "list_project_contracts", **lookup)).json()[
                 "items"

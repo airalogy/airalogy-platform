@@ -489,7 +489,12 @@ async def visible_tools(db, access):
     if access.project is None:
         return ["access_context", *context["tools"]]
     scopes = set(access.grant.scopes)
-    names = ["access_context", *context["collaboration_tools"], *context["cash_tools"]]
+    names = [
+        "access_context",
+        ledger.CHECK_CONTRACT_RECEIPT,
+        *context["collaboration_tools"],
+        *context["cash_tools"],
+    ]
     if "protocols:read" not in scopes:
         return names
     if "records:export" in scopes and not await can_export_records(
@@ -545,6 +550,14 @@ def delegated_schema(name, multi):
             "annotations": {"readOnlyHint": True},
         }
     result = tool_schema(name)
+    if name == ledger.CHECK_CONTRACT_RECEIPT or name in ledger.REQUIRED:
+        required = (
+            list(ledger.CONTRACT_RECEIPT_SCOPES)
+            if name == ledger.CHECK_CONTRACT_RECEIPT
+            else [ledger.REQUIRED[name]]
+        )
+        schemes = [{"type": "oauth2", "scopes": required}]
+        result.update(securitySchemes=schemes, _meta={"securitySchemes": schemes})
     if multi:
         schema = result["inputSchema"]
         schema["properties"]["project_id"] = {
@@ -624,6 +637,21 @@ def safe_error(error):
         if isinstance(error, ValidationError)
         else "request_failed_use_platform"
     }
+
+
+def scope_challenge(detail, oauth_connection, granted_scopes):
+    if (
+        not oauth_connection
+        or detail.get("code") != "insufficient_scope"
+        or not detail.get("missing_scopes")
+    ):
+        return None
+    scopes = " ".join(sorted(granted_scopes.union(detail["missing_scopes"])))
+    metadata_url = config.SITE_URL.rstrip("/") + "/.well-known/oauth-protected-resource"
+    return (
+        f'Bearer resource_metadata="{metadata_url}", error="insufficient_scope", '
+        f'scope="{scopes}", error_description="Reauthorize this connection for the selected project"'
+    )
 
 
 async def dispatch(db, access, name, arguments):
@@ -750,6 +778,9 @@ async def mcp(
             }
         raise
     actor_id, grant_id = access.user.id, access.grant.id
+    # Capture before rollback expires ORM attributes in an unsuccessful tool call.
+    oauth_connection = access.grant.oauth_client_id is not None
+    granted_scopes = set(access.grant.scopes)
     headers = {"Cache-Control": "no-store"}
     if request.method != "POST":
         return Response(status_code=405, headers={**headers, "Allow": "POST"})
@@ -886,6 +917,10 @@ async def mcp(
                 }
             ],
         }
+        challenge = scope_challenge(code, oauth_connection, granted_scopes)
+        if challenge:
+            result["_meta"] = {"mcp/www_authenticate": [challenge]}
+            headers["WWW-Authenticate"] = challenge
         service.audit(
             db, actor_id, "tool.denied", grant_id, tool=str(params.get("name", ""))[:80]
         )

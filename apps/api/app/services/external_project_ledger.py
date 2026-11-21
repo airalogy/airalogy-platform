@@ -84,7 +84,20 @@ class LinkReceipt(StrictModel):
     expected_revision: int = Field(ge=1)
 
 
+CONTRACT_RECEIPT_SCOPES = (
+    "contracts:read",
+    "contracts:create",
+    "cash:read",
+    "cash:link",
+)
+CHECK_CONTRACT_RECEIPT = "check_contract_receipt_access"
+
 TOOLS = {
+    CHECK_CONTRACT_RECEIPT: (
+        "Check this project's account and connection permissions before registering a contract and linking existing cash. If scopes are missing, reauthorize this same connection.",
+        StrictModel,
+        True,
+    ),
     "list_project_contracts": (
         "List active project contracts or look up an exact contract number. Amounts and collections are integer CNY fen.",
         ContractPage,
@@ -142,6 +155,19 @@ def allows_ledger_scope(role, permission):
     if permission in {"cash:create", "cash:link"}:
         return can_manage_cash(role)
     return False
+
+
+def contract_receipt_access(access, role):
+    return {
+        "required_scopes": list(CONTRACT_RECEIPT_SCOPES),
+        "missing_scopes": [
+            s for s in CONTRACT_RECEIPT_SCOPES if s not in access.grant.scopes
+        ],
+        "unavailable_to_account": [
+            s for s in CONTRACT_RECEIPT_SCOPES if not allows_ledger_scope(role, s)
+        ],
+        "check_tool": CHECK_CONTRACT_RECEIPT,
+    }
 
 
 async def cash_role(db, user, project):
@@ -368,9 +394,29 @@ async def link_receipt(db, user, project, args):
 
 
 async def call(db, access, name, args):
+    if name == CHECK_CONTRACT_RECEIPT:
+        if not access.project:
+            fail("project_connection_required")
+        role = await cash_role(db, access.user, access.project)
+        status = contract_receipt_access(access, role)
+        if status["unavailable_to_account"]:
+            raise HTTPException(403, {"code": "ledger_role_required", **status})
+        if status["missing_scopes"]:
+            raise HTTPException(
+                403,
+                {
+                    "code": "insufficient_scope",
+                    "next_action": "reauthorize_current_connection"
+                    if access.grant.oauth_client_id
+                    else "update_client_token",
+                    "project_id": str(access.project.id),
+                    **status,
+                },
+            )
+        return status
     required = REQUIRED[name]
-    scope(access, required)
     if required in ORG_SCOPES:
+        scope(access, required)
         if not access.grant.organization_id:
             fail("insufficient_scope")
         org, _, _ = await ops.organization(
@@ -400,6 +446,7 @@ async def call(db, access, name, args):
             if required in {"cash:create", "cash:link"}
             else "ledger_role_required"
         )
+    scope(access, required)
     if name == "list_project_contracts":
         return await list_contracts(db, project.id, args, url)
     if name == "link_project_receipt":

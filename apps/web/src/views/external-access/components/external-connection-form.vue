@@ -7,7 +7,7 @@ import { $t } from "@airalogy/shared/locales"
 import { copyToClip } from "@airalogy/shared/utils"
 import ExternalGuideLink from "./external-guide-link.vue"
 import GrantDuration from "./grant-duration.vue"
-import { coveredProjects, eligibleScope, externalScopes, projectTarget, scopeLabel } from "./project-coverage"
+import { canRegisterAndLink, contractReceiptScopes, coveredProjects, eligibleScope, externalScopes, projectTarget, scopeLabel } from "./project-coverage"
 import ProjectCoveragePicker from "./project-coverage-picker.vue"
 
 const props = defineProps<{ projects: ExternalDashboard["projects"], organizations?: ExternalDashboard["organizations"], projectId?: string, failed: boolean }>()
@@ -47,6 +47,7 @@ const projectOptions = computed(() => props.projects.map(p => ({ value: p.id, la
 const presets: Record<string, string[]> = {
   register: ["projects:find", "projects:create"],
   cash: ["cash:read"],
+  contractReceipt: contractReceiptScopes,
   collaborate: ["collaboration:read", "collaboration:write"],
   read: ["protocols:read", "records:read"],
   analyze: ["protocols:read", "records:read", "records:export", "analysis:read", "analysis:write"],
@@ -165,6 +166,9 @@ onBeforeUnmount(dismiss)
       </n-alert>
       <n-form-item v-if="!organizationMode" :label="$t('externalOnboarding.purpose')">
         <div class="grid w-full gap-2 sm:grid-cols-2">
+          <n-button v-if="canRegisterAndLink(destinations, target.mode === 'accessible')" data-testid="external-preset-contract-receipt" :aria-pressed="preset === 'contractReceipt'" :type="preset === 'contractReceipt' ? 'primary' : 'default'" :secondary="preset === 'contractReceipt'" class="min-h-12 h-auto! whitespace-normal! py-2!" @click="applyPreset('contractReceipt')">
+            {{ $t("externalAccess.contractReceiptPreset") }}
+          </n-button>
           <n-button v-for="kind in ['collaborate', 'read', 'analyze', 'author', ...(allowed('cash:read') ? ['cash'] : [])]" :key="kind" :data-testid="`external-preset-${kind}`" :aria-pressed="preset === kind" :type="preset === kind ? 'primary' : 'default'" :secondary="preset === kind" class="min-h-12 h-auto! whitespace-normal! py-2!" :disabled="(kind === 'analyze' && !allowed('records:export')) || (kind === 'author' && !allowed('protocols:candidate'))" @click="applyPreset(kind)">
             {{ $t(kind === 'cash' ? 'externalAccess.readCash' : kind === 'collaborate' ? 'externalOnboarding.collaborate' : kind === 'read' ? 'externalOnboarding.read' : kind === 'analyze' ? 'externalOnboarding.analyze' : 'externalOnboarding.author') }}
           </n-button>

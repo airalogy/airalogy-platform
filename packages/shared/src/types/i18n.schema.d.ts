@@ -49,6 +49,10 @@ declare namespace I18n {
       readCash: string
       readContracts: string
       createContracts: string
+      contractReceiptProjectRequired: string
+      contractReceiptPreset: string
+      clientMissingScopes: string
+      accountMissingScopes: string
       linkReceipt: string
       postCash: string
       target: string

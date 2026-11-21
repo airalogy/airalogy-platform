@@ -442,7 +442,9 @@ async def select_project(db, access, project_id):
 
 def scope(access, required):
     if required not in access.grant.scopes:
-        fail("insufficient_scope")
+        raise HTTPException(
+            403, {"code": "insufficient_scope", "missing_scopes": [required]}
+        )
 
 
 async def protocol_context(
@@ -1026,6 +1028,7 @@ async def tool_call(db, access, name, args):
         from app.build_info import resolve_build_info
         from app.services.research_runtime import has_research_capability
 
+        ledger_role = await ledger.cash_role(db, access.user, access.project)
         collaboration_read = await has_research_capability(
             db, user=access.user, project=access.project, capability="research.read"
         )
@@ -1043,7 +1046,10 @@ async def tool_call(db, access, name, args):
             "result_limit_bytes": 1024 * 1024,
             "project": {"id": str(access.project.id), "name": access.project.name},
             "scopes": access.grant.scopes,
-            "cash_tools": await available_cash_tools(db, access),
+            "cash_tools": available_cash_tools(access, ledger_role),
+            "contract_receipt_access": ledger.contract_receipt_access(
+                access, ledger_role
+            ),
             "collaboration_tools": [
                 name
                 for name, (_, _, readonly) in COLLABORATION_TOOLS.items()
@@ -1212,18 +1218,14 @@ async def tool_call(db, access, name, args):
     fail("unknown_tool", 404)
 
 
-async def available_cash_tools(db, access):
+def available_cash_tools(access, role):
     from app.services.external_project_ledger import (
         LEDGER_SCOPES,
         REQUIRED,
         allows_ledger_scope,
-        cash_role,
     )
 
     scopes = LEDGER_SCOPES.intersection(access.grant.scopes)
-    if not scopes:
-        return []
-    role = await cash_role(db, access.user, access.project)
     return [
         name
         for name, permission in REQUIRED.items()
