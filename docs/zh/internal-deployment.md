@@ -41,6 +41,26 @@ python3 deploy/internal/platform-internal.py ready --bundle /private/ops/candida
 
 检查脚本由维护者审阅；不要用空命令或健康探针冒充完整验收。源码回执必须来自当前干净提交；产物验收必须加载同一镜像归档，在隔离数据上完成登录、权限及受影响的保存/刷新流程。恢复检查须验证当前实例适用的恢复点、数据库恢复、引用文件/协议包完整性和旧应用可用性，记录新增写入的处理方式。失败、缺失、超过 24 小时或摘要不一致的回执均阻止 `ready`；失败重试不会回退采用旧成功结果。
 
+## 通过私有 GHCR 分发
+
+公司联网实例优先从 GHCR 取得 API、Web 和协议执行器。构建机保留完整离线包。服务器拉取已验收的镜像，切换时继续使用清单中的镜像 ID。
+
+1. 构建机使用有包写权限的 Docker 登录，以及能读取该包信息的 GitHub CLI 登录。默认目标是组织私有容器包 `ghcr.io/airalogy/airalogy-platform`，也可给以下两个命令都传入 `--repository ghcr.io/<组织>/<私有包>`。首次使用可选择已有私有包，或先用无业务内容的初始化镜像创建专用包，由管理员确认其可见性为 Private。服务器的 Docker 登录只需包读权限。
+2. 在构建机完成上面的 `ready` 后执行以下命令。工具将同一镜像 ID 推送到私有包，回读每个推送摘要并比对镜像身份，再写入 `ghcr.json`。同一批产物可以重复分发。
+
+   ```bash
+   python3 deploy/internal/platform-internal.py publish-ghcr --bundle /private/ops/candidate
+   ```
+
+3. 通过受信任的私有运维通道，把 `manifest.json`、`ghcr.json`、`source.tar.gz` 和本轮所有 `check-*.json`、`check-*.log` 传到服务器的独立候选目录。检查日志可能含有实例信息。只有镜像进入 GHCR。联网传输可省去 `images.tar`。
+4. 在服务器上使用同版本的部署工具执行以下命令。它先核验源码归档、清单与检查回执，再按目标架构和固定摘要拉取镜像，逐项核对实际镜像 ID、架构与源码提交。成功后继续下节的实例切换。若 GHCR 暂不可用，可传输原包的 `images.tar`，执行 `docker image load -i /private/ops/candidate/images.tar`，再按原流程运行 `ready`。两条路径使用同一批镜像和同一套回执。
+
+   ```bash
+   python3 deploy/internal/platform-internal.py pull-ghcr --bundle /private/ops/candidate
+   ```
+
+若构建机需要从自有 GHCR 镜像库获取执行器的 Python 基础镜像，先将官方 `python:3.13.5-slim` 的完整多架构索引及镜像层按原摘要同步过去，再在 `prepare` 时指定 `--executor-python-repository ghcr.io/<组织>/<python镜像库>`。两个构建阶段都使用 Dockerfile 中固定的索引摘要。默认直接使用 Docker 官方 Python 仓库。
+
 ## 实例切换
 
 `ready` 仅表示三类检查通过，工具不会自动切换生产。实例切换脚本属于私有运维适配，复用已有 Compose 和备份方式：

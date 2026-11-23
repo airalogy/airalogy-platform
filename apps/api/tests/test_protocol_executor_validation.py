@@ -54,6 +54,29 @@ def run_executor(
     return json.loads(result.stdout)
 
 
+def test_protocol_info_preserves_native_titles_and_legacy_ids(tmp_path):
+    aimd = "\n".join([
+        '{{step|review, 1, title="核对标签"}}',
+        '{{step|review_id, 2, check=True, title="确认编号"}}',
+        '{{check|matched, title="编号一致"}}',
+        '{{step|archive}}',
+        '{{check|archived}}',
+    ])
+    result = run_executor(tmp_path, "get_protocol_info", {"env_vars": {}}, aimd=aimd)
+    assert result["success"], result
+    fields = result["data"]["fields"]
+    assert [(s["name"], s["level"], s.get("title")) for s in fields["steps"]] == [
+        ("review", 1, "核对标签"),
+        ("review_id", 2, "确认编号"),
+        ("archive", 1, None),
+    ]
+    assert fields["steps"][1]["check"] is True
+    assert [(c["name"], c.get("title")) for c in fields["checks"]] == [
+        ("matched", "编号一致"),
+        ("archived", None),
+    ]
+
+
 @pytest.mark.parametrize("locale", ["en", "zh"])
 def test_teaching_template_is_executable_and_validated(tmp_path, locale):
     parsed = run_executor(

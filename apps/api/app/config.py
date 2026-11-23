@@ -99,8 +99,8 @@ class Settings(BaseSettings):
     CHAT_MODEL_DEEP: str = "qwen-max"
 
     AIRALOGY_ENGINE_IMAGE: str = (
-        "ghcr.io/airalogy/airalogy-engine:0.16.0@"
-        "sha256:5d26af0a28fc42f042cf079ac6e00b1a4435ff2d1fd02631c5d356bfdd0e08b7"
+        "ghcr.io/airalogy/airalogy-engine:0.19.0@"
+        "sha256:3781620f7cb09f52962aaef59c328c6d4551c7b3e19684a2c6b187ad6d24b10a"
     )
     AIRALOGY_ENGINE_DEBUG: bool = False
     AIRALOGY_ENGINE_BOXLITE_HOME: str | None = None

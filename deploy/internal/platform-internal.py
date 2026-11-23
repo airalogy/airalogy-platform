@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prepare and qualify a private, single-architecture application deployment.
 
-No Git push, tag, registry publication or production change is performed here.
+Only publish-ghcr uploads images. Instance cutover is a separate operation.
 Instance-specific backup, acceptance and cutover commands stay in private ops.
 """
 
@@ -33,6 +33,7 @@ INPUTS = {
     ],
     "executor": [
         "apps/api/protocol_executor.py",
+        "apps/api/protocol_assigners.py",
         "apps/api/protocol_executor.Dockerfile",
         "apps/api/protocol_requirements.txt",
     ],
@@ -45,6 +46,8 @@ PROTECTED = [
     "deploy/single-lab/compose.yml",
 ]
 REQUIRED_CHECKS = {"source", "artifact-acceptance", "recovery"}
+DEFAULT_INTERNAL_REPOSITORY = "ghcr.io/airalogy/airalogy-platform"
+DIGEST = r"sha256:[0-9a-f]{64}"
 
 
 def run(args, **kwargs):
@@ -253,6 +256,11 @@ def prepare(args):
                     command += ["--build-arg", f"{key}={value}"]
                 command += ["-f", "deploy/single-lab/web.Dockerfile", "."]
             else:
+                if role == "executor" and args.executor_python_repository:
+                    command += [
+                        "--build-arg",
+                        f"EXECUTOR_PYTHON_REPOSITORY={args.executor_python_repository}",
+                    ]
                 command += [
                     "-f",
                     "apps/api/"
@@ -331,7 +339,7 @@ def prepare(args):
     print("Private bundle prepared; validation and deployment have not been performed.")
 
 
-def load_bundle(directory):
+def load_bundle(directory, *, require_image_archive=True):
     directory = Path(directory).resolve()
     manifest = json.loads((directory / "manifest.json").read_text())
     if (
@@ -343,23 +351,23 @@ def load_bundle(directory):
         raise ValueError("Required checks cannot be removed")
     if set(manifest["images"]) != set(INPUTS):
         raise ValueError("Incomplete application image set")
-    for name, key in [
-        ("source.tar.gz", "source_sha256"),
-        ("images.tar", "images_archive_sha256"),
-    ]:
+    files = [("source.tar.gz", "source_sha256")]
+    if require_image_archive or (directory / "images.tar").exists():
+        files.append(("images.tar", "images_archive_sha256"))
+    for name, key in files:
         if digest(directory / name) != manifest[key]:
             raise ValueError("Artifact bytes changed: " + name)
     validate_archive(directory / "source.tar.gz")
     return directory, manifest
 
 
-def verify_images(manifest):
-    architecture = manifest["platform"].split("/")[1]
+def verify_images(manifest, references=None):
     for role, item in manifest["images"].items():
-        info = image_info(item["reference"])
+        reference = references[role] if references is not None else item["reference"]
+        info = image_info(reference)
         assert_image(
             info,
-            architecture,
+            manifest["platform"].split("/")[1],
             item["source_commit"],
             None if item["reused"] else manifest["version"],
         )
@@ -408,8 +416,7 @@ def check(args):
     print(args.name + ": passed")
 
 
-def ready(directory, now=None):
-    directory, manifest = load_bundle(directory)
+def verify_receipts(directory, manifest, now=None):
     expected = digest(directory / "manifest.json")
     now = now or datetime.now(timezone.utc)
     for name in required_checks(manifest):
@@ -424,8 +431,81 @@ def ready(directory, now=None):
             or digest(directory / f"check-{name}.log") != receipt.get("log_sha256")
         ):
             raise ValueError("Missing, failed, stale or mismatched check: " + name)
+
+
+def ready(directory, now=None):
+    directory, manifest = load_bundle(directory)
+    verify_receipts(directory, manifest, now)
     verify_images(manifest)
     return manifest
+
+
+def ghcr_repository(value):
+    if not re.fullmatch(r"ghcr\.io/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:[._-][a-z0-9]+)*", value):
+        raise ValueError("Expected ghcr.io/<organization>/<package> without a tag or digest")
+    return value
+
+
+def pull_verified_images(manifest, references):
+    for reference in references.values():
+        run(["docker", "image", "pull", "--platform", manifest["platform"], reference])
+    verify_images(manifest, references)
+
+
+def publish_ghcr(directory, repository):
+    repository = ghcr_repository(repository)
+    directory = Path(directory).resolve()
+    manifest = ready(directory)
+    _, owner, package = repository.split("/")
+    try:
+        visibility = output([
+            "gh", "api", "--hostname", "github.com",
+            f"/orgs/{owner}/packages/container/{package}", "--jq", ".visibility",
+        ])
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(
+            f"Cannot verify {repository}: check that the package exists and gh can read its metadata"
+        ) from exc
+    if visibility != "private":
+        raise ValueError("Internal images require a private organization package")
+
+    references = {}
+    for role, item in manifest["images"].items():
+        # Independent builds of the same source can have different image IDs.
+        tag = f"{role}-{manifest['version']}-{manifest['commit']}-{item['image_id'][7:31]}"
+        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}", tag):
+            raise ValueError("Invalid internal image tag: " + tag)
+        target = f"{repository}:{tag}"
+        run(["docker", "image", "tag", item["image_id"], target])
+        pushed = output(["docker", "image", "push", target])
+        digests = re.findall(rf"^{re.escape(tag)}: digest: ({DIGEST}) size: \d+\s*$", pushed, re.M)
+        if len(digests) != 1:
+            raise ValueError("Registry did not return a unique digest for " + role)
+        references[role] = f"{repository}@{digests[0]}"
+    pull_verified_images(manifest, references)
+    write_json(directory / "ghcr.json", {
+        "manifest_sha256": digest(directory / "manifest.json"),
+        "images": references,
+    })
+    print("Private image references saved to ghcr.json")
+
+
+def pull_ghcr(directory, repository):
+    repository = ghcr_repository(repository)
+    directory, manifest = load_bundle(directory, require_image_archive=False)
+    verify_receipts(directory, manifest)
+    delivery = json.loads((directory / "ghcr.json").read_text())
+    references = delivery.get("images")
+    if delivery.get("manifest_sha256") != digest(directory / "manifest.json"):
+        raise ValueError("Registry references belong to another deployment manifest")
+    if not isinstance(references, dict) or set(references) != set(INPUTS) or not all(
+        isinstance(ref, str) and re.fullmatch(re.escape(repository) + "@" + DIGEST, ref)
+        for ref in references.values()
+    ):
+        raise ValueError("Expected a digest in the configured GHCR package for every image")
+    pull_verified_images(manifest, references)
+    verify_receipts(directory, manifest)
+    print("All images verified. Use the manifest image IDs for the separate instance cutover.")
 
 
 def main():
@@ -439,7 +519,9 @@ def main():
     build.add_argument("--output", required=True)
     build.add_argument("--web-origin", required=True)
     build.add_argument("--web-title", default="Airalogy Platform")
-    build.add_argument("--reuse-executor")
+    executor = build.add_mutually_exclusive_group()
+    executor.add_argument("--reuse-executor")
+    executor.add_argument("--executor-python-repository", help="Mirror of the pinned Python base image")
     build.add_argument(
         "--migration-plan",
         help="Reviewed private JSON plan for additive schema changes",
@@ -453,6 +535,10 @@ def main():
     for name in ("verify", "ready"):
         command = commands.add_parser(name)
         command.add_argument("--bundle", required=True)
+    for name in ("publish-ghcr", "pull-ghcr"):
+        command = commands.add_parser(name)
+        command.add_argument("--bundle", required=True)
+        command.add_argument("--repository", default=DEFAULT_INTERNAL_REPOSITORY, type=ghcr_repository)
     args = parser.parse_args()
     os.umask(0o077)
     if args.action == "prepare":
@@ -463,6 +549,10 @@ def main():
         _, manifest = load_bundle(args.bundle)
         verify_images(manifest)
         print("Artifact identities verified; this does not qualify deployment.")
+    elif args.action == "publish-ghcr":
+        publish_ghcr(args.bundle, args.repository)
+    elif args.action == "pull-ghcr":
+        pull_ghcr(args.bundle, args.repository)
     else:
         ready(args.bundle)
         print(

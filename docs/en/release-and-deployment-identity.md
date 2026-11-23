@@ -47,7 +47,7 @@ From v0.3.0, `platform-object-storage` is a fifth immutable image in the release
 
 Release metadata generation requires Node.js and Python 3.11+. The standard-library AST reader accepts annotated and ordinary literal Alembic declarations without executing migration modules. It checks ancestry, missing parents, duplicate revisions and cycles before selecting the single head. Non-literal declarations or `depends_on` relationships require explicit tooling support and block publication instead of being silently ignored.
 
-The official `ghcr.io/airalogy/airalogy-engine:0.16.0` image supports both `linux/amd64` and `linux/arm64`. Platform pins its immutable SHA-256 manifest digest instead of relying on `latest`, so deployments on both architectures resolve to the same verified release identity.
+The official `ghcr.io/airalogy/airalogy-engine:0.19.0` image supports both `linux/amd64` and `linux/arm64`. Platform pins its immutable SHA-256 manifest digest instead of relying on `latest`, so deployments on both architectures resolve to the same verified release identity.
 
 ## Incident recovery and patch releases
 

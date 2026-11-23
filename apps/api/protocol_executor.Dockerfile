@@ -1,4 +1,7 @@
-FROM m.daocloud.io/docker.io/library/python:3.13.5-slim AS builder
+ARG EXECUTOR_PYTHON_REPOSITORY=python
+# Python 3.13.5-slim, both stages use the same multi-platform index.
+ARG EXECUTOR_PYTHON_DIGEST=sha256:4c2cf9917bd1cbacc5e9b07320025bdb7cdf2df7b0ceaccb55e9dd7e30987419
+FROM ${EXECUTOR_PYTHON_REPOSITORY}@${EXECUTOR_PYTHON_DIGEST} AS builder
 
 WORKDIR /builder
 
@@ -15,7 +18,7 @@ RUN pip install --no-cache-dir -r protocol_requirements.txt
 
 
 # run stage
-FROM m.daocloud.io/docker.io/library/python:3.13.5-slim
+FROM ${EXECUTOR_PYTHON_REPOSITORY}@${EXECUTOR_PYTHON_DIGEST}
 
 ARG PLATFORM_VERSION=development
 ARG GIT_COMMIT=unknown

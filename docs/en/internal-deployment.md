@@ -33,6 +33,28 @@ python3 deploy/internal/platform-internal.py ready --bundle /private/ops/candida
 
 Source checks must use the exact clean checkout. Artifact acceptance loads the exact archived images and checks affected authenticated save/reload and permission flows with isolated synthetic data. Recovery checks establish an applicable recovery point, database restoration, file/Protocol integrity, old-application compatibility and treatment of new writes. A health probe alone is not acceptance. Missing, failed, mismatched or older-than-24-hour receipts block readiness; a failed retry replaces prior success.
 
+## Deliver through private GHCR
+
+For connected installations, distribute the qualified API, Web and Protocol executor images through GHCR. Keep the full offline bundle on the build machine. The instance adapter uses the same manifest image IDs at cutover.
+
+1. On the build machine, sign in to Docker with package write access and to the GitHub CLI with access to the package metadata. The default destination is the private organization container package `ghcr.io/airalogy/airalogy-platform`. To use another, pass `--repository ghcr.io/<organization>/<private-package>` to both commands below. For first use, select an existing private package or initialize a dedicated package with a non-sensitive image and verify its **Private** visibility. The receiving server only needs Docker package read access.
+2. After `ready` succeeds, run the following on the build machine. It pushes the accepted image IDs, pulls back the returned digests, verifies their identities and writes `ghcr.json`. Delivery of the same images can be retried.
+
+   ```bash
+   python3 deploy/internal/platform-internal.py publish-ghcr --bundle /private/ops/candidate
+   ```
+
+3. Transfer `manifest.json`, `ghcr.json`, `source.tar.gz` and all required `check-*.json` and `check-*.log` files to a dedicated candidate directory over a trusted private channel. Check logs may contain instance details. Only images go to GHCR. Connected delivery can omit `images.tar`.
+4. Run the matching deployment tool on the receiver. It verifies the source archive and check receipts, pulls each digest for the target architecture, then compares the image IDs, architecture and source revisions to the accepted manifest. Continue with the instance cutover after this succeeds. For offline delivery, transfer the original `images.tar`, run `docker image load -i /private/ops/candidate/images.tar` and run the existing `ready` command. Both paths use the same accepted images and receipts.
+
+   ```bash
+   python3 deploy/internal/platform-internal.py pull-ghcr --bundle /private/ops/candidate
+   ```
+
+To build the executor from a private mirror, copy the complete official `python:3.13.5-slim` multi-platform index and layers to GHCR with their original digests. Pass `--executor-python-repository ghcr.io/<organization>/<python-package>` to `prepare`. Both Dockerfile stages use the pinned index digest. The default source is the official Python repository.
+
+## Instance cutover
+
 Readiness does not perform cutover. A private instance adapter rechecks deployed SHA, configuration, schema and supporting images for drift; verifies transferred artifacts and mounted source; obtains a final consistent recovery point; preserves old configuration/images; and replaces only application services by exact image IDs with no build/pull. It must not replace infrastructure or restore over production data automatically. For compatible same-schema failures, restore the previous application and preserve new writes. Verify identity, health, existing data and affected user tasks after cutover, then retain the private receipt.
 
 Keep recoverable source, artifacts and configuration in an independent encrypted backup. The tool does not replace a backup system. Public release notes and complete distributable packages are prepared at a later external release milestone.

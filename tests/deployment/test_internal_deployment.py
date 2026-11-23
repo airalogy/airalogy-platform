@@ -118,7 +118,15 @@ class InternalDeploymentTests(unittest.TestCase):
             "version": "0.5.0-beta.1",
             "commit": "a" * 40,
             "platform": "linux/amd64",
-            "images": {name: {} for name in internal.INPUTS},
+            "images": {
+                name: {
+                    "reference": f"candidate-{name}:test",
+                    "image_id": f"sha256:{index:064x}",
+                    "source_commit": "a" * 40,
+                    "reused": False,
+                }
+                for index, name in enumerate(internal.INPUTS, start=1)
+            },
             "required_checks": sorted(internal.REQUIRED_CHECKS),
         }
         with tarfile.open(root / "source.tar.gz", "w:gz") as archive:
@@ -185,9 +193,111 @@ class InternalDeploymentTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     internal.ready(root)
 
+    def test_ghcr_delivery_uses_pushed_digests_and_existing_receipts(self):
+        repo = internal.DEFAULT_INTERNAL_REPOSITORY
+        pushed = []
+
+        def output(command):
+            if command[0] == "gh":
+                self.assertIn("/orgs/airalogy/packages/container/airalogy-platform", command)
+                return "private"
+            self.assertEqual(command[:3], ["docker", "image", "push"])
+            pushed.append(command[-1])
+            tag = command[-1].split(":")[-1]
+            return f"{tag}: digest: sha256:{len(pushed):064x} size: 1234"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            manifest_hash = internal.digest(root / "manifest.json")
+            with (patch.object(internal, "output", side_effect=output),
+                  patch.object(internal, "run") as docker,
+                  patch.object(internal, "verify_images") as verify):
+                internal.publish_ghcr(root, repo)
+                self.assertEqual(len(pushed), 3)
+                self.assertTrue(all(tag.startswith(repo + ":") for tag in pushed))
+                descriptor = json.loads((root / "ghcr.json").read_text())
+                self.assertEqual(descriptor["manifest_sha256"], manifest_hash)
+                (root / "images.tar").unlink()
+                docker.reset_mock()
+                internal.pull_ghcr(root, repo)
+                refs = descriptor["images"]
+                self.assertEqual(
+                    [c.args[0] for c in docker.call_args_list],
+                    [["docker", "image", "pull", "--platform", "linux/amd64", ref] for ref in refs.values()],
+                )
+                self.assertEqual(verify.call_args.args[1], refs)
+                with self.assertRaises(FileNotFoundError):
+                    internal.ready(root)
+
+    def test_ghcr_publication_requires_private_package_and_complete_push(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            with (patch.object(internal, "verify_images"),
+                  patch.object(internal, "output", return_value="public"),
+                  patch.object(internal, "run") as docker,
+                  self.assertRaisesRegex(ValueError, "private organization")):
+                internal.publish_ghcr(root, internal.DEFAULT_INTERNAL_REPOSITORY)
+            docker.assert_not_called()
+            with (patch.object(internal, "verify_images"),
+                  patch.object(internal, "output", side_effect=["private", "no digest"]),
+                  patch.object(internal, "run"),
+                  self.assertRaisesRegex(ValueError, "unique digest")):
+                internal.publish_ghcr(root, internal.DEFAULT_INTERNAL_REPOSITORY)
+            self.assertFalse((root / "ghcr.json").exists())
+
+    def test_ghcr_rejects_wrong_bundle_external_tag_or_stale_recovery_before_pull(self):
+        repo = internal.DEFAULT_INTERNAL_REPOSITORY
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            refs = {role: f"{repo}@sha256:{'f' * 64}" for role in internal.INPUTS}
+            manifest_hash = internal.digest(root / "manifest.json")
+            for checksum, images in [
+                ("0" * 64, refs),
+                (manifest_hash, {"api": refs["api"]}),
+                (manifest_hash, {**refs, "api": repo + ":latest"}),
+                (manifest_hash, {**refs, "web": refs["web"].replace("airalogy/", "another/")}),
+            ]:
+                internal.write_json(root / "ghcr.json", {"manifest_sha256": checksum, "images": images})
+                with patch.object(internal, "run") as docker, self.assertRaises(ValueError):
+                    internal.pull_ghcr(root, repo)
+                docker.assert_not_called()
+            internal.write_json(root / "ghcr.json", {"manifest_sha256": manifest_hash, "images": refs})
+            (root / "check-recovery.log").write_text("changed")
+            with patch.object(internal, "run") as docker, self.assertRaisesRegex(ValueError, "recovery"):
+                internal.pull_ghcr(root, repo)
+            docker.assert_not_called()
+
+    def test_pulled_image_must_match_the_accepted_image_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            _, manifest = internal.load_bundle(root)
+            image = {
+                "Id": "sha256:" + "f" * 64, "Os": "linux", "Architecture": "amd64",
+                "Config": {"Labels": {
+                    "org.opencontainers.image.revision": manifest["commit"],
+                    "org.opencontainers.image.version": manifest["version"],
+                }},
+            }
+            refs = {role: f"r@sha256:{'a' * 64}" for role in internal.INPUTS}
+            with (patch.object(internal, "image_info", return_value=image) as inspect,
+                  self.assertRaisesRegex(ValueError, "bytes changed")):
+                internal.verify_images(manifest, refs)
+            inspect.assert_called_once_with(refs["api"])
+
     def test_api_reuse_accounts_for_embedded_ai_source(self):
         self.assertIn("packages/masterbrain", internal.INPUTS["api"])
         self.assertIn(".dockerignore", internal.INPUTS["api"])
+
+    def test_executor_sources_and_mirrored_base_are_pinned(self):
+        self.assertIn("apps/api/protocol_assigners.py", internal.INPUTS["executor"])
+        dockerfile = (internal.ROOT / "apps/api/protocol_executor.Dockerfile").read_text()
+        self.assertRegex(dockerfile, r"(?m)^ARG EXECUTOR_PYTHON_DIGEST=sha256:[0-9a-f]{64}$")
+        stages = [line.split()[1] for line in dockerfile.splitlines() if line.startswith("FROM ")]
+        self.assertEqual(stages, ["${EXECUTOR_PYTHON_REPOSITORY}@${EXECUTOR_PYTHON_DIGEST}"] * 2)
 
     def test_archive_accepts_embedded_ai_source(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -96,7 +96,7 @@ wheels = [
 
 [[package]]
 name = "airalogy"
-version = "0.16.0"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -106,9 +106,9 @@ dependencies = [
     { name = "tree-sitter" },
     { name = "tree-sitter-javascript" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/33/54aa4f0b9eb7fa88f03e1c24d01e8f77f9042c81adc9378e493f81daa5c8/airalogy-0.16.0.tar.gz", hash = "sha256:32b63d6e30069cfb4cb86bba638f060d8f3821932b8a55546dbf0250c3a86b07", size = 195042, upload-time = "2026-07-23T08:59:31.193Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/d0/f05106a1a2356239c28ec0546e9164c89463829fa5cfbacfe09aca7d957c/airalogy-0.19.0.tar.gz", hash = "sha256:6ca40fde4e1a57496b433bf3c858a26ef4e079cd1bd75206d671d1813d948676", size = 228787, upload-time = "2026-11-21T05:19:37.526Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/14/38c29d8025c5c3ac94be03c963bd2c23f7ca306182fca6b1883f653d1da5/airalogy-0.16.0-py3-none-any.whl", hash = "sha256:31ccbf9af3b8038f01a3ab5267a294245dc652eba22f85cc799ad35bb5d8cc78", size = 256764, upload-time = "2026-07-23T08:59:29.779Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/00/c5e85eb2c0d8c2b65d2c50bd9d228e5f28c339e73c86c3b306eebfc77077/airalogy-0.19.0-py3-none-any.whl", hash = "sha256:87add270a166542a991a488d97ad43ac6f5e9ed1335a394ccc0bc9ae2e0f9233", size = 301044, upload-time = "2026-11-21T05:19:35.663Z" },
 ]
 
 [package.optional-dependencies]
@@ -118,15 +118,15 @@ markitdown = [
 
 [[package]]
 name = "airalogy-engine"
-version = "0.0.9"
+version = "0.0.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "airalogy" },
     { name = "boxlite" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/bc/11c5f89f3222d8e08188ac1a1787c76d12933de2dffda2dbef14866aa7ab/airalogy_engine-0.0.9.tar.gz", hash = "sha256:ead5a20ce4504c802b4663b52baa3bfa7236993f083a8e5601d56987d3ce0649", size = 19789, upload-time = "2026-08-14T10:58:12.203Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/3e/c620d4ecfe8c7056e265e95c1d296c09e0ecf74d2598bafa709cc6f7b9f8/airalogy_engine-0.0.12.tar.gz", hash = "sha256:98db9a82f7507372cacdd2c800c01b58dc31d7e149784b0bde4b8474ad398dfd", size = 19930, upload-time = "2026-11-21T05:19:46.504Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/bc/cae2a511a5ad21728cd8a21ad21702b68f4db9ad38b90a1625d2194afb9c/airalogy_engine-0.0.9-py3-none-any.whl", hash = "sha256:65d2763e7a1d844ec98ac3ae881b1d21a55a321714bf5f8b27477181312517d2", size = 22841, upload-time = "2026-08-14T10:58:10.987Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/c8/afcce3737cb698cb7cd410985e6906b35e5968652738e47e60a8117b9ff7/airalogy_engine-0.0.12-py3-none-any.whl", hash = "sha256:a3a769197496f83a229baee9cff1f288a6f20ee5e61b666c40f24b871d2e00f4", size = 23026, upload-time = "2026-11-21T05:19:45.179Z" },
 ]
 
 [[package]]
@@ -181,8 +181,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "airalogy", extras = ["markitdown"], specifier = "==0.16.0" },
-    { name = "airalogy-engine", specifier = "==0.0.9" },
+    { name = "airalogy", extras = ["markitdown"], specifier = "==0.19.0" },
+    { name = "airalogy-engine", specifier = "==0.0.12" },
     { name = "alembic", specifier = "==1.18.1" },
     { name = "alibabacloud-dysmsapi20170525", specifier = "==4.2.0" },
     { name = "alibabacloud-dysmsapi20180501", specifier = "==1.0.9" },
@@ -555,12 +555,12 @@ wheels = [
 
 [[package]]
 name = "boxlite"
-version = "0.9.5"
+version = "0.10.8"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/1c/0c6399665aeeb057312b50600aaf7b56791aa5d174e914363aa58542e5de/boxlite-0.9.5-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:a092252f8df79cb8da95d2c6f8d5865f6917e9d41b24b27b3dd301ee66988813", size = 34861292, upload-time = "2026-05-16T13:47:44.081Z" },
-    { url = "https://files.pythonhosted.org/packages/90/24/7f51aca1d85e0c0bda82cc10af0c82f39b316fbca062738b030324501f78/boxlite-0.9.5-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:515cbab5376b4a81ad67e1f3aacae4692978d13710c2a412874c9d9ff5475556", size = 37010785, upload-time = "2026-05-16T13:47:47.414Z" },
-    { url = "https://files.pythonhosted.org/packages/62/7d/ce13d093e4f2653f28efd4ae89989a286f4aa00d910b051e90e44c2ee30b/boxlite-0.9.5-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:4e2df5236136c9f263114671c649a27c15fb57c809e15a8771cf0c9176c70c02", size = 33110395, upload-time = "2026-05-16T13:47:50.382Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/f5/aece4fc7fbf55e4c989cb8fba61b103a2f032d65d12a73451a0a2bfa8a7b/boxlite-0.10.8-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:83dc0e81f5184c06f9a8ce702f2c0a5067b9528c2886d743a8c70ee9f996556f", size = 40800467, upload-time = "2026-10-23T17:06:31.088Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/2c/82d5112949b862a935066d43bed012ad087854eb7c0e1cf1b9f4e8d72ba8/boxlite-0.10.8-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:f4184c20effa9770987b72e808200f72dfc32d84014f6b7cf3e0fa1a2810cb29", size = 43043443, upload-time = "2026-10-23T17:06:34.095Z" },
+    { url = "https://files.pythonhosted.org/packages/78/a5/5768eaaad42cb56450a581a95228c4fafb920f93533a251a5c7671deec6c/boxlite-0.10.8-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:6943c4715d3af83017656038a75295f9621b4c5ea9d47ada25e817aa04134555", size = 39015225, upload-time = "2026-10-23T17:06:37.278Z" },
 ]
 
 [[package]]

@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Internal deployments can distribute verified application images through private GHCR and pull them by digest, or use the existing offline archive. The Protocol executor can build from a mirror of its pinned Python base.
+
+- The API and Protocol executor now use Airalogy 0.19.0, with native titles for AIMD steps and checks. The default Engine image follows 0.19.0 with client 0.0.12. The web app uses AIMD Editor 1.13.1 and Recorder 1.27.2.
+
 - MCP contract lookups now distinguish matching signed contracts from project totals. OAuth consent can keep the original connection’s permissions and select only those missing for contract and receipt work.
 
 - MCP reports the exact connection scopes missing for contract registration and receipt linking. Supported OAuth clients can reauthorize the current connection, and a consent preset selects the four workflow permissions.

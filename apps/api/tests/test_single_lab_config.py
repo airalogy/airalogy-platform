@@ -328,8 +328,8 @@ def test_single_lab_generated_config_disables_sms_login_by_default():
 
 def test_engine_image_uses_official_multiarch_immutable_release():
     assert Settings.model_fields["AIRALOGY_ENGINE_IMAGE"].default == (
-        "ghcr.io/airalogy/airalogy-engine:0.16.0@"
-        "sha256:5d26af0a28fc42f042cf079ac6e00b1a4435ff2d1fd02631c5d356bfdd0e08b7"
+        "ghcr.io/airalogy/airalogy-engine:0.19.0@"
+        "sha256:3781620f7cb09f52962aaef59c328c6d4551c7b3e19684a2c6b187ad6d24b10a"
     )
 
 
