@@ -6147,6 +6147,7 @@
       "required": "Please select a file",
       "nameRequired": "File name cannot be empty",
       "nameInvalid": "File name format is invalid",
+      "openInTab": "Open in new tab",
       "nameStartsDot": "File name cannot start with .",
       "nameMissing": "File name is invalid",
       "typeInvalid": "File type is invalid",

@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- The Record field panel uses AIMD Recorder 1.29.1 for full-width inputs, labeled photo uploads and authored step and checkpoint titles on desktop and mobile. Photo uploads stay mounted until the server returns a file reference. A required-field message now appears after the next click or tap has reached its target.
+
 - Internal deployments can distribute verified application images through private GHCR and pull them by digest, or use the existing offline archive. The Protocol executor can build from a mirror of its pinned Python base.
 
 - The API and Protocol executor now use Airalogy 0.19.0, with native titles for AIMD steps and checks. The default Engine image follows 0.19.0 with client 0.0.12. The web app uses AIMD Editor 1.13.1 and Recorder 1.27.2.

@@ -11,9 +11,9 @@ packages:
   - '!**/.temp/**'
 
 catalog:
-  '@airalogy/aimd-core': 2.18.0
-  '@airalogy/aimd-editor': 1.13.1
-  '@airalogy/aimd-recorder': 1.27.2
+  '@airalogy/aimd-core': 2.18.1
+  '@airalogy/aimd-editor': 1.14.0
+  '@airalogy/aimd-recorder': 1.29.1
   '@airalogy/aimd-renderer': 2.14.0
   '@playwright/test': 1.62.0
   playwright: 1.62.0

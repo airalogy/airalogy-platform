@@ -6150,6 +6150,7 @@ declare namespace I18n {
         required: string
         nameRequired: string
         nameInvalid: string
+        openInTab: string
         nameStartsDot: string
         nameMissing: string
         typeInvalid: string

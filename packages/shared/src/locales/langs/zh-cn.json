@@ -6147,6 +6147,7 @@
       "required": "请选择文件",
       "nameRequired": "文件名不能为空",
       "nameInvalid": "文件名格式不正确",
+      "openInTab": "在新标签页打开",
       "nameStartsDot": "文件名不能以 . 开头",
       "nameMissing": "文件名不正确",
       "typeInvalid": "文件类型不正确",

@@ -67,4 +67,4 @@ platform/
 
 执行 `pnpm e2e record-export.spec.ts record-columns.spec.ts` 验证中英文响应式导出弹窗、实际导出下载、原生列操作、隐藏提交信息恢复、键盘操作、宽表滚动和刷新后的偏好。升级 Core 或 Editor 时还应加入 `first-record.spec.ts` 和 `schema-governance.spec.ts`，验证 Protocol 创建、Record 提交/修订与历史版本证据。列测试仅把展示用 Protocol 列模型扩展为合成字段，鉴权和 Record 读取仍走真实接口；另用 `AI_ENABLED=false` 重复验证。单次运行截图与日志不提交到 Git。
 
-Recorder 1.27.2 已通过公开样式入口包含编译后的 Vue 组件 CSS。Platform 在 catalog 和锁文件中锁定这个正式版本，不再需要 Recorder 包补丁。应用入口继续统一导入 `@airalogy/aimd-recorder/styles`，不要在 Platform 重写 SDK 工具栏样式。更新 Recorder 后，重跑 `research-documents.spec.ts` 和生产构建，检查正式包在桌面及窄屏下的样式。
+记录填写页直接使用 AIMD Recorder 1.29.1 的 `layout="field-panel"`。正文和独立面板使用同一套字段组件，Platform 提供记录值、带权限的上传和附件读取。应用入口统一导入 `@airalogy/aimd-recorder/styles`。升级时运行 `record-field-panel.spec.ts`、`workflow-assets.spec.ts` 的手机文件回归、`research-documents.spec.ts` 和生产构建。

@@ -64,15 +64,13 @@
         </div>
 
         <div v-if="!props.readonly" class="record-fields-form px-4" @input.capture="markInput" @change.capture="markInput">
-          <aimd-recorder v-if="drawerContent" :content="drawerContent" :model-value="nativeRecord"
+          <aimd-recorder v-if="hostedContent" layout="field-panel" :content="hostedContent" :panel-variables="drawerVariables" :model-value="nativeRecord"
                          :current-user-name="authStore.userInfo.name" :locale="locale" :show-search="false"
-                         field-display="compact" :field-meta="nativeMeta" :field-state="nativeState" :validation-schema="nativeSchema"
-                         :resource-resolvers="resourceResolvers" :field-adapters="hostAdapters" :wrap-field="wrapDrawerField"
+                         @navigate-field="focusNativeField" :field-meta="nativeMeta" :field-state="nativeState" :validation-schema="nativeSchema"
+                         :resource-resolvers="resourceResolvers" :field-adapters="panelAdapters" :wrap-field="wrapDrawerField"
                          :upload-file="uploadNativeFile" :resolve-file-info="resolveNativeFile"
                          @mousedown.capture="keepResourceSearchFocus" @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
                          @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })" />
-          <n-button v-for="field in outlineFields" :key="field.key" text class="block py-1"
-                    @click="focusNativeField(field.key)">{{ field.label }}</n-button>
         </div>
         <n-collapse v-else
                     v-model:expanded-names="expandedNamesRef" display-directive="show"
@@ -256,8 +254,9 @@ import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { themeSettings } from "@/theme/settings"
 import { protocolFileEventOwnerKey, syncPreviewFileEvent } from "@/utils/aimd-file-events"
+import { aimdFileReference } from "@/utils/aimd-files"
 import { vProtocolPreviewAssets } from "@/utils/protocolPreviewAssets"
-import { hostedRecorderContent, recorderVariableList } from "@/utils/recorderMarkdown"
+import { hostedRecorderContent } from "@/utils/recorderMarkdown"
 import { resolveProtocolFile as resolveProtocolFileUtil } from "@/utils/resolveProtocolFile"
 import { bubbleMenuEventKey, fieldEventKey } from "@/utils/template/eventKey"
 import { getAimdFileKindFromType } from "@airalogy/aimd-core"
@@ -1402,34 +1401,26 @@ function nativeValue(value: any): any {
   return value
 }
 const nativeRecord = computed<AimdProtocolRecordData>(() => ({
-  var: Object.fromEntries(Object.entries(resourceRecord.value.var).map(([id, value]) => [id, nativeValue(value)])),
+  var: Object.fromEntries(Object.entries(resourceRecord.value.var).map(([id, value]) => {
+    const field = fieldRecordDefault.value?.field.research_variable?.[id]
+    // Older Platform drafts may wrap a single attachment in an upload-list item.
+    const reference = /^(?:file|image)/i.test(String(field?.type)) ? aimdFileReference(value) : undefined
+    return [id, reference ?? nativeValue(value)]
+  })),
   step: { ...props.recordData?.research_step, ...resourceRecord.value.step },
   check: { ...props.recordData?.research_check, ...resourceRecord.value.check },
   quiz: props.recordData?.quiz ?? {},
 }))
 const nativeSchema = computed(() => props.protocol?.json_schema ? { ...props.protocol.json_schema } : undefined)
 const tableNames = computed(() => new Set(nativeEnv.value.tables?.map(([id]) => id)))
-const drawerContent = computed(() => recorderVariableList(templateRef.value, Object.keys(fieldRecordDefault.value?.field.research_variable || {})
-  .filter(id => id !== "__SCOPE__" && !tableNames.value.has(id) && !fieldRecordDefault.value?.field.research_variable?.[id]?.originalName)))
-const outlineFields = computed(() => {
-  const fields = nativeEnv.value.fields
-  return [
-    ...(fields?.var_table || []).map(table => ({ key: `var_table:${table.id}`, label: table.id })),
-    ...(["step", "check"] as const).flatMap(section => (fields?.[section] || []).map(id => ({ key: `${section}:${id}`, label: id }))),
-    ...(fields?.quiz || []).map(quiz => ({ key: `quiz:${quiz.id}`, label: quiz.id })),
-  ]
-})
+const drawerVariables = computed(() => Object.keys(fieldRecordDefault.value?.field.research_variable || {})
+  .filter(id => id !== "__SCOPE__" && !tableNames.value.has(id) && !fieldRecordDefault.value?.field.research_variable?.[id]?.originalName))
 async function focusNativeField(key: string) {
   if (window.matchMedia("(max-width: 767px)").matches)
     isCollapsed.value = true
   selectedTab.value = "form-fields"
   await nextTick()
-  const root = recorderRoot.value
-  const target = root?.querySelector<HTMLElement>(`[data-rec-focus-key="${CSS.escape(key)}"]`)
-    || root?.querySelector<HTMLElement>(`[data-aimd-recorder-field="${CSS.escape(key)}"] input, [data-aimd-recorder-field="${CSS.escape(key)}"] button`)
-  target?.scrollIntoView({ block: "center" })
-  target?.focus({ preventScroll: true })
-  return !!target
+  return nativeRecorder.value?.focusField(key) ?? false
 }
 const nativeMeta = computed(() => {
   const meta: Record<string, AimdFieldMeta> = {}
@@ -1450,12 +1441,10 @@ const nativeMeta = computed(() => {
   }
   return meta
 })
+// Preserve the existing focus targets used by the record forms and Aira.
 function wrapDrawerField(key: string, type: string, vnode: VNode) {
   const id = key.slice(key.indexOf(":") + 1)
-  return h("div", { "id": `form-${nativeSections[type as keyof typeof nativeSections]}-${id}`, "data-recorder-field": id, "class": "mb-2" }, [
-    h("span", { class: "block text-sm" }, nativeMeta.value[key]?.title || id),
-    vnode,
-  ])
+  return h("div", { "id": `form-${nativeSections[type as keyof typeof nativeSections]}-${id}`, "data-recorder-field": id }, [vnode])
 }
 const nativeState = computed(() => Object.fromEntries(Object.keys(assignerLoadingRecord.value).concat(Object.keys(assignerErrorRecord.value)).map(id =>
   [`var:${id}`, { loading: !!assignerLoadingRecord.value[id], error: assignerErrorRecord.value[id] ? String(assignerErrorRecord.value[id]) : undefined }])))
@@ -1484,6 +1473,16 @@ const hostAdapters: AimdRecorderFieldAdapters = {
     if (!item || !/^(?:file(?:id.*)?|image|recordid)$/i.test(String(node.definition?.type || item.type)))
       return null
     return h(AIMDItem, item)
+  },
+}
+const panelAdapters: AimdRecorderFieldAdapters = {
+  var: (context) => {
+    const item = variableList.value.find(it => it.scope === "research_variable" && it.prop === context.node.id)
+    // Record references use the Platform picker. Model-only file declarations
+    // can also lack an AIMD type, so preserve the existing schema-aware control.
+    if (item && (item.type.toLowerCase() === "recordid" || (!context.node.definition?.type && /^(?:file|image)/i.test(item.type))))
+      return h(AIMDItem, item)
+    return null
   },
 }
 async function uploadNativeFile(file: File) {

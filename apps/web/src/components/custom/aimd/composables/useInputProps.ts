@@ -278,6 +278,9 @@ export function useInputProps(props: IAIMDInputProps) {
     // - single file object: wrap in array
     // - string (airalogy_file_id): skip, let watchEffect in file-input.vue handle loading
     const fileList = normalizeAimdUploadFiles(model.value.value)
+    const schema = props.ajvInfo?.schema
+    const variants = schema?.anyOf?.filter((variant: JsonSchema) => variant.type !== "null")
+    const extension = schema?.file_extension || (variants?.length === 1 ? variants[0].file_extension : undefined)
     // If value is a string (airalogy_file_id), fileList remains empty
     // The file-input.vue watchEffect will detect this and load the file info
 
@@ -290,7 +293,7 @@ export function useInputProps(props: IAIMDInputProps) {
       endpoint: "/airalogy_files",
       protocolId: protocolId.value,
       max: 1,
-      uploadProps: getUploadProps(effectiveType.value, undefined, props.ajvInfo?.schema?.file_extension),
+      uploadProps: getUploadProps(effectiveType.value, undefined, extension),
       fileType: effectiveType.value as any, // Pass fileType to ensure consistent rendering
       type: assigner?.value ? "assigner" : dependent?.value ? "dependent" : "field",
       style: { minWidth: Array.isArray(model.value) ? `${model.value.length * 96}px` : "100%" },

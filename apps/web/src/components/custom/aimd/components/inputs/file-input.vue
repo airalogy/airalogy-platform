@@ -1,5 +1,5 @@
 <template>
-  <div v-if="fileType === 'image' && currentFile" class="file-card image-file-card">
+  <div v-if="fileType === 'image' && currentFile && aimdFileReference(currentFile)" class="file-card image-file-card">
     <div class="file-card__header">
       <file-type-icon :type="fileType" :size="20" class="file-card__icon" />
       <span class="file-card__name" :title="currentFile.name">{{ currentFile.name }}</span>
@@ -40,7 +40,7 @@
         <template #icon>
           <n-icon><icon-open /></n-icon>
         </template>
-        Open in Tab
+        {{ $t("form.file.openInTab") }}
       </n-button>
     </div>
     <div class="image-file-card__preview" @click="handlePreview(currentFile)">
@@ -76,7 +76,7 @@
     :file-type="fileType"
     :any-of-schemas="anyOfSchemas"
     :show-preview-button="false"
-    :show-remove-button="false"
+    :show-remove-button="Boolean(currentFile && !aimdFileReference(currentFile))"
     :show-download-button="false"
     @update:file="fileInfo => handleFileChange({ scope: props.scope, prop: props.prop, fileInfo, id: props.id, info: props.info })"
     @uploaded:file="(file, rawFile) => handleUploadFile({ scope: props.scope, prop: props.prop, type: props.type, file, rawFile, assigner: props.assigner, dependent: props.dependent, info: props.info })"
