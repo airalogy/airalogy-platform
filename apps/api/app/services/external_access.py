@@ -4,9 +4,7 @@ Lock order: user call gate -> shared Lab policy -> grant -> operation -> Protoco
 commits once, together with the mutation result and its audit receipt.
 """
 
-import csv
 import hashlib
-import io
 import json
 import math
 import secrets
@@ -15,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
-from fastapi import BackgroundTasks, HTTPException, UploadFile
+from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -37,7 +35,7 @@ from app.models.user import User
 from app.routers.permission import check_user_permission as platform_permission
 from app.services.account_security import get_auth_version
 from app.services.browser_paths import project_browser_path
-from app.services.record_imports import import_fields, template_csv
+from app.services.record_imports import import_fields
 
 SCOPES = {
     "projects:find",
@@ -125,6 +123,7 @@ class ToolInput(StrictModel):
     expected_version: int | None = Field(default=None, ge=1)
     changes: dict | None = None
     reason: str | None = Field(default=None, max_length=2000)
+    source_record_ids: list[UUID] | None = Field(default=None, max_length=20)
     csv: str | None = Field(default=None, max_length=MAX_CSV_BYTES)
     request_key: str | None = Field(
         default=None, min_length=8, max_length=100, pattern=r"^[A-Za-z0-9_-]+$"
@@ -497,14 +496,21 @@ def primitive_schema(schema):
 
 
 def scalar_field(schema):
-    """Complex/file types remain on the normal Platform UI, not this data channel."""
+    """Only ordinary scalar values may be disclosed through the variable listing."""
     if not isinstance(schema, dict):
         return False
     schema = primitive_schema(schema)
     text = json.dumps(schema).lower()
     if any(
         marker in text
-        for marker in ('"$ref"', "airalogy_type", "contentmedia", '"object"', '"array"')
+        for marker in (
+            '"$ref"',
+            "airalogy_type",
+            "airalogy_built_in_type",
+            "contentmedia",
+            '"object"',
+            '"array"',
+        )
     ):
         return False
     if schema.get("format") not in (
@@ -535,7 +541,15 @@ def structured_field(spec, depth=0):
         return False
     if scalar_field(spec):
         return True
-    if any(key in spec for key in ("$ref", "airalogy_type", "contentMediaType")):
+    if any(
+        key in spec
+        for key in (
+            "$ref",
+            "airalogy_type",
+            "airalogy_built_in_type",
+            "contentMediaType",
+        )
+    ):
         return False
     if spec.get("type") == "array":
         return structured_field(spec.get("items"), depth + 1)
@@ -616,12 +630,34 @@ def safe_value(value):
 
 
 def record_view(access, version, record):
+    from app.services.external_record_imports import execution_columns
+
     fields = external_fields(access, version)
-    variables = (record.data or {}).get("var", {})
+    data = record.data or {}
+    variables = data.get("var", {})
+    execution = {"step": {}, "check": {}}
+    for column in execution_columns(version, access.policy.blocked_fields):
+        section, field_path = column.split(".", 1)
+        key, attribute = field_path.rsplit(".", 1)
+        stored = data.get(section)
+        if not isinstance(stored, dict):
+            continue
+        state = stored.get(key)
+        if not isinstance(state, dict) or attribute not in state:
+            continue
+        value = state[attribute]
+        if attribute == "checked" and not isinstance(value, bool):
+            continue
+        if attribute == "annotation" and (
+            not isinstance(value, str) or safe_value(value) is None
+        ):
+            continue
+        execution[section].setdefault(key, {})[attribute] = value
     return {
         "id": str(record.id),
         "version": record.version,
         "protocol_version": record.protocol_version,
+        **execution,
         "var": {
             key: value
             for key, value in variables.items()
@@ -729,34 +765,6 @@ def operation_view(op):
     }
 
 
-async def import_preview(db, access, protocol_id, text, preview=True):
-    from app.routers.records import import_records_transaction
-
-    if text is None or len(text.encode()) > MAX_CSV_BYTES:
-        fail("csv_required_or_too_large", 422)
-    # External import is a canonical variable table, not a metadata/file backdoor.
-    try:
-        headers = next(csv.reader(io.StringIO(text), strict=True), [])
-    except csv.Error:
-        fail("invalid_csv", 422)
-    if not headers or any(
-        not name.removeprefix("\ufeff").startswith("var.") for name in headers
-    ):
-        fail("use_canonical_csv_template", 422)
-    return await import_records_transaction(
-        protocol_id,
-        db,
-        access.user,
-        BackgroundTasks(),
-        UploadFile(filename="records.csv", file=io.BytesIO(text.encode())),
-        input_format="csv",
-        include_template_defaults=False,
-        preview=preview,
-        commit=False,
-        executor_credentials=False,
-    )
-
-
 async def preview_operation(db, access, args, kind):
     scope(access, "records:import" if kind == "import" else "records:revise")
     if not args.request_key:
@@ -797,14 +805,22 @@ async def preview_operation(db, access, args, kind):
     if count >= 10:
         fail("pending_operation_limit", 429)
     if kind == "import":
-        require_writable_schema(access, version)
-        result = await import_preview(db, access, protocol.id, args.csv)
+        from app.services.external_record_imports import (
+            execution_columns,
+            import_file_fields,
+            import_records,
+        )
+
+        result = await import_records(db, access, protocol, version, args)
         if result.get("errors"):
+            fields = set(external_fields(access, version)) | set(
+                execution_columns(version, access.policy.blocked_fields)
+            )
+            if "files:read" in access.grant.scopes:
+                fields.update(import_file_fields(access, version))
             return {
                 "state": "invalid",
-                "errors": validation_errors(
-                    result["errors"], external_fields(access, version)
-                ),
+                "errors": validation_errors(result["errors"], fields),
                 "created_records": 0,
             }
         summary = {
@@ -922,13 +938,16 @@ async def execute_operation(db, access, op):
         )
     if version.id != op.protocol_version_id:
         fail("protocol_changed_preview_again", 409)
-    require_writable_schema(access, version)
     if op.kind == "import":
-        result = await import_preview(db, access, protocol.id, args.csv, preview=False)
+        from app.services.external_record_imports import import_records
+
+        result = await import_records(db, access, protocol, version, args, preview=False)
         ids = result["record_ids"]
         record_version = 1
     else:
         from app.routers.records import RecordCreateParams, revise_record_transaction
+
+        require_writable_schema(access, version)
 
         if record.version != args.expected_version:
             fail("record_changed", 409)
@@ -1123,13 +1142,17 @@ async def tool_call(db, access, name, args):
                     ],
                 }
             }
+            from app.services.external_record_imports import import_contract
+
+            template, contract = import_contract(access, version)
             return {
                 "id": str(protocol.id),
                 "version": version.version,
                 "name": protocol.name,
                 "fields": metadata,
                 "schema": schema,
-                "csv_template": template_csv(schema),
+                "csv_template": template,
+                "record_import": contract,
             }
         scope(access, "records:read")
         # Resolve the current version before applying visibility or pagination.

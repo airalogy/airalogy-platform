@@ -5,6 +5,10 @@ declare namespace Api {
     type ProjectRole = ProjectRoleEnum
 
     interface MyProjectInfo {
+      organization_readable?: boolean
+      can_publish?: boolean
+      organization_reader?: boolean
+      reader_protocols?: readonly { uid: string, name: string }[]
       id: string
       name: string
       uid: string

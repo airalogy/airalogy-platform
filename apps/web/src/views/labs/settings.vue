@@ -104,6 +104,7 @@
     </n-form>
 
     <template v-if="labInfo">
+      <workspace-sharing-settings v-if="instanceStore.isSingleLab && canManageLab" :id="String(labInfo.id)" organization />
       <organization-ai-settings v-if="canManageLab" :key="labInfo.id" :lab-id="labInfo.id" :uid="labInfo.uid" class="my-6" />
       <kit-catalog :lab-id="labInfo.id" class="my-6" />
 
@@ -277,6 +278,7 @@ import {
   useLogoUpload,
   useSettingsForm,
 } from "@/components/common/settings"
+import WorkspaceSharingSettings from "@/components/common/workspace-sharing-settings.vue"
 import { createOrganizationNameValidator } from "@/composables/useForm"
 import { useLabPermissions } from "@/composables/useLabPermissions"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"

@@ -7,7 +7,7 @@
         </template>
         <list-project-item :item="group.parent" :is-compact="false" class="min-w-0 flex-1" />
         <template #suffix>
-          <div v-if="showPin || props.showActions" class="flex items-center gap-2">
+          <div v-if="!group.parent.organization_reader && (showPin || props.showActions)" class="flex items-center gap-2">
             <edit-button v-if="props.showActions" :item="group.parent" type="lab" />
             <n-tooltip v-if="showPin" placement="top">
               <template #trigger>
@@ -50,7 +50,7 @@
           >
             <project-icon class="mt-1 shrink-0 opacity-70" />
             <list-project-item :item="child" :is-compact="false" class="min-w-0 flex-1" />
-            <div v-if="showPin || props.showActions" class="flex items-center gap-2">
+            <div v-if="!child.organization_reader && (showPin || props.showActions)" class="flex items-center gap-2">
               <edit-button v-if="props.showActions" :item="child" type="lab" />
               <n-tooltip v-if="showPin" placement="top">
                 <template #trigger>

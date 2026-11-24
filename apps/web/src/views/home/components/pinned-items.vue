@@ -178,7 +178,13 @@ interface PinnedItemMeta {
   logoUrl?: string | null
 }
 
-function resolveProjectVisibility(type?: ProjectType | null) {
+function resolveProjectVisibility(type?: ProjectType | null, organizationReadable = false) {
+  if (instanceStore.isSingleLab) {
+    return {
+      label: $t(organizationReadable ? "sharing.organization" : "sharing.members"),
+      className: organizationReadable ? "bg-blue-50 text-blue-700" : "bg-amber-100 text-amber-700",
+    }
+  }
   if (type === ProjectType.PRIVATE) {
     return {
       label: $t("page.project.settingsPage.visibility.privateLabel"),
@@ -214,7 +220,7 @@ function resolveItemMeta(item: PinnedItem): PinnedItemMeta {
   if (item.resource_type === PinnedResourceType.Project) {
     const resource = item.resource as Api.Project.MyProjectInfo
     const labLabel = instanceStore.isSingleLab ? "" : resource.lab_name || resource.lab_uid || ""
-    const visibility = resolveProjectVisibility(resource.type)
+    const visibility = resolveProjectVisibility(resource.type, resource.organization_readable)
     return {
       title: resource.name || resource.uid || "Untitled project",
       subtitle: labLabel || undefined,

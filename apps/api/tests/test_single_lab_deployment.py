@@ -313,6 +313,9 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     ledger_revision = import_module("migrations.versions.0096_external_project_ledger")
     assert ledger_revision.down_revision == "0095_invitation_display_name"
     later_tables.add("external_project_receipts")
+    sharing_revision = import_module("migrations.versions.0098_workspace_publications")
+    assert sharing_revision.down_revision == "0097_external_project_coverage"
+    later_tables.add("workspace_publications")
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

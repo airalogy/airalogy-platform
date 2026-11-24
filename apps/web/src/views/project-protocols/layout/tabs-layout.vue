@@ -1,8 +1,19 @@
 <template>
-  <global-layout :float-button-props="floatButtonProps">
-    <content-layout
-      :tabs="tabs" :title="title" :initial-active-tab="initialActiveTab"
-      :loading="loading" :map-tab-name="mapTabName"
+  <global-layout :float-button-props="protocolInfo && !protocolInfo.organization_reader && canOpenDataEntryForOthers ? floatButtonProps : undefined">
+    <resource-access-state v-if="failure" :failure="failure" @retry="retry" />
+    <n-spin v-else-if="loading" class="mx-auto my-12" />
+    <resource-access-state v-else-if="protocolInfo?.organization_reader && route.name !== 'protocol-detail'" failure="unavailable" />
+    <article v-else-if="protocolInfo?.organization_reader" class="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
+      <p>{{ $t('sharing.organization') }} · v{{ protocolInfo.metadata.version }}</p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h1 class="text-2xl">{{ protocolInfo.name }}</h1>
+        <workspace-share :project="protocolInfo.project_id" organization-readable />
+      </div>
+      <shared-protocol-text :body="protocolInfo.aimd" />
+    </article>
+    <content-layout v-else-if="protocolInfo"
+                    :tabs="tabs" :title="title" :initial-active-tab="initialActiveTab"
+                    :loading="loading" :map-tab-name="mapTabName"
     >
       <template #title>
         <protocol-title-section :protocol-info="protocolInfo" :title="title" class="mt-5" />
@@ -10,6 +21,7 @@
       </template>
 
       <template #suffix>
+        <workspace-share v-if="instance.isSingleLab && authStore.isLogin" :key="protocolInfo.id" :project="protocolInfo.project_id" :protocol="protocolInfo.id" :version="protocolInfo.metadata?.version || protocolInfo.latest_version" :organization-readable="protocolInfo.organization_readable" :manage="protocolInfo.can_publish" />
         <n-button
           v-if="route.name === 'protocol-discussion-detail'"
           quaternary
@@ -44,7 +56,7 @@
       </template>
     </content-layout>
 
-    <template v-if="protocolInfo && canOpenDataEntryForOthers" #floatButton>
+    <template v-if="protocolInfo && !protocolInfo.organization_reader && canOpenDataEntryForOthers" #floatButton>
       <n-tooltip trigger="hover">
         Click to add a new record
         <template #trigger>
@@ -58,12 +70,18 @@
 <script setup lang="ts">
 import type { FloatButtonProps } from "naive-ui"
 import type { TabPaneProps } from "naive-ui/es/tabs"
-import { useLoading, useProjectPermissions } from "@/composables"
+import ResourceAccessState from "@/components/common/resource-access-state.vue"
+import SharedProtocolText from "@/components/protocol/shared-protocol-text"
+import WorkspaceShare from "@/components/protocol/workspace-share.vue"
+import { useProjectPermissions } from "@/composables"
+import { useResourcePage } from "@/composables/useResourcePage"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
 import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
+import { getProtocolInfoByUid } from "@/service/api/project-protocols"
 import { useAuthStore } from "@/store/modules/auth"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useRouteStore } from "@/store/modules/route"
 import { buildPublicProtocolPath, buildSeoUrl } from "@/utils/seo"
 import { protocolKey } from "@/utils/template/eventKey"
@@ -92,7 +110,8 @@ interface Props {
 
 const route = useRoute()
 const authStore = useAuthStore()
-const { protocolInfo, fetchProtocolInfoByUid } = useProvideProtocolInfoStore(null)
+const instance = useInstanceStore()
+const { protocolInfo } = useProvideProtocolInfoStore(null)
 
 const initialActiveTab = computed<App.Global.TabKey>(
   () => (route.name as App.Global.TabKey) || "protocol-detail",
@@ -109,7 +128,7 @@ const title = computed(() => {
 })
 
 const protocolSeoMeta = computed(() => {
-  if (!protocolInfo.value) {
+  if (instance.isSingleLab || !protocolInfo.value) {
     return null
   }
 
@@ -183,7 +202,7 @@ const { hasPermission, projectInfo, fetchProjectInfoById } = useOrProvideProject
 const { canOpenDataEntryForOthers } = useProjectPermissions(projectInfo)
 
 const tabs = asyncComputed(async (): Promise<TabPaneProps[]> => {
-  if (!protocolInfo.value) {
+  if (!protocolInfo.value || protocolInfo.value.organization_reader) {
     return basicTabs
   }
 
@@ -205,7 +224,7 @@ function mapTabName(tabName: any) {
   return tabName
 }
 // const description = computed(() => { })
-const { routerPushByKey, routerReplaceByKey, toNotFound } = useRouterPush()
+const { routerPushByKey, routerReplaceByKey } = useRouterPush()
 const routerStore = useRouteStore()
 
 // const labDisplayName = computed(() => {
@@ -263,18 +282,22 @@ function setBreadcrumbs() {
   ])
 }
 
-const { loading, startLoading, endLoading } = useLoading()
+const { failure, loading, retry } = useResourcePage(
+  () => [route.params.labUid, route.params.projectUid, route.params.protocolUid].join("/"),
+  async (signal) => {
+    const { labUid, projectUid, protocolUid } = route.params as Record<string, string>
+    const { data, error } = await getProtocolInfoByUid({ labUid, projectUid, protocolUid }, false, signal)
+    if (!data)
+      throw error
+    return data
+  },
+  (info) => { protocolInfo.value = info },
+)
 
 const eventBus = useEventBus<"upload-protocol">(protocolKey)
-eventBus.on(async (event, payload: Record<string, any>) => {
-  if (event === "upload-protocol") {
-    const { labUid, projectUid, protocolUid } = route.params as {
-      labUid: string
-      projectUid: string
-      protocolUid: string
-    }
-    await fetchProtocolInfoByUid({ labUid, projectUid, protocolUid })
-  }
+eventBus.on((event) => {
+  if (event === "upload-protocol")
+    retry()
 })
 
 const message = useClosableMessage()
@@ -306,41 +329,6 @@ const floatButtonProps: FloatButtonProps & { onClick: () => void } = {
   bottom: 50,
   onClick: handleAddRecord,
 }
-
-watch(
-  () => route.params,
-  async (curr, prev) => {
-    const { labUid, projectUid, protocolUid } = curr
-    if (!(labUid && projectUid && protocolUid)) {
-      return
-    }
-
-    if (
-      prev?.labUid === labUid
-      && prev?.projectUid === projectUid
-      && prev?.protocolUid === protocolUid
-    ) {
-      return
-    }
-
-    protocolInfo.value = null
-    startLoading()
-    const res = await fetchProtocolInfoByUid({
-      labUid: labUid as string,
-      projectUid: projectUid as string,
-      protocolUid: protocolUid as string,
-    }, false)
-
-    if (!res) {
-      // message.error("Failed to fetch protocol info")
-      await toNotFound("protocol")
-      return
-    }
-
-    endLoading()
-  },
-  { deep: true, immediate: true },
-)
 
 onMounted(async () => {
   const { path, name } = route

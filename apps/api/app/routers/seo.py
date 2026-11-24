@@ -6,6 +6,7 @@ from xml.sax.saxutils import escape
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import and_, select
 
+from app.config import config
 from app.database import DBSession
 from app.models.lab import Lab
 from app.models.project import PermissionType, Project, ProjectType
@@ -53,6 +54,9 @@ async def get_sitemap(request: Request, db_session: DBSession):
         (f"{site_origin}/", None),
         (f"{site_origin}/hub/list", None),
     ]
+
+    if config.is_single_lab:
+        return Response(render_sitemap([]), media_type="application/xml")
 
     project_rows = (
         await db_session.execute(

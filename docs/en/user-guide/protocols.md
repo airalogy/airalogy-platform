@@ -8,6 +8,8 @@ Open a Project to see Protocols owned by that Project. Depending on your role, y
 
 Use a stable, descriptive Protocol ID where the interface requests one. Display names and descriptions can explain the scientific purpose; identifiers are used in routes and integrations and may not be safely changeable later.
 
+Visitors opening a private shared link can sign in and return to the original page. If the link is still unavailable, ask the person who shared it to check the URL and your project, Protocol or Record access. Public Protocols that allow anonymous reading in the community edition can still be opened directly.
+
 Aira-generated Protocols are checked before being handed over as drafts. If a deterministic check fails, Aira attempts one minimal repair and the result is checked again. A failed or ambiguous repair retains the original draft. The editor also checks current AIMD, Python and TOML sources after edits and before saving, showing file names and line numbers when available. Choose **Ask Aira to repair** to review a proposed diff; it is not applied until you confirm. Changes made while waiting are protected by the existing conflict check.
 
 **Static checks passed** covers AIMD structure, references, assigner dependencies and Python/TOML syntax. It does not certify scientific correctness, external dependencies or client JavaScript execution. Saving still validates the complete package in the isolated Protocol executor. A checker outage is reported separately from invalid syntax. Manual checks remain available with AI disabled; fix reported issues or retry before saving. Failed checks retain the local draft.
@@ -60,6 +62,17 @@ CSV/API imports do not run browser calculations. Supply the derived fields requi
 Protocols can be reused across experiments when the procedure and data contract are genuinely the same. Use a separate Protocol or an explicit new version when the scientific meaning changes.
 
 Where Protocol Workflow is available, multiple Protocols can be connected into a directed research process. Check the starting Protocol, transitions, and data mapping before execution. A workflow should make hand-offs visible; it should not hide undocumented assumptions between steps.
+
+## Share in a single-organization workspace
+
+Open **Share** on the project or Protocol to see who can open the workspace link.
+
+- New projects default to **Project members only**. Add collaborators under **Team** to grant ongoing access by role.
+- In **Project settings → Project visibility**, enable organization reading to let signed-in members read the project introduction and Protocols that inherit project permissions. Records, meetings, finances and Protocols with individual permissions keep their own access rules. To share only one version internally, publish an organization link from that Protocol.
+- For external readers, an organization owner or administrator first enables external publishing under **Organization management → Settings**. An authorized publisher then opens **Share**, selects the version and public audience, previews the text, selects the accompanying materials, and confirms publication. Anyone who can reach the deployment and has this link can read it without signing in.
+- A project introduction can be published separately. Its page lists only explicitly published public versions. Later versions require publication of their own. Withdraw a link in **Share** to disable the page and its downloads. Turning off external publication withdraws all of the organization's public links; turning it back on requires fresh publications.
+
+Upgrading a single-organization instance converts its legacy public projects to organization reading. To share externally, review and publish the content and use the resulting link.
 
 ## Share and cite
 

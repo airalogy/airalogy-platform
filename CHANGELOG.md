@@ -14,6 +14,12 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Single-organization projects default to project members. Teams can share the project introduction and inherited Protocols with signed-in organization members, or publish a reviewed project introduction or an exact Protocol version with selected materials. External publication is off by default. Withdrawing a publication disables its link and downloads.
+
+- Shared links to projects, Protocols and Records offer sign-in and return to the original page. Unavailable links and temporary loading failures now have distinct recovery actions.
+
+- MCP Record import accepts recorded steps, checks and notes, and can link authorized existing attachments. Optional photos can be left blank. The Record listing includes the saved execution states.
+
 - The Record field panel uses AIMD Recorder 1.29.1 for full-width inputs, labeled photo uploads and authored step and checkpoint titles on desktop and mobile. Photo uploads stay mounted until the server returns a file reference. A required-field message now appears after the next click or tap has reached its target.
 
 - Internal deployments can distribute verified application images through private GHCR and pull them by digest, or use the existing offline archive. The Protocol executor can build from a mirror of its pinned Python base.

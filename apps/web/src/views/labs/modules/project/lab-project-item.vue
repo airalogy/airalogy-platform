@@ -8,7 +8,7 @@
           </router-link>
         </n-ellipsis>
       </span>
-      <div v-if="props.type === 'lab'" class="relative w-fit flex items-center">
+      <div v-if="props.type === 'lab' && !props.item.organization_reader" class="relative w-fit flex items-center">
         <project-icon-compact />
         <span class="relative w-fit">
           <router-link :to="projectRoute.project" class="ml-4px mr-10px !hover:router-link">
@@ -99,7 +99,7 @@ const projectRoute = computed<Record<"lab" | "project" | "members", RouteLocatio
   }
 })
 
-const { visibilityLabel, visibilityClass } = useProjectVisibility(() => props.item.type)
+const { visibilityLabel, visibilityClass } = useProjectVisibility(() => props.item.type, () => props.item.organization_readable)
 const hierarchyHint = computed(() => {
   if (props.item.parent_project_name) {
     return $t("page.project.settingsPage.subprojectOf", { name: props.item.parent_project_name })

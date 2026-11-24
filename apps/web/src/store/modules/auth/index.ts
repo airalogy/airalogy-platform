@@ -34,14 +34,18 @@ export const useAuthStore = defineStore(SetupStoreId.AUTH, () => {
     token.value = authToken
   }
 
-  /** Reset auth store */
-  async function resetStore() {
+  function clearSession() {
     const authStore = useAuthStore()
 
     clearAuthStorage()
     authStore.$reset()
     token.value = ""
+    Object.assign(userInfo, getUserInfo())
+  }
 
+  /** Reset auth store */
+  async function resetStore() {
+    clearSession()
     if (!route.value.meta.constant) {
       await toRoot()
     }
@@ -323,6 +327,7 @@ export const useAuthStore = defineStore(SetupStoreId.AUTH, () => {
     loginLoading,
     justSignedUp,
     resetStore,
+    clearSession,
     setToken,
     login,
     logout,

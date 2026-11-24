@@ -28,7 +28,7 @@ export type SearchNameKey =
   | "search-discussion"
 export type DemoNameKey = "organization-demo"
 
-export type RouteNameKey = "research-documents" | "research-document-detail" | RootNameKey | HomeNameKey | HelpNameKey | ResearchNameKey | KnowledgeNameKey | AuthRouteNameKey | UserProfileNameKey | ProjectsNameKey | LabsNameKey | LabInfoNameKey | GroupsNameKey | ProjectInfoNameKey | ProtocolNameKey | ProtocolInfoNameKey | ProtocolRecordNameKey | AuthorizeNameKey | ExceptionNameKey | HubNameKey | SearchNameKey | DemoNameKey | "protocol-editor" | "protocol-editor-playground" | "excel-editor" | AdminNameKey | AdminMenuNameKey | "global-chat"
+export type RouteNameKey = "shared-publication" | "research-documents" | "research-document-detail" | RootNameKey | HomeNameKey | HelpNameKey | ResearchNameKey | KnowledgeNameKey | AuthRouteNameKey | UserProfileNameKey | ProjectsNameKey | LabsNameKey | LabInfoNameKey | GroupsNameKey | ProjectInfoNameKey | ProtocolNameKey | ProtocolInfoNameKey | ProtocolRecordNameKey | AuthorizeNameKey | ExceptionNameKey | HubNameKey | SearchNameKey | DemoNameKey | "protocol-editor" | "protocol-editor-playground" | "excel-editor" | AdminNameKey | AdminMenuNameKey | "global-chat"
 
 export type CustomRoute<T extends RouteNameKey = RouteNameKey> = RouteRecordRaw & {
   name?: T

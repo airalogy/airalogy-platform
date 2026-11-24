@@ -1,16 +1,19 @@
 import { router } from "@/router"
-import { clearAuthStorage } from "@/store/modules/auth/shared"
+import { useAuthStore } from "@/store/modules/auth"
+import { $t } from "@airalogy/shared/locales"
 
 let showUnauthorizedMessage = true
 
 export function handleUnauthorized() {
   if (showUnauthorizedMessage) {
-    window.$message?.error("Authentication required")
+    window.$message?.error($t("resourceAccess.signInTitle"))
     showUnauthorizedMessage = false
   }
 
-  clearAuthStorage()
-  void router.push({ name: "login" }).then(() => {
+  useAuthStore().clearSession()
+  const route = router.currentRoute.value
+  const target = route.name === "login" ? route.fullPath : { name: "login" as const, query: { redirect: route.fullPath } }
+  void router.replace(target).then(() => {
     setTimeout(() => {
       showUnauthorizedMessage = true
     }, 100)

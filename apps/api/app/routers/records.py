@@ -32,7 +32,7 @@ from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
 from app.models.user import User
 from app.routers.aira_imports import AiraArchiveImporter
-from app.routers.permission import check_user_permission
+from app.routers.permission import check_user_permission, conceal_read_denial
 from app.routers.utils import UUID
 from app.services.resource_bindings import (
     ResourceBindingError,
@@ -468,7 +468,7 @@ async def import_records_transaction(
     protocol_id, db_session, current_user, background_tasks, file,
     input_format="auto", allow_extra_var_fields=False, require_complete_quiz=False,
     include_template_defaults=True, preview=False, preview_token="", *, commit=True,
-    executor_credentials=True,
+    executor_credentials=True, validate_imported=None,
 ):
     protocol, project, protocol_version = await _import_context(protocol_id, db_session, current_user)
 
@@ -687,6 +687,9 @@ async def import_records_transaction(
             summary["errors"] = format_errors(validation_errors, line_numbers)
             return summary
         _raise_import_errors(validation_errors)
+
+    if validate_imported is not None:
+        validate_imported(imported_records)
 
     from app.services.workflow_files import authorize_record_files
     for imported_record in imported_records:
@@ -961,18 +964,23 @@ async def get_record(
             Record.version == version,
         ],
     )
-    if record is None:
+    if record is None or record.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Record not found")
-    protocol = await Protocol.find(db_session, id=record.protocol_id)
-    project = await Project.find(db_session, id=protocol.project_id)
-    await check_user_permission(
-        db_session,
-        project=project,
-        user=current_user,
-        action="read_record",
-        protocol=protocol,
-        record=record,
-    )
+    protocol = await Protocol.find_by(db_session, [Protocol.id == record.protocol_id])
+    if protocol is None or protocol.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    project = await Project.find_by(db_session, [Project.id == protocol.project_id])
+    if project is None or project.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    with conceal_read_denial("Record"):
+        await check_user_permission(
+            db_session,
+            project=project,
+            user=current_user,
+            action="read_record",
+            protocol=protocol,
+            record=record,
+        )
 
     if record.version > 1:
         init_record = await Record.find_by(

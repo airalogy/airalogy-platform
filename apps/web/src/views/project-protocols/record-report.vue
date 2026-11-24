@@ -1,5 +1,7 @@
 <template>
-  <section class="-mx-8">
+  <resource-access-state v-if="failure" :failure="failure" @retry="retry" />
+  <n-spin v-else-if="loading" class="mx-auto my-12" />
+  <section v-else-if="record" class="-mx-8">
     <header class="min-h-[70px] w-full flex flex-1 flex-row flex-wrap items-center gap-y-3 px-8 py-2">
       <n-button quaternary class="mr-4 -ml-2" @click="handleRedirect">
         <template #icon>
@@ -140,9 +142,6 @@
         @update:field="handleUpdateField"
         @update:split-size="handleUpdateSize"
       />
-      <div v-else-if="!loading" class="flex flex-col items-center justify-center">
-        <n-result status="404" :title="$t('page.protocol.recordReport.notFoundTitle')" :description="$t('page.protocol.recordReport.notFoundDescription')" />
-      </div>
     </n-spin>
 
     <!-- Preview Modal -->
@@ -234,11 +233,14 @@
 import type { IRecordData, IRecordDataKey } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { ITimelineItem } from "./types"
+import ResourceAccessState from "@/components/common/resource-access-state.vue"
 import ProtocolRatingEntry from "@/components/protocol/protocol-rating-entry.vue"
-import { useBoolean, useLoading, useProjectPermissions } from "@/composables"
+import { useBoolean, useProjectPermissions } from "@/composables"
+import { useResourcePage } from "@/composables/useResourcePage"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
-import { deleteResearchRecord, fetchProtocolRecords, getProtocolRecordReport, transformFields } from "@/service/api/project-protocols"
+import { deleteResearchRecord, fetchProtocolRecords, getProtocolInfoByUid, getProtocolRecordReport } from "@/service/api/project-protocols"
+import { getProjectInfoById } from "@/service/api/projects"
 import { fetchUserInfo } from "@/service/api/users"
 import { useRouteStore } from "@/store/modules/route"
 import { getRecordDeleteGraceDays } from "@/utils/env"
@@ -297,13 +299,11 @@ provide("protocol-workflow-channel", { id: instanceId })
 
 const message = useClosableMessage()
 const { t } = useI18n()
-const { endLoading, loading, startLoading } = useLoading()
-const { fetchProtocolInfoByUid, protocolInfo, protocolId } = useProvideProtocolInfoStore(null)
+const { protocolInfo, protocolId } = useProvideProtocolInfoStore(null)
 
 const simulatedFields = ref<string[]>([])
 const recordData = ref<Partial<IRecordData>>({} as IRecordData)
-const isRevisionReady = computed(() => !loading.value && !!protocolInfo.value && !!record.value && !!protocol.value)
-const { projectInfo, fetchProjectInfoById } = useOrProvideProjectInfoStore(null)
+const { projectInfo } = useOrProvideProjectInfoStore(null)
 const { canDeleteOthersRecords, canDeleteOwnRecords } = useProjectPermissions(projectInfo)
 
 const deleteGraceDays = computed(() => getRecordDeleteGraceDays())
@@ -567,104 +567,46 @@ async function handleDeleteRecord() {
   return { data, error }
 }
 
-async function fetchLatestRecordNumber(protocolId: string | number) {
-  try {
-    const { data } = await fetchProtocolRecords(protocolId, { page: 1, pageSize: 1 })
-    const latest = data?.records?.[0]?.metadata?.record_num
-    latestRecordNumber.value = typeof latest === "number" ? latest : null
+async function readRecordPage(signal: AbortSignal) {
+  const { recordId, recordVersion, protocolUid, labUid, projectUid, protocolVersion } = route.params as Record<string, string>
+  const readProtocol = async (version: string) => {
+    const { data, error } = await getProtocolInfoByUid({ labUid, projectUid, protocolUid, version }, false, signal)
+    if (!data)
+      throw error
+    return data
   }
-  catch {
-    latestRecordNumber.value = null
+  const info = await readProtocol(protocolVersion)
+  const recordRes = await getProtocolRecordReport({ recordId, protocolId: info.id, version: recordVersion }, signal)
+  const protocolData = info.metadata?.version === recordRes.metadata.protocol_version
+    ? info
+    : await readProtocol(recordRes.metadata.protocol_version)
+  const convertedData = createProtocolRecordData(recordRes.data)
+  const variableData = convertedData.research_variable
+
+  const schema = protocolData?.json_schema
+  if (schema) {
+    for (const key in variableData) {
+      const targetSchema = _get(schema, ["research_variable", key, "properties"])
+      if (targetSchema) {
+        _set(convertedData, ["research_variable", key, "properties"], targetSchema)
+      }
+    }
   }
+  return { info: protocolData, recordRes, convertedData }
 }
 
-async function fetchRecord() {
-  const { recordId, recordVersion, protocolUid, labUid, projectUid, protocolVersion } = route.params as {
-    recordId: string
-    recordVersion: string
-    protocolUid: string
-    labUid: string
-    projectUid: string
-    protocolVersion: string
-  }
-  if (!recordId || !protocolUid || !labUid || !projectUid) {
+async function loadRecordControls(info: ProtocolModels.ProjectProtocolInfo) {
+  const openedRecord = record.value
+  const [project, latest] = await Promise.allSettled([
+    getProjectInfoById(info.project_id),
+    fetchProtocolRecords(info.id, { page: 1, pageSize: 1 }),
+  ])
+  if (record.value !== openedRecord)
     return
-  }
-
-  try {
-    startLoading()
-    let protocolId: string | number = ""
-
-    if (protocolInfo.value) {
-      protocolId = protocolInfo.value.id
-    }
-    else {
-      const res = await fetchProtocolInfoByUid({ labUid, projectUid, protocolUid, version: protocolVersion })
-      if (res) {
-        protocolId = res.id
-      }
-    }
-
-    if (!protocolId) {
-      message.error(t("page.protocol.recordReport.protocolNotFound"))
-      return
-    }
-
-    const recordRes = await getProtocolRecordReport({
-      recordId,
-      protocolId,
-      version: recordVersion,
-    })
-
-    record.value = recordRes
-
-    void fetchLatestRecordNumber(protocolId)
-
-    let protocolData: ProtocolModels.ProtocolInfo | null
-      = protocolInfo.value?.metadata?.version === recordRes.metadata.protocol_version
-        ? transformFields(protocolInfo.value as unknown as ProtocolModels.ProjectProtocolInfo)
-        : null
-    if (!protocolData) {
-      const versionedProtocol = await fetchProtocolInfoByUid(
-        {
-          labUid,
-          projectUid,
-          protocolUid,
-          version: recordRes.metadata.protocol_version,
-        },
-        true,
-        false,
-      )
-      protocolData = versionedProtocol
-        ? transformFields(versionedProtocol as unknown as ProtocolModels.ProjectProtocolInfo)
-        : null
-    }
-
-    simulatedFields.value = recordRes.data.simulated_fields || []
-    const convertedData = createProtocolRecordData(recordRes.data)
-    const variableData = convertedData.research_variable
-
-    const schema = protocolData?.json_schema
-    if (schema) {
-      for (const key in variableData) {
-        const targetSchema = _get(schema, ["research_variable", key, "properties"])
-        if (targetSchema) {
-          _set(convertedData, ["research_variable", key, "properties"], targetSchema)
-        }
-      }
-    }
-
-    protocol.value = protocolData
-    recordData.value = { ...convertedData, quiz: recordRes.data.quiz || {} } as Partial<IRecordData>
-  }
-  catch (e) {
-    if (e instanceof Error) {
-      message.error(t("page.protocol.recordReport.loadFailed", { message: e.message }))
-    }
-  }
-  finally {
-    endLoading()
-  }
+  if (project.status === "fulfilled")
+    projectInfo.value = project.value
+  if (latest.status === "fulfilled")
+    latestRecordNumber.value = latest.value.data?.records?.[0]?.metadata?.record_num ?? null
 }
 
 const { exportToPdf, isGenerating } = useHtmlToPdf()
@@ -777,6 +719,38 @@ const user = asyncComputed(async () => {
   return null
 })
 
+async function handleSchemaMigrated(migrated: {
+  version: number
+  protocol_version: string
+}) {
+  await router.replace({
+    name: "protocol-record-report",
+    params: {
+      ...route.params,
+      protocolVersion: migrated.protocol_version,
+      recordVersion: String(migrated.version),
+    },
+  })
+}
+
+const { failure, loading, retry } = useResourcePage(
+  () => route.path,
+  readRecordPage,
+  (result) => {
+    protocolInfo.value = result?.info ?? null
+    record.value = result?.recordRes ?? null
+    protocol.value = result?.info ?? null
+    recordData.value = result ? { ...result.convertedData, quiz: result.recordRes.data.quiz || {} } as Partial<IRecordData> : {}
+    simulatedFields.value = result?.recordRes.data.simulated_fields || []
+    projectInfo.value = null
+    latestRecordNumber.value = null
+    if (result)
+      void loadRecordControls(result.info)
+  },
+)
+
+const isRevisionReady = computed(() => !loading.value && !!protocolInfo.value && !!record.value && !!protocol.value)
+
 function handleModify() {
   if (!isRevisionReady.value) {
     return
@@ -802,27 +776,6 @@ function handleModify() {
     },
   })
 }
-
-async function handleSchemaMigrated(migrated: {
-  version: number
-  protocol_version: string
-}) {
-  await router.replace({
-    name: "protocol-record-report",
-    params: {
-      ...route.params,
-      protocolVersion: migrated.protocol_version,
-      recordVersion: String(migrated.version),
-    },
-  })
-  await fetchRecord()
-}
-onMounted(async () => {
-  await fetchRecord()
-  if (protocolInfo.value) {
-    await fetchProjectInfoById(protocolInfo.value.project_id)
-  }
-})
 
 // Watch for recordData changes and restore table data
 watch([recordData, () => formRef.value], async ([data, form]) => {

@@ -2,6 +2,7 @@
 AIRA平台的基于角色的控制
 """
 
+from contextlib import contextmanager
 from typing import Optional
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from sqlalchemy import func, select, union_all
 from app.database import DBSession
 from app.config import config
 from app.models.group import GroupProject, GroupUser
+from app.models.lab import LabUser
 from app.models.project import (
     PermissionType,
     Project,
@@ -236,6 +238,23 @@ async def get_user_protocol_role(
     return ProjectRole(role)
 
 
+async def organization_can_read(db, user, project, lab):
+    if not (config.is_single_lab and user and project.organization_readable and lab.uid == config.SINGLE_LAB_UID):
+        return False
+    return await LabUser.exists(db, [LabUser.lab_id == project.lab_id, LabUser.user_id == user.id])
+
+
+@contextmanager
+def conceal_read_denial(resource: str):
+    """Direct resource links use the same response for a missing or unreadable resource."""
+    try:
+        yield
+    except HTTPException as exc:
+        if exc.status_code == 403 or (exc.status_code == 400 and exc.detail == "Permission denied"):
+            raise HTTPException(status_code=404, detail=f"{resource} not found") from exc
+        raise
+
+
 async def check_user_permission(
     db_session: DBSession,
     project: Project,
@@ -244,7 +263,7 @@ async def check_user_permission(
     protocol: Optional[Protocol] = None,
     record: Optional[Record] = None,
 ) -> ProjectRole:
-    if user is None and action not in anonymous_read_actions:
+    if user is None and (config.is_single_lab or action not in anonymous_read_actions):
         raise HTTPException(status_code=400, detail="Permission denied")
 
     if user is not None and config.effective_lab_structure_mode == "structured":
@@ -272,7 +291,7 @@ async def check_user_permission(
         return role
 
     if role is None:
-        if project.type == ProjectType.PRIVATE:
+        if config.is_single_lab or project.type == ProjectType.PRIVATE:
             raise HTTPException(status_code=400, detail="Permission denied")
         if (
             user is None
@@ -356,3 +375,19 @@ async def check_user_permission(
         return role
 
     raise HTTPException(status_code=400, detail="Permission denied")
+
+
+async def can_publish_workspace(db, project, user, protocol=None):
+    if not config.is_single_organization or user is None:
+        return False
+    if not await LabUser.exists(db, [LabUser.lab_id == project.lab_id, LabUser.user_id == user.id]):
+        return False
+    try:
+        role = await check_user_permission(
+            db, project, user, "update_protocol" if protocol else "update_project", protocol=protocol
+        )
+    except HTTPException as exc:
+        if exc.status_code == 403 or (exc.status_code == 400 and exc.detail == "Permission denied"):
+            return False
+        raise
+    return role <= ProjectRole.MANAGER or bool(protocol and protocol.user_id == user.id)

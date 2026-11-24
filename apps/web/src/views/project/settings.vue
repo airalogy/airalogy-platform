@@ -158,7 +158,7 @@
                       </div>
                     </div>
                     <span class="text-xs text-gray-400">
-                      {{ item.type === ProjectType.PUBLIC ? $t("page.project.settingsPage.visibility.publicLabel") : $t("page.project.settingsPage.visibility.privateLabel") }}
+                      {{ instance.isSingleLab ? $t(item.organization_readable ? "sharing.organization" : "sharing.members") : item.type === ProjectType.PUBLIC ? $t("page.project.settingsPage.visibility.publicLabel") : $t("page.project.settingsPage.visibility.privateLabel") }}
                     </span>
                   </router-link>
                 </div>
@@ -168,6 +168,7 @@
         </div>
       </settings-card>
 
+      <workspace-sharing-settings v-if="instance.isSingleLab && projectInfo.can_publish" :id="projectInfo.id" :readable="projectInfo.organization_readable" @changed="projectInfo.organization_readable = $event" />
       <!-- Danger Zone -->
       <div class="mb-4 mt-6 border-t border-gray-200" />
       <settings-card
@@ -176,7 +177,7 @@
         :is-danger="true"
       >
         <!-- Project Type Section -->
-        <n-form-item :show-require-mark="false" :label="$t('page.project.settingsPage.visibilityLabel')" path="type">
+        <n-form-item v-if="!instance.isSingleLab" :show-require-mark="false" :label="$t('page.project.settingsPage.visibilityLabel')" path="type">
           <div class="w-full flex items-start justify-between gap-4 pt-2">
             <div class="min-w-0 flex flex-col gap-2">
               <span
@@ -206,7 +207,7 @@
 
         <n-divider class="!mt-2" />
         <!-- Public Access Role Section -->
-        <template v-if="model.type === ProjectType.PUBLIC">
+        <template v-if="!instance.isSingleLab && model.type === ProjectType.PUBLIC">
           <n-form-item
             :label="$t('page.project.settingsPage.publicAccessRoleLabel')"
             path="public_access_role"
@@ -349,12 +350,14 @@
 <script setup lang="ts">
 import type { SelectOption } from "naive-ui/es/select"
 import { DeleteConfirmationModal, SettingsCard, useLogoUpload } from "@/components/common/settings"
+import WorkspaceSharingSettings from "@/components/common/workspace-sharing-settings.vue"
 import { useFormRules, useLoading, useNaiveForm } from "@/composables"
 import { useProjectVisibility } from "@/composables/useProjectVisibility"
 import { getProjectRoleDetailsPublic } from "@/composables/useRoleDescription"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { ProjectRole, ProjectType } from "@/enum"
 import { deleteProject, fetchProjectList, putProjectInfo } from "@/service/api/projects"
+import { useInstanceStore } from "@/store/modules/instance"
 import { useProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import CreateProjectModal from "@/views/projects/modules/create-project-modal.vue"
 import { useClosableMessage } from "@airalogy/composables"
@@ -362,6 +365,7 @@ import { $t } from "@airalogy/shared/locales"
 import { isEqual } from "lodash-es"
 import { useDialog } from "naive-ui"
 
+const instance = useInstanceStore()
 const { projectInfo, fetchProjectInfoById } = useProjectInfoStore()!
 
 interface FormModel {

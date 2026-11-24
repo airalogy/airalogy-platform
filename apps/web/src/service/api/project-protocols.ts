@@ -58,14 +58,16 @@ export function transformFields(
 export async function getProtocolInfoByUid(
   payload: { labUid: string, projectUid: string, protocolUid: string, version?: string },
   showError = true,
+  signal?: AbortSignal,
 ) {
   const { labUid, projectUid, protocolUid, version } = payload
   if (!labUid || !projectUid || !protocolUid) {
     throw new Error("labUid, projectUid and uid are required")
   }
 
-  const { data, error } = await await request<ProtocolModels.ProjectProtocolInfo>({
+  const { data, error } = await request<ProtocolModels.ProjectProtocolInfo>({
     url: "/protocols/by_uid",
+    signal,
     params: {
       lab_uid: labUid,
       project_uid: projectUid,
@@ -908,7 +910,7 @@ export async function getProtocolRecordReport(payload: {
   recordId: string | number
   protocolId: string | number
   version?: string | number
-}) {
+}, signal?: AbortSignal) {
   const { recordId, protocolId, version = 1 } = payload
 
   if (!recordId || !protocolId) {
@@ -918,6 +920,8 @@ export async function getProtocolRecordReport(payload: {
   const { data, error } = await request<ProtocolModels.RecordInfo>({
     url: `/protocols/${protocolId}/records/${recordId}`,
     method: "GET",
+    signal,
+    metadata: { showError: !signal },
     params: {
       version,
     },

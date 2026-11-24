@@ -384,6 +384,7 @@ declare module 'vue' {
     ResearchCheckMinimalInput: typeof import('./../components/custom/aimd/components/inputs/research-check-minimal-input.vue')['default']
     ResearchNode: typeof import('./../components/chain/research-node.vue')['default']
     ResearchStepMinimalInput: typeof import('./../components/custom/aimd/components/inputs/research-step-minimal-input.vue')['default']
+    ResourceAccessState: typeof import('./../components/common/resource-access-state.vue')['default']
     ResourceRefInput: typeof import('./../components/custom/aimd/components/inputs/resource-ref-input.vue')['default']
     RestoreDraftModal: typeof import('./../components/common/restore-draft-modal.vue')['default']
     RoleChangeDialog: typeof import('./../components/common/role-change-dialog.vue')['default']
@@ -413,6 +414,8 @@ declare module 'vue' {
     VarTableWrapper: typeof import('./../components/custom/aimd/components/table/var-table-wrapper.vue')['default']
     WorkflowNode: typeof import('./../components/workflow-timeline/workflow-node.vue')['default']
     WorkflowTimeline: typeof import('./../components/chain/workflow-timeline.vue')['default']
+    WorkspaceShare: typeof import('./../components/protocol/workspace-share.vue')['default']
+    WorkspaceSharingSettings: typeof import('./../components/common/workspace-sharing-settings.vue')['default']
     Wrapper: typeof import('./../components/Layout/Wrapper.vue')['default']
   }
 }

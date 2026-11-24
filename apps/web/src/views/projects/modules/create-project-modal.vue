@@ -110,7 +110,13 @@
         <n-checkbox v-model:checked="openScenarioWorkbench" class="mb-4">
           {{ $t("page.scenarioKits.openAfterCreate") }}
         </n-checkbox>
-        <n-form-item v-if="!instanceStore.isSingleLab" :label="$t('page.project.settingsPage.visibilityLabel')" path="type" label-placement="left" required :show-feedback="false">
+        <n-form-item v-if="instanceStore.isSingleLab" :label="$t('sharing.audience')">
+          <n-radio-group v-model:value="model.readAudience">
+            <n-radio value="members">{{ $t('sharing.members') }}</n-radio>
+            <n-radio value="organization">{{ $t('sharing.organization') }}</n-radio>
+          </n-radio-group>
+        </n-form-item>
+        <n-form-item v-else :label="$t('page.project.settingsPage.visibilityLabel')" path="type" label-placement="left" required :show-feedback="false">
           <n-radio-group v-model:value="model.type">
             <n-radio
               v-for="item in labTypeList"
@@ -206,6 +212,7 @@ interface FormModel {
   description: string | null
   labId: string | null
   parentProjectId: string | null
+  readAudience: 'members' | 'organization'
   type: 1 | 2
   copyMembers: boolean
 }
@@ -231,6 +238,7 @@ const model = ref<FormModel>({
   displayName: null,
   labId: props.labInfo?.id ?? null,
   parentProjectId: props.parentProject?.id ?? null,
+  readAudience: 'members',
   type: 1,
   copyMembers: true,
 })
@@ -430,6 +438,7 @@ async function handleConfirm() {
     const { data } = await postNewProject({
       labId,
       parentProjectId: parentProjectId || undefined,
+      organizationReadable: instanceStore.isSingleLab && model.value.readAudience === 'organization',
       copyMembers: parentProjectId ? copyMembers : undefined,
       uid: rawUid,
       displayName,
@@ -493,6 +502,7 @@ watch(
   () => isShown.value,
   async (shown) => {
     if (shown) {
+      model.value.readAudience = "members"
       emits("modal:open")
       if (instanceStore.isSingleLab) {
         await fetchLabs(true)

@@ -21,7 +21,12 @@ from app.models.protocol_folder import ProtocolFolder, ProtocolFolderProtocol
 from app.models.protocol_version import ProtocolVersion
 from app.models.record import Record
 from app.models.user import User
-from app.routers.permission import check_user_permission
+from app.routers.permission import (
+    can_publish_workspace,
+    check_user_permission,
+    conceal_read_denial,
+    organization_can_read,
+)
 from app.routers.utils import UUID, UidStr
 from app.services.access_control import structured_protocol_ids_for_action
 from app.services.knowledge import authorize_knowledge_item
@@ -329,9 +334,21 @@ async def protocol_response(
         raise HTTPException(status_code=404, detail="Protocol not found")
 
     if project is None:
-        project = await Project.find(db_session, id=protocol.project_id)
+        project = await Project.find_by(db_session, [Project.id == protocol.project_id])
+    if project is None or project.deleted_at is not None or protocol.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Protocol not found")
     if lab is None:
         lab = await Lab.find(db_session, id=project.lab_id)
+    org_reader = False
+    try:
+        with conceal_read_denial("Protocol"):
+            user_role = await check_user_permission(db_session, project, current_user, "read_protocol", protocol=protocol)
+    except HTTPException as exc:
+        if (exc.status_code != 404 or project.permission_type != PermissionType.INHERIT
+            or not protocol.inherit_permissions or protocol.kind != "experiment"
+            or not await organization_can_read(db_session, current_user, project, lab)):
+            raise
+        org_reader = True
     if version is None:
         version = protocol.latest_version
     protocol_version = await ProtocolVersion.find_by(
@@ -347,14 +364,12 @@ async def protocol_response(
             detail=f"Protocol version: {version} not found",
         )
 
-    # Check user permission
-    user_role = await check_user_permission(
-        db_session,
-        project=project,
-        user=current_user,
-        action="read_protocol",
-        protocol=protocol,
-    )
+    if org_reader:
+        return {"id": protocol.id, "uid": protocol.uid, "name": (protocol_version.meta_data or {}).get("name") or protocol.name,
+                "project_id": project.id, "project": {"id": project.id, "uid": project.uid, "name": project.name},
+                "lab": {"id": lab.id, "uid": lab.uid, "name": lab.name}, "organization_reader": True,
+                "aimd": protocol_version.aimd, "metadata": {"version": version},
+                "fields": {}, "json_schema": {}}
 
     # Get user info
     user = await User.find(db_session, id=protocol.user_id)
@@ -448,6 +463,8 @@ async def protocol_response(
         knowledge_sources=knowledge_sources,
         analysis_method_sources=analysis_method_sources,
         metadata=protocol_version.meta_data,
+        organization_readable=bool(project.organization_readable and protocol.inherit_permissions and project.permission_type == PermissionType.INHERIT),
+        can_publish=await can_publish_workspace(db_session, project, current_user, protocol),
         records_count=records_count,
         folder_ids=folder_ids,
     )
@@ -465,7 +482,7 @@ async def get_protocol_by_uid(
     # Find the lab first
     lab = await Lab.find_by(db_session, [Lab.uid == lab_uid])
     if lab is None:
-        raise HTTPException(status_code=404, detail="Lab not found")
+        raise HTTPException(status_code=404, detail="Protocol not found")
 
     # Find the project
     project = await Project.find_by(
@@ -477,7 +494,7 @@ async def get_protocol_by_uid(
         ],
     )
     if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Protocol not found")
 
     protocol = await Protocol.find_by(
         db_session,
@@ -530,7 +547,7 @@ async def get_protocol_by_airalogy_id(
 
     lab = await Lab.find_by(db_session, [Lab.uid == lab_uid])
     if lab is None:
-        raise HTTPException(status_code=404, detail="Lab not found")
+        raise HTTPException(status_code=404, detail="Protocol not found")
 
     project = await Project.find_by(
         db_session,
@@ -541,7 +558,7 @@ async def get_protocol_by_airalogy_id(
         ],
     )
     if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Protocol not found")
 
     protocol = await Protocol.find_by(
         db_session,
@@ -605,7 +622,7 @@ async def get_protocol_by_id(
     current_user: OptionalCurrentUser,
     version: str | None = None,
 ):
-    protocol = await Protocol.find(db_session, id=protocol_id)
+    protocol = await Protocol.find_by(db_session, [Protocol.id == protocol_id])
     return await protocol_response(
         db_session=db_session,
         current_user=current_user,

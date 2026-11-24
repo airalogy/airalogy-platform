@@ -1,13 +1,30 @@
 <template>
   <global-layout>
     <template #assistant>
-      <aira-side-panel v-if="hasOpened && projectInfo" :open="assistantOpen" :label="$t('page.projectAira.panel')" @close="closeAssistant">
+      <aira-side-panel v-if="hasOpened && projectInfo && !projectInfo.organization_reader" :open="assistantOpen" :label="$t('page.projectAira.panel')" @close="closeAssistant">
         <aira-panel :key="assistantScope" :project-id="projectInfo.id" :project-name="projectTitle" :meeting-name="meetingName" :meeting-id="currentMeetingId" :initial-chat="requestedChat" :can-send="assistantAvailable" @close="closeAssistant" @restart="clearRequestedChat" @review="reviewProposal" />
       </aira-side-panel>
     </template>
-    <content-layout :title="projectTitle" :tabs="tabs" compact-header>
+    <resource-access-state v-if="failure" :failure="failure" @retry="retry" />
+    <n-spin v-else-if="loadingProject" class="mx-auto my-12" />
+    <resource-access-state v-else-if="projectInfo?.organization_reader && !['project-overview', 'project-protocols'].includes(String(route.name))" failure="unavailable" />
+    <section v-else-if="projectInfo?.organization_reader" class="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
+      <p class="text-sm color-text-secondary">{{ $t('sharing.organization') }}</p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h1 class="text-2xl">{{ projectInfo.name }}</h1>
+        <workspace-share :project="projectInfo.id" organization-readable />
+      </div>
+      <p>{{ projectInfo.description }}</p>
+      <h2>{{ $t('sharing.protocols') }}</h2>
+      <p v-if="!projectInfo.reader_protocols?.length">{{ $t('sharing.emptyCatalog') }}</p>
+      <p v-for="item in projectInfo.reader_protocols" :key="item.uid">
+        <router-link :to="{ name: 'protocol-detail', params: { labUid: projectInfo.lab_uid, projectUid: projectInfo.uid, protocolUid: item.uid } }" class="text-primary">{{ item.name }}</router-link>
+      </p>
+    </section>
+    <content-layout v-else-if="projectInfo" :title="projectTitle" :tabs="tabs" compact-header>
       <template v-if="authStore.isLogin" #suffix>
         <div class="flex flex-wrap items-center justify-end gap-2">
+          <workspace-share v-if="instanceStore.isSingleLab" :key="projectInfo.id" :project="projectInfo.id" :organization-readable="projectInfo.organization_readable" :manage="projectInfo.can_publish" />
           <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="headerTrigger = undefined; assistantOpen = !assistantOpen">
             Aira
           </n-button>
@@ -69,8 +86,11 @@ import type { MeetingProposal } from "@/service/api/meetings"
 import type { TabPaneProps } from "naive-ui/es/tabs"
 import type { MeetingHandoff } from "../meetings/aira-handoff"
 import AiraSidePanel from "@/components/common/aira-side-panel.vue"
+import ResourceAccessState from "@/components/common/resource-access-state.vue"
+import WorkspaceShare from "@/components/protocol/workspace-share.vue"
 import { useProjectPermissions } from "@/composables"
 import { useProjectVisibility } from "@/composables/useProjectVisibility"
+import { useResourcePage } from "@/composables/useResourcePage"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
 import { projectAiraKey, useAiraNarrowScreen } from "@/composables/useWorkspaceAira"
@@ -78,7 +98,7 @@ import ContentLayout from "@/layouts/content-layout/index.vue"
 import GlobalLayout from "@/layouts/global-layout/index.vue"
 import { meetingDraftAvailability } from "@/service/api/meetings"
 import { readOps } from "@/service/api/project-operations"
-import { useAppStore } from "@/store/modules/app"
+import { getProjectInfo } from "@/service/api/projects"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { useRouteStore } from "@/store/modules/route"
@@ -141,7 +161,7 @@ const showIcon = computed(
 )
 
 const { routerPushByKey, routerPush } = useRouterPush()
-const { fetchProjectInfo, refetchProjectInfo, projectInfo } = useProvideProjectInfoStore(null)
+const { projectInfo } = useProvideProjectInfoStore(null)
 
 const { canShowSettings: canShowProjectSettings, canCreateProtocol } = useProjectPermissions(projectInfo)
 const canShowSettings = computed(() =>
@@ -318,7 +338,7 @@ const projectTitle = computed(() => {
   return name || uid || "Project"
 })
 
-const { visibilityLabel, visibilityClass } = useProjectVisibility(() => projectInfo.value?.type)
+const { visibilityLabel, visibilityClass } = useProjectVisibility(() => projectInfo.value?.type, () => projectInfo.value?.organization_readable)
 
 const description = computed(() => {
   return projectInfo.value?.description ?? ""
@@ -328,7 +348,7 @@ watch(description, measureDescription, { flush: "post" })
 
 const publicProjectSeo = computed(() => {
   const info = projectInfo.value
-  if (!info || route.name !== "project-protocols") {
+  if (instanceStore.isSingleLab || !info || info.type !== 2 || route.name !== "project-protocols") {
     return null
   }
 
@@ -367,8 +387,6 @@ const publicProjectSeo = computed(() => {
 })
 
 useSeoMeta(publicProjectSeo)
-
-const { reloadPage } = useAppStore()
 
 function handleAddProtocol(payload: {
   id: string
@@ -479,54 +497,22 @@ async function setBreadcrumbs(info?: Api.Project.MyProjectInfo | null) {
   setDynamicBreadcrumbs(breadcrumbs)
 }
 
-async function handleEditProject() {
-  const { labUid, projectUid } = route.params
-
-  const currProjectInfo = await refetchProjectInfo(0, {
-    labUid: labUid as string,
-    projectUid: projectUid as string,
-  })
-
-  if (currProjectInfo) {
-    projectInfo.value = currProjectInfo
-  }
-  else {
-    routerPushByKey("project-not-found")
-  }
-
-  await nextTick(async () => {
-    await setBreadcrumbs()
-    await reloadPage(10)
-  })
-}
-
-// Moving between tabs cancels requests belonging to the previous route. Until the
-// project has loaded, each new tab must be able to finish its own lookup.
-watch(
-  [() => route.params.labUid, () => route.params.projectUid, () => route.name],
-  async ([labUid, projectUid], _, onCleanup) => {
-    if (typeof labUid !== "string" || typeof projectUid !== "string")
-      return
-    if (projectInfo.value?.lab_uid === labUid && projectInfo.value.uid === projectUid)
-      return
-
-    let current = true
-    onCleanup(() => {
-      current = false
-    })
-    projectInfo.value = null
-    const info = await fetchProjectInfo({ labUid, projectUid })
-    if (!current)
-      return
-    if (info) {
-      projectInfo.value = info
-      await setBreadcrumbs(info)
-    }
-    else {
-      await routerPushByKey("project-not-found")
-    }
+const { failure, loading: loadingProject, retry } = useResourcePage(
+  () => [route.params.labUid, route.params.projectUid].join("/"),
+  async (signal) => {
+    const { labUid, projectUid } = route.params as Record<string, string>
+    const info = await getProjectInfo({ labUid, projectUid }, signal)
+    if (!info)
+      throw new Error("Empty project response")
+    return info
   },
-  { immediate: true },
+  (info) => {
+    projectInfo.value = info
+    if (info)
+      void setBreadcrumbs(info)
+    else
+      routerStore.setDynamicBreadcrumbs([])
+  },
 )
 
 onUnmounted(() => {

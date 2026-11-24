@@ -57,12 +57,16 @@ codex mcp add airalogy --url https://your-platform.example/api/mcp --bearer-toke
 让已连接工具依次执行：
 
 1. 调用 `access_context`、`list_protocols` 和 `get_protocol`，确认保存位置并取得标准 CSV 表头。
-2. 按准确的 `var.<id>` 表头整理 CSV。显示名称、近似名称不能作为自动映射；不得猜测补值、缺失分数补零或放宽 Protocol 校验。
+2. 按 `csv_template` 返回的表头整理 CSV，每行一条 Record。实测值填在 `var.<id>`，可勾选步骤的完成状态填在 `step.<id>.checked`，核对结果填在 `check.<id>.checked`，备注填在对应的 `.annotation` 列。已知状态填 `true` 或 `false`，未观察的步骤或核对项留空。必填字段仍按该版本的协议校验。
 3. 调用 `preview_import`，传入 Protocol ID、CSV 文本和唯一 `request_key`。平台复用现有导入器逐行校验；失败时返回有限的错误行、字段及类型，**不创建任何 Record**。
 4. 用户本人打开返回的确认链接，在 Platform 登录创建令牌的同一账号，核对保存位置、记录数、Protocol 版本和完整 CSV，然后确认或拒绝。**外部令牌不能自行确认写入。**
 5. 回到外部工具，以操作 ID 调用 `execute_operation`。执行时不能替换输入；成功返回已保存的 Record ID 和页面链接。
 
 确认请求从预览开始 15 分钟后失效，用户确认不延长有效期。这是临时操作请求，不是 Record 草稿。修改输入需重新预览并使用新请求键；相同请求键和相同输入返回同一请求，换输入会返回 `409`。重复执行已完成操作返回原结果，不会再次导入。遇到网络中断应先查状态，不要直接创建新的导入请求。
+
+没拍选填照片时，可以省略照片列或留空，连接只需「读取 Protocol 结构」和「导入记录」。已有照片时，再授予文件读取权限（`files:read`），在对应列填入本人已上传到同一项目、同一协议的 Airalogy 文件 ID。复用其他参与者的附件时，可从 `list_record_files` 取得 `airalogy_id`，并把来源 Record ID 放入 `preview_import` 的 `source_record_ids`。这还需要读取和导出记录权限（`records:read`、`records:export`），执行时会再次核对来源访问权。设备上的新照片需先上传到平台，CSV 中只填文件 ID。
+
+打开回执里的记录链接，可以逐项核对保存的值、步骤、核对结果和照片。授予「读取记录」后，外部工具也能用 `list_records` 回读实测值、步骤和核对项的状态与备注；附件通过独立文件工具查看。
 
 ## 修订记录
 

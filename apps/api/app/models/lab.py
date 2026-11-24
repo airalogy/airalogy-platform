@@ -50,6 +50,7 @@ class Lab(Base):
     projects_count: Mapped[int] = mapped_column(nullable=False, default=0)
     groups_count: Mapped[int] = mapped_column(nullable=False, default=0)
     description: Mapped[str] = mapped_column(default="")
+    external_publication_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     logo: Mapped[UUID] = mapped_column(ForeignKey("attachments.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(

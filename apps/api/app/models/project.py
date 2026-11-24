@@ -62,6 +62,7 @@ class Project(Base):
     )
     uid: Mapped[str] = mapped_column(nullable=False)
     type: Mapped[int] = mapped_column(nullable=False)
+    organization_readable: Mapped[bool] = mapped_column(default=False, server_default="false")
     public_access_role: Mapped[int] = mapped_column(
         nullable=False, default=ProjectRole.EXPLORER.value
     )

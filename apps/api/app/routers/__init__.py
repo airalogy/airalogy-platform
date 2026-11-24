@@ -77,6 +77,7 @@ from .protocol_folders import router as protocol_folders_router
 from .protocol_ratings import router as protocol_ratings_router
 from .protocol_users import router as protocol_users_router
 from .protocol_versions import router as protocol_versions_router
+from .workspace_sharing import router as sharing_router
 from .protocols import router as protocols_router
 from .questions import router as questions_router
 from .record_exports import router as record_exports_router
@@ -355,6 +356,7 @@ app.include_router(project_operations_router)
 app.include_router(project_work_router)
 app.include_router(meetings_router)
 app.include_router(groups_router)
+app.include_router(sharing_router)
 app.include_router(protocols_router)
 app.include_router(protocol_ratings_router)
 app.include_router(protocol_versions_router)

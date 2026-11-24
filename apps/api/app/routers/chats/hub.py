@@ -9,6 +9,7 @@ from masterbrain.usage import UsageContext
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 
+from app.config import config
 from app.database import DBSession
 from app.libs.masterbrain import hub_chat
 from app.libs.text_splitter import optional_text_to_vectors
@@ -45,6 +46,8 @@ async def inject_recommend_airalogy_protocols(
     *,
     usage_context: UsageContext | None = None,
 ):
+    if config.is_single_organization:
+        return {"airalogy_protocols": []}
     vectors = await optional_text_to_vectors(
         [content[0:1000]], usage_context=usage_context
     )

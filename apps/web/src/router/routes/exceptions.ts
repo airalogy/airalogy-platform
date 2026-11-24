@@ -3,22 +3,22 @@ import BlankLayout from "@/layouts/blank-layout/index.vue"
 
 export const exceptionRoutes: CustomRoute<ExceptionNameKey>[] = [
   {
-    meta: { title: "LAB NOT FOUND", constant: true },
+    meta: { title: "Page not found", i18nKey: "resourceAccess.missing", constant: true },
     path: "/404/lab",
     name: "lab-not-found",
-    component: () => import("@/views/exceptions/404/lab.vue"),
+    component: () => import("@/views/exceptions/404/index.vue"),
   },
   {
-    meta: { title: "PROJECT NOT FOUND", constant: true },
+    meta: { title: "Page not found", i18nKey: "resourceAccess.missing", constant: true },
     path: "/404/project",
     name: "project-not-found",
-    component: () => import("@/views/exceptions/404/project.vue"),
+    component: () => import("@/views/exceptions/404/index.vue"),
   },
   {
-    meta: { title: "PROTOCOL NOT FOUND", constant: true },
+    meta: { title: "Page not found", i18nKey: "resourceAccess.missing", constant: true },
     path: "/404/protocol",
     name: "protocol-not-found",
-    component: () => import("@/views/exceptions/404/protocol.vue"),
+    component: () => import("@/views/exceptions/404/index.vue"),
   },
   {
     meta: { title: "404 NOT FOUND", constant: true },

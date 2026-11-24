@@ -1,5 +1,5 @@
 import type { ExceptionNameKey, RouteNameKey } from "@/types/page-route"
-import type { LocationQueryValue, RouteLocationRaw } from "vue-router"
+import type { RouteLocationRaw } from "vue-router"
 import { router as globalRouter } from "@/router"
 import { useRouter } from "vue-router"
 
@@ -110,11 +110,12 @@ export function useRouterPush(inSetup = true) {
 
   /** Redirect from login */
   async function redirectFromLogin() {
-    const { query, matched } = route.value || {}
-    const redirect = (query?.redirect ?? null) as LocationQueryValue
+    const redirect = route.value.query.redirect
 
-    if (redirect) {
-      await routerPush(redirect)
+    if (typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")
+      && !redirect.includes("\\") && !/\s/.test(redirect)
+      && !["login", "sign-up", "forget-password"].includes(String(router.resolve(redirect).name))) {
+      await routerReplace(redirect)
     }
     else {
       await toHome()

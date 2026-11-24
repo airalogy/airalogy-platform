@@ -65,6 +65,7 @@ MODEL_MODULES = [
     "app.models.workflow_conversion",
     "app.models.workflow_definition",
     "app.models.workflow_file",
+    "app.models.workspace_publication",
 ]
 
 

@@ -57,12 +57,16 @@ Pending operations appear above the reports. Returned confirmation links open th
 Ask the connected tool to:
 
 1. Call `access_context`, then `list_protocols` and `get_protocol` to establish the target and obtain its canonical CSV header.
-2. Prepare CSV using those exact `var.<id>` headers. Display titles and approximate names are not mappings. Do not invent values, fill missing scores with zero or relax the Protocol to force an import.
+2. Use the columns from `csv_template`. Each row is one Record. Use `var.<id>` for measurements, `step.<id>.checked` for checkable steps, and `check.<id>.checked` for check results. Use the corresponding `.annotation` column for a note. Enter `true` or `false` for an observed state. Leave unobserved steps and checks blank. Required fields still follow the Protocol version.
 3. Call `preview_import` with the Protocol ID, CSV text and a unique `request_key`. The platform validates every row with the existing importer. Invalid data returns bounded row/field errors and creates **zero Records**.
 4. Open the returned confirmation URL yourself. Review the destination, row count, Protocol version and complete CSV in Platform. Approve or reject while logged into the same account that created the token. **The external token cannot approve itself.**
 5. Return to the tool and call `execute_operation` with only the approved operation ID. It cannot replace the input at execution time. The result contains saved Record IDs and links.
 
 Confirmations expire 15 minutes after preview; approval does not extend that deadline. They are temporary operation requests, not Record drafts. Changing the input requires a new preview and request key. Retrying the same preview key with identical input returns the same request; different input returns `409`. Retrying a completed operation returns its existing receipt rather than importing again. Always check status after an interrupted response before preparing a new request.
+
+An optional photo can be omitted or left blank with just `protocols:read` and `records:import`. To attach an existing upload, grant `files:read` and place its canonical Airalogy file ID in the matching file column. Use an upload from the same project and Protocol. For another contributor's attachment, use the `airalogy_id` from `list_record_files` and pass the source Record ID in `source_record_ids` to `preview_import`. This also requires `records:read`, `records:export` and access to the source Record at execution. Upload a local photo to Platform first. The CSV accepts file references, not file bytes or download URLs.
+
+Open a link in the receipt to check the saved Record, including photos. With `records:read`, the external tool can use `list_records` to check measurements and the recorded step/check states and notes. File references are available through the separate attachment tools.
 
 ## Correct a Record
 

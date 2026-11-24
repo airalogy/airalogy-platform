@@ -30,7 +30,8 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
     expect(imported.ok(), await imported.text()).toBeTruthy()
     await page.addInitScript(lang => localStorage.setItem("lang", JSON.stringify({ data: lang, expire: null })), locale)
     await page.setViewportSize({ width, height: 1000 })
-    const base = `/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}/protocols/${uid}`
+    const organizationPath = ["single_lab", "single_organization"].includes(process.env.E2E_DEPLOYMENT_MODE || "") ? "" : `/orgs/${fixtures.lab.uid}`
+    const base = `${organizationPath}/projects/${fixtures.project.uid}/protocols/${uid}`
     await page.goto(`${base}/protocol`)
     await page.locator(".n-tabs-tab").getByText(t.title, { exact: true }).click()
     const panel = page.getByTestId("protocol-rating-panel")
@@ -88,9 +89,15 @@ for (const [locale, width] of [["en-US", 390], ["zh-CN", 1440]] as const) {
         expect((await panel.boundingBox())!.width).toBeGreaterThan(width - 100)
       await panel.screenshot({ animations: "disabled", path: testInfo.outputPath(`rating-${locale}.png`) })
       // A public Protocol does not publish private feedback or even its use count.
-      const anonymous = await (await request.get(summaryURL)).json()
-      expect(anonymous.use_count).toBe(0)
-      expect(anonymous.reviews).toEqual([])
+      const guestResponse = await request.get(summaryURL)
+      if (organizationPath === "") {
+        expect(guestResponse.ok()).toBeFalsy()
+      }
+      else {
+        const anonymous = await guestResponse.json()
+        expect(anonymous.use_count).toBe(0)
+        expect(anonymous.reviews).toEqual([])
+      }
       await panel.getByRole("button", { name: t.write, exact: true }).click()
       const revise = panel.locator("form").filter({ hasText: t.evidenceHint })
       await revise.getByRole("textbox").last().fill("Revised synthetic feedback")

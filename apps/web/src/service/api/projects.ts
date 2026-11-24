@@ -93,22 +93,22 @@ export async function addProjectMember(payload: {
   })
 }
 
-export async function getProjectInfo(payload: { labUid: string, projectUid: string }) {
+export async function getProjectInfo(payload: { labUid: string, projectUid: string }, signal?: AbortSignal) {
   const { labUid, projectUid } = payload
   if (!labUid || !projectUid) {
     throw new Error("labUid and projectUid are required")
   }
 
-  const { data } = await request<Api.Project.MyProjectInfo>({
+  const { data, error } = await request<Api.Project.MyProjectInfo>({
     url: "/projects/by_uid",
+    signal,
+    metadata: { showError: !signal },
     params: { lab_uid: labUid, project_uid: projectUid },
   })
 
-  if (data) {
-    return data
-  }
-
-  return null
+  if (error && signal)
+    throw error
+  return data || null
 }
 
 export async function getProjectInfoById(projectId: string | number) {
@@ -169,6 +169,7 @@ export async function postNewProject(payload: {
   labId: string | number
   parentProjectId?: string
   copyMembers?: boolean
+  organizationReadable?: boolean
   uid: string
   type: 1 | 2
   displayName?: string
@@ -194,6 +195,7 @@ export async function postNewProject(payload: {
       lab_id: labId,
       parent_project_id: parentProjectId,
       copy_members: copyMembers,
+      organization_readable: payload.organizationReadable,
       name: displayName,
       uid,
       description,

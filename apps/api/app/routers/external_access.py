@@ -448,8 +448,8 @@ TOOLS = {
         ["protocol_id", "offset"],
     ),
     "preview_import": (
-        "Validate canonical CSV without creating Records. Valid input creates a 15-minute confirmation request; the user must approve in Platform.",
-        ["protocol_id", "csv", "request_key"],
+        "Preview canonical CSV using get_protocol.csv_template. Include observed step/check values and existing authorized FileIds. For shared files supply their source_record_ids. The user must approve in Platform within 15 minutes.",
+        ["protocol_id", "csv", "request_key", "source_record_ids"],
     ),
     "preview_revision": (
         "Validate a correction to your own Record. Requires expected version, changed variables and reason. The user must approve in Platform.",
@@ -593,7 +593,9 @@ def tool_schema(name):
             "type": "object",
             "properties": {key: schema["properties"][key] for key in fields},
             "additionalProperties": False,
-            "required": [key for key in fields if key != "offset"],
+            "required": [
+                key for key in fields if key not in ("offset", "source_record_ids")
+            ],
         },
         "annotations": {
             "readOnlyHint": name
@@ -612,7 +614,7 @@ def parse_args(name, arguments):
         service.fail("unknown_tool", 404)
     if not isinstance(arguments, dict) or set(arguments) - set(TOOLS[name][1]):
         service.fail("invalid_tool_arguments", 422)
-    required = set(TOOLS[name][1]) - {"offset"}
+    required = set(TOOLS[name][1]) - {"offset", "source_record_ids"}
     if any(arguments.get(key) is None for key in required):
         service.fail("missing_tool_arguments", 422)
     return service.ToolInput.model_validate(arguments)

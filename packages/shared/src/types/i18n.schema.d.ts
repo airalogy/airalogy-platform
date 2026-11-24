@@ -3,6 +3,58 @@
 
 declare namespace I18n {
   interface Schema {
+    sharing: {
+      protocolMembers: string
+      source: string
+      share: string
+      audience: string
+      members: string
+      organization: string
+      public: string
+      policy: string
+      enable: string
+      policyHint: string
+      enableHint: string
+      disableHint: string
+      projectReadingHint: string
+      changeReading: string
+      workspaceLink: string
+      copy: string
+      copied: string
+      copyFailed: string
+      published: string
+      saved: string
+      version: string
+      disabled: string
+      versionScope: string
+      projectScope: string
+      open: string
+      withdraw: string
+      withdrawHint: string
+      preview: string
+      confirm: string
+      chooseFiles: string
+      noFiles: string
+      materials: string
+      versions: string
+      noVersions: string
+      protocols: string
+      emptyCatalog: string
+    }
+    resourceAccess: {
+      missing: string
+      missingHint: string
+      forbidden: string
+      forbiddenHint: string
+      signInTitle: string
+      signInHint: string
+      signIn: string
+      unavailable: string
+      unavailableHint: string
+      loadFailed: string
+      retryHint: string
+      retry: string
+    }
     accountSettings: {
       oneProject: string
       selectedProjects: string
@@ -40,6 +92,7 @@ declare namespace I18n {
       saveFailed: string
       smsWait: string
       fixedCount: string
+      postCash: string
     }
     externalAccess: {
       firstOrganizationTask: string

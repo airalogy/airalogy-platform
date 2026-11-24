@@ -122,7 +122,7 @@ const labName = ref<string | null>(null)
 
 const { startLoading, endLoading } = useLoading()
 
-const { visibilityLabel, visibilityClass } = useProjectVisibility(() => props.item.type)
+const { visibilityLabel, visibilityClass } = useProjectVisibility(() => props.item.type, () => props.item.organization_readable)
 
 onMounted(async () => {
   if (instanceStore.isSingleLab)

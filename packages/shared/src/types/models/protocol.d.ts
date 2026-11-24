@@ -25,6 +25,9 @@ export interface Assigner {
 }
 
 export interface ProtocolResponseInfo {
+  organization_reader?: boolean
+  organization_readable?: boolean
+  can_publish?: boolean
   id: string
   project_id: string
   project_uid?: string

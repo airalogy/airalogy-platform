@@ -96,6 +96,9 @@ async def seed(sessions):
 @asynccontextmanager
 async def client(sessions):
     app = FastAPI()
+    from app.routers.records import router as records_router
+
+    app.include_router(records_router)
     app.include_router(api.router)
     app.include_router(api.mcp_router)
     from app.routers.external_oauth import discovery
@@ -323,6 +326,226 @@ def test_real_import_approval_idempotency_and_revision_history():
                     "Verified transcription correction" not in str(a.detail)
                     for a in audits
                 )
+
+    asyncio.run(scenario())
+
+
+def test_completed_record_import_with_optional_attachment():
+    from app.libs.protocol_agent import protocol_exec
+    from app.models.airalogy_file import AiralogyFile
+
+    async def scenario():
+        async with database() as sessions, client(sessions) as http:
+            scope = await seed(sessions)
+            package = scope.version.package_name
+            path = Path(config.PROTOCOL_DIR) / package / "protocol.aimd"
+            path.write_text(
+                "{{var|value: float}}\n{{var|photo: FileIdJPG | None = None}}\n"
+                "{{step|prepare, check=True}}\n{{step|store}}\n{{check|review}}"
+            )
+            (path.parent / "model.py").write_text(
+                "from pydantic import BaseModel\nfrom airalogy.types import FileIdJPG\n"
+                "class VarModel(BaseModel):\n    value: float\n    photo: FileIdJPG | None = None\n"
+            )
+            info = await protocol_exec("get_protocol_info", package, {"env_vars": {}})
+            assert info["success"], info
+            protocol_id = scope.protocol.id
+            photo = AiralogyFile(
+                id=uuid4(),
+                protocol_id=protocol_id,
+                project_id=scope.project.id,
+                user_id=scope.owner.id,
+                filename="test-label.jpg",
+            )
+            async with sessions() as db:
+                db.add(photo)
+                await db.execute(
+                    update(ProtocolVersion)
+                    .where(ProtocolVersion.id == scope.version.id)
+                    .values(
+                        json_schema=info["data"]["json_schema"],
+                        fields=info["data"]["fields"],
+                    )
+                )
+                await db.commit()
+            scopes = ["protocols:read", "records:import", "records:read"]
+            basic = (await grant(http, scope, scopes=scopes))["token"]
+            full = (
+                await grant(
+                    http, scope, scopes=[*scopes, "files:read", "records:export"]
+                )
+            )["token"]
+            header = "var.value,step.prepare.checked,step.prepare.annotation,check.review.checked"
+            plain = header + "\n0,true,observed,false\n"
+            attached = (
+                header + ",var.photo\n0,true,observed,false," + photo.airalogy_id + "\n"
+            )
+            for token, includes_photo in [(basic, False), (full, True)]:
+                response = await call(
+                    http, token, "get_protocol", protocol_id=str(protocol_id)
+                )
+                assert response.status_code == 200, response.text
+                contract = response.json()
+                assert contract["record_import"]["supported"]
+                if includes_photo:
+                    assert contract["record_import"]["file_fields"] == [
+                        {
+                            "id": "photo",
+                            "title": "Photo",
+                            "required": False,
+                            "file_extension": "jpg",
+                        }
+                    ]
+                assert ("var.photo" in contract["csv_template"]) == includes_photo
+                assert "step.store.annotation" in contract["csv_template"]
+                assert "step.store.checked" not in contract["csv_template"]
+                assert "check.review.checked" in contract["csv_template"]
+
+            assert (await preview(http, basic, scope, csv=attached)).status_code == 403
+            unavailable = attached.replace(str(photo.id), str(uuid4()))
+            assert (
+                await preview(http, full, scope, csv=unavailable)
+            ).status_code == 403
+            invalid = await preview(
+                http, basic, scope, csv=plain.replace("true", "maybe")
+            )
+            assert invalid.json()["state"] == "invalid", invalid.text
+            assert invalid.json()["errors"][0]["column"] == "step.prepare.checked"
+            assert (
+                await preview(http, full, scope, csv=attached.replace(".jpg", ".txt"))
+            ).status_code == 422
+            assert await record_count(sessions, scope) == 0
+
+            for count, (token, data) in enumerate(
+                [(basic, plain), (full, attached)], 1
+            ):
+                if token == basic:
+                    blank_photo = attached.replace(photo.airalogy_id, "")
+                    blank = await preview(http, basic, scope, csv=blank_photo)
+                    assert blank.json()["state"] == "pending"
+                key = uuid4().hex
+                result = await preview(http, token, scope, csv=data, request_key=key)
+                assert result.status_code == 200, result.text
+                op = result.json()
+                assert op["state"] == "pending", op
+                assert op["summary"]["project_name"] == scope.project.name
+                assert op["summary"]["protocol_version"] == scope.version.version
+                detail = await http.get(
+                    f"/external-access/operations/{op['id']}",
+                    headers=browser(scope.owner),
+                )
+                assert detail.json()["payload"]["csv"] == data
+                assert await record_count(sessions, scope) == count - 1
+                await approve(http, scope, op)
+                saved = await call(
+                    http, token, "execute_operation", operation_id=op["id"]
+                )
+                assert saved.status_code == 200, saved.text
+                receipt = saved.json()["result"]
+                (identity,) = receipt["record_ids"]
+                assert identity in receipt["links"][0]
+                retry = await preview(http, token, scope, csv=data, request_key=key)
+                assert retry.json()["id"] == op["id"]
+                assert (
+                    await call(http, token, "execute_operation", operation_id=op["id"])
+                ).json() == saved.json()
+                assert await record_count(sessions, scope) == count
+                opened = await http.get(
+                    f"/protocols/{protocol_id}/records/{identity}?version=1",
+                    headers=browser(scope.owner),
+                )
+                assert opened.status_code == 200, opened.text
+                saved_data = opened.json()["data"]
+                assert saved_data["var"]["value"] == 0
+                assert saved_data["var"].get("photo") == (
+                    photo.airalogy_id if token == full else None
+                )
+                assert saved_data["step"] == {
+                    "prepare": {"annotation": "observed", "checked": True}
+                }
+                assert saved_data["check"] == {"review": {"checked": False}}
+                listing = await call(
+                    http, token, "list_records", protocol_id=str(protocol_id)
+                )
+                item = next(
+                    row for row in listing.json()["items"] if row["id"] == identity
+                )
+                assert (
+                    item["step"] == saved_data["step"]
+                    and item["check"] == saved_data["check"]
+                )
+                assert "photo" not in item["var"]
+
+            # Shared attachments must still be visible when the approved operation runs.
+            async with sessions() as db:
+                await db.execute(
+                    update(AiralogyFile)
+                    .where(AiralogyFile.id == photo.id)
+                    .values(user_id=scope.recorder.id)
+                )
+                await db.commit()
+            assert (await preview(http, full, scope, csv=attached)).status_code == 403
+            files = await call(
+                http,
+                full,
+                "list_record_files",
+                protocol_id=str(protocol_id),
+                parent_id=identity,
+            )
+            assert files.json()["items"][0]["airalogy_id"] == photo.airalogy_id
+            http.headers.update(delegated(full))
+            async with (
+                streamable_http_client("http://test/mcp", http_client=http) as (
+                    read,
+                    write,
+                    _,
+                ),
+                ClientSession(read, write) as session,
+            ):
+                await session.initialize()
+                result = await session.call_tool(
+                    "preview_import",
+                    {
+                        "protocol_id": str(protocol_id),
+                        "csv": attached,
+                        "source_record_ids": [identity],
+                        "request_key": uuid4().hex,
+                    },
+                )
+                assert not result.isError, result
+                shared = result.structuredContent
+                await approve(http, scope, shared)
+                done = await session.call_tool(
+                    "execute_operation", {"operation_id": shared["id"]}
+                )
+                assert (
+                    not done.isError
+                    and done.structuredContent["result"]["imported_count"] == 1
+                )
+                another = await session.call_tool(
+                    "preview_import",
+                    {
+                        "protocol_id": str(protocol_id),
+                        "csv": attached,
+                        "source_record_ids": [identity],
+                        "request_key": uuid4().hex,
+                    },
+                )
+                assert not another.isError
+                pending = another.structuredContent
+                await approve(http, scope, pending)
+                async with sessions() as db:
+                    await db.execute(
+                        update(Record)
+                        .where(Record.id == UUID(identity))
+                        .values(deleted_at=service.now().replace(tzinfo=None))
+                    )
+                    await db.commit()
+                denied = await session.call_tool(
+                    "execute_operation", {"operation_id": pending["id"]}
+                )
+                assert denied.isError
+                assert await record_count(sessions, scope) == 3
 
     asyncio.run(scenario())
 

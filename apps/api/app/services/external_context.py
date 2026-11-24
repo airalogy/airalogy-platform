@@ -170,7 +170,7 @@ async def bounded_blob(blob):
     return content
 
 
-async def record_files(db, access, args):
+async def record_files(db, access, args, *, requested_ids=None):
     from app.services.external_research import require_export
     from app.services.record_exports import _walk_file_ids
 
@@ -187,13 +187,14 @@ async def record_files(db, access, args):
         )
     }
     ids = {identity for identity, _, _ in _walk_file_ids(values)}
-    files = (
-        await db.scalars(
-            select(AiralogyFile)
-            .where(AiralogyFile.protocol_id == protocol.id, AiralogyFile.id.in_(ids))
-            .limit(100)
-        )
-    ).all()
+    if requested_ids is not None:
+        ids.intersection_update(requested_ids)
+    query = select(AiralogyFile).where(
+        AiralogyFile.protocol_id == protocol.id, AiralogyFile.id.in_(ids)
+    )
+    if requested_ids is None:
+        query = query.limit(100)
+    files = (await db.scalars(query)).all()
     return record, files
 
 
@@ -312,6 +313,7 @@ async def call(db, access, name, args):
             "items": [
                 {
                     "file_id": str(f.id),
+                    "airalogy_id": f.airalogy_id,
                     "filename": f.filename,
                     "sha256": f.checksum_sha256,
                     "size_bytes": f.size_bytes,

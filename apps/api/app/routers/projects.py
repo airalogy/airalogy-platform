@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import AliasChoices, BaseModel, Field, StringConstraints, model_validator
 from pydash import py_
-from sqlalchemy import and_, case, delete, distinct, func, or_, select
+from sqlalchemy import and_, case, delete, distinct, false, func, or_, select
 from sqlalchemy.orm import aliased, selectinload
 from typing_extensions import Annotated
 
@@ -25,7 +25,10 @@ from app.models.protocol import Protocol, ProtocolKind
 from app.models.user import User
 from app.models.user_alias import UserAlias
 from app.routers.permission import (
+    can_publish_workspace,
     check_user_permission,
+    conceal_read_denial,
+    organization_can_read,
     private_project_permissions,
     public_project_permissions,
 )
@@ -66,6 +69,8 @@ def build_project_permission_condition(
     permission_action: str | None = None,
 ):
     if current_user is None:
+        if config.is_single_lab:
+            return false()
         if permission_action is None:
             return Project.type == ProjectType.PUBLIC
 
@@ -94,8 +99,11 @@ def build_project_permission_condition(
     )
 
     if permission_action is None:
+        visible = Project.type == ProjectType.PUBLIC
+        if config.is_single_lab:
+            visible = false()  # Organization-only reading is a separate directory projection.
         return or_(
-            Project.type == ProjectType.PUBLIC,
+            visible,
             Project.id.in_(direct_access_subquery),
             Project.id.in_(group_access_subquery),
         )
@@ -144,7 +152,7 @@ def build_project_permission_condition(
         and_(
             Project.type == ProjectType.PUBLIC,
             or_(
-                Project.public_access_role.in_(public_roles),
+                false() if config.is_single_lab else Project.public_access_role.in_(public_roles),
                 Project.id.in_(direct_public_subquery),
                 Project.id.in_(group_public_subquery),
             ),
@@ -287,6 +295,10 @@ async def get_projects(
             permission_condition = or_(
                 permission_condition, Project.id.in_(structured_ids)
             )
+    workspace_access = permission_condition
+    if config.is_single_lab and permission_action is None:
+        # This query already requires active membership in the configured organization.
+        permission_condition = or_(workspace_access, Project.organization_readable)
     conditions.append(permission_condition)
 
     ParentProject = aliased(Project)
@@ -308,6 +320,7 @@ async def get_projects(
     query = (
         select(
             Project,
+            workspace_access.label("workspace_access"),
             Lab.name.label("lab_name"),
             Lab.uid.label("lab_uid"),
             ParentProject.uid.label("parent_project_uid"),
@@ -361,8 +374,12 @@ async def get_projects(
     )
 
     result = await db_session.execute(query)
-    projects = [
-        d.Project.as_dict(
+    projects = []
+    for d in result:
+        if config.is_single_lab and not d.workspace_access:
+            projects.append(organization_project_summary(d.Project, d.lab_uid))
+            continue
+        projects.append(d.Project.as_dict(
             lab_name=d.lab_name,
             lab_uid=d.lab_uid,
             parent_project_uid=d.parent_project_uid,
@@ -372,11 +389,22 @@ async def get_projects(
             depth=1 if d.Project.parent_project_id else 0,
             users_count=d.users_count,
             protocols_count=d.protocols_count,
-        )
-        for d in result
-    ]
+        ))
 
     return {"projects": projects, "total_count": total_count}
+
+
+def organization_project_summary(project: Project, lab_uid: str):
+    return {
+        "id": project.id,
+        "uid": project.uid,
+        "name": project.name,
+        "description": project.description,
+        "lab_uid": lab_uid,
+        "type": project.type,
+        "organization_reader": True,
+        "organization_readable": True,
+    }
 
 
 async def project_response(
@@ -385,19 +413,29 @@ async def project_response(
     current_user: CurrentUser | None,
     db_session: DBSession,
 ):
-    if not project:
+    if not project or project.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Project not found")
 
     user_role = None
     user_lab_role = None
     if current_user is not None:
-        user_role = await check_user_permission(
-            db_session,
-            project=project,
-            user=current_user,
-            action="read_project",
-        )
-    elif project.type != ProjectType.PUBLIC:
+        try:
+            with conceal_read_denial("Project"):
+                user_role = await check_user_permission(db_session, project, current_user, "read_project")
+        except HTTPException as exc:
+            if exc.status_code != 404 or not await organization_can_read(db_session, current_user, project, lab):
+                raise
+            rows = []
+            if project.permission_type == PermissionType.INHERIT:
+                rows = (await db_session.execute(select(Protocol.uid, Protocol.name).where(
+                    Protocol.project_id == project.id, Protocol.inherit_permissions,
+                    Protocol.kind == ProtocolKind.EXPERIMENT, Protocol.deleted_at.is_(None),
+                ).order_by(Protocol.name, Protocol.uid))).all()
+            return {
+                **organization_project_summary(project, lab.uid),
+                "reader_protocols": [{"uid": r.uid, "name": r.name} for r in rows],
+            }
+    elif config.is_single_lab or project.type != ProjectType.PUBLIC:
         raise HTTPException(status_code=404, detail="Project not found")
 
     users_count = await ProjectUser.count(
@@ -437,6 +475,7 @@ async def project_response(
         user_lab_role = lab_user.role if lab_user else None
 
     return project.as_dict(
+        can_publish=await can_publish_workspace(db_session, project, current_user),
         lab_name=lab.name,
         lab_uid=lab.uid,
         user_role=user_role,
@@ -461,7 +500,7 @@ async def get_project_by_uid(
     # Find the lab first
     lab = await Lab.find_by(db_session, [Lab.uid == lab_uid])
     if not lab:
-        raise HTTPException(status_code=404, detail="Lab not found")
+        raise HTTPException(status_code=404, detail="Project not found")
 
     project = await Project.find_by(
         db_session,
@@ -480,7 +519,7 @@ async def get_project(
     current_user: OptionalCurrentUser,
     db_session: DBSession,
 ):
-    project = await Project.find(db_session, id=project_id)
+    project = await Project.find_by(db_session, [Project.id == project_id, Project.deleted_at.is_(None)])
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     lab = await Lab.find(db_session, project.lab_id)
@@ -496,6 +535,8 @@ class ProjectCreateParams(BaseModel):
         if isinstance(values, dict) and "organization_id" in values and "lab_id" in values:
             if UUID(str(values["organization_id"])) != UUID(str(values["lab_id"])):
                 raise ValueError("organization_id conflicts with lab_id")
+        if config.is_single_lab and isinstance(values, dict) and "type" not in values:
+            return {**values, "type": ProjectType.PRIVATE}
         return values
 
     parent_project_id: UUID | None = None
@@ -514,6 +555,7 @@ class ProjectCreateParams(BaseModel):
         str, StringConstraints(max_length=128, strip_whitespace=True)
     ] = ""
     copy_members: bool = True
+    organization_readable: bool = False
 
 
 @router.post("")
@@ -538,6 +580,8 @@ async def create_project_transaction(params, current_user, db_session):
             status_code=400,
             detail="Public Projects are disabled in single-Lab mode",
         )
+    if params.organization_readable and not config.is_single_lab:
+        raise HTTPException(422, "Organization reading requires a single organization")
     user_in_lab = await LabUser.exists(
         db_session, [LabUser.user_id == current_user.id, LabUser.lab_id == lab.id]
     )
@@ -680,7 +724,7 @@ async def update_project(
             status_code=400, detail="Default projects cannot change visibility"
         )
 
-    project.set_attrs(**params.model_dump(exclude_none=True))
+    project.set_attrs(**params.model_dump(exclude_unset=True, exclude_none=True))
     await db_session.commit()
     return project
 

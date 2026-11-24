@@ -33,6 +33,7 @@ from app.services.external_access import (
         ({"type": "string", "format": "date-time"}, True),
         ({"type": "string", "format": "binary"}, False),
         ({"type": "string", "airalogy_type": "FileId"}, False),
+        ({"type": "string", "airalogy_built_in_type": "FileId"}, False),
         ({"$ref": "#/$defs/Attachment"}, False),
         ({"type": "array"}, False),
         ({"anyOf": [{"type": "object"}, {"type": "null"}]}, False),
@@ -55,6 +56,10 @@ def test_nullable_choices_keep_null_in_advertised_constraints(constraint):
 def test_omitted_private_values_are_not_fabricated_nulls():
     access = SimpleNamespace(policy=SimpleNamespace(blocked_fields=["secret"]))
     version = SimpleNamespace(
+        fields={
+            "steps": [{"name": "prepare", "check": True}],
+            "checks": [{"name": "secret"}],
+        },
         json_schema={
             "vars": {
                 "properties": {
@@ -62,25 +67,34 @@ def test_omitted_private_values_are_not_fabricated_nulls():
                     for key in ["secret", "public", "url", "empty"]
                 }
             }
-        }
+        },
     )
     record = SimpleNamespace(
         id="one",
         version=1,
         protocol_version="1.0.0",
         data={
+            "step": {
+                "prepare": {
+                    "checked": False,
+                    "annotation": "https://example.invalid/private",
+                }
+            },
+            "check": {"secret": {"checked": True}},
             "var": {
                 "secret": "hidden",
                 "public": "safe",
                 "url": "https://private.invalid/signed",
                 "empty": None,
                 "unknown": "not in schema",
-            }
+            },
         },
     )
     result = record_view(access, version, record)
     assert result["var"] == {"public": "safe", "empty": None}
     assert result["withheld_fields"] == ["url"]
+    assert result["step"] == {"prepare": {"checked": False}}
+    assert result["check"] == {}
 
 
 def test_custom_validation_messages_cannot_echo_inputs_or_secrets():
