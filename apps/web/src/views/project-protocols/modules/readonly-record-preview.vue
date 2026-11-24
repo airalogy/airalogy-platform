@@ -3,6 +3,7 @@
     :aimd="props.aimd"
     :mermaid-component="MermaidBlock"
     :record="props.record"
+    :render-options="{ locale }"
     :resolve-url="resolveRecordFile"
     body-class="markdown-body"
   />
@@ -13,6 +14,7 @@ import type { ProtocolModels } from "@airalogy/shared/types"
 import { resolveProtocolFile } from "@/utils/resolveProtocolFile"
 import { AimdRecordReport } from "@airalogy/aimd-renderer/vue"
 import MermaidBlock from "@airalogy/components/markdown-editor/modules/mermaid/mermaid-block.vue"
+import { useI18n } from "vue-i18n"
 
 interface Props {
   aimd: string
@@ -21,6 +23,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { locale } = useI18n()
 
 async function resolveRecordFile(src: string) {
   const record = props.record as Partial<ProtocolModels.RecordInfo>

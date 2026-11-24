@@ -1,7 +1,7 @@
 <template>
   <n-drawer
     :show="isShown"
-    class="mx-4vw min-w-180"
+    class="record-report-drawer"
     :mask-closable="false"
     :theme-overrides="{ borderRadius: '1.5rem' }"
     header-class="py-7"
@@ -12,12 +12,7 @@
   >
     <n-drawer-content closable>
       <template #header>
-        <div class="w-full flex flex-1 flex-row items-center">
-          <h3 class="text-5 font-500">
-            {{ props.title }}
-          </h3>
-          <span />
-        </div>
+        {{ props.title || $t("page.protocol.recordReport.title") }}
       </template>
       <n-spin
         :show="loading"
@@ -48,7 +43,6 @@ defineOptions({ name: "ShowReportModal" })
 const props = withDefaults(defineProps<IProps>(), {
   aimd: "",
   record: null,
-  title: "Record report",
 })
 
 const emits = defineEmits<IEmits>()
@@ -82,4 +76,14 @@ watch(
 )
 </script>
 
-<style scoped></style>
+<style>
+.record-report-drawer {
+  margin-inline: 4%;
+}
+
+@media (max-width: 640px) {
+  .record-report-drawer {
+    margin-inline: 0;
+  }
+}
+</style>

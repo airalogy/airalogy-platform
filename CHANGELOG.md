@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Record reports opened from the Record list now fit narrow screens. Each step shows its number, title and ID once, and each checkpoint shows one checkbox with its saved state.
+
 - Single-organization projects default to project members. Teams can share the project introduction and inherited Protocols with signed-in organization members, or publish a reviewed project introduction or an exact Protocol version with selected materials. External publication is off by default. Withdrawing a publication disables its link and downloads.
 
 - Shared links to projects, Protocols and Records offer sign-in and return to the original page. Unavailable links and temporary loading failures now have distinct recovery actions.
