@@ -160,7 +160,7 @@ const { isOverDropZone } = useDropZone(dropZoneRef, {
       emit("drop:files", files)
       for (const file of files) {
         const fileInfo: UploadFileInfo = { file, status: "uploading", id: nanoid(), name: file.name }
-        void handleUpload({ file: fileInfo, onError() {}, onProgress() {}, onFinish() {} })
+        void handleUpload({ file: fileInfo, onError() {}, onFinish() {} })
       }
     }
   },

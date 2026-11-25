@@ -1,4 +1,4 @@
-import type { UploadCustomRequestOptions } from "naive-ui"
+import type { UploadCustomRequestOptions, UploadFileInfo } from "naive-ui"
 import type { ChatProviderContext } from "../providers/useChatProvider"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
@@ -11,7 +11,7 @@ export function useFileUpload(state: any, providerContext: ChatProviderContext) 
   const { uploadAttachment } = providerContext
 
   // Function to handle file uploads
-  async function handleUpload(options: UploadCustomRequestOptions) {
+  async function handleUpload(options: Pick<UploadCustomRequestOptions, "onFinish" | "onError"> & { file: UploadFileInfo }) {
     // Create message instance inside the function to avoid accumulation
     const showMessage = useClosableMessage()
 

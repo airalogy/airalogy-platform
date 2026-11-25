@@ -2,7 +2,6 @@
 import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
 import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
-import type ActionBatch from "./action-batch.vue"
 import AiraActionButton from "@/components/common/aira-action-button.vue"
 import PeoplePicker from "@/components/project/people-picker.vue"
 import {
@@ -28,9 +27,11 @@ import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
 import FilterIcon from "~icons/tabler/filter"
 import SearchIcon from "~icons/tabler/search"
 import { useDialog } from "naive-ui"
+import { useTemplateRef } from "vue"
 import { useI18n } from "vue-i18n"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
+import ActionBatch from "./action-batch.vue"
 import { meetingHandoffKey, meetingNameKey, organizeMinutesKey } from "./aira-handoff"
 import PreviousMeetingWork from "./previous-meeting-work.vue"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
@@ -149,7 +150,7 @@ function flushVisual() {
   else visualPending.value = false
 }
 const organize = inject(organizeMinutesKey, null)
-const actionBatch = ref<InstanceType<typeof ActionBatch>>()
+const actionBatch = useTemplateRef("actionBatch")
 function organizeMinutes(trigger: HTMLElement) {
   flushVisual()
   const source = form.value
