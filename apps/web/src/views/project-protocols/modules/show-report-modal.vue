@@ -21,6 +21,7 @@
       >
         <template v-if="props.record && props.aimd">
           <readonly-record-preview
+            show-presentation-control
             :aimd="props.aimd"
             :record="props.record"
           />

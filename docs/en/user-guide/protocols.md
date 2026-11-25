@@ -83,3 +83,7 @@ See [Collaboration](./collaboration) for role guidance and [Records](./records) 
 ## Ratings and use
 
 Use **Ratings & use** for version-specific reviews, optional execution feedback and the transparent trial recommendation. See [Protocol ratings and adoption](../product/protocol-rating.md) for counting, scoring and privacy rules.
+
+## Reading a saved Record
+
+Open the report from the Record list or its detail page. Choose **Compact** for a text-first layout or **Detailed** to highlight step levels and recorded values. Both views show the saved checkpoint status and any notes. This browser remembers your selection.

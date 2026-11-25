@@ -12,7 +12,7 @@ test("a Record report fits the window and keeps each step heading once", async (
     "{{step|align, 2, title='对齐标记'}}",
     "### 1.1 手写标题",
     `{{step|${untitledId}}}`,
-    "{{check|verified}}",
+    '{{check|verified, title="核对标记"}} 已核对两处标记。',
     ...Array.from({ length: 32 }, (_, index) => `检查点 ${index + 1}。`),
     end,
   ].join("\n\n")
@@ -45,7 +45,13 @@ test("a Record report fits the window and keeps each step heading once", async (
   await expect(drawer.getByRole("heading", { name: "1.1 手写标题", exact: true })).toBeVisible()
   await expect(drawer.locator("#step-align [role=heading]")).toHaveAccessibleName(/步骤 1\.1.*对齐标记/)
   await expect(drawer.locator(`#step-${untitledId} [role="heading"]`)).toContainText(untitledId)
-  await expect(drawer.locator(".aimd-record-check input")).toBeChecked()
+  const check = drawer.locator(".aimd-record-check")
+  await expect(check).toContainText("已勾选")
+  await expect(check).toContainText("核对标记")
+  await expect(check).not.toContainText("verified")
+  await expect(drawer.getByText("已核对两处标记。", { exact: false }).first()).toBeVisible()
+  await drawer.getByText("详细", { exact: true }).click()
+  await expect(drawer.locator(".rendered-aimd-document")).toHaveAttribute("data-record-presentation", "detailed")
   for (const viewport of [{ width: 1280, height: 900 }, { width: 619, height: 985 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport)
     await expect(close).toBeInViewport()

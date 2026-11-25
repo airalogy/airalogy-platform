@@ -3909,6 +3909,9 @@
         "transcriptionFailed": "Failed to transcribe audio"
       },
       "recordReport": {
+        "presentation": "Report view",
+        "compact": "Compact",
+        "detailed": "Detailed",
         "title": "Protocol record",
         "protocolDetails": "Protocol details",
         "exportPdf": "Export PDF",

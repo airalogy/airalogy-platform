@@ -184,8 +184,9 @@
         :rules="props.readonly ? undefined : validationRules"
         :model="previewValue"
       >
+        <record-report-presentation v-if="props.readonly" v-model="reportPresentation" />
         <aimd-markdown-preview v-if="props.readonly"
-                               ref="previewRef" :content="templateRef" mode="report" :readonly-record-data="readonlyRecordData" :render-options="{ locale }"
+                               ref="previewRef" :content="templateRef" mode="report" :readonly-record-data="readonlyRecordData" :record-presentation="reportPresentation" :render-options="{ locale }"
                                class="record-inline-content" :mermaid-component="MermaidBlock" :resolve-url="resolvePreviewFile"
                                body-class="markdown-body" @render:result="handlePreviewRendered"
         />
@@ -277,6 +278,8 @@ import { nanoid } from "nanoid"
 import { useI18n } from "vue-i18n"
 import { useProtocolInfoStore } from "../../hooks/useProtocolInfoStore"
 import { processFieldValue } from "../../utils"
+import RecordReportPresentation from "../record-report-presentation.vue"
+import { useRecordReportPresentation } from "../useRecordReportPresentation"
 import AssignerProgressModal from "./components/AssignerProgressModal.vue"
 import FieldInputBar from "./components/field-input-bar.vue"
 import RecorderFieldReview from "./components/recorder-field-review.vue"
@@ -341,6 +344,7 @@ interface Emits {
 const isCollapsed = useVModel(props, "collapsed")
 const message = useClosableMessage()
 const { locale } = useI18n()
+const reportPresentation = useRecordReportPresentation()
 
 const chatRef = ref<{ setDocked: (val: boolean) => void } | null>(null)
 
