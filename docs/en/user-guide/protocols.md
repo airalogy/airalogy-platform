@@ -86,4 +86,4 @@ Use **Ratings & use** for version-specific reviews, optional execution feedback 
 
 ## Reading a saved Record
 
-Open the report from the Record list or its detail page. Choose **Compact** for a text-first layout or **Detailed** to highlight step levels and recorded values. Both views show the saved checkpoint status and any notes. This browser remembers your selection.
+Open the report from the Record list or its detail page. Reports open in **Detailed** to highlight step levels and recorded values. Choose **Compact** for a text-first layout. In either view, each checkpoint is labeled **Checkpoint**, followed by its title, saved status and any notes. This browser remembers your selection.

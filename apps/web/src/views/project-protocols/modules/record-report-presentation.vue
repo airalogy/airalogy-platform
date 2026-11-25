@@ -8,8 +8,8 @@ const mode = defineModel<AimdRecordPresentation>({ required: true })
   <div class="report-presentation" data-testid="report-presentation">
     <span aria-hidden="true">{{ $t("page.protocol.recordReport.presentation") }}</span>
     <n-radio-group v-model:value="mode" size="small" :aria-label="$t('page.protocol.recordReport.presentation')">
-      <n-radio-button value="compact">{{ $t("page.protocol.recordReport.compact") }}</n-radio-button>
       <n-radio-button value="detailed">{{ $t("page.protocol.recordReport.detailed") }}</n-radio-button>
+      <n-radio-button value="compact">{{ $t("page.protocol.recordReport.compact") }}</n-radio-button>
     </n-radio-group>
   </div>
 </template>

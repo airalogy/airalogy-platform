@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Saved Record reports open in Detailed view on first use and retain an existing presentation preference. Checkpoints are explicitly labeled in both views.
+
 - Saved Record reports remember compact or detailed presentation on this device. Checkpoints show the saved state and title, and detailed view highlights steps and recorded values.
 
 - Record reports opened from the Record list now fit narrow screens. Saved Record detail pages scroll to the end with a wheel or touch on narrow screens. AIMD Renderer 2.14.2 labels structured steps with localized headings such as “Step 1.1” and preserves numbering written in Markdown. Untitled steps display their ID. Each checkpoint shows its saved state once.
