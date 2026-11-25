@@ -52,9 +52,10 @@ test("a Record report fits the window and keeps each step heading once", async (
   await expect(check).not.toContainText("verified")
   await expect(drawer.getByText("已核对两处标记。", { exact: false }).first()).toBeVisible()
   await expect(drawer.locator(".rendered-aimd-document")).toHaveAttribute("data-record-presentation", "detailed")
-  await drawer.getByText("简洁", { exact: true }).click()
+  const style = drawer.getByRole("radiogroup", { name: "报告样式" })
+  await style.getByText("简洁", { exact: true }).click()
   await expect(check.locator(".aimd-record-check__kind")).toHaveText("检查点")
-  await drawer.getByText("详细", { exact: true }).click()
+  await style.getByText("高亮", { exact: true }).click()
   await expect(drawer.locator(".rendered-aimd-document")).toHaveAttribute("data-record-presentation", "detailed")
   for (const viewport of [{ width: 1280, height: 900 }, { width: 619, height: 985 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport)

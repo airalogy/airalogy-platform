@@ -123,8 +123,8 @@
       {{ researchWorkItem.instructions || researchWorkItem.task.goal }}
     </n-alert>
     <n-spin
-      :show="loading" class="h-[calc(100vh-165px)] w-full pl-8"
-      :content-class="`h-full w-full overflow-visible ${protocol ? '' : ' flex-center flex-col'}`"
+      :show="loading" class="w-full px-4 md:h-[calc(100vh-165px)] md:pl-8 md:pr-0"
+      :content-class="`w-full overflow-visible md:h-full ${protocol ? '' : ' flex-center flex-col'}`"
     >
       <protocol-add-record-form
         v-if="protocol && protocolInfo && protocolId" :key="formGeneration" ref="formRef" v-model:collapsed="isCollapsed" :protocol="protocol"
@@ -1214,16 +1214,6 @@ const expandedNames = ref<string[]>([])
 function handleCollapseMetadata() {
   expandedNames.value = []
 }
-
-const { load, unload } = useStyleTag(":root {overflow: hidden;}")
-
-onBeforeMount(() => {
-  load()
-})
-
-onBeforeUnmount(() => {
-  unload()
-})
 </script>
 
 <style scoped lang="sass">

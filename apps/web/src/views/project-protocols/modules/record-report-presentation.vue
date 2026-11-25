@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import type { AimdRecordPresentation } from "@airalogy/aimd-renderer/vue"
+import { computed, useId } from "vue"
+import { useI18n } from "vue-i18n"
 
+const props = defineProps<{ forRecording?: boolean }>()
+const { t } = useI18n()
+const groupName = useId()
+const groupLabel = computed(() => props.forRecording ? t("page.protocol.recordReport.fieldDisplay") : t("page.protocol.recordReport.reportStyle"))
+const detailedLabel = computed(() => props.forRecording ? t("page.protocol.recordReport.detailed") : t("page.protocol.recordReport.highlighted"))
 const mode = defineModel<AimdRecordPresentation>({ required: true })
 </script>
 
 <template>
   <div class="report-presentation" data-testid="report-presentation">
-    <span aria-hidden="true">{{ $t("page.protocol.recordReport.presentation") }}</span>
-    <n-radio-group v-model:value="mode" size="small" :aria-label="$t('page.protocol.recordReport.presentation')">
-      <n-radio-button value="detailed">{{ $t("page.protocol.recordReport.detailed") }}</n-radio-button>
+    <span aria-hidden="true">{{ groupLabel }}</span>
+    <n-radio-group v-model:value="mode" size="small" role="radiogroup" :name="groupName" :aria-label="groupLabel">
+      <n-radio-button value="detailed">{{ detailedLabel }}</n-radio-button>
       <n-radio-button value="compact">{{ $t("page.protocol.recordReport.compact") }}</n-radio-button>
     </n-radio-group>
   </div>

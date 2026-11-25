@@ -3909,7 +3909,9 @@
         "transcriptionFailed": "语音转写失败"
       },
       "recordReport": {
-        "presentation": "报告视图",
+        "reportStyle": "报告样式",
+        "highlighted": "高亮",
+        "fieldDisplay": "字段显示",
         "compact": "简洁",
         "detailed": "详细",
         "title": "协议记录",

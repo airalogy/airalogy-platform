@@ -14,9 +14,11 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
-- Saved Record reports open in Detailed view on first use and retain an existing presentation preference. Checkpoints are explicitly labeled in both views.
+- Long Record drafts scroll to the last field on narrow screens. Desktop keeps its independently scrollable field list and entry pane. AIMD Recorder 1.31.0 keeps optional markers visible, wraps long labels and fits scalar inputs within the field panel. Expand a field to inspect its ID, type, examples, default and constraints separately from its recorded value.
 
-- Saved Record reports remember compact or detailed presentation on this device. Checkpoints show the saved state and title, and detailed view highlights steps and recorded values.
+- Record entry and saved reports share a grouped field panel with links to the matching field in the document. During entry, Field display switches the panel and document together between Detailed and Compact. Its preference is stored separately from the report style.
+
+- Report style offers Highlighted (the default) and Compact. Reports retain earlier style preferences on this device. Highlighted emphasizes steps and recorded values. Both styles label checkpoints and show their saved state and title.
 
 - Protocol reading, revision and Recording now share a right-hand Aira panel. Recorder field filling retains per-field replacement review and undo. Protocol edits can be reviewed before applying them to a draft.
 - Record reports opened from the Record list now fit narrow screens. Saved Record detail pages scroll to the end with a wheel or touch on narrow screens. AIMD Renderer 2.14.2 labels structured steps with localized headings such as “Step 1.1” and preserves numbering written in Markdown. Untitled steps display their ID. Each checkpoint shows its saved state once.

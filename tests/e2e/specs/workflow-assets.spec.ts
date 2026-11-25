@@ -169,7 +169,7 @@ for (const locale of ["en-US", "zh-CN"] as const) {
     await page.getByRole("button", { name: locale === "en-US" ? "Execute Protocol" : "执行 Protocol", exact: true }).click()
     await expect(page).toHaveURL(new RegExp(`researchWorkItem=${approved.work_item!.id}`))
     const main = page.getByTestId("record-main-content")
-    const dose = main.locator("input:not([type=\"file\"])").first()
+    const dose = main.locator(`[data-rec-focus-key="var:${seed.scalar_field}"]`)
     await expect(dose).toHaveValue(String(seed.value))
     const inlineFile = main.getByTestId("aimd-inline-file-input")
     const attachment = inlineFile.getByText(seed.filename, { exact: true })
@@ -237,7 +237,7 @@ test("mobile inline files persist before first opening and after closing the fie
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(`/labs/${fixtures.lab.uid}/projects/${fixtures.project.uid}/protocols/${seed.protocol_uid}/add`)
   const main = page.getByTestId("record-main-content")
-  const dose = main.locator("input:not([type=\"file\"])").first()
+  const dose = main.locator(`[data-rec-focus-key="var:${seed.scalar_field}"]`)
   await dose.fill("7")
   // The numeric control commits on blur, as when a user clicks the uploader.
   // setInputFiles alone does not move focus and is not that user interaction.

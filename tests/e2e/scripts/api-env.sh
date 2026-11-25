@@ -16,6 +16,8 @@ export SITE_URL=http://127.0.0.1:3100
 export DATABASE_URL=postgresql+asyncpg://airalogy_e2e:airalogy_e2e@127.0.0.1:55432/airalogy_e2e
 export REDIS_URL=redis://127.0.0.1:56379/0
 export STORAGE_BACKEND=minio MINIO_ENDPOINT=127.0.0.1:59200 MINIO_BUCKET=airalogy-e2e
+# The browser in the local suite reaches the isolated object store directly.
+export MINIO_PROXY_PATH="http://$MINIO_ENDPOINT"
 export MINIO_ACCESS_KEY=airalogy_e2e MINIO_SECRET_KEY=airalogy-e2e-password
 export SECRET_KEY=airalogy-e2e-secret-key
 export AES_KEY=0000000000000000000000000000000000000000000000000000000000000000

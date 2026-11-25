@@ -3913,7 +3913,9 @@ declare namespace I18n {
           transcriptionFailed: string
         }
         recordReport: {
-          presentation: string
+          reportStyle: string
+          highlighted: string
+          fieldDisplay: string
           compact: string
           detailed: string
           title: string

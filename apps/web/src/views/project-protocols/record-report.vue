@@ -136,9 +136,11 @@
         v-model:collapsed="isCollapsed"
         :protocol="protocol"
         :protocol-id="protocolId"
+        :key="JSON.stringify([authStore.userInfo.id, protocolId, record?.record_id, record?.record_version, record?.metadata.protocol_version])"
         :readonly="true"
         :simulated-fields="simulatedFields"
         :record-data="recordData"
+        :saved-record-data="record?.data"
         @update:field="handleUpdateField"
         @update:split-size="handleUpdateSize"
       />

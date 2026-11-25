@@ -63,7 +63,7 @@
       <n-drawer v-if="compact" :show="!isCollapsed" display-directive="show" width="calc(100vw - 2rem)" placement="left" @update:show="value => isCollapsed = !value">
         <n-drawer-content :title="$t('common.fields')" closable :native-scrollbar="false" body-content-class="record-fields-drawer" data-testid="record-fields-drawer">
           <slot name="prefix" />
-          <n-tabs v-model:value="selectedTab" type="card" :theme-overrides="props.themeOverrides" pane-class="min-w-0">
+          <n-tabs v-model:value="selectedTab" :class="{ 'fields-only-drawer': props.singleFieldsTab }" type="card" :theme-overrides="props.themeOverrides" pane-class="min-w-0">
             <slot name="tabs" />
           </n-tabs>
         </n-drawer-content>
@@ -114,6 +114,7 @@ interface IProps {
   selectedTab?: string
   wrapper?: Component
   contentClass?: string
+  singleFieldsTab?: boolean
   responsive?: boolean
 }
 
@@ -220,4 +221,7 @@ defineExpose({
 
 :deep(.n-split-pane-1)
   min-width: 60px
+
+.fields-only-drawer > :deep(.n-tabs-nav)
+  display: none
 </style>

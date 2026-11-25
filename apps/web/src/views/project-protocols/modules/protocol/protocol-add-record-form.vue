@@ -6,7 +6,7 @@
     v-model:selected-tab="selectedTab"
     :dom-mounted="domMounted"
     :default-spilt-size="props.defaultSpiltSize"
-    responsive
+    responsive :single-fields-tab="!hasWorkflowScope"
   >
     <template #tabs>
       <n-tab-pane
@@ -20,22 +20,22 @@
             @click="handleCollapse"
           />
         </template>
-        <div class="px-4" :class="{ hidden: isCollapsed }">
-          <div class="mb-2 h-10 w-fit rounded bg-[#2B2B38] px-4 text-[1.125rem] text-white leading-10">
-            {{ $t("common.fields") }}
-          </div>
+        <div v-if="hostedContent || props.readonly" v-show="!isCollapsed" class="record-fields-form px-4">
+          <aimd-recorder
+            layout="field-panel" :field-display="props.readonly ? reportPresentation : recordingFieldDisplay" :content="props.readonly ? templateRef : hostedContent" :readonly="props.readonly"
+            :panel-variables="drawerVariables" :model-value="props.readonly ? savedPanelData : nativeRecord"
+            :current-user-name="authStore.userInfo.name" :locale="locale" :show-search="false"
+            :field-meta="nativeMeta" :validation-schema="nativeSchema" :field-state="props.readonly ? undefined : nativeState"
+            :resource-resolvers="resourceResolvers" :field-adapters="props.readonly ? undefined : panelAdapters"
+            :wrap-field="props.readonly ? undefined : wrapDrawerField"
+            :upload-file="props.readonly ? undefined : uploadNativeFile" :resolve-file-info="resolveNativeFile"
+            @input.capture="!props.readonly && markInput($event)" @change.capture="!props.readonly && markInput($event)"
+            @navigate-field="focusNativeField" @mousedown.capture="keepResourceSearchFocus"
+            @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
+            @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })"
+          />
         </div>
-
-        <div v-if="!props.readonly" class="record-fields-form px-4" @input.capture="markInput" @change.capture="markInput">
-          <aimd-recorder v-if="hostedContent" layout="field-panel" :content="hostedContent" :panel-variables="drawerVariables" :model-value="nativeRecord"
-                         :current-user-name="authStore.userInfo.name" :locale="locale" :show-search="false"
-                         @navigate-field="focusNativeField" :field-meta="nativeMeta" :field-state="nativeState" :validation-schema="nativeSchema"
-                         :resource-resolvers="resourceResolvers" :field-adapters="panelAdapters" :wrap-field="wrapDrawerField"
-                         :upload-file="uploadNativeFile" :resolve-file-info="resolveNativeFile"
-                         @mousedown.capture="keepResourceSearchFocus" @field-change="handleNativeField" @assigner-request="handleNativeAssigner"
-                         @assigner-cancel="({ fieldKey }) => handleAssignerCancel({ prop: fieldKey })" />
-        </div>
-        <n-collapse v-else
+        <n-collapse v-if="props.readonly && legacyPanelGroups.length"
                     v-model:expanded-names="expandedNamesRef" display-directive="show"
                     class="px-4"
                     :class="{ hidden: isCollapsed }"
@@ -44,7 +44,7 @@
             ref="formRef" class="record-fields-form h-full pb-3" :rules="validationRules" :model="fieldModel"
             @input.capture="markInput" @change.capture="markInput"
           >
-            <n-collapse-item v-for="(scopeName, idx) in scopeList" :key="scopeName" :name="scopeName">
+            <n-collapse-item v-for="{ scopeName, idx } in legacyPanelGroups" :key="scopeName" :name="scopeName">
               <template #header>
                 <span class="text-4 font-500 capitalize">
                   {{ fieldRecordDefault.field[scopeName]?.__SCOPE__?.title || scopeKeyRecord[scopeName] }}
@@ -158,6 +158,7 @@
         :model="previewValue"
       >
         <record-report-presentation v-if="props.readonly" v-model="reportPresentation" />
+        <record-report-presentation v-else v-model="recordingFieldDisplay" for-recording />
         <aimd-markdown-preview v-if="props.readonly"
                                ref="previewRef" :content="templateRef" mode="report" :readonly-record-data="readonlyRecordData" :record-presentation="reportPresentation" :render-options="{ locale }"
                                class="record-inline-content" :mermaid-component="MermaidBlock" :resolve-url="resolvePreviewFile"
@@ -165,7 +166,7 @@
         />
         <div v-else ref="recorderRoot" v-protocol-preview-assets="resolvePreviewFile" @drop.capture="captureTableDrop">
           <aimd-recorder
-            ref="nativeRecorder" class="record-inline-content" :content="hostedContent" :model-value="nativeRecord"
+            ref="nativeRecorder" class="record-inline-content" :field-display="recordingFieldDisplay" :content="hostedContent" :model-value="nativeRecord"
             :locale="locale" :current-user-name="authStore.userInfo.name"
             :validation-schema="nativeSchema" :field-meta="nativeMeta" :field-state="nativeState"
             :field-adapters="hostAdapters" :wrap-field="wrapNativeField" :resource-resolvers="resourceResolvers"
@@ -217,6 +218,7 @@ import { platformResourceResolverKey } from "@/components/custom/aimd/resourceRe
 import { useNaiveForm } from "@/composables"
 import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { getCachedAttachment, postAddAttachments } from "@/service/api/attachments"
+import { getReferenceAssets } from "@/service/api/project-protocols"
 import {
   fetchResource,
   fetchResourceAvailability,
@@ -234,7 +236,7 @@ import { vProtocolPreviewAssets } from "@/utils/protocolPreviewAssets"
 import { hostedRecorderContent } from "@/utils/recorderMarkdown"
 import { resolveProtocolFile as resolveProtocolFileUtil } from "@/utils/resolveProtocolFile"
 import { bubbleMenuEventKey, fieldEventKey } from "@/utils/template/eventKey"
-import { getAimdFileKindFromType } from "@airalogy/aimd-core"
+import { getAimdFieldTitle, getAimdFileKindFromType } from "@airalogy/aimd-core"
 import { toTemplateEnv } from "@airalogy/aimd-core/utils"
 import { AimdRecorder } from "@airalogy/aimd-recorder"
 import { parseAndExtract } from "@airalogy/aimd-renderer"
@@ -254,7 +256,7 @@ import { useI18n } from "vue-i18n"
 import { useProtocolInfoStore } from "../../hooks/useProtocolInfoStore"
 import { processFieldValue } from "../../utils"
 import RecordReportPresentation from "../record-report-presentation.vue"
-import { useRecordReportPresentation } from "../useRecordReportPresentation"
+import { useRecordingFieldDisplay, useRecordReportPresentation } from "../useRecordReportPresentation"
 import AssignerProgressModal from "./components/AssignerProgressModal.vue"
 import FieldInputBar from "./components/field-input-bar.vue"
 import RecorderFieldReview from "./components/recorder-field-review.vue"
@@ -289,6 +291,7 @@ interface IProps {
   defaultSpiltSize?: number
   readonly?: boolean
   recordData?: Partial<IRecordData>
+  savedRecordData?: ProtocolModels.RecordInfo["data"]
   collapsed?: boolean
 }
 
@@ -321,6 +324,7 @@ const isCollapsed = useVModel(props, "collapsed")
 const message = useClosableMessage()
 const { locale } = useI18n()
 const reportPresentation = useRecordReportPresentation()
+const recordingFieldDisplay = useRecordingFieldDisplay()
 
 const { airalogyId } = useProtocolInfoStore()!
 const { currentRecorderRecordContext } = useChatProvider()
@@ -634,6 +638,7 @@ provide(platformResourceResolverKey, {
 
 const {
   rules: validationRules,
+  isRequired: isRequiredField,
   validateRecord: validateAimdRecord,
 } = useAimdRecordValidation({
   content: templateRef,
@@ -887,6 +892,11 @@ onBeforeUnmount(() => {
 
 provide("protocol-workflow", { workflowId })
 
+// Platform-specific scopes still use their existing viewers.
+const aimdPanelScopes = new Set(["research_variable", "research_step", "research_check", "var_table", "quiz"])
+const legacyPanelGroups = computed(() => scopeList.value
+  .map((scopeName, idx) => ({ scopeName, idx }))
+  .filter(({ scopeName, idx }) => !aimdPanelScopes.has(scopeName) && fieldPropList.value[idx]?.length))
 const hasWorkflowScope = computed(() => scopeList.value.includes("research_workflow"))
 
 function openWorkflowWorkspace() {
@@ -1071,7 +1081,7 @@ const readonlyRecordData = computed(() => {
   if (!props.readonly)
     return undefined
 
-  const data = (props.recordData || {}) as Record<string, unknown>
+  const data = (props.savedRecordData ?? props.recordData ?? {}) as Record<string, unknown>
   return {
     var: data.var ?? data.research_variable ?? {},
     step: data.step ?? data.research_step ?? {},
@@ -1080,6 +1090,8 @@ const readonlyRecordData = computed(() => {
     var_table: data.var_table ?? {},
   }
 })
+
+const savedPanelData = computed(() => readonlyRecordData.value as Partial<AimdProtocolRecordData> | undefined)
 
 const { handleTableRowUpdate } = useTableManagement()
 
@@ -1374,10 +1386,25 @@ const tableNames = computed(() => new Set(nativeEnv.value.tables?.map(([id]) => 
 const drawerVariables = computed(() => Object.keys(fieldRecordDefault.value?.field.research_variable || {})
   .filter(id => id !== "__SCOPE__" && !tableNames.value.has(id) && !fieldRecordDefault.value?.field.research_variable?.[id]?.originalName))
 async function focusNativeField(key: string) {
+  let target: HTMLElement | null = null
+  if (props.readonly) {
+    const split = key.indexOf(":")
+    target = previewRef.value?.rootElement?.querySelector<HTMLElement>(
+      `[data-aimd-type="${CSS.escape(key.slice(0, split))}"][data-aimd-id="${CSS.escape(key.slice(split + 1))}"]`,
+    ) ?? null
+    if (!target)
+      return false
+  }
   if (window.matchMedia("(max-width: 767px)").matches)
     isCollapsed.value = true
   selectedTab.value = "form-fields"
   await nextTick()
+  if (target) {
+    target.setAttribute("tabindex", "-1")
+    target.focus({ preventScroll: true })
+    target.scrollIntoView({ block: "center" })
+    return true
+  }
   return nativeRecorder.value?.focusField(key) ?? false
 }
 const nativeMeta = computed(() => {
@@ -1448,11 +1475,18 @@ function wrapNativeField(key: string, type: string, vnode: VNode) {
 
 // Keep the Platform attachment card (authorized download, rename and versioned file IDs).
 const hostAdapters: AimdRecorderFieldAdapters = {
-  var: ({ node }) => {
+  var: ({ node, messages }) => {
     const item = variableList.value.find(it => it.scope === "research_variable" && it.prop === node.id)
     if (!item || !/^(?:file(?:id.*)?|image|recordid)$/i.test(String(node.definition?.type || item.type)))
       return null
-    return h(AIMDItem, item)
+    return h(AIMDItem, {
+      ...item,
+      required: isRequiredField(`var:${node.id}`),
+      fieldDisplay: recordingFieldDisplay.value,
+      fieldTitle: nativeMeta.value[`var:${node.id}`]?.title || getAimdFieldTitle(node.definition),
+      scopeLabel: messages.scope.var,
+      optionalLabel: messages.common.optional,
+    })
   },
 }
 const panelAdapters: AimdRecorderFieldAdapters = {
@@ -1461,7 +1495,7 @@ const panelAdapters: AimdRecorderFieldAdapters = {
     // Record references use the Platform picker. Model-only file declarations
     // can also lack an AIMD type, so preserve the existing schema-aware control.
     if (item && (item.type.toLowerCase() === "recordid" || (!context.node.definition?.type && /^(?:file|image)/i.test(item.type))))
-      return h(AIMDItem, item)
+      return h(AIMDItem, { ...item, fieldDisplay: "compact" })
     return null
   },
 }
@@ -1479,6 +1513,11 @@ async function resolveNativeFile(src: string, context: AimdFileResolveContext) {
   if (src.startsWith("airalogy.id.file.")) {
     const file = await getCachedAttachment(src)
     return file ? { name: file.filename, url: file.url } : null
+  }
+  // Saved file fields from older Records may contain only the attachment UUID.
+  if (/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(src)) {
+    const { data } = await getReferenceAssets(src, false)
+    return data ? { name: data.filename, url: data.url } : null
   }
   return resolvePreviewFile(src)
 }

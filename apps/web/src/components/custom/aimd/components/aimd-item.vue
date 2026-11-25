@@ -3,7 +3,7 @@
     ref="formItemRef"
     :path="formPath"
     :rule="cellRules"
-    :show-label="props.scope === 'research_variable'"
+    :show-label="props.scope === 'research_variable' && props.fieldDisplay !== 'compact'"
     :show-feedback="props.scope === 'var_table' || Boolean(assignerError)"
     :feedback="assignerError"
     :validation-status="assignerError ? 'error' : undefined"
@@ -19,11 +19,16 @@
     <template #label>
       <div ref="fieldContainerRef" class="aimd-field aimd-field--no-style aimd-field__label cursor-pointer">
         <span class="aimd-field__scope" :class="`aimd-field__scope--${props.type}`">
-          {{ props.fieldType }}
+          {{ props.scopeLabel || props.fieldType }}
         </span>
         <span class="aimd-field__name min-w-0 flex-1">
-          <insert-wbr :text="props.prop" class="min-w-0" />
+          <span v-if="props.fieldDisplay && props.fieldTitle && props.fieldTitle !== props.prop" class="flex min-w-0 flex-col">
+            <span>{{ props.fieldTitle }}</span>
+            <code class="break-all text-xs font-normal text-slate-600">{{ props.prop }}</code>
+          </span>
+          <insert-wbr v-else :text="props.prop" class="min-w-0" />
           <AimdRequiredMarker v-if="isRequiredField" :label="$t('common.required')" />
+          <small v-else-if="props.optionalLabel" class="aimd-field__optional-marker">{{ props.optionalLabel }}</small>
         </span>
       </div>
     </template>
@@ -61,7 +66,7 @@ import { isUploadFileType } from "@airalogy/shared/utils"
 import { themeOverridesRecord } from "../composables/themeOverrides"
 import { useAIMDInject } from "../composables/useAIMDHelpers"
 
-const props = defineProps<IAIMDItemProps>()
+const props = defineProps<IAIMDItemProps & { fieldDisplay?: "compact" | "detailed", fieldTitle?: string, scopeLabel?: string, optionalLabel?: string }>()
 // Check if this is a reference field (used for ref_var)
 const isReferenceField = props.isReference === true
 
