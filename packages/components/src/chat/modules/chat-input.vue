@@ -884,7 +884,7 @@ bubbleMenuEventBus.on((event, payload) => {
     const { prop, value, scope, mentionAttrs, type } = payload as AddToChatPayload
 
     if (event === "sendToChat") {
-      const promptWrappedText = `{{${scope}|${prop}, value=${value || ""}, type=${type}}} Could you explain this field in detail and highlight any important considerations?`
+      const promptWrappedText = `{{${scope}|${prop}, value=${value ?? ""}, type=${type}}} Could you explain this field in detail and highlight any important considerations?`
 
       editor.value?.commands.setContent(promptWrappedText)
       handleSubmit()

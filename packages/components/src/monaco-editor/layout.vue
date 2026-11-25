@@ -5,6 +5,7 @@
         <template v-if="$slots.title" #title>
           <slot name="title" />
         </template>
+        <template #actions><slot name="header-actions" /></template>
       </tab-header>
     </n-layout-header>
 
@@ -113,6 +114,7 @@
         </template>
       </n-split>
     </n-layout-content>
+    <slot name="assistant" />
   </n-layout>
 </template>
 

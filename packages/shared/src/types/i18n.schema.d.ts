@@ -6450,6 +6450,8 @@ declare namespace I18n {
         gpt: string
       }
       editorCodeEdit: {
+        draft: string
+        appliedToDraft: string
         tooltip: string
         panelTitle: string
         panelDescription: string

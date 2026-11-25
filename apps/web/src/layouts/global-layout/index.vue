@@ -42,8 +42,9 @@
       />
     </template>
     <template #assistant>
+      <span ref="assistantAnchor" hidden />
       <slot v-if="aira.projectAvailable.value" name="assistant" />
-      <workspace-aira v-else-if="aira.mounted.value" />
+      <workspace-aira v-else-if="!aira.context.value && aira.mounted.value" />
     </template>
     <slot>
       <global-content v-if="appStore.isSpinWrapper" :container-content-class="themeStore.content.containerContentClass" :content-class="themeStore.content.contentClass" :show-spin="true" />
@@ -86,6 +87,10 @@ interface IProps {
   headerClass?: string
 }
 const aira = provideWorkspaceAira()
+const assistantAnchor = ref<HTMLElement | null>(null)
+watchEffect(() => {
+  aira.host.value = assistantAnchor.value?.parentElement ?? null
+})
 const WorkspaceAira = defineAsyncComponent(() => import("../modules/global-header/components/workspace-aira.vue"))
 const appStore = useAppStore()
 const themeStore = useThemeStore()

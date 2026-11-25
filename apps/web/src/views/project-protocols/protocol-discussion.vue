@@ -2,7 +2,6 @@
   <split-layout
     :chat-props="{ source: 'discussion', airalogyId, role: ChatType.NORMAL }"
     content-class="pl-4 flex flex-col"
-    default-selected-tab="ai-assistant"
   >
     <n-flex class="mb-4 w-full" justify="space-between">
       <search-result />

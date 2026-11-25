@@ -23,6 +23,13 @@ export function useChatEventHandlers(state: ChatState, mutations: ChatMutations,
 
     const stop = watch(chatRouteId, async (newId) => {
       if (newId) {
+        if (airalogyId.value) {
+          const saved = chatStore.findSessionByUUID(newId)
+          if (!saved || saved.airalogyId !== airalogyId.value) {
+            clearActive()
+            return
+          }
+        }
         chatStore.setActive(newId)
 
         const chat = await loadChat({ uuid: newId } as Chat.ChatHistory)

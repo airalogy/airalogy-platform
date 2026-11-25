@@ -7,7 +7,6 @@
       airalogyId,
       role: ChatType.RECORDS,
     }"
-    default-selected-tab="ai-assistant"
   >
     <section>
       <div

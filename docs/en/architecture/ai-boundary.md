@@ -8,7 +8,7 @@ Prompts and context assembly that depend on Platform objects remain in Platform.
 
 ## Conversational Record filling
 
-On an editable Record, ask Aira about Protocol fields, then give their observed values in the same conversation. Aira can resolve references such as “the second field”. Review replacements of existing values or undo the last fill. Ask explicitly for simulated data to see an isolated preview. Exit the preview to return to the original draft. File and resource references and calculated fields require their normal input paths.
+Open Aira from the top bar of an editable Record. On desktop the form and conversation appear side by side. On a phone, close the panel to return to the draft. In the form or Fields panel, select Add to chat beside a variable to reference it, then enter its observed value. Expand Field input in the panel to enter observations from an attachment or by voice. Aira can resolve references such as “the second field”. Review replacements of existing values or undo the last fill. Ask explicitly for simulated data to see an isolated preview. Exit the preview to return to the original draft. File and resource references and calculated fields require their normal input paths.
 
 The embedded package and external Masterbrain service must support the 0.14.0 Field Input turn API.
 

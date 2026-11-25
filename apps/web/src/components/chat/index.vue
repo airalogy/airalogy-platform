@@ -73,6 +73,7 @@ import ContextSelectDialog from "./modules/context-select-dialog.vue"
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<IProps & ActionProps & {
+  inSidePanel?: boolean
   resolveFile?: (id: string) => Promise<{ url: string } | null>
 }>(), {
   hideCollapse: false,
@@ -294,6 +295,7 @@ const chatWrapperActionProps = computed(() => ({
   docked: docked.value,
   collapsed: collapsed.value,
   hideCollapse: props.hideCollapse,
+  ...(props.inSidePanel && { actions: ["newChat"] }),
   containerClass: fullScreen.value ? "absolute-y-center right-4 space-x-1" : docked.value ? "w-fit" : "absolute right-4 top-0 space-x-1",
 }))
 

@@ -10,38 +10,6 @@
   >
     <template #tabs>
       <n-tab-pane
-        v-if="instanceStore.aiEnabled"
-        name="ai-assistant" class="relative" :tab="$t('chat.askAira')"
-        display-directive="show"
-        :style="{ paddingLeft: isCollapsed ? '32px' : undefined }"
-      >
-        <template #tab>
-          <ai-menu-icon
-            outlined :selected="selectedTab === 'ai-assistant'" data-tab="ai-assistant"
-            @click="handleCollapse"
-          />
-        </template>
-        <div class="h-full pl-4" :class="{ hidden: isCollapsed }">
-          <div class="mb-2 h-10 w-fit rounded bg-[#2B2B38] px-4 text-[1.125rem] text-white leading-10">
-            {{ $t("chat.askAira") }}
-          </div>
-          <chat-component
-            ref="chatRef"
-            v-model:docked="docked"
-            v-model:full-screen="appStore.fullContent"
-            v-model:role="role"
-            v-model:could-change-role="couldChangeRole"
-            hide-collapse
-            :collapsed="isCollapsed"
-            :class="appStore.fullContent ? 'h-screen' : 'h-[calc(100%-3rem)]'"
-            :protocol-id="props.protocolId"
-            source="protocol" enable-tool-action :airalogy-id="airalogyId"
-            :resolve-file="getCachedAttachment"
-            @update:docked="handleUpdateDocked"
-          />
-        </div>
-      </n-tab-pane>
-      <n-tab-pane
         name="form-fields" class="relative" :tab="$t('common.fields')"
         display-directive="show"
         :style="{ paddingLeft: isCollapsed ? '32px' : undefined }"
@@ -55,11 +23,6 @@
         <div class="px-4" :class="{ hidden: isCollapsed }">
           <div class="mb-2 h-10 w-fit rounded bg-[#2B2B38] px-4 text-[1.125rem] text-white leading-10">
             {{ $t("common.fields") }}
-          </div>
-
-          <!-- Field Input Bar -->
-          <div v-if="instanceStore.aiEnabled && !props.readonly && props.recorderVersion" class="mb-4">
-            <field-input-bar :protocol-id="props.protocolId" :begin-turn="beginRecorderTurn" :pending-suggestions="pending.size > 0 || busy" />
           </div>
         </div>
 
@@ -138,6 +101,16 @@
       </n-tab-pane>
     </template>
     <template #content>
+      <context-aira-panel handles-field-selection v-if="authStore.isLogin && instanceStore.aiEnabled" :key="JSON.stringify([protocolId, recorderVersion, recorderRecordId, props.readonly])"
+                          :title="protocol?.name" :version="recorderVersion">
+        <details v-if="!props.readonly && recorderVersion" class="shrink-0 px-3 py-1">
+          <summary class="cursor-pointer text-sm">{{ $t('page.protocol.fieldInput.title') }}</summary>
+          <field-input-bar :protocol-id="props.protocolId" :begin-turn="beginRecorderTurn" :pending-suggestions="pending.size > 0 || busy" />
+        </details>
+        <chat-component v-model:role="role" v-model:could-change-role="couldChangeRole" hide-collapse in-side-panel
+                        class="relative min-h-0 w-full flex-1" :protocol-id="props.protocolId"
+                        source="protocol" enable-tool-action :airalogy-id="airalogyId" :resolve-file="getCachedAttachment" />
+      </context-aira-panel>
       <slot name="prefix" />
       <n-alert v-if="receipt || pending.size || edits.size || showPreviewLink" class="mb-3 break-words" :type="pending.size ? 'warning' : 'info'" data-testid="recorder-receipt">
         <div class="whitespace-pre-line" aria-live="polite">{{ receipt }}</div>
@@ -236,11 +209,13 @@ import type { TagColor } from "naive-ui/es/tag/src/common-props"
 import type { VNode } from "vue"
 import type { IFieldChangePayload } from "./types/types"
 import ChatComponent from "@/components/chat/index.vue"
+import ContextAiraPanel from "@/components/common/context-aira-panel.vue"
 import AddRecordLayout from "@/components/custom/add-record-layout.vue"
 import AIMDItem from "@/components/custom/aimd/components/aimd-item.vue"
 import { useAIMDProvide } from "@/components/custom/aimd/composables/useAIMDHelpers"
 import { platformResourceResolverKey } from "@/components/custom/aimd/resourceResolver"
 import { useNaiveForm } from "@/composables"
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { getCachedAttachment, postAddAttachments } from "@/service/api/attachments"
 import {
   fetchResource,
@@ -249,7 +224,6 @@ import {
   prepareResourceOutput,
   searchResourceRefs,
 } from "@/service/api/resources"
-import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 
 import { useInstanceStore } from "@/store/modules/instance"
@@ -270,8 +244,9 @@ import MermaidBlock from "@airalogy/components/markdown-editor/modules/mermaid/m
 import ProtocolBubbleMenu from "@airalogy/components/protocol-bubble-menu.vue"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
-import { scopeKeyRecord } from "@airalogy/shared/utils/schema"
+import { scopeKeyRecord, scopeNameRecord } from "@airalogy/shared/utils/schema"
 import { useEventBus } from "@vueuse/core"
+import IconMessagePlus from "~icons/tabler/message-plus"
 import Big from "big.js"
 import { cloneDeepWith as _cloneDeepWith, get as _get, isEqual } from "lodash-es"
 import { nanoid } from "nanoid"
@@ -317,7 +292,8 @@ interface IProps {
   collapsed?: boolean
 }
 
-const appStore = useAppStore()
+const aira = useWorkspaceAira()!
+const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 
 // Assigner progress modal
@@ -345,8 +321,6 @@ const isCollapsed = useVModel(props, "collapsed")
 const message = useClosableMessage()
 const { locale } = useI18n()
 const reportPresentation = useRecordReportPresentation()
-
-const chatRef = ref<{ setDocked: (val: boolean) => void } | null>(null)
 
 const { airalogyId } = useProtocolInfoStore()!
 const { currentRecorderRecordContext } = useChatProvider()
@@ -518,22 +492,9 @@ watch(
   },
 )
 
-const selectedTab = ref<"form-fields" | "ai-assistant" | "workflow" | undefined>(
+const selectedTab = ref<"form-fields" | "workflow" | undefined>(
   "form-fields",
 )
-const docked = ref(false)
-function handleUpdateDocked(val: boolean) {
-  if (val) {
-    selectedTab.value = "form-fields"
-    docked.value = true
-  }
-  else {
-    // Chat emits its initial undocked state on mount. It must not replace the
-    // field panel unless the researcher explicitly selects Aira.
-    docked.value = false
-  }
-}
-
 const shouldScroll = ref(true) // The fields tab is the default entry point.
 const stopWatch = watch(
   selectedTab,
@@ -564,16 +525,8 @@ function handleCollapse(e: MouseEvent) {
   }
 
   const { tab } = target.dataset
-  if (tab === "ai-assistant" && (!instanceStore.aiEnabled || docked.value)) {
-    chatRef.value?.setDocked(false)
-  }
-
-  if (tab === "ai-assistant" && !instanceStore.aiEnabled) {
-    return
-  }
-
   if (isCollapsed.value) {
-    selectedTab.value = tab as "form-fields" | "ai-assistant"
+    selectedTab.value = tab as "form-fields" | "workflow"
 
     splitSize.value = 0.35
     void nextTick(() => {
@@ -1231,56 +1184,57 @@ async function focusFirstInvalidField(field?: string) {
 
 const bubbleMenuEventBus = useEventBus<BubbleMenuEventName, BubbleMenuEventPayload>(bubbleMenuEventKey)
 
-bubbleMenuEventBus.on((event, payload) => {
-  if (instanceStore.aiEnabled && event === "triggerChatAction" && typeof payload === "object") {
-    const { event: eventType, value } = payload as { event: "sendToChat" | "addToChat", value: string | AddToChatPayload }
-    isCollapsed.value = false
-    if (!docked.value) {
-      selectedTab.value = "ai-assistant"
+type ChatField = Pick<AddToChatPayload, "prop" | "scope" | "type">
+function openRecorderChat(eventType: "sendToChat" | "addToChat", value: string | ChatField, trigger?: HTMLElement) {
+  aira.open(trigger)
+
+  void nextTick(() => {
+    if (typeof value === "string") {
+      bubbleMenuEventBus.emit(eventType, value)
     }
-
-    void nextTick(() => {
-      if (typeof value === "string") {
-        bubbleMenuEventBus.emit(eventType, value)
-      }
-      else {
-        const { prop, scope, type } = value as AddToChatPayload
-        const modelValue = _get(fieldModel, [scope, prop, "value"])
-        let formattedValue = modelValue
-        if (typeof modelValue === "object") {
-          if (modelValue.airalogy_file_id) {
-            formattedValue = `"${modelValue.airalogy_file_id}"`
-          }
-          else if (modelValue.value) {
-            formattedValue = modelValue.value
-          }
-          else {
-            formattedValue = JSON.stringify(modelValue, null, 0)
-          }
+    else {
+      const { prop, scope, type } = value
+      const modelValue = _get(fieldModel, [scope, prop, "value"])
+      let formattedValue = modelValue
+      if (modelValue && typeof modelValue === "object") {
+        if (modelValue.airalogy_file_id) {
+          formattedValue = `"${modelValue.airalogy_file_id}"`
         }
-        else if (typeof modelValue === "string") {
-          formattedValue = `"${modelValue}"`
+        else if (modelValue.value != null) {
+          formattedValue = modelValue.value
         }
-
-        const formattedScope = scopeKeyRecord[scope as ScopeFieldKey] as IRecordDataKey
-        const id = `${formattedScope}.${prop}`
-
-        bubbleMenuEventBus.emit(eventType, {
-          prop,
-          scope: formattedScope,
-          value: formattedValue,
-          type,
-          mentionAttrs: {
-            id,
-            label: id,
-            query: id,
-            // TODO: resolve context items, items may change after the mention is inserted
-            renderInlineAs: `{{${formattedScope}|${prop}, value=${formattedValue || ""}, type=${type}}}`,
-            itemType: "getFieldValue",
-          },
-        })
+        else {
+          formattedValue = JSON.stringify(modelValue, null, 0)
+        }
       }
-    })
+      else if (typeof modelValue === "string") {
+        formattedValue = `"${modelValue}"`
+      }
+
+      const formattedScope = scopeKeyRecord[scope as ScopeFieldKey] as IRecordDataKey
+      const id = `${formattedScope}.${prop}`
+
+      bubbleMenuEventBus.emit(eventType, {
+        prop,
+        scope: formattedScope,
+        value: formattedValue,
+        type,
+        mentionAttrs: {
+          id,
+          label: id,
+          query: id,
+          // TODO: resolve context items, items may change after the mention is inserted
+          renderInlineAs: `{{${formattedScope}|${prop}, value=${formattedValue ?? ""}, type=${type}}}`,
+          itemType: "getFieldValue",
+        },
+      })
+    }
+  })
+}
+
+bubbleMenuEventBus.on((event, payload) => {
+  if (instanceStore.aiEnabled && event === "triggerChatAction" && payload && typeof payload === "object" && "event" in payload) {
+    openRecorderChat(payload.event, payload.value, document.activeElement instanceof HTMLElement ? document.activeElement : undefined)
   }
 })
 
@@ -1303,7 +1257,7 @@ contextBus.on(async (event, payload) => {
     return
   }
 
-  const result = _get(fieldModel, [scope, prop, "value"])
+  const result = _get(fieldModel, [scopeNameRecord[scope] || scope, prop, "value"])
 
   const response: ContextItemWithId[] = [{
     content: result,
@@ -1445,10 +1399,32 @@ const nativeMeta = computed(() => {
   }
   return meta
 })
+function fieldChatButton(field: string, inDrawer = false) {
+  if (!authStore.isLogin || !instanceStore.aiEnabled || props.readonly)
+    return null
+  const label = `${$t("chat.addToChat")} · ${nativeMeta.value[`var:${field}`]?.title || field}`
+  return h("button", {
+    "type": "button",
+    "class": "recorder-field-chat",
+    "aria-label": label,
+    "title": label,
+    onClick(event: MouseEvent) {
+      event.stopPropagation()
+      const schemaType = fieldRecordDefault.value?.rules?.research_variable?.[field]?.ajv?.schema?.type
+      const type: ChatField["type"] = schemaType === "integer" ? "number" : schemaType || "string"
+      const compactDrawer = inDrawer && window.matchMedia("(max-width: 767px)").matches
+      if (compactDrawer)
+        isCollapsed.value = true
+      const trigger = compactDrawer ? document.querySelector<HTMLElement>('[data-testid="record-open-fields"]') : event.currentTarget as HTMLElement
+      openRecorderChat("addToChat", { prop: field, scope: "research_variable", type }, trigger ?? undefined)
+    },
+  }, [h(IconMessagePlus, { "aria-hidden": true })])
+}
+
 // Preserve the existing focus targets used by the record forms and Aira.
 function wrapDrawerField(key: string, type: string, vnode: VNode) {
   const id = key.slice(key.indexOf(":") + 1)
-  return h("div", { "id": `form-${nativeSections[type as keyof typeof nativeSections]}-${id}`, "data-recorder-field": id }, [vnode])
+  return h("div", { "id": `form-${nativeSections[type as keyof typeof nativeSections]}-${id}`, "data-recorder-field": id }, [vnode, type === "var" && fieldChatButton(id, true)])
 }
 const nativeState = computed(() => Object.fromEntries(Object.keys(assignerLoadingRecord.value).concat(Object.keys(assignerErrorRecord.value)).map(id =>
   [`var:${id}`, { loading: !!assignerLoadingRecord.value[id], error: assignerErrorRecord.value[id] ? String(assignerErrorRecord.value[id]) : undefined }])))
@@ -1467,7 +1443,7 @@ function wrapNativeField(key: string, type: string, vnode: VNode) {
   if (type !== "var")
     return vnode
   const field = key.slice(4)
-  return h("span", { "data-recorder-field": field }, [vnode, h(fieldHint, { field })])
+  return h("span", { "data-recorder-field": field }, [vnode, fieldChatButton(field), h(fieldHint, { field })])
 }
 
 // Keep the Platform attachment card (authorized download, rename and versioned file IDs).
@@ -1560,8 +1536,6 @@ function handleNativeField({ section, fieldKey, value, rowIndex, column }: Field
   }
   void handleFieldChange({ scope, prop: id, value: value as any })
 }
-
-const authStore = useAuthStore()
 
 watchEffect(() => {
   const { userInfo } = authStore
@@ -1833,6 +1807,22 @@ defineExpose({
 </style>
 
 <style scoped>
+:deep(.recorder-field-chat) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin-inline-start: .25rem;
+  vertical-align: middle;
+  color: var(--primary-color, #1764ae);
+  border-radius: .25rem;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  :deep([data-recorder-field]:not(:hover, :focus-within) > .recorder-field-chat) {
+    opacity: 0;
+  }
+}
 :deep([data-recorder-field]:has(.recorder-field-undo)) {
   outline: 2px solid var(--primary-color, #0084e2);
   outline-offset: 2px;

@@ -2,9 +2,12 @@ import { Buffer } from "node:buffer"
 import { createServer } from "node:http"
 import { createRequire } from "node:module"
 import { expect, test } from "@playwright/test"
-import { loadFixtures } from "./fixtures"
+import { loadFixtures, mockAIEnabled } from "./fixtures"
 
 const { zipSync, strToU8 } = createRequire(new URL("../../../apps/web/package.json", import.meta.url))("fflate")
+
+// Exercise MediaRecorder in Chromium with generated audio, independent of host hardware.
+test.use({ launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] } })
 
 test("one Aira conversation explains, fills, reviews individual replacements, undoes fields and isolates examples", async ({ page, request }) => {
   test.skip(process.env.AI_ENABLED === "false", "The AI-disabled case verifies the manual entry.")
@@ -34,7 +37,7 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     if (data.current_message.includes("hold"))
       await new Promise<void>((resolve) => { releaseModel = resolve })
     const op = (rf_name: string, rf_value: string | number) => ({ operation: "update", rf_name, rf_value, source: String(rf_value) })
-    const intent = data.current_message.includes("simulate") ? "simulate" : data.current_message.startsWith("Explain") ? "answer" : "fill"
+    const intent = data.current_message.includes("simulate") ? "simulate" : data.current_message.includes("Explain") ? "answer" : "fill"
     const operations = data.current_message.includes("ALT-002")
       ? [op("label", "ALT-002"), op("minutes", 25), op("note", "mixed-note")]
       : data.current_message.includes("25") ? [op("minutes", 25)] : [op("label", "001"), op("minutes", 20)]
@@ -57,20 +60,29 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     const published = await request.post(`${api}/protocols`, { headers: { "Auth-Token": (await login.json()).token }, multipart: { project_id: fx.project.id, file: { name: "recorder.zip", mimeType: "application/zip", buffer: Buffer.from(archive) } } })
     expect(published.ok(), await published.text()).toBeTruthy()
     await page.goto(`/labs/${fx.lab.uid}/projects/${fx.project.uid}/protocols/${uid}/add`, { waitUntil: "domcontentloaded" })
-    await page.locator("[data-tab=ai-assistant]").click()
+    const targetField = page.locator('.record-inline-content [data-recorder-field="minutes"]')
+    await targetField.hover()
+    await targetField.getByRole("button", { name: /Add to chat.*minutes/i }).click()
     const editor = page.getByTestId("chat-input").locator("[contenteditable=true]")
-    const say = async (message: string, status = 200) => {
-      await editor.fill(message)
+    await expect(editor).toContainText("var.minutes")
+    const submit = async (status = 200) => {
       const result = page.waitForResponse(r => r.url().endsWith("/chats/qa/message"))
       await editor.press("Enter")
       const response = await result
-      expect(response.status()).toBe(status)
+      expect(response.status(), response.status() === status ? undefined : await response.text()).toBe(status)
+    }
+    const say = async (message: string, status = 200) => {
+      await editor.fill(message)
+      await submit(status)
     }
     const field = (id: string) => page.locator(`.record-inline-content .aimd-protocol-recorder__content [data-rec-focus-key="var:${id}"]`)
     const inline = (id: string) => page.locator(`.record-inline-content [data-recorder-field="${id}"]`)
     const action = (id: string, name: string) => inline(id).getByRole("button", { name, exact: true })
     const suggestion = (id: string) => inline(id).locator(".recorder-suggestion")
-    await say("Explain label and minutes, is 37 a recommended value?")
+    await editor.press("End")
+    await editor.pressSequentially("Explain label and minutes, is 37 a recommended value?")
+    await submit()
+    expect(calls[0].current_message).toContain("{{var|minutes,")
     await expect(page.getByText("Label is an identifier; minutes is duration.").first()).toBeVisible()
     await expect(field("minutes")).toHaveValue("")
     await say("Fill those two with 001 and 20")
@@ -144,7 +156,17 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     const records = await request.get(`${api}/protocols/${(await published.json()).data.id}/records`, { headers: { "Auth-Token": (await login.json()).token } })
     expect((await records.json()).total_count).toBe(0)
     await page.setViewportSize({ width: 390, height: 844 })
+    await expect(page.getByTestId("context-aira")).toBeVisible()
+    await expect(editor).toBeInViewport()
+    await page.getByTestId("context-aira-close").click()
     await expect(page.getByTestId("recorder-receipt")).toBeVisible()
+    await page.getByTestId("record-open-fields").click()
+    const fieldsDrawer = page.getByTestId("record-fields-drawer")
+    await fieldsDrawer.getByRole("button", { name: /Add to chat.*minutes/i }).click()
+    await expect(fieldsDrawer).toBeHidden()
+    await expect(editor).toContainText("var.minutes")
+    await expect(page.getByTestId("context-aira")).toContainText("Recorder suggestion")
+    await page.getByTestId("context-aira-close").click()
     const viewerLogin = await request.post(`${api}/signin_by_email`, { data: { email: "dev.viewer@airalogy.dev", password: "AiralogyDev123!" } })
     const denied = await request.post(`${api}/chats/qa/message`, { headers: { "Auth-Token": (await viewerLogin.json()).token }, data: {
       protocol_id: (await published.json()).data.id,
@@ -158,11 +180,12 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     expect(calls[1].references).toEqual(["label", "minutes"])
     expect(calls[2].last_applied).toEqual(["label", "minutes"])
     expect(calls[1].conversation.length).toBeGreaterThanOrEqual(2)
-    await page.setViewportSize({ width: 1280, height: 844 })
-    if (!await editor.isVisible())
-      await page.locator("[data-tab=ai-assistant]").click()
+    await page.getByTestId("header-aira").click()
     await say("Change minutes to 25")
+    await page.getByTestId("context-aira-close").click()
     await expect(suggestion("minutes")).toHaveText("31 → 25")
+    await expect(field("minutes")).toHaveValue("31")
+    await page.setViewportSize({ width: 1280, height: 844 })
     await field("minutes").fill("32")
     await field("minutes").fill("31")
     await field("minutes").blur()
@@ -197,7 +220,7 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     expect(saved.records[0].data.var).toMatchObject({ label: "001", minutes: 31, note: "Synthetic browser observation" })
     await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
     await page.goto(`/labs/${fx.lab.uid}/projects/${fx.project.uid}/protocols/${uid}/add`, { waitUntil: "domcontentloaded" })
-    await page.locator("[data-tab=ai-assistant]").click()
+    await page.getByTestId("header-aira").click()
     // An ordinary entry resumes the other draft after the first was submitted.
     await expect(field("label")).toHaveValue("SECOND")
     await say("simulate")
@@ -211,6 +234,21 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     })
     expect(quick.ok(), await quick.text()).toBeTruthy()
     expect((await quick.json()).recorder_proposal).toMatchObject({ intent: "simulate", values: {} })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.context().grantPermissions(["microphone"], { origin: new URL(page.url()).origin })
+    const quickInput = page.getByTestId("context-aira").locator("details")
+    await quickInput.locator("summary").click()
+    await page.route("**/chats/stt/message", async (route) => {
+      expect(route.request().postDataBuffer()?.length).toBeGreaterThan(100)
+      await route.fulfill({ json: { text: "Change minutes to 25" } })
+    })
+    await quickInput.getByRole("button", { name: /语音输入|Voice input/ }).click()
+    await quickInput.getByRole("button", { name: /停止|Stop/ }).click()
+    await expect(quickInput.locator("textarea")).toHaveValue("Change minutes to 25")
+    await quickInput.getByRole("button", { name: /执行|Execute/ }).click()
+    await expect(field("minutes")).toHaveValue("25")
+    await page.getByTestId("context-aira-close").click()
+    await expect(field("label")).toHaveValue("SECOND")
     expect(fileLookups).not.toEqual(expect.arrayContaining(["001"]))
     expect(fileLookups).not.toEqual(expect.arrayContaining(["mixed-note"]))
   }
@@ -222,11 +260,11 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
 })
 
 test("manual Record entry remains usable with Aira disabled", async ({ page }) => {
-  test.skip(process.env.AI_ENABLED !== "false", "Only for the AI-disabled deployment")
+  await mockAIEnabled(page, () => false)
   const fx = await loadFixtures()
   await page.goto(`/labs/${fx.lab.uid}/projects/${fx.project.uid}/protocols/${fx.analysis.protocol_uid}/add`)
   await expect(page.getByTestId("record-save-draft")).toBeVisible()
-  await expect(page.locator("[data-tab=ai-assistant]")).toHaveCount(0)
+  await expect(page.getByTestId("header-aira")).toHaveCount(0)
   await expect(page.locator(".record-inline-content input").first()).toBeVisible()
 })
 

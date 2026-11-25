@@ -18,7 +18,25 @@ export const [provideWorkspaceAira, useWorkspaceAira] = createInjectionState(() 
   const route = useRoute()
   const visible = ref(false)
   const mounted = ref(false)
+  // Contextual tools stay under the page that owns the draft and its Vue providers.
+  const context = shallowRef<symbol>()
+  const host = shallowRef<HTMLElement | null>(null)
   let opener: HTMLElement | undefined
+  function bindContext(id: symbol) {
+    context.value = id
+    return () => {
+      // A keyed page can replace its tools during the same render. Carry the
+      // open panel to the replacement, but release it on leaving the page.
+      nextTick(() => {
+        if (context.value === id) {
+          context.value = undefined
+          visible.value = false
+          mounted.value = false
+          opener = undefined
+        }
+      })
+    }
+  }
   watch([() => auth.userInfo.id, organizationUid, () => instance.aiEnabled, () => route.name === "global-chat"], () => {
     visible.value = false
     mounted.value = false
@@ -27,7 +45,7 @@ export const [provideWorkspaceAira, useWorkspaceAira] = createInjectionState(() 
   function open(trigger?: HTMLElement) {
     if (!auth.isLogin || !instance.aiEnabled || route.name === "global-chat")
       return
-    if (project?.available.value) {
+    if (!context.value && project?.available.value) {
       project.open(trigger)
       return
     }
@@ -39,7 +57,7 @@ export const [provideWorkspaceAira, useWorkspaceAira] = createInjectionState(() 
     if (!visible.value && opener?.isConnected)
       opener.focus({ preventScroll: true })
   }
-  const projectAvailable = computed(() => project?.available.value ?? false)
+  const projectAvailable = computed(() => !context.value && (project?.available.value ?? false))
   watch(projectAvailable, (available) => {
     if (available) {
       visible.value = false
@@ -47,5 +65,5 @@ export const [provideWorkspaceAira, useWorkspaceAira] = createInjectionState(() 
     }
   })
   const expanded = computed(() => projectAvailable.value ? project!.visible.value : visible.value)
-  return { mounted, visible, expanded, projectAvailable, open, restoreFocus }
+  return { context, host, bindContext, mounted, visible, expanded, projectAvailable, open, restoreFocus }
 })

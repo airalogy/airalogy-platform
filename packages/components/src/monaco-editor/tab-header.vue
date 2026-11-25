@@ -1,7 +1,5 @@
 <template>
   <header class="relative w-full flex items-center justify-between">
-    <!-- protocol-title-section -->
-    <slot name="title" />
     <!-- Logo -->
     <router-link to="/" class="mx-1.25 h-10 w-10 flex-center text-primary">
       <n-icon size="28">
@@ -36,6 +34,8 @@
         {{ $t(isEditorReadOnly ? "common.edit" : "common.save") }}
       </tooltip-button>
     </div>
+    <slot name="title" />
+    <slot name="actions" />
   </header>
 </template>
 

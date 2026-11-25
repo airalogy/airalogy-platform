@@ -82,35 +82,13 @@
           />
         </div>
       </n-tab-pane>
-      <n-tab-pane
-        v-if="showAssistant"
-        name="ai-assistant" class="relative" :tab="$t('chat.askAira')"
-        display-directive="show"
-        :style="{ paddingLeft: isCollapsed ? '32px' : undefined }"
-      >
-        <template #tab>
-          <ai-menu-icon
-            outlined :selected="selectedTab === 'ai-assistant'" data-tab="ai-assistant"
-            @click="handleCollapse"
-          />
-        </template>
-        <div v-show="!isCollapsed" class="h-full pl-4">
-          <div class="mb-2 h-10 w-fit rounded bg-[#2B2B38] px-4 text-[1.125rem] text-white leading-10">
-            {{ $t("chat.askAira") }}
-          </div>
-          <chat-component
-            ref="chatRef"
-            v-model:full-screen="appStore.fullContent" hide-collapse :collapsed="isCollapsed"
-            :class="appStore.fullContent ? 'h-screen' : 'h-[calc(100%-4rem)]'"
-            :protocol-id="protocolInfo?.id"
-            source="protocol" enable-tool-action :airalogy-id="protocolInfo?.airalogy_id"
-            :resolve-file="getCachedAttachment"
-            @update:docked="handleUpdateDocked"
-          />
-        </div>
-      </n-tab-pane>
     </template>
     <template #content>
+      <context-aira-panel v-if="showAssistant && protocolInfo" :key="protocolInfo.id" :title="protocolInfo.name" :version="protocolInfo.latest_version">
+        <chat-component hide-collapse in-side-panel class="relative min-h-0 w-full flex-1"
+                        :protocol-id="protocolInfo.id" source="protocol" enable-tool-action :airalogy-id="protocolInfo.airalogy_id"
+                        :resolve-file="getCachedAttachment"  />
+      </context-aira-panel>
       <n-tabs
         type="segment"
         animated
@@ -143,6 +121,7 @@ import type { ProtocolModels } from "@airalogy/shared/types"
 import type { Component } from "vue"
 import ChatComponent from "@/components/chat/index.vue"
 import AddToBookmarkerModal from "@/components/common/add-to-bookmarker-modal.vue"
+import ContextAiraPanel from "@/components/common/context-aira-panel.vue"
 import StickyFillWrapper from "@/components/common/sticky-fill-wrapper.vue"
 import AddRecordLayout from "@/components/custom/add-record-layout.vue"
 import HubProtocolMenuIcon from "@/components/icon/hub-protocol-menu-icon.vue"
@@ -157,9 +136,7 @@ import AssignerGraph from "@/views/project-protocols/modules/protocol/assigner-g
 import ProtocolFields from "@/views/project-protocols/modules/protocol/protocol-fields.vue"
 import ProtocolHistory from "@/views/project-protocols/modules/protocol/protocol-history.vue"
 import ReportTemplate from "@/views/project-protocols/modules/protocol/report-template.vue"
-import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
-import { useAppStore } from "../../store/modules/app"
 import ApplyProtocolModal from "./components/apply-protocol-modal.vue"
 import ProtocolCategoriesCard from "./components/protocol-categories-card.vue"
 import ProtocolStatsCard from "./components/protocol-stats-card.vue"
@@ -171,11 +148,10 @@ const wrapper: Component = (props, { slots }) => h(StickyFillWrapper, { style: {
 
 const isCollapsed = ref(false)
 const splitSize = ref(0.35)
-const selectedTab = ref<"ai-assistant" | "protocol-detail" | undefined>("protocol-detail")
+const selectedTab = ref<"protocol-detail" | undefined>("protocol-detail")
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 const showAssistant = computed(() => authStore.isLogin && instanceStore.aiEnabled)
-const appStore = useAppStore()
 const { protocolInfo } = useOrProvideProtocolInfoStore(null)
 const isStarred = ref(false)
 
@@ -205,25 +181,6 @@ function handleRecordsClick() {
   })
 }
 
-const chatRef = ref<{ setDocked: (val: boolean) => void } | null>(null)
-const docked = ref(false)
-const message = useClosableMessage()
-
-function handleUpdateDocked(val: boolean) {
-  if (selectedTab.value === "ai-assistant" && val) {
-    chatRef.value?.setDocked(false)
-  }
-
-  if (val) {
-    docked.value = true
-  }
-  else {
-    docked.value = false
-  }
-
-  selectedTab.value = "protocol-detail"
-}
-
 function handleCollapse(e: MouseEvent) {
   const target = e.currentTarget as HTMLElement
   if (!target) {
@@ -233,7 +190,7 @@ function handleCollapse(e: MouseEvent) {
 
   const { tab } = target.dataset
   if (isCollapsed.value) {
-    selectedTab.value = tab as "protocol-detail" | "ai-assistant"
+    selectedTab.value = "protocol-detail"
 
     splitSize.value = 0.35
     void nextTick(() => {

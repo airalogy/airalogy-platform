@@ -35,7 +35,7 @@
       <div class="header-actions" data-testid="workspace-actions">
         <global-add-new />
         <n-button
-          v-if="!isMobile && instanceStore.aiEnabled" :theme-overrides="buttonThemeOverrides"
+          v-if="instanceStore.aiEnabled && (!isMobile || aira?.context.value)" :theme-overrides="buttonThemeOverrides"
           :aria-expanded="inChat ? undefined : aira?.expanded.value" :aria-current="inChat ? 'page' : undefined" data-testid="header-aira"
           @click="openAira($event.currentTarget as HTMLElement)"
         >
@@ -173,7 +173,7 @@ const moreOptions = computed(() => wide.value
   : discoveryOptions.value)
 const inMore = computed(() => !inManagement.value && wide.value && secondaryEntries.value.some(item => item.key === workspaceDestination(String(route.name))))
 const accountOptions = computed<DropdownOption[]>(() => [
-  ...(isMobile.value && instanceStore.aiEnabled ? [{ label: "Aira", key: "aira" }] : []),
+  ...(isMobile.value && instanceStore.aiEnabled && !aira?.context.value ? [{ label: "Aira", key: "aira" }] : []),
   ...(isMobile.value && showOrganizationManagement.value ? [{ label: $t("page.singleLabWorkspace.management"), key: "organization-management" }] : []),
   {
     type: "group",

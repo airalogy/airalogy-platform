@@ -1,10 +1,31 @@
 <template>
   <editor-layout
     ref="editorRef"
+    :style="{ '--aira-rail-width': `${panelWidth}px`, '--aira-header-height': '0px', 'width': aira.expanded.value && !panelDrawer ? 'calc(100% - var(--aira-rail-width))' : '100%' }"
     v-model:is-preview-mode="isPreviewMode"
     v-model:is-full-screen="isFullScreen"
     :loading="loading" :protocol-info="protocolInfo" :side-menus="sideMenus" :emit-zip="false" :package-id="packageId" :reload-flag="reloadFlag" :is-read-only="isReadOnly" @save:dry="handleSaveProtocol" @new-file="handleNewProtocol"
   >
+    <template #header-actions>
+      <n-button v-if="instanceStore.aiEnabled" class="relative mr-2 shrink-0" quaternary :aria-expanded="aira.expanded.value" data-testid="editor-open-aira" @click="aira.open($event.currentTarget as HTMLElement)">
+        Aira
+      </n-button>
+    </template>
+    <template #assistant>
+      <context-aira-panel v-if="instanceStore.aiEnabled" :key="JSON.stringify([editorChatAiralogyId, packageId, isReadOnly])" :title="protocolInfo?.name || $t('common.protocol')" :version="isReadOnly ? String(route.params.protocolVersion || '') : $t('chat.editorCodeEdit.draft')"
+                          @select-text="editorAssistantMode = 'chat'">
+        <div v-if="!isReadOnly" class="flex gap-2 px-3 py-2">
+          <n-button size="small" :type="editorAssistantMode === 'chat' ? 'primary' : 'default'" @click="editorAssistantMode = 'chat'">{{ $t('chat.askAira') }}</n-button>
+          <n-button size="small" :type="editorAssistantMode === 'generate' ? 'primary' : 'default'" @click="editorAssistantMode = 'generate'">{{ $t('editor.sideMenus.aiCreate') }}</n-button>
+        </div>
+        <editor-chat-panel v-show="isReadOnly || editorAssistantMode === 'chat'" class="min-h-0 flex-1"
+                           :protocol-id="editorChatProtocolId" :airalogy-id="editorChatAiralogyId"
+                           :code-edit="isReadOnly ? undefined : postEditorCodeEdit" :syntax-repair-request="syntaxRepairRequest"
+                           @syntax-repair-handled="syntaxRepairRequest = 0" />
+        <protocol-documents-panel v-if="!isReadOnly" v-show="editorAssistantMode === 'generate'" class="min-h-0 flex-1 overflow-auto"
+                                  :generate-aimd="generateProtocolAimd" :generate-model="generateProtocolModel" :generate-assigner="generateProtocolAssigner" :extract-instruction-file="extractProtocolInstructionFile" />
+      </context-aira-panel>
+    </template>
     <template #editor>
       <div class="size-full flex flex-col">
         <n-alert
@@ -60,7 +81,7 @@
       <protocol-title-section
         v-if="protocolInfo"
         :protocol-info="protocolInfo"
-        class="absolute w-full justify-center px-60"
+        class="mx-2 min-w-0 flex-1 justify-center overflow-hidden"
         content-class="!flex-grow-0 flex-basis-auto"
         size="tiny"
         is-protocol-link
@@ -165,14 +186,16 @@ import type { ProtocolImprovementProposal } from "@/service/api/research-assets"
 import type { AimdTemplateEnv } from "@airalogy/aimd-core/types"
 import type { ExposeState } from "@airalogy/components/monaco-editor/layout.vue"
 import type { DiffModelInfo, ModelInfo } from "@airalogy/components/monaco-editor/store/editorStore"
-import type { ISideMenuItem } from "@airalogy/components/src/monaco-editor/utils/sideMenus"
 import type { ProtocolModels } from "@airalogy/shared"
 import type { ValidateError } from "async-validator"
 import { useProvideApplyProtocol } from "@/components/apply-steps/composables/useApplyProtocolState"
 import ProtocolSetup from "@/components/apply-steps/protocol-setup.vue"
+import ContextAiraPanel from "@/components/common/context-aira-panel.vue"
 import ProtocolTitleSection from "@/components/Layout/protocol-title-section.vue"
 import ProtocolInfoCard from "@/components/protocol/protocol-info-card.vue"
 import { useBoolean, useClosableMessage, useLoading, useRouterPush, useShowModal } from "@/composables"
+import { useAiraPanelSize } from "@/composables/useAiraPanelSize"
+import { provideWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { DEFAULT_FILE_ID_MAP } from "@/constants/protocol"
 import { $t } from "@/locales"
 import { getDownloadPackage, getDownloadPackageData } from "@/service/api/project-protocols"
@@ -185,17 +208,20 @@ import { AimdEditor } from "@airalogy/aimd-editor/vue"
 import { AimdRecorderWysiwygSurface } from "@airalogy/aimd-recorder"
 import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
 import { useChatProvider } from "@airalogy/components/chat/providers/useChatProvider"
+import { useChatStore } from "@airalogy/components/chat/store"
 import MermaidBlock from "@airalogy/components/markdown-editor/modules/mermaid/mermaid-block.vue"
 import { useFileUpload } from "@airalogy/components/monaco-editor/composables/useFileUpload"
 import EditorLayout from "@airalogy/components/monaco-editor/layout.vue"
+import EditorChatPanel from "@airalogy/components/monaco-editor/modules/panel/chat.vue"
+import ProtocolDocumentsPanel from "@airalogy/components/monaco-editor/modules/panel/protocol-documents.vue"
 import SplitEditor from "@airalogy/components/monaco-editor/split-editor.vue"
 import { isNormalModelInfo, useActiveEditorStore, useModelsStore, useSplitStore } from "@airalogy/components/monaco-editor/store/editorStore"
 import { useUploadFileDataStore } from "@airalogy/components/monaco-editor/store/uploadFileDataStore"
+import { isDirectory, isFile, saveProjectData } from "@airalogy/components/monaco-editor/utils"
+import { processUpdatedTomlContent } from "@airalogy/components/monaco-editor/utils/protocolContentLoader"
+import { defaultSideMenus } from "@airalogy/components/monaco-editor/utils/sideMenus"
 import ProtocolBubbleMenu from "@airalogy/components/protocol-bubble-menu.vue"
-import { isDirectory, isFile, saveProjectData } from "@airalogy/components/src/monaco-editor/utils"
-import { processUpdatedTomlContent } from "@airalogy/components/src/monaco-editor/utils/protocolContentLoader"
-import { defaultSideMenus } from "@airalogy/components/src/monaco-editor/utils/sideMenus"
-import { getFileExtensionFromBasename, getMIMEByExtension } from "@airalogy/shared/utils"
+import { getAiralogyId, getFileExtensionFromBasename, getMIMEByExtension } from "@airalogy/shared/utils"
 import { formatValidateErrors } from "@airalogy/shared/utils/errorFormatter.js"
 import { useRouteQuery } from "@vueuse/router"
 import IconLock from "~icons/tabler/lock"
@@ -360,12 +386,14 @@ const editorRef = ref<ExposeState | null>(null)
 const packageId = useRouteQuery<string>("package_id")
 const activeEditorStore = useActiveEditorStore()
 const splitStore = useSplitStore()
-const { openMenu } = splitStore
+const aira = provideWorkspaceAira()
+const { width: panelWidth, drawer: panelDrawer } = useAiraPanelSize()
+const editorAssistantMode = ref<"chat" | "generate">("chat")
 const uploadFileDataStore = useUploadFileDataStore()
 const { createInitialFileData, getFileById, getFileByPath } = uploadFileDataStore
 const { processZipFile, compressFiles } = useFileUpload()
 const { activeEditorId } = storeToRefs(activeEditorStore)
-const { activeMenu, splitState } = storeToRefs(splitStore)
+const { splitState } = storeToRefs(splitStore)
 const { rootPath } = storeToRefs(uploadFileDataStore)
 
 function normalizeProtocolAssetPath(src: string) {
@@ -428,8 +456,8 @@ const syntaxRepairRequest = ref(0)
 
 const editorChatProtocolId = computed(() => protocolInfo.value?.id ? String(protocolInfo.value.id) : null)
 const editorChatAiralogyId = computed(() => {
-  if (protocolInfo.value?.airalogy_id) {
-    return protocolInfo.value.airalogy_id
+  if (protocolInfo.value) {
+    return getAiralogyId(protocolInfo.value)!
   }
 
   if (packageId.value) {
@@ -440,36 +468,17 @@ const editorChatAiralogyId = computed(() => {
 })
 
 const sideMenus = computed(() => defaultSideMenus
-  .filter(it => instanceStore.aiEnabled || !["airalogy", "protocol-documents"].includes(it.key))
-  .map((it): ISideMenuItem => {
-    const componentProps: ISideMenuItem["componentProps"] = { ...it.componentProps, protocolInfo: protocolInfo.value }
-    const result: ISideMenuItem = { ...it, componentProps }
-    if (it.key === "airalogy") {
-      componentProps.protocolId = editorChatProtocolId.value
-      componentProps.airalogyId = editorChatAiralogyId.value
-      componentProps.codeEdit = postEditorCodeEdit
-      componentProps.syntaxRepairRequest = syntaxRepairRequest.value
-      result.componentEvents = {
-        ...result.componentEvents,
-        syntaxRepairHandled: () => {
-          syntaxRepairRequest.value = 0
-        },
-      }
-    }
-    if (it.key === "protocol-documents") {
-      componentProps.generateAimd = generateProtocolAimd
-      componentProps.generateModel = generateProtocolModel
-      componentProps.generateAssigner = generateProtocolAssigner
-      componentProps.extractInstructionFile = extractProtocolInstructionFile
-    }
+  .filter(menu => menu.key !== "airalogy" && menu.key !== "protocol-documents")
+  .map(menu => ({ ...menu, componentProps: { ...menu.componentProps, protocolInfo: protocolInfo.value } })))
 
-    return result
-  }))
+function openEditorChat() {
+  editorAssistantMode.value = "chat"
+  aira.open(document.activeElement instanceof HTMLElement ? document.activeElement : undefined)
+}
 
 function requestSyntaxRepair() {
   syntaxRepairRequest.value++
-  const menu = sideMenus.value.find(menu => menu.key === "airalogy")
-  openMenu("airalogy", menu?.panelSize || null)
+  openEditorChat()
 }
 
 const message = useClosableMessage()
@@ -483,8 +492,7 @@ async function showAiEditPanel(removeRouteFlag = false) {
     }
     return
   }
-  const aiMenu = sideMenus.value.find(menu => menu.key === "airalogy")
-  openMenu("airalogy", aiMenu?.panelSize || null)
+  openEditorChat()
   message.info($t("editor.aiCreate.continueHint"))
 
   if (removeRouteFlag && route.query.ai_created === "true") {
@@ -935,6 +943,11 @@ onMounted(async () => {
 
       if (route.query.ai_created === "true") {
         await showAiEditPanel(true)
+      }
+      else if (typeof route.query.chat === "string") {
+        const session = useChatStore().findSessionByUUID(route.query.chat)
+        if (session?.airalogyId === editorChatAiralogyId.value && ["protocol", "editor"].includes(session.source))
+          openEditorChat()
       }
     }
     catch (e) {

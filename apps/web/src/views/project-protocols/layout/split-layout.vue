@@ -91,44 +91,13 @@
           <protocol-info-card :protocol-info="protocolInfo" />
         </div>
       </n-tab-pane>
-      <n-tab-pane
-        v-if="showAssistant"
-        name="ai-assistant" class="relative" :tab="$t('chat.askAira')"
-        display-directive="show"
-        :style="{ paddingLeft: isCollapsed ? '32px' : undefined }"
-      >
-        <template #tab>
-          <ai-menu-icon
-            outlined :selected="selectedTab === 'ai-assistant'" data-tab="ai-assistant"
-            @click="handleCollapse"
-          />
-        </template>
-        <div v-show="!isCollapsed" class="h-full pl-4">
-          <div class="mb-2 h-10 w-fit rounded bg-[#2B2B38] px-4 text-[1.125rem] text-white leading-10">
-            {{ $t("chat.askAira") }}
-          </div>
-          <chat-component
-            ref="chatRef"
-            v-model:full-screen="appStore.fullContent"
-            v-model:role="role"
-            v-model:could-change-role="couldChangeRole"
-            v-model:collapsed="isCollapsed"
-            v-model:docked="docked"
-            hide-collapse
-            :class="appStore.fullContent ? 'h-screen' : 'h-[calc(100%-3rem)]'"
-            :protocol-id="protocolInfo?.id"
-            source="protocol"
-            enable-tool-action
-            :airalogy-id="protocolInfo?.airalogy_id"
-            class="w-full"
-            v-bind="chatProps"
-            :resolve-file="getCachedAttachment"
-            @update:docked="handleUpdateDocked"
-          />
-        </div>
-      </n-tab-pane>
     </template>
     <template #content>
+      <context-aira-panel v-if="showAssistant && protocolInfo" :key="protocolInfo.id" :title="protocolInfo.name" :version="protocolInfo.latest_version">
+        <chat-component hide-collapse in-side-panel class="relative min-h-0 w-full flex-1"
+                        :protocol-id="protocolInfo.id" source="protocol" enable-tool-action :airalogy-id="protocolInfo.airalogy_id"
+                        :resolve-file="getCachedAttachment" v-model:role="role" v-model:could-change-role="couldChangeRole" v-bind="chatProps" />
+      </context-aira-panel>
       <slot />
     </template>
   </add-record-layout>
@@ -140,22 +109,22 @@ import type { ProtocolModels } from "@airalogy/shared/types"
 import type { Component } from "vue"
 import ChatComponent from "@/components/chat/index.vue"
 import AddToBookmarkerModal, { type StarredFolder } from "@/components/common/add-to-bookmarker-modal.vue"
+import ContextAiraPanel from "@/components/common/context-aira-panel.vue"
 import StickyFillWrapper from "@/components/common/sticky-fill-wrapper.vue"
 import AddRecordLayout from "@/components/custom/add-record-layout.vue"
 import HubProtocolMenuIcon from "@/components/icon/hub-protocol-menu-icon.vue"
 import ProtocolDownload from "@/components/protocol/protocol-download.vue"
 import ProtocolInfoCard from "@/components/protocol/protocol-info-card.vue"
+import { useProtocolChatHandoff } from "@/composables/useProtocolChatHandoff"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { getCachedAttachment } from "@/service/api/attachments"
 import { getStars, StarResourceType } from "@/service/api/star"
-import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import ApplyProtocolModal from "@/views/hub/components/apply-protocol-modal.vue"
 import ProtocolCategoriesCard from "@/views/hub/components/protocol-categories-card.vue"
 import ProtocolStatsCard from "@/views/hub/components/protocol-stats-card.vue"
 import { useProtocolInfoStore } from "@/views/project-protocols/hooks/useProtocolInfoStore"
-import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 import EditIcon from "~icons/ion/build-outline"
 import UploadIcon from "~icons/ion/cloud-upload-outline"
@@ -165,14 +134,12 @@ interface IProps {
   protocol?: ProtocolModels.ProjectProtocolInfo | null
   defaultSpiltSize?: number
   chatProps?: ChatProps
-  defaultSelectedTab?: "ai-assistant" | "protocol-detail"
 }
 
 const props = withDefaults(defineProps<IProps>(), {
   protocol: null,
   defaultSpiltSize: 0.35,
   chatProps: () => ({}),
-  defaultSelectedTab: "protocol-detail",
 })
 
 const wrapper: Component = (props, { slots }) => h(StickyFillWrapper, { style: { height: "100%", width: "100%", minHeight: "600px" }, offset: 20, ...props }, {
@@ -186,10 +153,7 @@ const splitSize = ref(props.defaultSpiltSize)
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
 const showAssistant = computed(() => authStore.isLogin && instanceStore.aiEnabled)
-const selectedTab = ref<"ai-assistant" | "protocol-detail" | undefined>(
-  showAssistant.value ? props.defaultSelectedTab : "protocol-detail",
-)
-const appStore = useAppStore()
+const selectedTab = ref<"protocol-detail" | undefined>("protocol-detail")
 const { protocolInfo } = useProtocolInfoStore() || { protocolInfo: ref(props.protocol || null) }
 const starredStateOverride = ref<boolean | null>(null)
 const starredStateFromServer = ref<boolean | null>(null)
@@ -286,6 +250,7 @@ function handleStarredFoldersChange(folders: StarredFolder[]) {
 }
 
 const { routerPushByKey } = useRouterPush()
+const protocolChatHandoff = useProtocolChatHandoff()
 function handleProtocolApplied(data: ProtocolModels.ProtocolInfo) {
   const { lab_uid: labUid, project_uid: projectUid, uid } = data
   if (labUid && projectUid && uid) {
@@ -318,9 +283,6 @@ const couldChangeRole = ref<boolean>(false)
 
 provide("chat-role", { role, couldChangeRole })
 
-const chatRef = ref<{ setDocked: (val: boolean) => void } | null>(null)
-const docked = ref(false)
-const message = useClosableMessage()
 const { hasPermission: innerHasPermission, fetchProjectInfoById } = useOrProvideProjectInfoStore(null)
 
 const hasPermission = asyncComputed(async () => {
@@ -359,6 +321,7 @@ function handleEdit() {
   }
 
   routerPushByKey("protocol-editor", {
+    query: protocolChatHandoff(protocolVal),
     params: {
       labUid: lab.uid,
       projectUid: project.uid,
@@ -379,20 +342,6 @@ function handleReupload() {
   })
 }
 
-function handleUpdateDocked(val: boolean) {
-  if (selectedTab.value === "ai-assistant" && val) {
-    chatRef.value?.setDocked(false)
-  }
-
-  if (val) {
-    docked.value = true
-    selectedTab.value = "protocol-detail"
-  }
-  else {
-    docked.value = false
-  }
-}
-
 function handleCollapse(e: MouseEvent) {
   const target = e.currentTarget as HTMLElement
   if (!target) {
@@ -402,12 +351,7 @@ function handleCollapse(e: MouseEvent) {
 
   const { tab } = target.dataset
   if (isCollapsed.value) {
-    if (!showAssistant.value && tab === "ai-assistant") {
-      selectedTab.value = "protocol-detail"
-    }
-    else {
-      selectedTab.value = tab as "protocol-detail" | "ai-assistant"
-    }
+    selectedTab.value = "protocol-detail"
 
     splitSize.value = 0.35
     void nextTick(() => {
@@ -431,16 +375,6 @@ function handleUpdateCollapsed(val: boolean) {
 
   selectedTab.value = "protocol-detail"
 }
-
-watch(
-  showAssistant,
-  (enabled) => {
-    if (!enabled && selectedTab.value === "ai-assistant") {
-      selectedTab.value = "protocol-detail"
-    }
-  },
-  { immediate: true },
-)
 </script>
 
 <style scoped lang="sass">

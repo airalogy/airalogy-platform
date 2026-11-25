@@ -43,13 +43,13 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui"
+import { $t } from "@airalogy/shared/locales"
 import DockExitIcon from "~icons/bx/dock-left"
 import DockIcon from "~icons/bxs/dock-left"
 import AddIcon from "~icons/ion/add"
 import FullScreenIcon from "~icons/ion/arrow-expand"
 import FullScreenExitIcon from "~icons/ion/arrow-shrink"
 import { computed, h } from "vue"
-import { $t } from "@airalogy/shared/locales"
 import ChatHistory from "./chat-history.vue"
 
 const props = withDefaults(defineProps<{
@@ -97,23 +97,11 @@ const actionButtons = computed(() => [
 ].filter(({ id }) => props.actions.includes(id)))
 
 // Dropdown options for mobile view
-const dropdownOptions = computed<DropdownOption[]>(() => [
-  {
-    key: "toggleDock",
-    label: $t("chat.dock"),
-    icon: () => h(props.docked ? DockExitIcon : DockIcon),
-  },
-  {
-    key: "toggleFullscreen",
-    label: $t("chat.fullScreen"),
-    icon: () => h(props.fullScreen ? FullScreenExitIcon : FullScreenIcon),
-  },
-  {
-    key: "newChat",
-    label: $t("chat.newChatButton"),
-    icon: () => h(AddIcon),
-  },
-])
+const dropdownOptions = computed<DropdownOption[]>(() => actionButtons.value.map(action => ({
+  key: action.event,
+  label: action.tooltip,
+  icon: () => h(action.icon),
+})))
 
 // Handle dropdown selection
 function handleDropdownSelect(key: string) {

@@ -191,7 +191,7 @@ test("live Aira: explain, fill, review each field and persist a Record", async (
       expect(reply.ok(), await reply.text()).toBe(true)
     }
     await step(0, async () => {
-      await page.locator("[data-tab=ai-assistant]").click()
+      await page.getByTestId("header-aira").click()
       await expect(input).toBeVisible()
     })
     await step(1, async () => {

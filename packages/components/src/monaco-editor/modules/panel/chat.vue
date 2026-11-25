@@ -32,11 +32,15 @@
       @scroll-to-bottom="handleScrollToBottom"
     >
       <template #input-prefix>
+        <n-button v-if="pendingReview" data-testid="editor-ai-reopen-review" size="small" @click="reviewModalVisible = true">
+          {{ $t("chat.editorCodeEdit.reviewTitle") }}
+        </n-button>
         <masterbrain-change-status
-          v-if="latestAppliedEdit"
+          v-else-if="latestAppliedEdit"
           data-testid="editor-ai-change-status"
           class="mb-2"
           :applied="latestAppliedEdit"
+          :changed-label="$t('chat.editorCodeEdit.appliedToDraft')"
           :locale="locale"
           :undoing="undoing"
           @view="openLatestChangeDetails"
@@ -586,8 +590,10 @@ const codeEditClient = {
 const codeEditAssistant = useCodeEditAssistant({
   client: codeEditClient,
   workspace: workspaceAdapter,
-  autoApply: true,
+  autoApply: false,
 })
+const pendingReview = codeEditAssistant.pendingReview
+let reviewMessage: { uuid: string, index: number } | undefined
 const codeEditLoading = codeEditAssistant.loading
 const applyingAll = codeEditAssistant.applying
 const undoing = codeEditAssistant.undoing
@@ -614,6 +620,7 @@ function handleStartNewChat() {
     prompt.value = ""
   }
   codeEditAssistant.clear()
+  reviewMessage = undefined
   reviewModalVisible.value = false
   clearActive()
 }
@@ -622,7 +629,7 @@ const chatWrapperActionProps = computed(() => ({
   fullScreen: false,
   docked: false,
   collapsed: false,
-  hideCollapse: false,
+  hideCollapse: true,
   containerClass: "absolute right-4 top-0 space-x-1",
   actions: ["newChat"],
 }))
@@ -701,6 +708,7 @@ async function handleEditorSubmit(instruction: string, syntaxRepair = false) {
     })
 
     codeEditResult.value = application.response
+    reviewMessage = application.status === "review" ? { uuid, index: assistantIndex } : undefined
     reviewRequiresApproval.value = application.status === "review" || application.status === "blocked"
     if (reviewRequiresApproval.value) {
       reviewModalVisible.value = true
@@ -775,6 +783,10 @@ async function applyReviewedChanges() {
     }
     reviewModalVisible.value = false
     reviewRequiresApproval.value = false
+    if (reviewMessage && codeEditResult.value) {
+      chatStore.updateMessageByUUID(reviewMessage.uuid, reviewMessage.index, { text: summarizeCodeEditResult(codeEditResult.value, "applied") })
+      reviewMessage = undefined
+    }
     message.success($t("chat.editorCodeEdit.applyAllSuccess"))
   }
   catch (error) {

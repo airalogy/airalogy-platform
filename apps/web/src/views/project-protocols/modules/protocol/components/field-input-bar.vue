@@ -55,6 +55,7 @@
                     size="small"
                     :disabled="isProcessing"
                     class="voice-button"
+                    :aria-label="$t('page.protocol.fieldInput.uploadFile')"
                     @click="handleFileButtonClick"
                   >
                     <template #icon>
@@ -74,6 +75,7 @@
                     size="small"
                     :disabled="isProcessing"
                     class="voice-button"
+                    :aria-label="$t('page.protocol.fieldInput.voiceInput')"
                     @click="handleVoiceInput"
                   >
                     <template #icon>

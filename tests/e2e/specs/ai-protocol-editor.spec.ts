@@ -98,9 +98,9 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
 
   const aiEditPanel = page.getByTestId("editor-ai-edit-panel")
   await expect(aiEditPanel).toBeVisible()
-  await expect.poll(async () => (await aiEditPanel.boundingBox())?.width || 0).toBeGreaterThanOrEqual(400)
+  await expect.poll(async () => (await aiEditPanel.boundingBox())?.width || 0).toBeGreaterThanOrEqual(320)
   await expect(aiEditPanel.getByRole("heading", { name: /Aira Protocol 助手|Aira Protocol Assistant/ })).toBeVisible()
-  await expect(aiEditPanel).toContainText(/安全修改自动应用|Safe changes apply automatically/)
+  await expect(aiEditPanel).toContainText(/确认后应用到草稿|before applying changes to your draft/)
 
   await page.getByTestId("protocol-visual-editor").getByRole("button", { name: /源码|源代码|Source/i }).click()
   await expect(page.getByTestId("protocol-source-editor")).toBeVisible()
@@ -176,11 +176,19 @@ test("non-technical user can create and refine a Protocol with Aira", async ({ p
   await aiEditPanel.getByTestId("chat-submit").click()
 
   const review = page.getByTestId("editor-ai-review")
+  await expect(review).toBeVisible()
+  await review.getByRole("button", { name: /关闭|Close/, exact: true }).click()
+  await page.getByTestId("context-aira-close").click()
+  await page.getByTestId("editor-open-aira").click()
+  await page.getByTestId("editor-ai-reopen-review").click()
+  await expect(review).toBeVisible()
+  await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).not.toContainText("试剂批号")
+  await review.getByTestId("editor-ai-apply-all").click()
   await expect(review).toBeHidden()
 
   const changeStatus = aiEditPanel.getByTestId("editor-ai-change-status")
   await expect(changeStatus).toBeVisible()
-  await expect(changeStatus).toContainText("已自动应用 AI 修改")
+  await expect(changeStatus).toContainText("已应用到草稿")
   await expect(page.getByTestId("protocol-source-editor").locator(".monaco-editor .view-lines").first()).toContainText("试剂批号")
 
   await expect(changeStatus.getByRole("button", { name: "查看变更", exact: true })).toBeVisible()

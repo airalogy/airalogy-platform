@@ -34,7 +34,7 @@
       </n-dropdown>
     </header>
 
-    <main class="relative min-h-40 pt-5">
+    <main ref="readingSurface" class="relative min-h-40 pt-5">
       <n-alert
         v-if="props.item.knowledge_sources?.length"
         class="mb-5"
@@ -57,6 +57,7 @@
           body-class="markdown-body"
           mode="preview"
         />
+        <protocol-bubble-menu v-if="aira?.context.value && readingSurface" :container-ref="readingSurface" />
         <!-- <asset-teleport
           v-if="domMounted && props.item"
           :uuid="props.item.id"
@@ -71,9 +72,11 @@
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { RenderOption } from "naive-ui/es/dropdown/src/interface"
 import ProtocolPathTooltip from "@/components/protocol/protocol-path-tooltip.vue"
-
 import { useBoolean, useLoading, useProjectPermissions } from "@/composables"
+import { useProtocolChatHandoff } from "@/composables/useProtocolChatHandoff"
+
 import { useRouterPush } from "@/composables/useRouterPush"
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { getProtocolInfo } from "@/service/api/project-protocols"
 import { downloadProtocolExport, type ProtocolExportFormat } from "@/service/api/protocol-export"
 import { request } from "@/service/request"
@@ -82,6 +85,7 @@ import ApplyProtocolModal from "@/views/hub/components/apply-protocol-modal.vue"
 import AddLogModal from "@/views/project-protocols/modules/add-log-modal.vue"
 import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
 import MermaidBlock from "@airalogy/components/markdown-editor/modules/mermaid/mermaid-block.vue"
+import ProtocolBubbleMenu from "@airalogy/components/protocol-bubble-menu.vue"
 import { useClosableMessage } from "@airalogy/composables"
 import { $t } from "@airalogy/shared/locales"
 import EditIcon from "~icons/ion/build-outline"
@@ -103,6 +107,8 @@ const props = withDefaults(defineProps<IProps>(), {
   showActions: true,
 })
 
+const aira = useWorkspaceAira()
+const readingSurface = ref<HTMLElement | null>(null)
 const { projectInfo } = useOrProvideProjectInfoStore(null)
 const { canOpenDataEntryForOthers, canManageOwnProtocols, canManageOthersProtocols } = useProjectPermissions(projectInfo)
 const { bool: isFetchingInfo, setFalse: endFetchingInfo, setTrue: startFetchingInfo } = useBoolean()
@@ -127,6 +133,7 @@ async function handleDownload(version: string, format: ProtocolExportFormat) {
 }
 
 const { routerPushByKey } = useRouterPush()
+const protocolChatHandoff = useProtocolChatHandoff()
 
 function handleApplyProtocol() {
   void routerPushByKey("protocol-info-apply-protocol", {
@@ -166,6 +173,7 @@ const actionList = computed<DropdownOption[] >(() => [
         }
 
         await routerPushByKey("protocol-editor", {
+          query: protocolChatHandoff(props.item),
           params: {
             labUid: lab.uid,
             projectUid: project.uid,
