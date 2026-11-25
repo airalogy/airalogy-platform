@@ -185,7 +185,7 @@
         :model="previewValue"
       >
         <aimd-markdown-preview v-if="props.readonly"
-                               ref="previewRef" :content="templateRef" mode="report" :readonly-record-data="readonlyRecordData"
+                               ref="previewRef" :content="templateRef" mode="report" :readonly-record-data="readonlyRecordData" :render-options="{ locale }"
                                class="record-inline-content" :mermaid-component="MermaidBlock" :resolve-url="resolvePreviewFile"
                                body-class="markdown-body" @render:result="handlePreviewRendered"
         />

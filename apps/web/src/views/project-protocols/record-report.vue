@@ -10,7 +10,7 @@
           </n-icon>
         </template>
       </n-button>
-      <div class="mr-auto w-fit">
+      <div class="mr-auto max-w-full min-w-0 w-fit">
         <div class="flex flex-wrap items-center gap-2">
           <h3 class="text-5 font-500">
             {{ $t("page.protocol.recordReport.title") }}
@@ -127,8 +127,8 @@
     <protocol-rating-entry v-if="record && protocolInfo" :protocol-id="protocolInfo.id" :version="record.metadata.protocol_version" :record-id="String(record.record_id)" class="mb-3 px-8" />
     <n-divider class="!mt-0" />
     <n-spin
-      :show="loading" class="h-[calc(100vh-165px)] w-full pl-8"
-      :content-class="`h-full w-full overflow-visible ${protocol ? '' : ' flex-center flex-col'}`"
+      :show="loading" class="w-full px-4 md:h-[calc(100vh-165px)] md:pl-8 md:pr-0"
+      :content-class="`w-full overflow-visible md:h-full ${protocol ? '' : ' flex-center flex-col'}`"
     >
       <protocol-add-record-form
         v-if="protocol && protocolInfo && protocolId"

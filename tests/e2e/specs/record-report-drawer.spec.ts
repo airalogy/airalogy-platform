@@ -4,11 +4,13 @@ import { loadFixtures } from "./fixtures"
 test("a Record report fits the window and keeps each step heading once", async ({ page }, testInfo) => {
   const fixtures = await loadFixtures()
   const stepId = `inspect_${"optical_frame_".repeat(7)}alignment`
+  const untitledId = `verify_${"alignment_".repeat(12)}result`
   const end = "End of fixture report"
   const aimd = [
     "# 检查记录",
     `{{step|${stepId}, title="外观核对"}}`,
     "{{step|align, 2, title='对齐标记'}}",
+    `{{step|${untitledId}}}`,
     "{{check|verified}}",
     ...Array.from({ length: 32 }, (_, index) => `检查点 ${index + 1}。`),
     end,
@@ -37,9 +39,10 @@ test("a Record report fits the window and keeps each step heading once", async (
   const drawer = page.locator(".record-report-drawer")
   const pane = drawer.locator(".n-drawer-body-content-wrapper")
   const close = drawer.locator(".n-drawer-header__close")
-  await expect(drawer.locator(`#step-${stepId} .aimd-step__id`)).toHaveText([stepId])
-  await expect(drawer.locator(".aimd-step__title")).toHaveText(["外观核对", "对齐标记"])
-  await expect(drawer.locator("#step-align .research-step__sequence")).toContainText("步骤 1.1")
+  await expect(drawer.locator(`#step-${stepId} [role="heading"]`)).toHaveAttribute("title", stepId)
+  await expect(drawer.getByRole("heading", { name: /外观核对|对齐标记/ })).toHaveText(["1外观核对", "1.1对齐标记"])
+  await expect(drawer.locator("#step-align [role=heading]")).toHaveAccessibleName(/步骤 1\.1.*对齐标记/)
+  await expect(drawer.locator(`#step-${untitledId} [role="heading"]`)).toContainText(untitledId)
   await expect(drawer.locator(".aimd-record-check input")).toBeChecked()
   for (const viewport of [{ width: 1280, height: 900 }, { width: 619, height: 985 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport)
