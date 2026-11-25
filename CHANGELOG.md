@@ -14,7 +14,7 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
-- Record reports opened from the Record list now fit narrow screens. Saved Record detail pages scroll to the end with a wheel or touch on narrow screens. AIMD Renderer 2.14.1 provides plain numbered headings for read-only steps, with the ID as a fallback for untitled steps. Each checkpoint shows its saved state once.
+- Record reports opened from the Record list now fit narrow screens. Saved Record detail pages scroll to the end with a wheel or touch on narrow screens. AIMD Renderer 2.14.2 labels structured steps with localized headings such as “Step 1.1” and preserves numbering written in Markdown. Untitled steps display their ID. Each checkpoint shows its saved state once.
 
 - Single-organization projects default to project members. Teams can share the project introduction and inherited Protocols with signed-in organization members, or publish a reviewed project introduction or an exact Protocol version with selected materials. External publication is off by default. Withdrawing a publication disables its link and downloads.
 

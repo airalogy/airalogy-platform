@@ -10,6 +10,7 @@ test("a Record report fits the window and keeps each step heading once", async (
     "# 检查记录",
     `{{step|${stepId}, title="外观核对"}}`,
     "{{step|align, 2, title='对齐标记'}}",
+    "### 1.1 手写标题",
     `{{step|${untitledId}}}`,
     "{{check|verified}}",
     ...Array.from({ length: 32 }, (_, index) => `检查点 ${index + 1}。`),
@@ -40,7 +41,8 @@ test("a Record report fits the window and keeps each step heading once", async (
   const pane = drawer.locator(".n-drawer-body-content-wrapper")
   const close = drawer.locator(".n-drawer-header__close")
   await expect(drawer.locator(`#step-${stepId} [role="heading"]`)).toHaveAttribute("title", stepId)
-  await expect(drawer.getByRole("heading", { name: /外观核对|对齐标记/ })).toHaveText(["1外观核对", "1.1对齐标记"])
+  await expect(drawer.getByRole("heading", { name: /外观核对|对齐标记/ })).toHaveText(["步骤 1： 外观核对", "步骤 1.1： 对齐标记"])
+  await expect(drawer.getByRole("heading", { name: "1.1 手写标题", exact: true })).toBeVisible()
   await expect(drawer.locator("#step-align [role=heading]")).toHaveAccessibleName(/步骤 1\.1.*对齐标记/)
   await expect(drawer.locator(`#step-${untitledId} [role="heading"]`)).toContainText(untitledId)
   await expect(drawer.locator(".aimd-record-check input")).toBeChecked()

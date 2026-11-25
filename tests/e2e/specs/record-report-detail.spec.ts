@@ -9,6 +9,7 @@ for (const screen of [{ width: 1280, height: 900, touch: false }, { width: 702, 
       const { lab, project, schema_governance: record } = await loadFixtures()
       const first = "Alignment review"
       const last = "End of saved report"
+      await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "en-US", expire: null })))
       await page.route("**/api/protocols/by_uid?**", async (route) => {
         const response = await route.fetch()
         const body = await response.json()
@@ -24,7 +25,7 @@ for (const screen of [{ width: 1280, height: 900, touch: false }, { width: 702, 
       await expect(ending).not.toBeInViewport()
       const step = content.getByRole("heading", { name: /Alignment review/ })
       await expect(step).toHaveAttribute("title", "review_frame")
-      await expect(step).toHaveText("1Alignment review")
+      await expect(step).toHaveText("Step 1 : Alignment review")
       const stepRoot = step.locator("..")
       await expect(stepRoot).toHaveCSS("border-top-width", "0px")
       await expect(stepRoot).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
