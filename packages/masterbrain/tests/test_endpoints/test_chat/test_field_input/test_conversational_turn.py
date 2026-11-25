@@ -93,3 +93,35 @@ def test_question_then_reference_uses_dialogue_and_keeps_typed_slots(monkeypatch
         output("fill", [quoted])
     with pytest.raises(ValueError):
         output("simulate", [{"rf_name": "sample", "rf_value": "001", "source": "001"}])
+
+
+@pytest.mark.parametrize(("requested", "proposed"), [("answer", "answer"), ("answer", "fill"), ("fill", "fill"), ("fill", "clarify"), ("clarify", None)])
+def test_only_user_message_can_request_writes_from_an_attachment(monkeypatch, requested, proposed):
+    observation = "duration: 23"
+    request = turn.RecorderTurnRequest(
+        model={"name": "qwen3.5-flash"}, protocol="Synthetic", fields={"duration": {"type": "integer"}},
+        filled=[], locale="en-US", conversation=[], references=[], last_applied=[],
+        current_message="User request", attachment_texts=[observation],
+    )
+    calls = []
+
+    async def planner(model, payload, instructions):
+        calls.append(dict(payload))
+        intent = requested if len(calls) == 1 else proposed
+        ops = [{"rf_name": "duration", "rf_value": 23, "source": "23"}] if len(calls) > 1 and intent == "fill" else []
+        return turn.RecorderTurnResponse(intent=intent, answer="reply", references=[], operations=ops)
+
+    monkeypatch.setattr(turn, "_plan", planner)
+    if requested == "answer" and proposed == "fill":
+        with pytest.raises(ValueError, match="changed the requested action"):
+            asyncio.run(turn.resolve_recorder_turn(request))
+    else:
+        result = asyncio.run(turn.resolve_recorder_turn(request))
+        assert result.intent == (proposed or requested) and result.attachment_count == 1
+        assert [op.rf_value for op in result.operations] == ([23] if proposed == "fill" else [])
+    assert "attachment_texts" not in calls[0]
+    if proposed:
+        assert calls[1]["attachment_texts"] == [observation]
+        assert calls[1]["requested_intent"] == requested
+    else:
+        assert len(calls) == 1

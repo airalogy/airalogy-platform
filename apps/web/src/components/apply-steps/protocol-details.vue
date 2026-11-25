@@ -1,16 +1,16 @@
 <template>
-  <n-form-item v-if="mode === 'fork'" :label="props.showLabel ? 'Protocol Name' : ''" path="protocolName" required>
+  <n-form-item v-if="mode === 'fork'" :label="props.showLabel ? $t('page.hub.uploadModal.protocolNameLabel') : ''" path="protocolName" required>
     <n-tooltip trigger="focus" placement="top-start">
       <template #trigger>
         <n-input v-model:value="(activeModel as FormModel).protocolName" />
       </template>
-      The name of the protocol
+      {{ $t("page.protocol.metadata.nameHint") }}
     </n-tooltip>
   </n-form-item>
 
   <template v-if="props.showMetadata">
     <div v-if="props.showLabel" class="pb-1.5 pl-0.5 text-4">
-      Metadata
+      {{ $t("page.protocol.info") }}
     </div>
     <protocol-metadata-form
       v-model="metadataForm"

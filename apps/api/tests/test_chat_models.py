@@ -1,4 +1,5 @@
 import asyncio
+import json
 import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -103,3 +104,23 @@ def test_new_qa_chat_has_model_before_first_flush(monkeypatch):
 
     assert response.status_code == 200
     db_session.flush.assert_awaited_once()
+
+
+def test_readonly_record_revision_reaches_the_analysis_context():
+    from app.routers.chats.context_inject import build_current_recorder_record_context_message
+
+    context = ChatContext.model_validate({
+        "ephemeral_context": {"current_recorder_record": {
+            "enabled": True, "readonly": True, "record_id": "synthetic-record",
+            "record_revision": 2, "protocol_version": "0.3.0",
+            "record_data": {"var": {"reading": 0}},
+        }}
+    })
+    record = context.ephemeral_context.current_recorder_record.model_dump()
+    message = build_current_recorder_record_context_message(record)
+    assert "saved read-only Record revision" in message["content"]
+    serialized = message["content"].split("```json\n", 1)[1].rsplit("\n```", 1)[0]
+    payload = json.loads(serialized)
+    assert payload["record_data"] == {"var": {"reading": 0}}
+    for name in ("protocol_version", "record_revision", "record_id"):
+        assert payload["metadata"][name] == record[name]

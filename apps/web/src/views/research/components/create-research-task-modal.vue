@@ -78,19 +78,14 @@
             :placeholder="$t('page.research.airaConstraintsPlaceholder')"
           />
           <div class="mt-3 flex justify-end">
-            <n-button
-              type="primary"
-              secondary
+            <aira-action-button
               :disabled="!form.project_id || !airaQuestion.trim()"
               :loading="airaDrafting"
               data-testid="research-task-aira-generate"
               @click="handleAiraDraft"
             >
-              <template #icon>
-                <n-icon><icon-tabler-sparkles /></n-icon>
-              </template>
               {{ $t("page.research.generateTaskBrief") }}
-            </n-button>
+            </aira-action-button>
           </div>
           <n-alert
             v-if="airaGuidance"
@@ -504,6 +499,7 @@ import type {
   ResearchTaskPreview,
 } from "@/service/api/research-tasks"
 import type { ProtocolModels } from "@airalogy/shared/types"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import { fetchKnowledgeItems } from "@/service/api/knowledge"
 import { fetchProtocols } from "@/service/api/project-protocols"
 import { fetchResearchCapabilities } from "@/service/api/research-capabilities"

@@ -1,7 +1,9 @@
 import type { ChatModel } from "@airalogy/shared/enum"
 import type { RecorderTarget } from "../providers/recorderTurn"
+import type { ChatAttachmentPayload } from "./attachments"
 import type { ChatContext } from "./message"
 import { EventStreamContentType, fetchEventSource } from "@airalogy/shared/utils/request"
+import { resolveChatFileType } from "./attachments"
 import { chatModelToConfig, createUserMessage } from "./message"
 
 const ChatStreamIdleTimeoutMs = 60_000
@@ -54,40 +56,6 @@ class ChatStreamError extends Error {
   }
 }
 
-interface ChatAttachmentPayload {
-  name?: string | null
-  type?: string | null
-  serverId?: string | null
-}
-
-type ChatFileType = "image" | "audio" | "docx" | "pdf" | "text"
-
-function resolveChatFileType(attachment: ChatAttachmentPayload): ChatFileType | null {
-  const mimeType = attachment.type?.toLowerCase() || ""
-  const extension = attachment.name?.split(".").pop()?.toLowerCase() || ""
-
-  if (mimeType.startsWith("image/")) {
-    return "image"
-  }
-
-  if (mimeType === "application/pdf" || extension === "pdf") {
-    return "pdf"
-  }
-
-  if (
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    || extension === "docx"
-  ) {
-    return "docx"
-  }
-
-  if (mimeType.startsWith("text/") || extension === "txt" || extension === "md") {
-    return "text"
-  }
-
-  return null
-}
-
 function createChatUserMessage(content: string, attachments?: ChatAttachmentPayload[]) {
   const files = attachments?.map((attachment) => {
     if (!attachment.serverId) {
@@ -104,7 +72,7 @@ function createChatUserMessage(content: string, attachments?: ChatAttachmentPayl
       type: fileType,
       file_name: attachment.name || "attachment",
     }
-  }).filter((file): file is { id: string, type: ChatFileType, file_name: string } => file !== null)
+  }).filter((file): file is { id: string, type: NonNullable<ReturnType<typeof resolveChatFileType>>, file_name: string } => file !== null)
 
   return {
     role: "user" as const,
@@ -197,7 +165,7 @@ function normalizeChatStreamError(
 /**
  * Common function to create a streaming chat request
  */
-export async function* createChatStream(url: string, body: Record<string, any>, token?: string): AsyncGenerator<ChatEvent, ChatResponse, unknown> {
+export async function* createChatStream(url: string, body: Record<string, any>, token?: string, headers?: Record<string, string>): AsyncGenerator<ChatEvent, ChatResponse, unknown> {
   // Create response structure
   const responseData: ChatResponse = {
     conversation: [],
@@ -296,6 +264,7 @@ export async function* createChatStream(url: string, body: Record<string, any>, 
   const fetchPromise = fetchEventSource(url, {
     method: "POST",
     headers: {
+      ...headers,
       "Content-Type": "application/json",
       "Accept": "text/event-stream",
       "Auth-Token": token || "",
@@ -514,6 +483,7 @@ export async function* postStartChat(payload: {
   memoryDisabled?: boolean
   memoryRequestId?: string
   recorderTarget?: RecorderTarget
+  headers?: Record<string, string>
   protocolId?: string | null
   content: string
   attachments?: ChatAttachmentPayload[]
@@ -553,7 +523,7 @@ export async function* postStartChat(payload: {
     body.protocol_id = protocolId
   }
 
-  return yield * createChatStream(endpoint, body, token)
+  return yield * createChatStream(endpoint, body, token, payload.headers)
 }
 
 export async function* regenerateResponse(payload: {

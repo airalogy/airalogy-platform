@@ -3,9 +3,9 @@
     class="min-h-10 w-full flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2 py-1 transition-all duration-300"
     :class="{ 'w-fit font-0': isContextCollapsed, 'bg-gray-100': !isContextCollapsed && Array.isArray(context) && context.length > 0 }"
   >
-    <n-dropdown trigger="hover" placement="bottom-start" :options="enhancedContextOptions" :disabled="isRecording" @select="handleContextMenuSelect">
+    <n-dropdown trigger="click" placement="bottom-start" :options="enhancedContextOptions" :disabled="isRecording" @select="handleContextMenuSelect">
       <n-button
-        class="min-h-8" quaternary size="small" :theme-overrides="{
+        :aria-label="$t('chat.addContext')" class="min-h-8" quaternary size="small" :theme-overrides="{
           heightSmall: 'fit-content',
           paddingSmall: '0 8px',
           borderRadiusSmall: '8px',
@@ -16,7 +16,7 @@
             <icon-ion-add-outline />
           </n-icon>
         </template>
-        <span v-if="isContextCollapsed">Add context</span>
+        <span v-if="isContextCollapsed">{{ $t("chat.addContext") }}</span>
       </n-button>
     </n-dropdown>
 
@@ -25,11 +25,11 @@
       <n-upload
         :show-file-list="false"
         :custom-request="handleUpload"
-        accept="image/jpeg,image/jpg,image/png,image/gif,.pdf"
+        :accept="chatFileAccept" multiple
         :disabled="isRecording"
       >
         <n-button ref="uploadTriggerRef">
-          Upload
+          {{ $t("page.protocol.fieldInput.uploadFile") }}
         </n-button>
       </n-upload>
     </div>
@@ -71,8 +71,10 @@ import type { ContextDialogStateOption } from "../../providers/useChatProvider"
 import { nextTick } from "vue"
 // import { useProtocolInfoStore } from "@/views/project-protocols/hooks/useProtocolInfoStore"
 import { useChatInfoStore } from "@airalogy/components/chat/composables/useChatInfoStore"
+import { $t } from "@airalogy/shared/locales"
 import UploadIcon from "~icons/ion/attach"
 import { NButton, NDropdown, NIcon, NTag, NUpload } from "naive-ui"
+import { chatFileAccept } from "../../utils/attachments"
 // import ContextSelectDialog from "../context-select-dialog.vue"
 import ContextTag from "../context-tag.vue"
 
@@ -184,7 +186,7 @@ const enhancedContextOptions = computed((): DropdownOption[] => {
       key: "divider",
     },
     {
-      label: "Upload File",
+      label: $t("page.protocol.fieldInput.uploadFile"),
       key: "uploadFile",
       icon: () => h(NIcon, null, { default: () => h(UploadIcon) }),
     },

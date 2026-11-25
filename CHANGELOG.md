@@ -14,6 +14,16 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Record field definitions show each equivalent constraint once. Expanding a definition keeps the field panel open. Required markers stay beside field titles, and the More inputs menu fits the viewport.
+
+- Field references in the Aira composer show the Protocol field name in a readable badge. Sending the message uses the original field ID.
+
+- Record entry uses one Aira conversation for Protocol questions and draft updates from typed, dictated, or attached observations. Replacements still require review.
+
+- The Save Protocol dialog follows the interface language for protocol details, contributor fields, project selection, and TOML controls.
+
+- Contextual Aira actions open the right-hand assistant for Protocol reading and revision, Record entry and saved report analysis, and meeting minutes. Analysis uses the displayed Record revision. Meeting proposals return to the current edit for review.
+
 - Long Record drafts scroll to the last field on narrow screens. Desktop keeps its independently scrollable field list and entry pane. AIMD Recorder 1.31.0 keeps optional markers visible, wraps long labels and fits scalar inputs within the field panel. Expand a field to inspect its ID, type, examples, default and constraints separately from its recorded value.
 
 - Record entry and saved reports share a grouped field panel with links to the matching field in the document. During entry, Field display switches the panel and document together between Detailed and Compact. Its preference is stored separately from the report style.

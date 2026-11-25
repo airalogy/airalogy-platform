@@ -1,7 +1,8 @@
 <template>
   <tooltip-button
     :icon="MicrophoneIcon"
-    :tooltip="isRecording ? stopTooltip : startTooltip"
+    :tooltip="label"
+    :aria-label="label"
     :button-props="{
       quaternary: true,
       type: isRecording ? 'error' : 'default',
@@ -21,7 +22,9 @@
 
 <script setup lang="ts">
 import type { ButtonProps, IconProps } from "naive-ui"
+import { $t } from "@airalogy/shared/locales"
 import MicrophoneIcon from "~icons/tabler/microphone"
+import { computed } from "vue"
 import { useChatInfoStore } from "../../composables/useChatInfoStore"
 
 interface Props {
@@ -34,8 +37,6 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  startTooltip: "Start Voice Recording",
-  stopTooltip: "Recording... Click to stop",
   buttonSize: "small",
   iconSize: 20,
 })
@@ -45,6 +46,10 @@ const emit = defineEmits<{
 }>()
 
 const { isRecording, startRecording, stopRecording } = useChatInfoStore()!
+
+const label = computed(() => isRecording.value
+  ? props.stopTooltip || $t("chat.stopDictation")
+  : props.startTooltip || $t("page.protocol.fieldInput.voiceInput"))
 
 async function handleVoiceClick() {
   if (isRecording.value) {

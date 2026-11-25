@@ -18,7 +18,7 @@ from app.models.lab import Lab
 from app.models.project import Project
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolVersion
-from app.routers.chats.file_processor import process_files
+from app.routers.chats.file_processor import process_files, recorder_attachment_texts
 from app.routers.chats.utils import check_model_usage
 from app.routers.depends import CurrentUser, get_current_user
 from app.routers.permission import check_user_permission
@@ -27,7 +27,6 @@ from app.services.recorder_turns import (
     RecorderTarget,
     plan_recorder_turn,
     recorder_scope,
-    field_input_proposal,
 )
 
 router = APIRouter(
@@ -129,17 +128,17 @@ async def send_field_input_chat_message(
     if target:
         if not isinstance(params.message, ChatUserMessage):
             raise HTTPException(422, "A Recorder turn requires a user message")
+        excerpts = await recorder_attachment_texts(db_session, files, current_user.id, usage_context)
         try:
             reply, focus, proposal = await plan_recorder_turn(
-                chat, protocol_version, target, params.message.content, usage_context
+                chat, protocol_version, target, params.message.content, usage_context, attachment_texts=excerpts
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise HTTPException(502, "Invalid Recorder proposal") from exc
         chat.context = {**(chat.context or {}), "recorder_focus": focus}
 
-    # Attachment extraction retains its file-aware model and permission checks.
-    # A request for test data never reaches the slot-filling model.
-    if proposal is None or (files and proposal["intent"] in ("fill", "clarify")):
+        chat.messages.extend([params.message.model_dump(), {"role": "assistant", "content": reply}])
+    else:
         if files:
             chat.messages.extend(await process_files(
                 db_session, files, current_user.id, usage_context=usage_context
@@ -148,10 +147,6 @@ async def send_field_input_chat_message(
         response = await field_input_chat(chat, usage_context=usage_context)
         chat.messages = response["history"]
         chat.model = response["model"]
-        if target:
-            proposal = field_input_proposal(chat.messages, protocol_version, target)
-    else:
-        chat.messages.extend([params.message.model_dump(), {"role": "assistant", "content": reply}])
     chat.user_message_count += 1
     if target:
         await recorder_scope(db_session, current_user, project, protocol, target)

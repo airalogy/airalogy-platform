@@ -37,13 +37,16 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     if (data.current_message.includes("hold"))
       await new Promise<void>((resolve) => { releaseModel = resolve })
     const op = (rf_name: string, rf_value: string | number) => ({ operation: "update", rf_name, rf_value, source: String(rf_value) })
-    const intent = data.current_message.includes("simulate") ? "simulate" : data.current_message.includes("Explain") ? "answer" : "fill"
-    const operations = data.current_message.includes("ALT-002")
-      ? [op("label", "ALT-002"), op("minutes", 25), op("note", "mixed-note")]
-      : data.current_message.includes("25") ? [op("minutes", 25)] : [op("label", "001"), op("minutes", 20)]
+    const intent = data.current_message.includes("simulate") ? "simulate" : data.current_message.includes("Explain") ? "answer" : data.current_message.includes("somewhere") ? "clarify" : "fill"
+    const operations = data.attachment_texts?.includes("note: ATTACH-456")
+      ? [op("note", "ATTACH-456")]
+      : data.current_message.includes("ALT-002")
+        ? [op("label", "ALT-002"), op("minutes", 25), op("note", "mixed-note")]
+        : data.current_message.includes("25") ? [op("minutes", 25)] : [op("label", "001"), op("minutes", 20)]
     res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({
       intent,
-      answer: intent === "answer" ? "Label is an identifier; minutes is duration." : "Recorder suggestion",
+      answer: intent === "answer" ? "Label is an identifier; minutes is duration." : intent === "clarify" ? "Which field should contain 12?" : "Recorder suggestion",
+      attachment_count: data.attachment_texts?.length || 0,
       references: ["label", "minutes"],
       operations: intent === "fill" ? operations : [],
     }))
@@ -56,7 +59,7 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     const api = process.env.E2E_API_URL || "http://127.0.0.1:4100"
     const login = await request.post(`${api}/signin_by_email`, { data: { email: "dev.owner@airalogy.dev", password: "AiralogyDev123!" } })
     const uid = `recorder_${Date.now()}`
-    const archive = zipSync({ "protocol.aimd": strToU8("# Recorder\nLabel: {{var|label: str, examples=[\"EX-100\"]}}\nMinutes: {{var|minutes: int}}\nNote: {{var|note: str}}"), "protocol.toml": strToU8(`[airalogy_protocol]\nid="${uid}"\nname="Recorder test"\nversion="0.1.0"\n`) })
+    const archive = zipSync({ "protocol.aimd": strToU8("# Recorder\nLabel: {{var|label: str, examples=[\"EX-100\"]}}\nMinutes: {{var|minutes: int, title=\"Duration in minutes\"}}\nNote: {{var|note: str}}"), "protocol.toml": strToU8(`[airalogy_protocol]\nid="${uid}"\nname="Recorder test"\nversion="0.1.0"\n`) })
     const published = await request.post(`${api}/protocols`, { headers: { "Auth-Token": (await login.json()).token }, multipart: { project_id: fx.project.id, file: { name: "recorder.zip", mimeType: "application/zip", buffer: Buffer.from(archive) } } })
     expect(published.ok(), await published.text()).toBeTruthy()
     await page.goto(`/labs/${fx.lab.uid}/projects/${fx.project.uid}/protocols/${uid}/add`, { waitUntil: "domcontentloaded" })
@@ -64,8 +67,28 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     await targetField.hover()
     await targetField.getByRole("button", { name: /Add to chat.*minutes/i }).click()
     const editor = page.getByTestId("chat-input").locator("[contenteditable=true]")
-    await expect(editor).toContainText("var.minutes")
+    const reference = editor.locator('[data-type="mention"][data-id="var.minutes"]')
+    await expect(reference).toHaveText("@Duration in minutes")
+    await expect(reference).toHaveAttribute("title", "var.minutes")
+    const contrast = await reference.evaluate((element) => {
+      const { color, backgroundColor } = getComputedStyle(element)
+      function luminance(rgb: string) {
+        const channels = (rgb.match(/\d+/g) || []).slice(0, 3).map(Number)
+        const [r, g, b] = channels.map((channel) => {
+          const value = channel / 255
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+        })
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+      }
+      if (backgroundColor.startsWith("rgba"))
+        return 0
+      const lighter = Math.max(luminance(color), luminance(backgroundColor))
+      const darker = Math.min(luminance(color), luminance(backgroundColor))
+      return (lighter + 0.05) / (darker + 0.05)
+    })
+    expect(contrast).toBeGreaterThanOrEqual(4.5)
     const submit = async (status = 200) => {
+      await expect(page.getByTestId("chat-submit")).toHaveAccessibleName(/Send message|发送消息/)
       const result = page.waitForResponse(r => r.url().endsWith("/chats/qa/message"))
       await editor.press("Enter")
       const response = await result
@@ -164,7 +187,8 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     const fieldsDrawer = page.getByTestId("record-fields-drawer")
     await fieldsDrawer.getByRole("button", { name: /Add to chat.*minutes/i }).click()
     await expect(fieldsDrawer).toBeHidden()
-    await expect(editor).toContainText("var.minutes")
+    await expect(reference).toHaveText("@Duration in minutes")
+    await expect(reference).toBeInViewport()
     await expect(page.getByTestId("context-aira")).toContainText("Recorder suggestion")
     await page.getByTestId("context-aira-close").click()
     const viewerLogin = await request.post(`${api}/signin_by_email`, { data: { email: "dev.viewer@airalogy.dev", password: "AiralogyDev123!" } })
@@ -236,16 +260,42 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     expect((await quick.json()).recorder_proposal).toMatchObject({ intent: "simulate", values: {} })
     await page.setViewportSize({ width: 390, height: 844 })
     await page.context().grantPermissions(["microphone"], { origin: new URL(page.url()).origin })
-    const quickInput = page.getByTestId("context-aira").locator("details")
-    await quickInput.locator("summary").click()
+    await page.getByTestId("context-aira-close").click()
+    await page.getByTestId("record-assist").click()
+    const composer = page.getByTestId("context-aira").getByTestId("chat-input")
+    await expect(page.getByTestId("context-aira").locator("[contenteditable=true]")).toHaveCount(1)
+    await expect(page.getByTestId("context-aira").getByText("字段输入", { exact: true })).toHaveCount(0)
+    await say("Put 12 somewhere")
+    await expect(page.getByTestId("context-aira").getByText("Which field should contain 12?", { exact: true })).toBeVisible()
+    await expect(field("minutes")).toHaveValue("")
+    const attach = async () => {
+      const uploaded = page.waitForResponse(r => r.request().method() === "POST" && /\/attachments\/?$/.test(new URL(r.url()).pathname))
+      await composer.getByRole("button", { name: /添加.*(内容|附件|上下文)|Add context/ }).click()
+      const [chooser] = await Promise.all([
+        page.waitForEvent("filechooser"),
+        page.getByText(/^(上传文件|上传附件|Upload file)$/i).filter({ visible: true }).click(),
+      ])
+      await chooser.setFiles({ name: "observation.txt", mimeType: "text/plain", buffer: Buffer.from("note: ATTACH-456") })
+      expect((await uploaded).ok()).toBe(true)
+    }
+    await attach()
+    await say("Explain the attachment")
+    await expect(field("note")).toHaveValue("")
+    await attach()
+    await say("Fill the note from the attached observation")
+    await expect(field("note")).toHaveValue("ATTACH-456")
     await page.route("**/chats/stt/message", async (route) => {
       expect(route.request().postDataBuffer()?.length).toBeGreaterThan(100)
       await route.fulfill({ json: { text: "Change minutes to 25" } })
     })
-    await quickInput.getByRole("button", { name: /语音输入|Voice input/ }).click()
-    await quickInput.getByRole("button", { name: /停止|Stop/ }).click()
-    await expect(quickInput.locator("textarea")).toHaveValue("Change minutes to 25")
-    await quickInput.getByRole("button", { name: /执行|Execute/ }).click()
+    await composer.getByRole("button", { name: /语音输入|Voice input/ }).click()
+    await composer.getByRole("button", { name: /停止|Stop/ }).click()
+    await expect(editor).toContainText("Change minutes to 25")
+    const dictated = page.waitForResponse(r => r.url().endsWith("/chats/qa/message"))
+    await composer.getByTestId("chat-submit").click()
+    const dictatedTurn = (await dictated).request().postDataJSON()
+    expect(dictatedTurn.message.files || []).toHaveLength(0)
+    expect(dictatedTurn.message.content).toBe("Change minutes to 25")
     await expect(field("minutes")).toHaveValue("25")
     await page.getByTestId("context-aira-close").click()
     await expect(field("label")).toHaveValue("SECOND")
@@ -265,6 +315,7 @@ test("manual Record entry remains usable with Aira disabled", async ({ page }) =
   await page.goto(`/labs/${fx.lab.uid}/projects/${fx.project.uid}/protocols/${fx.analysis.protocol_uid}/add`)
   await expect(page.getByTestId("record-save-draft")).toBeVisible()
   await expect(page.getByTestId("header-aira")).toHaveCount(0)
+  await expect(page.getByTestId("record-assist")).toHaveCount(0)
   await expect(page.locator(".record-inline-content input").first()).toBeVisible()
 })
 

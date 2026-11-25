@@ -746,6 +746,21 @@ declare namespace I18n {
         checkErrors: string
         changedElsewhere: string
       }
+      airaActions: {
+        askProtocol: string
+        revise: string
+        fillRecord: string
+        analyze: string
+        version: string
+        analysisPrompt: string
+        organize: string
+        draft: string
+        minutesPrompt: string
+        applyMinutes: string
+        shortenNotes: string
+        minutesChanged: string
+        reportBusy: string
+      }
       recorderAira: {
         finishReview: string
         noChanges: string
@@ -754,6 +769,7 @@ declare namespace I18n {
         reviewSimulated: string
         preserved: string
         openForm: string
+        inputHint: string
         askFields: string
         fillObserved: string
         previewOnly: string
@@ -3648,6 +3664,42 @@ declare namespace I18n {
         knowledgeSource: string
         protocolIdCopied: string
         reusedFrom: string
+        metadata: {
+          basicHint: string
+          idExample: string
+          idHint: string
+          versionHint: string
+          globalId: string
+          globalIdEmpty: string
+          globalIdHint: string
+          nameHint: string
+          licenseHint: string
+          descriptionHint: string
+          authorsHint: string
+          maintainersHint: string
+          authorNumber: string
+          maintainerNumber: string
+          personName: string
+          userId: string
+          userIdExample: string
+          addAuthor: string
+          addMaintainer: string
+          removeAuthor: string
+          removeMaintainer: string
+          authorName: string
+          authorEmail: string
+          maintainerName: string
+          maintainerEmail: string
+          disciplinesHint: string
+          keywordsHint: string
+          tomlPreview: string
+          tomlSyntax: string
+          tomlError: string
+          noProjects: string
+          idTaken: string
+          projectUnavailable: string
+          versionChanged: string
+        }
         settings: {
           basicInfoTitle: string
           basicInfoDescription: string
@@ -6336,6 +6388,9 @@ declare namespace I18n {
       projects: string
     }
     chat: {
+      addContext: string
+      sendMessage: string
+      stopDictation: string
       newChatButton: string
       newChatTitle: string
       clearDeviceHistory: string

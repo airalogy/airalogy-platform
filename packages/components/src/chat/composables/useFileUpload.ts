@@ -1,7 +1,9 @@
 import type { UploadCustomRequestOptions } from "naive-ui"
 import type { ChatProviderContext } from "../providers/useChatProvider"
 import { useClosableMessage } from "@airalogy/composables"
+import { $t } from "@airalogy/shared/locales"
 import { nanoid } from "nanoid"
+import { resolveChatFileType } from "../utils/attachments"
 import { formatErrorMessage } from "./utils"
 
 export function useFileUpload(state: any, providerContext: ChatProviderContext) {
@@ -24,18 +26,19 @@ export function useFileUpload(state: any, providerContext: ChatProviderContext) 
       return false
     }
 
-    const { size, type } = fileInfo.file
+    const { size } = fileInfo.file
 
     const maxSize = 10 * 1024 * 1024 // 10MB limit
 
     if (size && size > maxSize) {
-      showMessage.error("File size cannot exceed 10MB")
+      showMessage.error($t("page.protocol.fieldInput.fileTooLarge", { name: fileInfo.file.name }))
+      onError()
       return false
     }
 
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "application/pdf"]
-    if (!allowedTypes.includes(type || "")) {
-      showMessage.error("Only images (JPG, PNG, GIF) and PDF files are allowed")
+    if (!resolveChatFileType(fileInfo.file)) {
+      showMessage.error($t("page.protocol.fieldInput.unsupportedFileType", { name: fileInfo.file.name }))
+      onError()
       return false
     }
 
@@ -45,6 +48,7 @@ export function useFileUpload(state: any, providerContext: ChatProviderContext) 
       ...fileInfo,
       id: fileId,
       name: fileInfo.name || fileInfo.file.name,
+      type: fileInfo.file.type,
       status: "uploading",
       percentage: 0,
       url: previewUrl,

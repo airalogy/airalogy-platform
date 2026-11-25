@@ -392,16 +392,13 @@
             />
             <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
               <span class="aira-type-meta">{{ $t("page.research.airaClaimDraftHint") }}</span>
-              <n-button
-                size="small"
-                type="primary"
-                secondary
+              <aira-action-button
                 :disabled="!canGenerateClaim"
                 :loading="airaGenerating"
                 @click="generateClaimDraft"
               >
                 {{ $t("page.research.generateDraftWithAira") }}
-              </n-button>
+              </aira-action-button>
             </div>
           </div>
           <n-alert v-if="claimDraft.aira_generation" type="success" class="mb-4">
@@ -482,16 +479,13 @@
             />
             <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
               <span class="aira-type-meta">{{ $t("page.research.airaImprovementDraftHint") }}</span>
-              <n-button
-                size="small"
-                type="primary"
-                secondary
+              <aira-action-button
                 :disabled="!canGenerateProtocolImprovement"
                 :loading="airaGenerating"
                 @click="generateProtocolImprovementDraft"
               >
                 {{ $t("page.research.generateDraftWithAira") }}
-              </n-button>
+              </aira-action-button>
             </div>
           </div>
           <n-alert v-if="protocolImprovementDraft.aira_generation" type="success" class="mb-4">
@@ -569,6 +563,7 @@ import type {
 } from "@/service/api/research-assets"
 import type { ResearchAction, ResearchProtocolRef } from "@/service/api/research-tasks"
 import type { TagProps } from "naive-ui"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import {
   createClaim,
   createDataAsset,

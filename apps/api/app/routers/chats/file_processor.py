@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from typing import Any
@@ -239,3 +240,27 @@ async def process_files(
         tool_call_messages.extend(messages)
 
     return tool_call_messages
+
+
+async def recorder_attachment_texts(db_session, files, user_id, usage_context):
+    """Only the verified contents of this turn's uploads can supply observations."""
+    if not files:
+        return []
+    if len(files) > 16:
+        raise HTTPException(413, "Too many Recorder attachments")
+    messages = await process_files(db_session, files, user_id, usage_context=usage_context)
+    excerpts = []
+    for message in messages:
+        if message["role"] == "tool":
+            data = json.loads(message["content"])
+            text = data.get("file_content", data.get("images_content", ""))
+            # A trimmed document includes a generated notice after the maximum
+            # length. Partial observations cannot ground a Recorder update.
+            if "file_content" in data and isinstance(text, str) and len(text) > MAX_TEXT_TOKENS * CHARS_PER_TOKEN:
+                raise HTTPException(413, "Please attach a shorter observation file")
+            excerpts.append(text)
+    if not excerpts or not all(isinstance(text, str) and text.strip() for text in excerpts):
+        raise HTTPException(422, "Could not read observations from the attachment")
+    if sum(map(len, excerpts)) > 33000:
+        raise HTTPException(413, "Recorder attachments contain too much text for one message")
+    return excerpts

@@ -114,6 +114,9 @@ def build_current_recorder_record_context_message(
             "protocol_uid": record_context.get("protocol_uid"),
             "protocol_name": record_context.get("protocol_name"),
             "readonly": record_context.get("readonly", False),
+            "record_id": record_context.get("record_id"),
+            "record_revision": record_context.get("record_revision"),
+            "protocol_version": record_context.get("protocol_version"),
             "filled_count": record_context.get("filled_count"),
             "empty_count": record_context.get("empty_count"),
             "truncated_on_client": record_context.get("truncated", False),
@@ -125,7 +128,9 @@ def build_current_recorder_record_context_message(
     content = "\n\n".join(
         [
             "[Current recorder record context]",
-            "This is the current Recorder form state for the user's active record. It may include unsaved changes.",
+            "This is a saved read-only Record revision."
+            if record_context.get("readonly") and record_context.get("record_revision")
+            else "This is the current Recorder form state for the user's active record. It may include unsaved changes.",
             "Use `field_summary` for field IDs, labels, filled status, and filled values. Use `record_data` as the structured record payload when available.",
             f"```json\n{_truncate_recorder_context(serialized)}\n```",
         ]

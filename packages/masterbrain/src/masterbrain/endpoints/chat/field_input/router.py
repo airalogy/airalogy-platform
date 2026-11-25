@@ -47,7 +47,11 @@ async def field_input(chat_request: FieldInputRequest) -> FieldInputResponse:
     except Exception as e:
         raise llm_http_exception(e, chat_request.model.name) from e
 
-@field_input_router.post("/chat/field_input/turn", summary="Resolve one conversational Recorder turn")
+@field_input_router.post(
+    "/chat/field_input/turn",
+    summary="Resolve one conversational Recorder turn",
+    response_model_exclude_none=True,
+)
 async def recorder_turn(request: RecorderTurnRequest) -> RecorderTurnResponse:
     try:
         ensure_model_api_key(request.model.name)

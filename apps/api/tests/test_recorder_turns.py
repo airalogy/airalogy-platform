@@ -170,3 +170,27 @@ def test_native_quiz_answers_survive_revision_by_older_clients():
     assert previous["quiz"] == {"note": "example"}
     assert new.model_copy(update={"quiz": None}).record_data(previous)["quiz"] == previous["quiz"]
     assert "quiz" not in new.model_copy(update={"quiz": {}}).record_data(previous)
+
+
+def test_only_current_uploaded_observations_ground_fills(monkeypatch):
+    result = {
+        "intent": "fill", "answer": "", "references": [], "attachment_count": 1,
+        "operations": [
+            {"rf_name": "sample_id", "rf_value": "A-03", "source": "A-03"},
+            {"rf_name": "temperature", "rf_value": 15, "source": "15"},
+            {"rf_name": "used", "rf_value": True, "source": "yes"},
+        ],
+    }
+    transport = AsyncMock(return_value=result)
+    monkeypatch.setattr(recorder, "json_request", transport)
+    chat = SimpleNamespace(model={"name": "test"}, context={}, messages=[])
+    args = chat, version(), target(), "Fill from the attached file", None
+    files = ["sample: A-03, reading: 15 hours"]
+    _, _, proposal = asyncio.run(recorder.plan_recorder_turn(*args, attachment_texts=files))
+    assert transport.await_args.args[1]["attachment_texts"] == files
+    assert proposal["values"] == {"sample_id": "A-03"}
+    assert proposal["skipped"] == ["temperature", "used"]
+    del result["attachment_count"]
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(recorder.plan_recorder_turn(*args, attachment_texts=files))
+    assert error.value.status_code == 503

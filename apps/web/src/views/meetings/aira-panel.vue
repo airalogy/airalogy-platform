@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { MeetingConversation, MeetingProposal } from "@/service/api/meetings"
+import type { MinutesDraft } from "./aira-handoff"
 import { getMeetingConversation, requestMeetingDraft } from "@/service/api/meetings"
 import { useI18n } from "vue-i18n"
 
-const props = defineProps<{ projectId: string, projectName: string, meetingName: string, meetingId: string | null, initialChat: string, canSend: boolean }>()
+const props = defineProps<{ projectId: string, projectName: string, meetingName: string, meetingId: string | null, initialChat: string, canSend: boolean, minutes?: MinutesDraft }>()
 const emit = defineEmits<{ close: [], restart: [], review: [proposal: MeetingProposal] }>()
 const { t } = useI18n()
 const confirmRestart = ref(false)
-const input = ref("")
+const input = ref(props.minutes?.prompt || "")
 const turns = ref<{ user: string, reply: string }[]>([])
 const proposal = ref<MeetingProposal | null>(null)
 const error = ref("")
@@ -39,7 +40,7 @@ function newConversation() {
   linkedMeeting.value = null
   retry = undefined
   turns.value = []
-  input.value = ""
+  input.value = props.minutes?.prompt || ""
   proposal.value = null
   error.value = ""
   busy.value = false
@@ -75,15 +76,30 @@ async function restore(id: string) {
 }
 
 watch(() => props.initialChat, (id) => {
-  if (id) {
+  if (id && !props.minutes) {
     newConversation()
     void restore(id)
   }
 }, { immediate: true })
 
+function review() {
+  if (!proposal.value)
+    return
+  if (!props.minutes) {
+    emit("review", proposal.value)
+  }
+  else if (props.minutes.apply(proposal.value)) {
+    proposal.value = null
+    emit("close")
+  }
+  else {
+    error.value = t("page.airaActions.minutesChanged")
+  }
+}
+
 async function send() {
   const message = input.value.trim()
-  if (!message || !props.canSend || busy.value || restoreFailed.value || turns.value.length >= 8)
+  if (!message || message.length > 16000 || !props.canSend || busy.value || restoreFailed.value || turns.value.length >= 8)
     return
   busy.value = true
   error.value = ""
@@ -165,7 +181,7 @@ async function send() {
         <ul v-if="proposal.actions.length" class="list-disc pl-5">
           <li v-for="(action, index) in proposal.actions" :key="index">{{ action }}</li>
         </ul>
-        <n-button size="small" type="primary" :disabled="busy" @click="emit('review', proposal)">{{ t("page.projectAira.review") }}</n-button>
+        <n-button size="small" type="primary" :disabled="busy" @click="review">{{ t(minutes ? "page.airaActions.applyMinutes" : "page.projectAira.review") }}</n-button>
       </section>
     </div>
     <form class="border-t pt-3 space-y-2" @submit.prevent="send">
@@ -173,8 +189,9 @@ async function send() {
       <p v-if="error" role="alert" class="text-sm text-red-700">{{ error }}</p>
       <p v-if="turns.length >= 8" class="text-sm">{{ t("page.projectAira.limit") }}</p>
       <n-input v-model:value="input" type="textarea" :maxlength="16000" :disabled="!canSend || busy || restoreFailed || turns.length >= 8" :autosize="{ minRows: 2, maxRows: 6 }" :placeholder="t('page.projectAira.input')" :aria-label="t('page.projectAira.input')" />
+      <p v-if="input.length > 16000" role="alert" class="text-sm">{{ t("page.airaActions.shortenNotes", { limit: 16000 }) }}</p>
       <div class="flex justify-end">
-        <n-button attr-type="submit" size="small" :disabled="!canSend || restoreFailed || !input.trim() || confirmRestart || turns.length >= 8" :loading="busy">{{ t("page.projectAira.send") }}</n-button>
+        <n-button attr-type="submit" size="small" :disabled="!canSend || restoreFailed || !input.trim() || input.trim().length > 16000 || confirmRestart || turns.length >= 8" :loading="busy">{{ t("page.projectAira.send") }}</n-button>
       </div>
     </form>
   </section>

@@ -49,7 +49,7 @@ from .context_inject import (
     inject_airalogy_records,
     inject_recommended_airalogy_protocols,
 )
-from .file_processor import process_files
+from .file_processor import process_files, recorder_attachment_texts
 from .utils import (
     build_chat_stream_error_data,
     check_model_usage,
@@ -325,6 +325,9 @@ async def send_qa_chat_message(
             db_session, current_user, project, protocol, target
         )
         chat.model = params.model.model_dump()
+        excerpts = await recorder_attachment_texts(
+            db_session, params.message.files, current_user.id, usage_context
+        )
         try:
             reply, focus, proposal = await plan_recorder_turn(
                 chat,
@@ -332,6 +335,7 @@ async def send_qa_chat_message(
                 target,
                 params.message.content,
                 usage_context,
+                attachment_texts=excerpts,
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise HTTPException(502, "Invalid Recorder proposal") from exc

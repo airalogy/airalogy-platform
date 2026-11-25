@@ -332,7 +332,7 @@ const rules: Partial<Record<Exclude<keyof FormModel, "metadata"> | MetadataKeys 
   "metadata.name": [defaultRequiredRule],
   "metadata.authors": [],
   "metadata.maintainers": [],
-  "metadata.id": [defaultRequiredRule, ...createUidValidator({ fieldName: $t("page.protocol.apply.setupForm.protocolIdLabel") })],
+  "metadata.id": [defaultRequiredRule, ...createUidValidator({ fieldName: () => $t("page.protocol.apply.setupForm.protocolIdLabel") })],
   "metadata.airalogy_protocol_id": [defaultRequiredRule, {
     key: "check-airalogy-protocol-id",
     asyncValidator: async (rule) => {
@@ -356,6 +356,12 @@ const rules: Partial<Record<Exclude<keyof FormModel, "metadata"> | MetadataKeys 
 
       if (error) {
         const data = error.response?.data as any
+        if (data?.detail === "Protocol UID already exists in this project") {
+          throw new Error($t("page.protocol.metadata.idTaken"))
+        }
+        if (error.response?.status === 404) {
+          throw new Error($t("page.protocol.metadata.projectUnavailable"))
+        }
         if (data?.detail) {
           throw data.detail
         }
@@ -508,7 +514,7 @@ function handleContentLoaded(content: UploadContent | null) {
 
 function handleUpdateVersion(version: string) {
   model.value.metadata.version = version
-  message.success(`Updated to version ${version}`)
+  message.success($t("page.protocol.metadata.versionChanged", { version }))
   if (formRef.value) {
     formRef.value.restoreValidation()
   }

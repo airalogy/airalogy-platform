@@ -69,6 +69,9 @@ class ChatContextCurrentRecorderRecord(BaseModel):
     protocol_uid: str | None = None
     protocol_name: str | None = None
     readonly: bool = False
+    record_id: str | None = None
+    record_revision: int | None = None
+    protocol_version: str | None = None
     filled_count: int | None = None
     empty_count: int | None = None
     field_summary: list[dict[str, Any]] | None = None

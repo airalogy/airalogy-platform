@@ -101,15 +101,11 @@
       </n-tab-pane>
     </template>
     <template #content>
-      <context-aira-panel handles-field-selection v-if="authStore.isLogin && instanceStore.aiEnabled" :key="JSON.stringify([protocolId, recorderVersion, recorderRecordId, props.readonly])"
-                          :title="protocol?.name" :version="recorderVersion">
-        <details v-if="!props.readonly && recorderVersion" class="shrink-0 px-3 py-1">
-          <summary class="cursor-pointer text-sm">{{ $t('page.protocol.fieldInput.title') }}</summary>
-          <field-input-bar :protocol-id="props.protocolId" :begin-turn="beginRecorderTurn" :pending-suggestions="pending.size > 0 || busy" />
-        </details>
-        <chat-component v-model:role="role" v-model:could-change-role="couldChangeRole" hide-collapse in-side-panel
+      <context-aira-panel handles-field-selection v-if="authStore.isLogin && instanceStore.aiEnabled" :key="JSON.stringify([protocolId, recorderVersion, recorderRecordId, recordRevision, props.readonly])"
+                          :title="protocol?.name" :version="recordRevision && recorderVersion ? $t('page.airaActions.version', { version: recorderVersion, revision: recordRevision }) : recorderVersion">
+        <chat-component ref="assistantChat" v-model:role="role" v-model:could-change-role="couldChangeRole" hide-collapse in-side-panel
                         class="relative min-h-0 w-full flex-1" :protocol-id="props.protocolId"
-                        source="protocol" enable-tool-action :airalogy-id="airalogyId" :resolve-file="getCachedAttachment" />
+                        source="protocol" enable-tool-action :airalogy-id="reportScope || airalogyId" :report-scope="reportScope" :resolve-file="getCachedAttachment" />
       </context-aira-panel>
       <slot name="prefix" />
       <n-alert v-if="receipt || pending.size || edits.size || showPreviewLink" class="mb-3 break-words" :type="pending.size ? 'warning' : 'info'" data-testid="recorder-receipt">
@@ -258,7 +254,6 @@ import { processFieldValue } from "../../utils"
 import RecordReportPresentation from "../record-report-presentation.vue"
 import { useRecordingFieldDisplay, useRecordReportPresentation } from "../useRecordReportPresentation"
 import AssignerProgressModal from "./components/AssignerProgressModal.vue"
-import FieldInputBar from "./components/field-input-bar.vue"
 import RecorderFieldReview from "./components/recorder-field-review.vue"
 import WorkflowWorkspace from "./components/workflow-workspace.vue"
 import { useAimdRecordValidation } from "./composables/useAimdRecordValidation"
@@ -288,6 +283,7 @@ interface IProps {
   recorderVersion?: string
   simulatedFields?: string[]
   recorderRecordId?: string
+  recordRevision?: number
   defaultSpiltSize?: number
   readonly?: boolean
   recordData?: Partial<IRecordData>
@@ -870,6 +866,9 @@ function syncCurrentRecorderRecordContext() {
         protocol_id: props.protocolId,
         protocol_uid: props.protocol?.uid,
         protocol_name: props.protocol?.name,
+        protocol_version: props.recorderVersion,
+        record_id: props.recorderRecordId,
+        record_revision: props.recordRevision,
         readonly: Boolean(props.readonly),
         filled_count: filledCount,
         empty_count: emptyCount,
@@ -881,7 +880,7 @@ function syncCurrentRecorderRecordContext() {
 }
 
 watch(
-  [fieldModel, fieldRecordDefault, fieldPropList, scopeList, () => props.protocolId, () => props.protocol?.uid, () => props.protocol?.name, () => props.recordData, () => props.readonly],
+  [fieldModel, fieldRecordDefault, fieldPropList, scopeList, () => props.protocolId, () => props.protocol?.uid, () => props.protocol?.name, () => props.recordData, () => props.readonly, () => props.recorderVersion, () => props.recorderRecordId, () => props.recordRevision],
   syncCurrentRecorderRecordContext,
   { deep: true, immediate: true },
 )
@@ -1055,7 +1054,7 @@ const editorPreviewRoute = computed(() => {
   return { name: "protocol-editor", params: { labUid, projectUid, protocolUid, protocolVersion: props.recorderVersion } } as const
 })
 
-const { begin: beginRecorderTurn, receipt, showPreviewLink, pending, edits, accept, dismiss, undo, busy, markInput, reset: resetReview } = useRecorderConversation({
+const { receipt, showPreviewLink, pending, edits, accept, dismiss, undo, busy, markInput, reset: resetReview } = useRecorderConversation({
   scope: () => JSON.stringify([props.protocolId, props.recorderVersion, props.recorderRecordId, props.readonly]),
   version: () => props.recorderVersion,
   recordId: () => props.recorderRecordId,
@@ -1233,7 +1232,7 @@ function openRecorderChat(eventType: "sendToChat" | "addToChat", value: string |
         type,
         mentionAttrs: {
           id,
-          label: id,
+          label: fieldRecordDefault.value?.field[scope as ScopeFieldKey]?.[prop]?.title?.trim() || id,
           query: id,
           // TODO: resolve context items, items may change after the mention is inserted
           renderInlineAs: `{{${formattedScope}|${prop}, value=${formattedValue ?? ""}, type=${type}}}`,
@@ -1751,7 +1750,34 @@ watch(
 //   }
 // } )
 
+const reportScope = computed(() => props.readonly && props.recorderRecordId && props.recordRevision
+  ? JSON.stringify(["record", props.protocolId, props.recorderRecordId, props.recordRevision, props.recorderVersion])
+  : undefined)
+const assistantChat = ref<InstanceType<typeof ChatComponent>>()
+const analysisRequested = ref(false)
+function assistWithFields(trigger: HTMLElement) {
+  if (props.readonly || !aira.context.value)
+    return
+  aira.open(trigger)
+}
+function analyzeReport(trigger: HTMLElement) {
+  if (!props.readonly || !props.recorderRecordId || !props.recordRevision || !aira.context.value)
+    return
+  aira.open(trigger)
+  analysisRequested.value = true
+}
+watch([assistantChat, analysisRequested], ([chat, requested]) => {
+  if (chat && requested && aira.visible.value) {
+    analysisRequested.value = false
+    syncCurrentRecorderRecordContext()
+    if (!chat.analyzeRecord($t("page.airaActions.analysisPrompt")))
+      message.info($t("page.airaActions.reportBusy"))
+  }
+}, { flush: "post" })
+
 defineExpose({
+  analyzeReport,
+  assistWithFields,
   validate: wrappedValidate,
   requiredCompletion,
   focusFirstInvalidField,

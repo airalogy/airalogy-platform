@@ -100,6 +100,9 @@ export interface CurrentRecorderRecordContext {
   protocol_uid?: string
   protocol_name?: string
   readonly?: boolean
+  record_id?: string
+  record_revision?: number
+  protocol_version?: string
   filled_count?: number
   empty_count?: number
   field_summary?: CurrentRecorderRecordFieldSummary[]

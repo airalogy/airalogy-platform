@@ -37,7 +37,7 @@ for (const width of [1440, 663, 390]) {
       test.setTimeout(150_000)
       page.setDefaultTimeout(30_000)
       const { api, headers, protocolId, protocolUrl } = await publishFieldProtocol(request, [
-        '{{var|short_label: str, title="标签编号", examples=["EX-100"]}}',
+        '{{var|short_label: str, title="标签编号", min_length=1, examples=["EX-100"]}}',
         '{{var|location: str, title="位置", placeholder="例如 A-01"}}',
         '{{var|photo: FileIdJPG | None = None, title="标签照片"}}',
         '{{step|prepare, title="准备标签", check=True}}',
@@ -70,6 +70,9 @@ for (const width of [1440, 663, 390]) {
       await expect(compactLabel.locator("code")).toBeVisible()
       const definition = compactLabel.locator("dl")
       await expect(definition).toContainText("示例数据")
+      await expect(definition.getByText("最小长度", { exact: true })).toHaveCount(1)
+      await expect(definition).not.toContainText(/minLength|min_length/)
+      await expect(compactLabel.getByRole("button", { name: /定位/ })).toHaveText("定位正文")
       await expect(definition.getByText("EX-100", { exact: true })).toBeVisible()
       await expect(definition.getByText("str", { exact: true })).toBeVisible()
       for (const value of await sidebar.locator(':is([data-panel-key="var:short_label"], [data-panel-key="var:location"]) .aimd-panel-value').all()) {

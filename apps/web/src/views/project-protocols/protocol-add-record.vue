@@ -93,6 +93,9 @@
           :saved-at="autosaveState.lastSavedAt"
           @restore:draft="handleManualRestore"
         />
+        <aira-action-button v-if="aira?.context.value && !loading" data-testid="record-assist" :aria-expanded="aira.expanded.value" @click="formRef?.assistWithFields($event.currentTarget)">
+          {{ $t("page.airaActions.fillRecord") }}
+        </aira-action-button>
         <n-button data-testid="record-save-draft" size="medium" secondary :disabled="loading || submissionLoading" @click="handleManualSave">
           {{ $t("page.protocol.draft.saveButton") }}
         </n-button>
@@ -174,13 +177,15 @@ import type { ProtocolModels } from "@airalogy/shared/types"
 import type { ValidateError } from "async-validator"
 import type { OnError } from "naive-ui/es/upload/src/interface"
 import type { ShallowRef } from "vue"
-
 import type { ExtractResult, FieldRecord } from "./modules/protocol/helpers/parseFieldStructure"
 import type { IRecordDataItem } from "./types"
+
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import LearningLink from "@/components/learning/learning-link.vue"
 import { useBoolean, useGlobalBeforeUnload, useLoading, useShowModal } from "@/composables"
-
 import { useRouterPush } from "@/composables/useRouterPush"
+
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { getProtocolRecordReport, postNewResearchRecord, postValidateRecord, putUpdateResearchRecord, transformFields } from "@/service/api/project-protocols"
 import { fetchResearchWorkItem, type ResearchWorkItemDetail, submitResearchWorkItem } from "@/service/api/research-tasks"
 import { baseURL } from "@/service/request"
@@ -262,6 +267,7 @@ const correctionReason = ref("")
 const reviewPending = ref(false)
 
 const formRef = ref<{
+  assistWithFields: (trigger: HTMLElement) => void
   validate: () => any
   requiredCompletion: { filled: number, total: number, percent: number }
   focusFirstInvalidField: (field?: string) => Promise<void>
@@ -271,6 +277,7 @@ const formRef = ref<{
   restoreFieldRecord: (data?: Partial<IRecordData>) => void
 } | null>(null)
 
+const aira = useWorkspaceAira()
 const instanceStore = useInstanceStore()
 const instanceId = nanoid()
 provide("protocol-workflow-channel", { id: instanceId })

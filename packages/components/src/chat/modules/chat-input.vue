@@ -46,7 +46,7 @@
 
       <!-- Default submit button -->
       <slot name="suffix">
-        <n-button data-testid="chat-submit" type="primary" :disabled="buttonDisabled" class="px-3" @click="handleClick">
+        <n-button data-testid="chat-submit" :aria-label="loading ? $t('common.stop') : $t('chat.sendMessage')" type="primary" :disabled="buttonDisabled" class="px-3" @click="handleClick">
           <template #icon>
             <n-icon :size="16">
               <icon-shared-stop-message v-if="loading" />
@@ -147,6 +147,7 @@ const {
   prompt,
   resetAudioRecorder,
   sttEndpoint,
+  requestHeaders,
   token,
 } = useChatInfoStore()! || {}
 
@@ -155,16 +156,12 @@ const dropZoneRef = ref<HTMLElement | null>(null)
 const scrollbarRef = ref<any>(null)
 const { isOverDropZone } = useDropZone(dropZoneRef, {
   onDrop: (files) => {
-    if (files) {
-      emit("drop:files", Array.from(files))
-      const fileInfo: UploadFileInfo = {
-        file: files[0],
-        status: "uploading",
-        id: nanoid(),
-        name: files[0].name,
+    if (files?.length) {
+      emit("drop:files", files)
+      for (const file of files) {
+        const fileInfo: UploadFileInfo = { file, status: "uploading", id: nanoid(), name: file.name }
+        void handleUpload({ file: fileInfo, onError() {}, onProgress() {}, onFinish() {} })
       }
-      // TODO: implement onError, onProgress, onFinish
-      handleUpload({ file: fileInfo as any, onError() {}, onProgress() { }, onFinish() { } })
     }
   },
 })
@@ -810,8 +807,11 @@ const editor = useEditor({
         inSubmenu: inSubmenuRef,
       },
       ),
-      renderHTML: (props) => {
-        return `@${props.node.attrs.label || props.node.attrs.id}`
+      renderHTML: ({ node, options }) => {
+        const label = `@${node.attrs.label || node.attrs.id}`
+        if (node.attrs.itemType === "getFieldValue")
+          return ["span", { ...options.HTMLAttributes, title: node.attrs.id }, label]
+        return label
       },
     }),
   ],
@@ -869,15 +869,14 @@ bubbleMenuEventBus.on((event, payload) => {
       editor.value?.commands.setContent(promptWrappedText)
       handleSubmit()
     }
-    else if (event === "addToChat") {
-      // If there's existing content, add a newline
-      if (editor.value?.getText().trim()) {
-        editor.value?.commands.setContent(`${editor.value?.getText()}\n${payload}`)
-      }
-      else {
-        editor.value?.commands.setContent(payload)
-      }
-      editor.value?.commands.focus("end")
+    else if (event === "addToChat" && editor.value && payload) {
+      const input = editor.value
+      const end = input.state.doc.content.size
+      const paragraphs = payload.split(/\r\n?|\n/).map(line => ({
+        type: "paragraph",
+        content: line ? [{ type: "text", text: line }] : [],
+      }))
+      input.chain().insertContentAt(input.isEmpty ? { from: 0, to: end } : end, paragraphs).focus("end").run()
     }
   }
   else if (typeof payload === "object") {
@@ -915,16 +914,14 @@ bubbleMenuEventBus.on((event, payload) => {
 
 )
 
+const preparingInput = computed(() => isRecording.value || isProcessingAudio.value || attachments.value?.some(item => item.isUploading || !item.serverId))
+
 const buttonDisabled = computed(() => {
   if (loading.value) {
     return false
   }
 
-  if (inputMethod.value === "audio") {
-    return isRecording.value
-  }
-
-  if (attachments.value?.some(item => item.isUploading)) {
+  if (preparingInput.value) {
     return true
   }
 
@@ -941,6 +938,9 @@ const buttonDisabled = computed(() => {
 // }
 
 async function handleSubmit() {
+  if (loading.value || preparingInput.value)
+    return
+
   const editorState = editor.value?.state.toJSON().doc
   const [contextItems, selectedCode, content] = await resolveEditorContent(editorState, submenuBus)
 
@@ -956,7 +956,6 @@ async function handleSubmit() {
     return
   }
 
-  console.log("handleSubmit", content)
   editor.value?.commands.clearContent()
   const type = props.source === "protocol" ? selectedRole.value : ChatType.NORMAL
   const submittedText = typeof content === "string"
@@ -1002,6 +1001,7 @@ async function handleRecordingStopped() {
     const response = await fetch(sttEndpoint.value, {
       method: "POST",
       headers: {
+        ...requestHeaders?.value,
         "Auth-Token": token.value || "",
       },
       body: formData,
@@ -1015,17 +1015,17 @@ async function handleRecordingStopped() {
     const text = data.text || data.content || data.message || data.transcript || (typeof data === "string" ? data : "")
 
     if (text) {
-      const currentText = editor.value?.getText() || ""
-      const newText = currentText ? `${currentText} ${text}` : text
-      editor.value?.commands.setContent(newText)
+      const input = editor.value
+      if (input)
+        input.chain().focus("end").insertContent({ type: "text", text: (input.isEmpty ? "" : " ") + text }).run()
     }
     else {
       console.warn("STT Response did not contain expected text field:", data)
-      message.warning("Could not transcribe audio")
+      message.warning($t("page.protocol.fieldInput.transcriptionMissing"))
     }
   }
   catch (error) {
-    message.error("Failed to process audio recording")
+    message.error($t("page.protocol.fieldInput.transcriptionFailed"))
     console.error("Audio processing error:", error)
   }
   finally {
@@ -1223,7 +1223,19 @@ function handleScroll(e: WheelEvent) {
   display: v-bind('inputMethodDisplay')
 
 :deep(.chat-input__mention)
-  @apply bg-primary-color py-1 px-2 text-white rounded-md
+  display: inline-block
+  box-sizing: border-box
+  max-width: 100%
+  padding: 0 .375em
+  border: 1px solid #bfdbfe
+  border-radius: .375em
+  background-color: #eff6ff
+  color: #1e40af
+  font-weight: 600
+  line-height: 1.45
+  vertical-align: baseline
+  white-space: normal
+  overflow-wrap: anywhere
 
 @supports not (backdrop-filter: blur(4px))
   .tiptap-dropzone__overlay::before

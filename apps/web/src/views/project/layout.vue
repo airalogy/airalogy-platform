@@ -2,7 +2,9 @@
   <global-layout>
     <template #assistant>
       <aira-side-panel v-if="hasOpened && projectInfo && !projectInfo.organization_reader" :open="assistantOpen" :label="$t('page.projectAira.panel')" @close="closeAssistant">
-        <aira-panel :key="assistantScope" :project-id="projectInfo.id" :project-name="projectTitle" :meeting-name="meetingName" :meeting-id="currentMeetingId" :initial-chat="requestedChat" :can-send="assistantAvailable" @close="closeAssistant" @restart="clearRequestedChat" @review="reviewProposal" />
+        <KeepAlive :key="assistantScope" :max="2">
+          <aira-panel :key="minutes?.key || 'project'" :minutes="minutes?.draft" :project-id="projectInfo.id" :project-name="projectTitle" :meeting-name="meetingName" :meeting-id="currentMeetingId" :initial-chat="requestedChat" :can-send="assistantAvailable" @close="closeAssistant" @restart="clearRequestedChat" @review="reviewProposal" />
+        </KeepAlive>
       </aira-side-panel>
     </template>
     <resource-access-state v-if="failure" :failure="failure" @retry="retry" />
@@ -25,9 +27,9 @@
       <template v-if="authStore.isLogin" #suffix>
         <div class="flex flex-wrap items-center justify-end gap-2">
           <workspace-share v-if="instanceStore.isSingleLab" :key="projectInfo.id" :project="projectInfo.id" :organization-readable="projectInfo.organization_readable" :manage="projectInfo.can_publish" />
-          <n-button v-if="assistantAvailable" ref="assistantTrigger" size="small" :aria-expanded="assistantOpen" data-testid="project-aira" @click="headerTrigger = undefined; assistantOpen = !assistantOpen">
-            Aira
-          </n-button>
+          <aira-action-button v-if="assistantAvailable && route.name === 'project-meetings' && !route.query.meeting" ref="assistantTrigger" :aria-expanded="assistantOpen" data-testid="project-aira" @click="openProjectAssistant($event.currentTarget)">
+            {{ $t("page.airaActions.draft") }}
+          </aira-action-button>
           <n-dropdown trigger="click" :options="workspaceNavigation" @select="navigateWorkspace">
             <n-button data-testid="project-more">
               {{ $t('common.more') }}
@@ -84,7 +86,8 @@
 import type { ProjectInfoNameKey } from "#/page-route"
 import type { MeetingProposal } from "@/service/api/meetings"
 import type { TabPaneProps } from "naive-ui/es/tabs"
-import type { MeetingHandoff } from "../meetings/aira-handoff"
+import type { MeetingHandoff, MinutesDraft } from "../meetings/aira-handoff"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import AiraSidePanel from "@/components/common/aira-side-panel.vue"
 import ResourceAccessState from "@/components/common/resource-access-state.vue"
 import WorkspaceShare from "@/components/protocol/workspace-share.vue"
@@ -108,7 +111,7 @@ import { $t } from "@airalogy/shared/locales"
 import { computed, onMounted } from "vue"
 
 import { LAB_OWNER_AND_MANAGER } from "../../composables/useLabPermissions"
-import { meetingHandoffKey, meetingNameKey } from "../meetings/aira-handoff"
+import { meetingHandoffKey, meetingNameKey, organizeMinutesKey } from "../meetings/aira-handoff"
 import AiraPanel from "../meetings/aira-panel.vue"
 import { useProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import AddProtocolModal from "../project-protocols/modules/add-protocol-modal.vue"
@@ -183,13 +186,31 @@ const requestedChat = ref("")
 const currentMeetingId = computed(() => route.name === "project-meetings" && typeof route.query.meeting === "string" && route.query.meeting !== "new" ? route.query.meeting : null)
 const projectAssistant = computed(() => assistantAvailable.value || Boolean(requestedChat.value && projectInfo.value && authStore.isLogin))
 let headerTrigger: HTMLElement | undefined
+const minutes = shallowRef<{ key: string, draft: MinutesDraft }>()
+function openProjectAssistant(trigger?: HTMLElement) {
+  headerTrigger = trigger
+  assistantOpen.value = true
+}
+function organizeMinutes(draft: MinutesDraft, trigger: HTMLElement) {
+  if (!assistantAvailable.value || route.name !== "project-meetings")
+    return
+  if (minutes.value?.draft.prompt !== draft.prompt)
+    minutes.value = { key: crypto.randomUUID(), draft }
+  else
+    minutes.value = { key: minutes.value.key, draft }
+  openProjectAssistant(trigger)
+}
+provide(organizeMinutesKey, { available: assistantAvailable, visible: assistantOpen, open: organizeMinutes })
+watch([assistantScope, () => route.name, () => route.query.meeting, () => route.query.aira, assistantAvailable], () => {
+  if (minutes.value) {
+    minutes.value = undefined
+    assistantOpen.value = false
+  }
+}, { flush: "sync" })
 provide(projectAiraKey, {
   available: projectAssistant,
   visible: assistantOpen,
-  open(trigger) {
-    headerTrigger = trigger
-    assistantOpen.value = true
-  },
+  open: openProjectAssistant,
 })
 watch([assistantScope, () => projectInfo.value?.id, () => instanceStore.aiEnabled, () => authStore.isLogin], async (_, __, cleanup) => {
   const controller = new AbortController()

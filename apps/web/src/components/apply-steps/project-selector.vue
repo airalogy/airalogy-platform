@@ -3,7 +3,7 @@
     <n-cascader
       v-model:value="combinedId"
       :options="visibleOptions"
-      placeholder="Choose target project"
+      :placeholder="$t('page.protocol.airaImport.projectPlaceholder')"
       check-strategy="child"
       :on-load="handleLoad"
       required
@@ -15,7 +15,7 @@
       @update-show="fetchLabs"
     >
       <template #empty>
-        <n-empty description="No Project" size="small" />
+        <n-empty :description="$t('page.protocol.metadata.noProjects')" size="small" />
       </template>
     </n-cascader>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PinnedItem, PinnedResourceType } from "@/service/api/pinned-items"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { recentResearchDocuments } from "@/service/api/research-documents"
 import {
@@ -106,9 +107,9 @@ onBeforeUnmount(() => sequence++)
           {{ t('page.home.workspace.description') }}
         </p>
       </div>
-      <n-button v-if="instanceStore.aiEnabled && authStore.userInfo.id" secondary type="primary" data-testid="home-aira" :aria-expanded="airaVisible" @click="openAira($event.currentTarget as HTMLElement)">
+      <aira-action-button v-if="instanceStore.aiEnabled && authStore.userInfo.id" data-testid="home-aira" :aria-expanded="airaVisible" @click="openAira($event.currentTarget as HTMLElement)">
         {{ t('page.home.workspace.askAira') }}
-      </n-button>
+      </aira-action-button>
     </div>
     <project-workspaces :pins="pins" :pinning-keys="pinningKeys" @toggle-pin="emit('togglePin', $event)" />
     <work-summary />

@@ -2,6 +2,8 @@
 import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
 import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
+import type ActionBatch from "./action-batch.vue"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import PeoplePicker from "@/components/project/people-picker.vue"
 import {
   addMeetingComment,
@@ -29,8 +31,7 @@ import { useDialog } from "naive-ui"
 import { useI18n } from "vue-i18n"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
-import ActionBatch from "./action-batch.vue"
-import { meetingHandoffKey, meetingNameKey } from "./aira-handoff"
+import { meetingHandoffKey, meetingNameKey, organizeMinutesKey } from "./aira-handoff"
 import PreviousMeetingWork from "./previous-meeting-work.vue"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
 
@@ -146,6 +147,33 @@ function flushVisual() {
   if (markdown !== visualLastMarkdown)
     updateBody(markdown, true)
   else visualPending.value = false
+}
+const organize = inject(organizeMinutesKey, null)
+const actionBatch = ref<InstanceType<typeof ActionBatch>>()
+function organizeMinutes(trigger: HTMLElement) {
+  flushVisual()
+  const source = form.value
+  if (!source || !editing.value || !editable.value || !organize)
+    return
+  const { title, body } = source
+  const id = selected.value?.id || creationId.value
+  const notes = [t("page.airaActions.minutesPrompt"), title, body].filter(Boolean).join("\n\n")
+  organize.open({
+    prompt: notes,
+    apply(proposal) {
+      flushVisual()
+      if (!editing.value || !editable.value || busy.value || form.value !== source || (selected.value?.id || creationId.value) !== id || source.title !== title || source.body !== body)
+        return false
+      const actions = proposal.actions.filter(Boolean)
+      const staged = actionBatch.value?.appendSuggestions(actions)
+      const actionText = !staged && actions.length ? `\n\n${t("page.meetings.actions")}\n${actions.map(action => `- ${action}`).join("\n")}` : ""
+      updateBody(proposal.body + actionText)
+      if (!source.title.trim())
+        source.title = proposal.title
+      surfaceRevision.value++
+      return true
+    },
+  }, trigger)
 }
 function switchMode(mode: "source" | "wysiwyg") {
   flushVisual()
@@ -358,10 +386,13 @@ async function save() {
         form.value,
         selected.value?.revision,
       )
+    const creating = !selected.value
     accept(result)
     discussionIds.value = []
-    draftActions.value = []
-    actionDirty.value = false
+    if (creating) {
+      draftActions.value = []
+      actionDirty.value = false
+    }
     editing.value = false
     notice.value = t("page.meetings.saved")
     if (route.query.meeting === "new") {
@@ -833,9 +864,12 @@ watch(page, loadList)
           </div>
         </details>
         <section class="min-w-0 border rounded-lg p-3" data-testid="meeting-minutes">
-          <h2 class="text-lg">
-            {{ t("page.meetings.minutes") }}
-          </h2>
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="m-0 text-lg">{{ t("page.meetings.minutes") }}</h2>
+            <aira-action-button v-if="editable && organize?.available.value" :disabled="busy" :aria-expanded="organize.visible.value" data-testid="meeting-organize" @click="organizeMinutes($event.currentTarget)">
+              {{ t("page.airaActions.organize") }}
+            </aira-action-button>
+          </div>
           <aimd-editor
             :key="surfaceRevision"
             ref="visualSurface"
@@ -853,7 +887,7 @@ watch(page, loadList)
           />
         </section>
       </template>
-      <action-batch v-if="draftMeeting" :key="creationId" :meeting="draftMeeting" :members="members" :disabled="busy" draft :initial-titles="initialActionTitles" @rows="draftActions = $event" @dirty="actionDirty = $event" />
+      <action-batch ref="actionBatch" v-if="draftMeeting" :key="creationId" :meeting="draftMeeting" :members="members" :disabled="busy" draft :initial-titles="initialActionTitles" @rows="draftActions = $event" @dirty="actionDirty = $event" />
       <div v-if="selected" class="flex flex-wrap items-center gap-3 text-sm text-gray-500">
         <span>{{ t("page.meetings.created") }}
           {{ new Date(selected.created_at).toLocaleString() }}</span><span>{{ t("page.meetings.updated") }}
@@ -914,7 +948,7 @@ watch(page, loadList)
               {{ t("page.meetings.linkWork") }}
             </n-button>
           </div>
-          <action-batch v-if="selected.can_create_work" :key="selected.id" :meeting="selected" :members="members" :disabled="busy || dirty" @dirty="actionDirty = $event" @saved="selected = $event; notice = t('page.meetings.actionSaved')" />
+          <action-batch ref="actionBatch" v-if="selected.can_create_work" :key="selected.id" :meeting="selected" :members="members" :disabled="busy || dirty" @dirty="actionDirty = $event" @saved="selected = $event; notice = t('page.meetings.actionSaved')" />
         </template>
       </section>
       <section v-if="selected" class="border rounded-lg p-4" data-testid="meeting-comments">

@@ -20,6 +20,7 @@ declare module 'vue' {
     AimdStepRef: typeof import('./../components/custom/aimd/components/aimd-step-ref.vue')['default']
     AimdTag: typeof import('./../components/custom/aimd/components/aimd-tag.vue')['default']
     AiMenuIcon: typeof import('./../components/icon/ai-menu-icon.vue')['default']
+    AiraActionButton: typeof import('./../components/common/aira-action-button.vue')['default']
     AiraSidePanel: typeof import('./../components/common/aira-side-panel.vue')['default']
     AnnotationInput: typeof import('./../components/custom/aimd/components/inputs/annotation-input.vue')['default']
     AppendDataModal: typeof import('./../components/custom/aimd/components/table/append-data-modal.vue')['default']

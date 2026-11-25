@@ -2,7 +2,7 @@ import type { RenderMode } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared"
 import type { ChatModel } from "@airalogy/shared/enum/chat"
 import type { CascaderOption, SelectOption } from "naive-ui"
-import type { Component, InjectionKey, MaybeRefOrGetter, ToRefs } from "vue"
+import type { Component, InjectionKey, MaybeRefOrGetter, Ref, ToRefs } from "vue"
 import { pick } from "lodash-es"
 import { inject, provide } from "vue"
 
@@ -39,6 +39,9 @@ export interface CurrentRecorderRecordContext {
   protocol_uid?: string
   protocol_name?: string
   readonly?: boolean
+  record_id?: string
+  record_revision?: number
+  protocol_version?: string
   filled_count?: number
   empty_count?: number
   field_summary?: CurrentRecorderRecordFieldSummary[]
@@ -51,6 +54,7 @@ export interface ChatProviderProps<InjectContext = any> {
   uploadAttachment: (file: File) => Promise<{ id: string, url?: string | null, filename?: string | null }>
   stopStream: (payload: { chatId: string }) => Promise<void>
   baseUrl: string
+  requestHeaders?: Record<string, string>
   token: string
   mode: "query" | "param" | "embedded"
   protocolId: string
@@ -82,7 +86,7 @@ export interface ContextDialogState {
   defaultSelectedOptions?: CascaderOption[]
   readonlyList?: string[]
 }
-export type ChatProviderContext = ToRefs<Required<ChatProviderProps>>
+export type ChatProviderContext = ToRefs<Required<Omit<ChatProviderProps, "requestHeaders">>> & { requestHeaders?: Ref<Record<string, string>> }
 export const ChatProviderKey: InjectionKey<ChatProviderContext> = Symbol("ChatProvider")
 
 export function createDefaultRendererContext(): LegacyRendererContext {
@@ -106,7 +110,7 @@ export function createDefaultCurrentRecorderRecordContext(): CurrentRecorderReco
 }
 
 export function useProvideChatProvider(config: ChatProviderContext) {
-  const context = pick(config, ["postToolResultChat", "uploadAttachment", "stopStream", "baseUrl", "token", "mode", "protocolId", "userInfo", "contextDialog", "contextDialogEventHandlers", "contextOptions", "createChatContext", "currentEditorProtocolContext", "currentRecorderRecordContext", "enabledModels", "modelNames", "createRendererContext"])
+  const context = pick(config, ["postToolResultChat", "uploadAttachment", "stopStream", "baseUrl", "requestHeaders", "token", "mode", "protocolId", "userInfo", "contextDialog", "contextDialogEventHandlers", "contextOptions", "createChatContext", "currentEditorProtocolContext", "currentRecorderRecordContext", "enabledModels", "modelNames", "createRendererContext"])
 
   provide(ChatProviderKey, context)
 

@@ -1,7 +1,7 @@
 <template>
   <n-collapse v-model:expanded-names="expandedNames" :theme-overrides="{ itemMargin: '8px 0 0 0', titlePadding: '8px 0 0 0' }" display-directive="show">
     <!-- Basic Info Section -->
-    <n-collapse-item title="Basic Information" name="basic-info" default-expanded>
+    <n-collapse-item :title="$t('page.protocol.settings.basicInfoTitle')" name="basic-info" default-expanded>
       <template #header-extra>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -9,32 +9,29 @@
               <icon-tabler-info-circle />
             </n-icon>
           </template>
-          Basic information about the protocol, including identifiers and version
+          {{ $t('page.protocol.metadata.basicHint') }}
         </n-tooltip>
       </template>
 
       <n-grid :cols="2" item-responsive>
-        <n-form-item-gi span="2 800:1" v-bind="props.itemProps" required label="Protocol ID" :path="getPath('id')">
+        <n-form-item-gi span="2 800:1" v-bind="props.itemProps" required :label="$t('page.protocol.settings.protocolIdLabel')" :path="getPath('id')">
           <n-tooltip trigger="hover">
             <template #trigger>
               <div class="w-full flex items-center">
-                <n-input v-model:value="formData.id" :size="props.size" placeholder="e.g. airalogy_protocol" :disabled="props.disableDefault && !!props.protocolInfo" />
+                <n-input v-model:value="formData.id" :size="props.size" :placeholder="$t('page.protocol.metadata.idExample')" :disabled="props.disableDefault && !!props.protocolInfo" />
                 <n-icon size="16" class="ml-auto cursor-help text-gray-400">
                   <icon-tabler-info-circle />
                 </n-icon>
               </div>
             </template>
-            Unique identifier for this protocol in the Airalogy Protocol ID space. Should be a UUID or a custom snake_case string.
+            {{ $t('page.protocol.metadata.idHint') }}
           </n-tooltip>
-        <!-- <common-id-input v-model="formData.id" type="protocol" :size="props.size" placeholder="e.g. airalogy_protocol" /> -->
         </n-form-item-gi>
 
-        <n-form-item-gi span="2 800:1" v-bind="props.itemProps" required label="Version" :path="getPath('version')">
+        <n-form-item-gi span="2 800:1" v-bind="props.itemProps" required :label="$t('common.version')" :path="getPath('version')">
           <common-version-input
             v-model="formData.version"
             :size="props.size"
-            placeholder="e.g. 0.0.1"
-            tooltip="Protocol version in x.y.z format. Default is 0.0.1."
             trigger="hover"
             placement="top"
           >
@@ -44,7 +41,7 @@
           </common-version-input>
         </n-form-item-gi>
 
-        <n-form-item-gi v-if="!skipGlobalId" :span="2" v-bind="props.itemProps" label="Global ID (Auto-generated)" :path="getPath('airalogy_protocol_id')">
+        <n-form-item-gi v-if="!skipGlobalId" :span="2" v-bind="props.itemProps" :label="$t('page.protocol.metadata.globalId')" :path="getPath('airalogy_protocol_id')">
           <n-tooltip trigger="hover">
             <template #trigger>
               <div class="w-full flex items-center gap-2 border border-gray-300 rounded-md bg-gray-50 px-3 py-2">
@@ -52,32 +49,32 @@
                   <icon-ion-lock-closed-outline />
                 </n-icon>
                 <span class="flex-1 truncate text-sm text-gray-600 font-mono">
-                  {{ formData.airalogy_protocol_id || 'Auto-generated from Protocol ID and Version' }}
+                  {{ formData.airalogy_protocol_id || $t('page.protocol.metadata.globalIdEmpty') }}
                 </span>
                 <n-icon size="16" class="flex-shrink-0 cursor-help text-gray-400">
                   <icon-tabler-info-circle />
                 </n-icon>
               </div>
             </template>
-            Full protocol ID in the format: airalogy.id.lab.[lab_id].project.[project_id].protocol.[protocol_id].v.[version]. This field is auto-generated based on Protocol ID and Version.
+            {{ $t('page.protocol.metadata.globalIdHint') }}
           </n-tooltip>
         </n-form-item-gi>
       </n-grid>
-      <n-form-item v-bind="props.itemProps" required label="Name" :path="getPath('name')">
+      <n-form-item v-bind="props.itemProps" required :label="$t('page.hub.uploadModal.protocolNameLabel')" :path="getPath('name')">
         <n-tooltip trigger="hover">
           <template #trigger>
             <div class="w-full flex items-center">
-              <n-input v-model:value="formData.name" :size="props.size" placeholder="e.g. Protocol Name" />
+              <n-input v-model:value="formData.name" :size="props.size" :placeholder="$t('page.protocol.settings.protocolNamePlaceholder')" />
               <n-icon size="16" class="ml-1 cursor-help text-gray-400">
                 <icon-tabler-info-circle />
               </n-icon>
             </div>
           </template>
-          Descriptive name for this protocol. If not specified, it will be auto-generated from the markdown title.
+          {{ $t('page.protocol.metadata.nameHint') }}
         </n-tooltip>
       </n-form-item>
 
-      <n-form-item v-bind="props.itemProps" label="License" :path="getPath('license')">
+      <n-form-item v-bind="props.itemProps" :label="$t('common.license')" :path="getPath('license')">
         <n-tooltip trigger="hover">
           <template #trigger>
             <div class="w-full flex items-center">
@@ -87,20 +84,20 @@
                 filterable
                 tag
                 :size="props.size"
-                placeholder="Select or enter a license"
+                :placeholder="$t('page.protocol.settings.licensePlaceholder')"
               />
               <n-icon size="16" class="ml-1 cursor-help text-gray-400">
                 <icon-tabler-info-circle />
               </n-icon>
             </div>
           </template>
-          Optional license for the protocol. Helps users understand usage restrictions.
+          {{ $t('page.protocol.metadata.licenseHint') }}
         </n-tooltip>
       </n-form-item>
     </n-collapse-item>
 
     <!-- Description Section -->
-    <n-collapse-item title="Description" name="description">
+    <n-collapse-item :title="$t('common.description')" name="description">
       <template #header-extra>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -108,7 +105,7 @@
               <icon-tabler-info-circle />
             </n-icon>
           </template>
-          Provide a clear description of what this protocol does and its key features
+          {{ $t('page.protocol.metadata.descriptionHint') }}
         </n-tooltip>
       </template>
 
@@ -118,19 +115,19 @@
             <n-input
               v-model:value="formData.description"
               type="textarea"
-              placeholder="Describe this protocol"
+              :placeholder="$t('page.protocol.settings.descriptionPlaceholder')"
               :autosize="{ minRows: 3, maxRows: 6 }"
               maxlength="200"
               show-count
             />
           </template>
-          Provide a clear description of what this protocol does and its key features
+          {{ $t('page.protocol.metadata.descriptionHint') }}
         </n-tooltip>
       </n-form-item>
     </n-collapse-item>
 
     <!-- Authors Section -->
-    <n-collapse-item title="Authors" name="authors">
+    <n-collapse-item :title="$t('common.authors')" name="authors">
       <template #header-extra>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -138,16 +135,16 @@
               <icon-tabler-info-circle />
             </n-icon>
           </template>
-          List of protocol authors with their contact information
+          {{ $t('page.protocol.metadata.authorsHint') }}
         </n-tooltip>
       </template>
 
       <div v-for="(author, index) in formData.authors" :key="`author-${index}`" class="mb-4 border border-gray-200 rounded-md">
         <div class="mb-2 w-full flex items-center justify-between">
           <div class="px-4 text-sm font-medium">
-            Author #{{ index + 1 }}
+            {{ $t("page.protocol.metadata.authorNumber", { index: index + 1 }) }}
           </div>
-          <n-button :size="props.size" type="error" quaternary @click="removeAuthor(index)">
+          <n-button :size="props.size" type="error" quaternary :aria-label="$t('page.protocol.metadata.removeAuthor', { index: index + 1 })" @click="removeAuthor(index)">
             <template #icon>
               <n-icon :size="16">
                 <icon-ion-trash-outline />
@@ -156,16 +153,16 @@
           </n-button>
         </div>
 
-        <n-form-item v-bind="props.itemProps" :path="getPath(`authors[${index}].name`)" :rule-path="getPath(`authors.name`)" label="Name">
-          <n-input v-model:value="author.name" :size="props.size" placeholder="Author name" class="mr-4" />
+        <n-form-item v-bind="props.itemProps" :path="getPath(`authors[${index}].name`)" :rule-path="getPath(`authors.name`)" :label="$t('page.protocol.metadata.personName')">
+          <n-input v-model:value="author.name" :size="props.size" :placeholder="$t('page.protocol.metadata.authorName')" class="mr-4" />
         </n-form-item>
 
-        <n-form-item v-bind="props.itemProps" :path="getPath(`authors[${index}].email`)" :rule-path="getPath(`authors.email`)" label="Email">
-          <n-input v-model:value="author.email" :size="props.size" placeholder="Author email" class="mr-4" />
+        <n-form-item v-bind="props.itemProps" :path="getPath(`authors[${index}].email`)" :rule-path="getPath(`authors.email`)" :label="$t('common.email')">
+          <n-input v-model:value="author.email" :size="props.size" :placeholder="$t('page.protocol.metadata.authorEmail')" class="mr-4" />
         </n-form-item>
 
-        <n-form-item v-bind="props.itemProps" :path="getPath(`authors[${index}].airalogy_user_id`)" :rule-path="getPath(`authors.airalogy_user_id`)" label="User ID">
-          <n-input v-model:value="author.airalogy_user_id" :size="props.size" placeholder="e.g. airalogy.id.user.alice" class="mr-4" />
+        <n-form-item v-bind="props.itemProps" :path="getPath(`authors[${index}].airalogy_user_id`)" :rule-path="getPath(`authors.airalogy_user_id`)" :label="$t('page.protocol.metadata.userId')">
+          <n-input v-model:value="author.airalogy_user_id" :size="props.size" :placeholder="$t('page.protocol.metadata.userIdExample')" class="mr-4" />
         </n-form-item>
       </div>
 
@@ -175,12 +172,12 @@
             <icon-ion-add />
           </n-icon>
         </template>
-        Add Author
+        {{ $t('page.protocol.metadata.addAuthor') }}
       </n-button>
     </n-collapse-item>
 
     <!-- Maintainers Section -->
-    <n-collapse-item title="Maintainers" name="maintainers">
+    <n-collapse-item :title="$t('common.maintainers')" name="maintainers">
       <template #header-extra>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -188,16 +185,16 @@
               <icon-tabler-info-circle />
             </n-icon>
           </template>
-          List of protocol maintainers responsible for updates and maintenance
+          {{ $t('page.protocol.metadata.maintainersHint') }}
         </n-tooltip>
       </template>
 
       <div v-for="(maintainer, index) in formData.maintainers" :key="`maintainer-${index}`" class="mb-4 border border-gray-200 rounded-md">
         <div class="mb-2 w-full flex items-center justify-between">
           <div class="px-4 text-sm font-medium">
-            Maintainer #{{ index + 1 }}
+            {{ $t("page.protocol.metadata.maintainerNumber", { index: index + 1 }) }}
           </div>
-          <n-button :size="props.size" type="error" quaternary @click="removeMaintainer(index)">
+          <n-button :size="props.size" type="error" quaternary :aria-label="$t('page.protocol.metadata.removeMaintainer', { index: index + 1 })" @click="removeMaintainer(index)">
             <template #icon>
               <n-icon :size="16">
                 <icon-ion-trash-outline />
@@ -206,16 +203,16 @@
           </n-button>
         </div>
 
-        <n-form-item v-bind="props.itemProps" :path="getPath(`maintainers[${index}].name`)" :rule-path="getPath(`maintainers.name`)" label="Name">
-          <n-input v-model:value="maintainer.name" :size="props.size" placeholder="Maintainer name" class="mr-4" />
+        <n-form-item v-bind="props.itemProps" :path="getPath(`maintainers[${index}].name`)" :rule-path="getPath(`maintainers.name`)" :label="$t('page.protocol.metadata.personName')">
+          <n-input v-model:value="maintainer.name" :size="props.size" :placeholder="$t('page.protocol.metadata.maintainerName')" class="mr-4" />
         </n-form-item>
 
-        <n-form-item v-bind="props.itemProps" :path="getPath(`maintainers[${index}].email`)" :rule-path="getPath(`maintainers.email`)" label="Email">
-          <n-input v-model:value="maintainer.email" :size="props.size" placeholder="Maintainer email" class="mr-4" />
+        <n-form-item v-bind="props.itemProps" :path="getPath(`maintainers[${index}].email`)" :rule-path="getPath(`maintainers.email`)" :label="$t('common.email')">
+          <n-input v-model:value="maintainer.email" :size="props.size" :placeholder="$t('page.protocol.metadata.maintainerEmail')" class="mr-4" />
         </n-form-item>
 
-        <n-form-item v-bind="props.itemProps" :path="getPath(`maintainers[${index}].airalogy_user_id`)" :rule-path="getPath(`maintainers.airalogy_user_id`)" label="User ID">
-          <n-input v-model:value="maintainer.airalogy_user_id" :size="props.size" placeholder="e.g. airalogy.id.user.alice" class="mr-4" />
+        <n-form-item v-bind="props.itemProps" :path="getPath(`maintainers[${index}].airalogy_user_id`)" :rule-path="getPath(`maintainers.airalogy_user_id`)" :label="$t('page.protocol.metadata.userId')">
+          <n-input v-model:value="maintainer.airalogy_user_id" :size="props.size" :placeholder="$t('page.protocol.metadata.userIdExample')" class="mr-4" />
         </n-form-item>
       </div>
 
@@ -225,12 +222,12 @@
             <icon-ion-add />
           </n-icon>
         </template>
-        Add Maintainer
+        {{ $t('page.protocol.metadata.addMaintainer') }}
       </n-button>
     </n-collapse-item>
 
     <!-- Disciplines Section -->
-    <n-collapse-item title="Disciplines" name="disciplines" required>
+    <n-collapse-item :title="$t('common.disciplines')" name="disciplines" required>
       <template #header-extra>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -238,7 +235,7 @@
               <icon-tabler-info-circle />
             </n-icon>
           </template>
-          Scientific disciplines related to this protocol. At least one discipline is required. The first discipline is considered the primary one.
+          {{ $t('page.protocol.metadata.disciplinesHint') }}
         </n-tooltip>
       </template>
 
@@ -246,13 +243,13 @@
         <n-dynamic-tags
           v-model:value="formData.disciplines"
           :max="10"
-          :input-props="{ placeholder: 'e.g. biology' }"
+          :input-props="{ placeholder: $t('page.protocol.settings.disciplinesPlaceholder') }"
         />
       </n-form-item>
     </n-collapse-item>
 
     <!-- Keywords Section -->
-    <n-collapse-item title="Keywords" name="keywords">
+    <n-collapse-item :title="$t('common.keywords')" name="keywords">
       <template #header-extra>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -260,23 +257,21 @@
               <icon-tabler-info-circle />
             </n-icon>
           </template>
-          Optional keywords to help with protocol discovery and categorization
+          {{ $t('page.protocol.metadata.keywordsHint') }}
         </n-tooltip>
       </template>
 
-      <n-form-item v-bind="props.itemProps" label="Keywords" path="keywords" :show-label="false">
+      <n-form-item v-bind="props.itemProps" :label="$t('common.keywords')" path="keywords" :show-label="false">
         <n-dynamic-tags
           v-model:value="formData.keywords"
           :max="20"
-          :input-props="{
-            placeholder: 'e.g. cell viability',
-          }"
+          :input-props="{ placeholder: $t('page.protocol.settings.keywordsPlaceholder') }"
         />
       </n-form-item>
     </n-collapse-item>
 
     <!-- Raw TOML Preview -->
-    <n-collapse-item title="Preview TOML" name="toml-preview">
+    <n-collapse-item :title="$t('page.protocol.metadata.tomlPreview')" name="toml-preview">
       <template #header-extra>
         <div class="mt-2 flex items-center justify-between">
           <n-button size="small" quaternary :theme-overrides="{ heightSmall: '21px' }" @click.stop="handleEdit">
@@ -285,7 +280,7 @@
                 <icon-ion-pencil-outline />
               </n-icon>
             </template>
-            {{ isEditing ? "Save" : "Edit" }}
+            {{ $t(isEditing ? "common.save" : "common.edit") }}
           </n-button>
           <div v-if="diffContent.length > 0" class="flex gap-2 text-sm">
             <span class="text-green-600">
@@ -332,11 +327,12 @@ import CommonVersionInput from "@airalogy/components/common/common-version-input
 
 import { useBoolean, useClosableMessage, useTomlEditor } from "@airalogy/composables"
 import { licenseOptions } from "@airalogy/shared/constants/licenses"
+import { $t } from "@airalogy/shared/locales"
 import IconIonAdd from "~icons/ion/add"
 import IconIonLockClosedOutline from "~icons/ion/lock-closed-outline"
 import IconIonPencilOutline from "~icons/ion/pencil-outline"
 import IconIonTrashOutline from "~icons/ion/trash-outline"
-import { parse } from "smol-toml"
+import { parse, TomlError } from "smol-toml"
 
 interface IProps {
   modelValue: ProtocolMetaData
@@ -496,7 +492,9 @@ async function handleEdit() {
       emit("update:modelValue", formData)
     }
     catch (error) {
-      message.error(`Failed to parse TOML: ${(error as Error).message}`)
+      message.error(error instanceof TomlError
+        ? $t("page.protocol.metadata.tomlSyntax", { line: error.line, column: error.column })
+        : $t("page.protocol.metadata.tomlError", { detail: (error as Error).message }))
       return
     }
   }

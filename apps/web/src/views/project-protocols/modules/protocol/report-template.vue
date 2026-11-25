@@ -1,13 +1,16 @@
 <template>
   <section v-if="Boolean(props.item?.aimd)">
-    <header v-if="props.showActions" class="flex border-b py-6">
+    <header v-if="props.showActions" class="flex flex-wrap items-center gap-2 border-b py-4">
       <div class="mr-auto flex-center">
         <span v-if="parentProtocolInfo" class="block w-full">
           {{ $t("page.protocol.reusedFrom") }}
           <protocol-path-tooltip :protocol-info="parentProtocolInfo" />
         </span>
-        <n-skeleton v-else-if="isFetchingInfo" width="40em" />
+        <n-skeleton v-else-if="isFetchingInfo" width="min(40em, 70vw)" />
       </div>
+      <aira-action-button v-if="aira?.context.value" :aria-expanded="aira.expanded.value" data-testid="protocol-ask-aira" @click="aira.open($event.currentTarget)">
+        {{ $t("page.airaActions.askProtocol") }}
+      </aira-action-button>
       <add-log-modal
         v-if="canOpenDataEntryForOthers"
         :protocol-id="props.item.id"
@@ -71,6 +74,7 @@
 <script setup lang="ts">
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { RenderOption } from "naive-ui/es/dropdown/src/interface"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import ProtocolPathTooltip from "@/components/protocol/protocol-path-tooltip.vue"
 import { useBoolean, useLoading, useProjectPermissions } from "@/composables"
 import { useProtocolChatHandoff } from "@/composables/useProtocolChatHandoff"

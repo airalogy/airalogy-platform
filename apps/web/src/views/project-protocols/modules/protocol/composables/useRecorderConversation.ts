@@ -230,5 +230,5 @@ export function useRecorderConversation(options: RecorderOptions) {
     if (field)
       revisions.set(field, (revisions.get(field) || 0) + 1)
   }
-  return { begin, receipt, showPreviewLink, pending, edits, busy, accept, dismiss, undo, markInput, reset }
+  return { receipt, showPreviewLink, pending, edits, busy, accept, dismiss, undo, markInput, reset }
 }

@@ -134,9 +134,12 @@ const {
   currentMessagePath,
 } = useOrProvideChatInfoStore(toRefs(props), emit)
 
-const inputPlaceholder = computed(() => props.source === "editor"
-  ? $t("chat.editorInputPlaceholder")
-  : $t("chat.inputPlaceholder"))
+const activeRecorder = inject(recorderTurnKey, undefined)
+const inputPlaceholder = computed(() => {
+  if (activeRecorder?.enabled())
+    return $t("page.recorderAira.inputHint")
+  return props.source === "editor" ? $t("chat.editorInputPlaceholder") : $t("chat.inputPlaceholder")
+})
 function handleUpdateEditing(branchMessage: Chat.ChatMessage, value: boolean) {
   branchMessage.editing = value
 }
@@ -173,7 +176,6 @@ function handleSwitchBranch(branchMessage: Chat.ChatMessage, branchIndex: number
   }
 }
 
-const activeRecorder = inject(recorderTurnKey, undefined)
 const chatExamples = computed(() => {
   const baseExamples = [
     "What's new in Airalogy?",

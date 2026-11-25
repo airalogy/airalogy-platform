@@ -347,15 +347,14 @@
               <n-button @click="downloadExport('ris')">
                 {{ $t("page.knowledge.exportRis") }}
               </n-button>
-              <n-button
+              <aira-action-button
                 v-if="instanceStore.aiEnabled"
-                type="primary"
                 :loading="airaDraftLoading"
                 data-testid="paper-aira-knowledge-draft"
                 @click="createAiraKnowledgeFromPaper"
               >
                 {{ $t("page.knowledge.airaDraftFromPaper") }}
-              </n-button>
+              </aira-action-button>
               <n-button ghost @click="createKnowledgeFromPaper">
                 {{ $t("page.knowledge.createFromPaper") }}
               </n-button>
@@ -495,6 +494,7 @@ import type {
   ResearchFileSummary,
 } from "@/service/api/knowledge"
 import type { TagProps } from "naive-ui"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import { useRouterPush } from "@/composables"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import {

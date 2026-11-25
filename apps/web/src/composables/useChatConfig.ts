@@ -1,6 +1,7 @@
 import type { ChatProviderContext, ChatProviderProps, ContextDialogState, CurrentEditorProtocolContext, CurrentRecorderRecordContext } from "@airalogy/components/chat/providers/useChatProvider"
 import { postAddAttachments } from "@/service/api/attachments"
 import { baseURL } from "@/service/request"
+import { organizationHeaders } from "@/service/request/organization"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { createDefaultRendererContext } from "@airalogy/components/chat/providers/useChatProvider"
@@ -256,6 +257,7 @@ const [useProvideChatConfigStore, _useChatConfigStore] = createInjectionState(()
     enabledModels,
     modelNames: computed(() => instanceStore.chatModelNames),
     baseUrl,
+    requestHeaders: computed(organizationHeaders),
     token,
     userInfo,
     contextDialog,

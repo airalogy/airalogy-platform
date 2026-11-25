@@ -74,6 +74,7 @@ defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<IProps & ActionProps & {
   inSidePanel?: boolean
+  reportScope?: string
   resolveFile?: (id: string) => Promise<{ url: string } | null>
 }>(), {
   hideCollapse: false,
@@ -127,7 +128,9 @@ function handleScrollToBottom(smart?: boolean) {
 
 const {
   session,
-
+  chatStore,
+  handleSubmit,
+  loading: sending,
   prompt,
   context,
   chatId,
@@ -514,7 +517,33 @@ onMounted(() => {
   contextDialogEventHandlers.value.confirm = handleConfirmContexts
 })
 
+watch(() => props.reportScope, (scope) => {
+  if (scope && session.value && session.value.airalogyId !== scope && session.value.airalogyId !== `${scope}:analysis`)
+    clearActive()
+}, { immediate: true })
+
+let startingAnalysis = false
+function analyzeRecord(question: string) {
+  if (!props.reportScope)
+    return false
+  const scope = `${props.reportScope}:analysis`
+  const history = chatStore.getTargetHistory(source.value, scope)[0]
+  const existing = history && chatStore.findSessionByUUID(history.uuid)
+  if (startingAnalysis || sending.value)
+    return existing?.uuid === chatId.value
+  const target = existing || chatStore.createEmptySession(crypto.randomUUID(), source.value, scope)
+  chatStore.setActive(target.uuid)
+  if (!target.data.length) {
+    startingAnalysis = true
+    void handleSubmit(question).finally(() => {
+      startingAnalysis = false
+    })
+  }
+  return true
+}
+
 defineExpose({
+  analyzeRecord,
   setDocked: (val: boolean) => {
     docked.value = val
   },

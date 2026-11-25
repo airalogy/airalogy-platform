@@ -307,7 +307,7 @@ test("project Aira reviews a temporary meeting draft before saving minutes and a
   const filters = page.getByTestId("activity-type")
   expect((await filters.boundingBox())!.height).toBeLessThanOrEqual(36)
   const headerAira = page.getByTestId("header-aira")
-  await expect(page.getByTestId("project-aira")).toBeVisible()
+  await expect(page.getByTestId("project-aira")).toHaveCount(0)
   await headerAira.click()
   await expect(page.getByTestId("project-aira-panel").getByRole("link", { name: /全部对话/ })).toHaveAttribute("href", "/chat")
   const panel = page.getByTestId("project-aira-panel")
@@ -562,4 +562,46 @@ test.describe("Project member directory", () => {
       await expect(directory.getByRole("checkbox", { name: /dev_viewer|dev_collaborator/ })).toHaveCount(0)
     }
   })
+})
+
+test("organize minutes reviews current unsaved notes and stages the result in the same meeting", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
+  const { path: root, projectId, headers } = await createMeetingProject(page.request)
+  await page.route("**/api/instance", async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({ response, json: { ...await response.json(), ai_enabled: true } })
+  })
+  await page.route("**/api/meetings/aira/availability?*", route => route.fulfill({ json: { available: true } }))
+  const title = "Synthetic project review"
+  const notes = "Synthetic notes from the editor"
+  const organized = "Synthetic reviewed minutes"
+  const initialBody = "Previously saved minutes"
+  const created = await page.request.post("/api/meetings", { headers, data: { id: crypto.randomUUID(), project_id: projectId, title, body: initialBody, status: "planned", time_precision: "date", time_zone: "Asia/Shanghai", visibility: "project", participants: [], access: [] } })
+  expect(created.ok(), await created.text()).toBeTruthy()
+  const meeting = await created.json()
+  await page.route("**/api/meetings/aira/draft", async (route) => {
+    const data = route.request().postDataJSON()
+    expect(data.message).toContain(notes)
+    expect(data.meeting_id).toBe(meeting.id)
+    await route.fulfill({ json: { id: data.conversation_id, project_id: data.project_id, meeting_id: data.meeting_id, turns: [{ user: data.message, reply: "Review the draft" }], proposal: { title: "Alternative title", body: organized, occurred_on: null, actions: ["Review results"] } } })
+  })
+  await page.goto(`${root}/meetings?meeting=${meeting.id}`)
+  await page.getByTestId("meeting-edit").click()
+  const editor = page.getByTestId("meeting-minutes").locator('[contenteditable="true"]').first()
+  await editor.fill(notes)
+  await page.setViewportSize({ width: 390, height: 844 })
+  const original = page.url()
+  await page.getByTestId("meeting-organize").click()
+  const panel = page.getByTestId("project-aira-panel")
+  await expect(panel.locator("textarea")).toHaveValue(new RegExp(notes))
+  await panel.locator('button[type="submit"]').click()
+  await expect(panel.getByTestId("aira-proposal")).toContainText(organized)
+  await panel.getByRole("button", { name: "将草稿带回当前会议" }).click()
+  await expect(editor).toContainText(organized)
+  await expect(page.getByTestId("meeting-title").locator("input")).toHaveValue(title)
+  await expect(page.getByTestId("meeting-action-title").locator("input")).toHaveValue("Review results")
+  expect(page.url()).toBe(original)
+  const persisted = await page.request.get(`/api/meetings/${meeting.id}`, { headers })
+  expect(persisted.ok()).toBeTruthy()
+  expect(await persisted.json()).toMatchObject({ id: meeting.id, body: initialBody, work: [] })
 })

@@ -53,7 +53,7 @@
         :disabled="checkLoading || disabled || !isValidVersion"
         @click="handleCheck"
       >
-        Check
+        {{ $t("common.idInput.check") }}
       </n-button>
     </div>
   </define-version-input>
@@ -66,7 +66,7 @@
       </div>
       <version-input v-else />
     </template>
-    {{ props.tooltip || defaultTooltip }}
+    {{ props.tooltip || $t("page.protocol.metadata.versionHint") }}
   </n-tooltip>
 </template>
 
@@ -207,10 +207,6 @@ onMounted(() => {
     patchSyncKey,
     shouldSyncPatch,
   )
-})
-
-const defaultTooltip = computed(() => {
-  return "Protocol version in semantic versioning format (x.y.z). Default is 0.0.1."
 })
 
 const isValidVersion = ref(true)

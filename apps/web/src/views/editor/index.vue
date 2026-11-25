@@ -7,9 +7,9 @@
     :loading="loading" :protocol-info="protocolInfo" :side-menus="sideMenus" :emit-zip="false" :package-id="packageId" :reload-flag="reloadFlag" :is-read-only="isReadOnly" @save:dry="handleSaveProtocol" @new-file="handleNewProtocol"
   >
     <template #header-actions>
-      <n-button v-if="instanceStore.aiEnabled" class="relative mr-2 shrink-0" quaternary :aria-expanded="aira.expanded.value" data-testid="editor-open-aira" @click="aira.open($event.currentTarget as HTMLElement)">
-        Aira
-      </n-button>
+      <aira-action-button v-if="instanceStore.aiEnabled" class="mr-2" :aria-expanded="aira.expanded.value" data-testid="editor-open-aira" @click="editorAssistantMode = 'chat'; aira.open($event.currentTarget)">
+        {{ $t(isReadOnly ? "page.airaActions.askProtocol" : "page.airaActions.revise") }}
+      </aira-action-button>
     </template>
     <template #assistant>
       <context-aira-panel v-if="instanceStore.aiEnabled" :key="JSON.stringify([editorChatAiralogyId, packageId, isReadOnly])" :title="protocolInfo?.name || $t('common.protocol')" :version="isReadOnly ? String(route.params.protocolVersion || '') : $t('chat.editorCodeEdit.draft')"
@@ -190,6 +190,7 @@ import type { ProtocolModels } from "@airalogy/shared"
 import type { ValidateError } from "async-validator"
 import { useProvideApplyProtocol } from "@/components/apply-steps/composables/useApplyProtocolState"
 import ProtocolSetup from "@/components/apply-steps/protocol-setup.vue"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import ContextAiraPanel from "@/components/common/context-aira-panel.vue"
 import ProtocolTitleSection from "@/components/Layout/protocol-title-section.vue"
 import ProtocolInfoCard from "@/components/protocol/protocol-info-card.vue"

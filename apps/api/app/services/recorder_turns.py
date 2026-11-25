@@ -1,6 +1,5 @@
 """Plan one Recorder turn. Model proposals can only change a browser form."""
 
-import json
 import math
 import re
 from decimal import Decimal, InvalidOperation
@@ -194,7 +193,7 @@ def grounded_value(spec, raw, source):
     return value if valid_value(spec, value) else None
 
 
-async def plan_recorder_turn(chat, version, target, message, usage):
+async def plan_recorder_turn(chat, version, target, message, usage, *, attachment_texts=()):
     fields, _ = scalar_fields(version)
     scope = [str(version.id), str(target.record_id or ""), str(target.form_id)]
     prior = (chat.context or {}).get("recorder_focus", {})
@@ -213,6 +212,8 @@ async def plan_recorder_turn(chat, version, target, message, usage):
         last_applied=target.last_applied,
         current_message=message,
     )
+    if attachment_texts:
+        data["attachment_texts"] = attachment_texts
     try:
         result = await json_request(
             "endpoints/chat/field_input/turn",
@@ -234,6 +235,9 @@ async def plan_recorder_turn(chat, version, target, message, usage):
     from masterbrain.recorder import RecorderTurnResponse
 
     plan = RecorderTurnResponse.model_validate(result)
+    if attachment_texts and plan.attachment_count != len(attachment_texts):
+        raise HTTPException(503, "This Masterbrain service does not support Recorder attachments")
+    evidence = [message, *attachment_texts]
     focus = [key for key in plan.references if key in fields]
     operations = {}
     skipped = []
@@ -249,7 +253,7 @@ async def plan_recorder_turn(chat, version, target, message, usage):
             key = op.rf_name
             if (
                 key not in fields
-                or op.source not in message
+                or not any(op.source in text for text in evidence)
                 or key in operations
                 or key in skipped
             ):
@@ -257,7 +261,10 @@ async def plan_recorder_turn(chat, version, target, message, usage):
                 operations.pop(key, None)
                 continue
             value = grounded_value(fields[key], op.rf_value, op.source)
-            if value is None or not matching_unit(message, op.source, fields[key]):
+            if value is None or not any(
+                op.source in text and matching_unit(text, op.source, fields[key])
+                for text in evidence
+            ):
                 skipped.append(key)
             else:
                 operations[key] = value
@@ -272,32 +279,3 @@ async def plan_recorder_turn(chat, version, target, message, usage):
             "skipped": skipped,
         },
     )
-
-
-def field_input_proposal(history, version, target):
-    fields, _ = scalar_fields(version)
-    values = {}
-    skipped = []
-    for call in history[-1].get("tool_calls", []):
-        if call.get("function", {}).get("name") != "slot_filling":
-            continue
-        for op in json.loads(call["arguments"])["operations"]:
-            key = op["rf_name"]
-            raw = op["rf_value"]
-            spec = fields.get(key)
-            value = (
-                grounded_value(spec, raw, str(raw))
-                if spec and op.get("operation") == "update"
-                else None
-            )
-            if value is None:
-                skipped.append(key)
-            else:
-                values[key] = value
-    return {
-        "form_id": target.form_id,
-        "request_id": target.request_id,
-        "intent": "fill",
-        "values": values,
-        "skipped": skipped,
-    }

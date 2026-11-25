@@ -67,9 +67,9 @@ export function useChatHandlers({ state, mutations, stream, scrollToBottom, navi
     const { content, model, attachments } = params
     const injectContext = (toValue(createChatContext)?.(context.value) || {}) as ChatContext
 
-    // Explicitly attached sources keep their existing QA path.
+    // Extra workspace contexts belong to general QA. Uploaded files belong to this turn.
     const otherSources = context.value?.some(item => item.type !== "protocol" || item.id !== toValue(protocolId))
-    const turn = params.recorderAllowed && !attachments?.length && !otherSources ? recorder?.begin(params.chatId || existingServerId || undefined) : undefined
+    const turn = params.recorderAllowed && !otherSources ? recorder?.begin(params.chatId || existingServerId || undefined) : undefined
     return applyRecorderResponse(postStartChat({
       memoryDisabled: state.memoryDisabled.value,
       memoryRequestId: crypto.randomUUID(),
@@ -83,6 +83,7 @@ export function useChatHandlers({ state, mutations, stream, scrollToBottom, navi
       context: turn ? { ...injectContext, ephemeral_context: undefined } : injectContext,
       attachments,
       token: token?.value,
+      headers: provider.requestHeaders?.value,
       enableThinking: enableThinking.value,
       enableSearch: enableSearch.value,
       hubSearch: enableHubSearch.value,
@@ -215,6 +216,10 @@ export function useChatHandlers({ state, mutations, stream, scrollToBottom, navi
     // For empty drafts, we need to create the session first without adding the user message
     // The user message will be added by handleCreateBranch
     handleDraftMessage(uuid)
+    // In an existing conversation, uploads live under the session ID.
+    // The sent message owns its snapshot. The next message starts without files.
+    if (draftAttachments.length && uuid !== emptyDraftId.value)
+      chatStore.clearDraftMessage(uuid)
     chatStore.updateChatRole(uuid, selectedRole.value)
 
     await nextTick()

@@ -20,6 +20,15 @@ function add(title = "") {
   if (rows.value.length < 50)
     rows.value.push({ ...blankWork(), id: crypto.randomUUID(), title })
 }
+function appendSuggestions(values: string[]) {
+  const known = new Set([...rows.value.map(row => row.title.trim()), ...(props.meeting.work || []).map(link => link.item.title.trim())])
+  const additions = [...new Set(values.map(value => value.trim()))].filter(value => value && !known.has(value))
+  if (rows.value.length + additions.length > 50)
+    return false
+  additions.forEach(add)
+  return true
+}
+defineExpose({ appendSuggestions })
 function importTitles() {
   const values = titles.value.split(/\r?\n/).map(v => v.replace(/^\s*(?:[-*]|\d+[.)、])\s*/, "").trim()).filter(Boolean)
   if (values.length + rows.value.length > 50) {

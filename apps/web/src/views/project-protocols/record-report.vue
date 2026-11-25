@@ -79,6 +79,9 @@
         <protocol-title-section :protocol-info="protocolInfo" :title="protocolInfo?.name" :is-protocol-link="true" :show-icon="false" size="tiny" />
       </div>
 
+      <aira-action-button v-if="aira?.context.value && isRevisionReady" class="mr-2" data-testid="record-analyze" :aria-expanded="aira.expanded.value" @click="formRef?.analyzeReport($event.currentTarget)">
+        {{ $t("page.airaActions.analyze") }}
+      </aira-action-button>
       <n-button v-if="recordData" type="primary" class="mr-4" @click="handleExportPdf()">
         {{ $t("page.protocol.recordReport.exportPdf") }}
       </n-button>
@@ -138,6 +141,9 @@
         :protocol-id="protocolId"
         :key="JSON.stringify([authStore.userInfo.id, protocolId, record?.record_id, record?.record_version, record?.metadata.protocol_version])"
         :readonly="true"
+        :recorder-record-id="record?.record_id"
+        :record-revision="record?.record_version"
+        :recorder-version="record?.metadata.protocol_version"
         :simulated-fields="simulatedFields"
         :record-data="recordData"
         :saved-record-data="record?.data"
@@ -235,12 +241,14 @@
 import type { IRecordData, IRecordDataKey } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared/types"
 import type { ITimelineItem } from "./types"
+import AiraActionButton from "@/components/common/aira-action-button.vue"
 import ResourceAccessState from "@/components/common/resource-access-state.vue"
 import ProtocolRatingEntry from "@/components/protocol/protocol-rating-entry.vue"
 import { useBoolean, useProjectPermissions } from "@/composables"
 import { useResourcePage } from "@/composables/useResourcePage"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { useSeoMeta } from "@/composables/useSeoMeta"
+import { useWorkspaceAira } from "@/composables/useWorkspaceAira"
 import { deleteResearchRecord, fetchProtocolRecords, getProtocolInfoByUid, getProtocolRecordReport } from "@/service/api/project-protocols"
 import { getProjectInfoById } from "@/service/api/projects"
 import { fetchUserInfo } from "@/service/api/users"
@@ -276,6 +284,7 @@ interface IEmits {
 const route = useRoute()
 const router = useRouter()
 
+const aira = useWorkspaceAira()
 const authStore = useAuthStore()
 
 const { removeCacheRoutes } = useRouteStore()
@@ -284,6 +293,7 @@ const protocol = ref<ProtocolModels.ProtocolInfo | null>(null)
 const record = ref<ProtocolModels.RecordInfo | null>(null)
 const error = ref<string>("")
 interface RecordReportFormRef {
+  analyzeReport: (trigger: HTMLElement) => void
   validate: () => any
   toggle: () => void
   preparedData: () => {
