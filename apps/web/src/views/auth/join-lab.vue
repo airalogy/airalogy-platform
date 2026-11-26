@@ -38,13 +38,15 @@ const status = computed(() => failed.value ? "error" : "info")
 const title = computed(() => {
   if (failed.value)
     return $t("page.instance.invitationInvalid")
+  if (invitation.value?.project)
+    return $t("page.guests.invited", { name: invitation.value.project.name })
   if (invitation.value)
     return $t("page.instance.invitedTo", { lab: invitation.value.lab.name })
   return $t("page.instance.invitationLoading")
 })
 const description = computed(() => invitation.value?.existing_account && !authStore.isLogin
   ? $t("page.instance.existingAccount")
-  : "")
+  : invitation.value?.project ? $t("page.guests.joinHint") : "")
 const actionLabel = computed(() => {
   if (!invitation.value || failed.value)
     return ""
@@ -81,6 +83,11 @@ async function acceptCurrentInvitation() {
     const { data } = await acceptInvitation(token.value)
     if (!data) {
       await loadInvitation()
+      return
+    }
+    if (data.project_id) {
+      authStore.markProjectGuest()
+      await router.replace({ name: "guest-workspace", query: { project: data.project_id } })
       return
     }
     await instanceStore.load()

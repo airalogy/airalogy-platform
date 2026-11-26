@@ -40,7 +40,7 @@ async def get_current_user(
                 User.api_key_iv == secret,
             ],
         )
-        if user is None:
+        if user is None or user.project_guest:
             raise ValueError("Invalid api key")
     except Exception as e:
         print("invalid api key:", e)

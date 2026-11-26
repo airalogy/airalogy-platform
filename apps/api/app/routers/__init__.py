@@ -69,6 +69,7 @@ from .organizations import router as organizations_router
 from .pinned_items import router as pinned_items_router
 from .project_analyses import router as project_analyses_router
 from .project_groups import router as project_groups_router
+from .project_guests import router as project_guests_router
 from .project_operations import router as project_operations_router
 from .project_people import router as project_people_router
 from .project_work import router as project_work_router
@@ -338,6 +339,7 @@ app.include_router(login_router)
 app.include_router(analysis_protocol_drafts_router)
 app.include_router(access_router)
 app.include_router(instance_router)
+app.include_router(project_guests_router)
 app.include_router(health_router)
 app.include_router(system_router)
 app.include_router(oauth_router)

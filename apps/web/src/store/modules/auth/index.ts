@@ -142,6 +142,11 @@ export const useAuthStore = defineStore(SetupStoreId.AUTH, () => {
     return false
   }
 
+  function markProjectGuest() {
+    userInfo.project_guest = true
+    localStgWithExpire.set("userInfo", { ...userInfo })
+  }
+
   function logout() {
     window.$dialog?.info({
       title: $t("common.tip"),
@@ -328,6 +333,7 @@ export const useAuthStore = defineStore(SetupStoreId.AUTH, () => {
     justSignedUp,
     resetStore,
     clearSession,
+    markProjectGuest,
     setToken,
     login,
     logout,

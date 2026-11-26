@@ -11,6 +11,7 @@ from .base import Base
 
 class AccountTokenType(StrEnum):
     INVITATION = "invitation"
+    PROJECT_INVITATION = "project_invitation"
     PASSWORD_RESET = "password_reset"
 
 
@@ -45,6 +46,8 @@ class AccountToken(Base):
         nullable=True,
         index=True,
     )
+    project_id: Mapped[UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    access_until: Mapped[datetime | None] = mapped_column()
     lab_role: Mapped[int | None] = mapped_column(nullable=True)
     project_role: Mapped[int | None] = mapped_column(nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(

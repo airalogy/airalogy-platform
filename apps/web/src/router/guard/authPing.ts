@@ -9,7 +9,7 @@ let isPinging = false
 
 export function createAuthPingGuard(router: Router) {
   router.afterEach((to) => {
-    if (!localStg.get("token")) {
+    if (!localStg.get("token") || localStg.get("userInfo")?.project_guest) {
       return
     }
 

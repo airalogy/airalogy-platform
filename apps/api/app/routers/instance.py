@@ -19,12 +19,14 @@ from app.config import config
 from app.database import DBSession
 from app.models.account_token import AccountToken, AccountTokenType
 from app.models.lab import Lab, LabRole, LabUser, OrganizationType
-from app.models.project import ProjectRole
+from app.models.project import Project, ProjectRole
 from app.models.user import User
 from app.services.account_security import bump_auth_version
+from app.services.project_guests import INVITATIONS, accept_project_invitation
 from app.services.chat_models import ChatCapabilities, enabled_chat_model_types
 from app.services.organization_ai import bind_organization
 from app.services.single_lab import (
+    account_for_email,
     add_user_to_single_lab,
     create_account_token,
     ensure_default_project,
@@ -37,7 +39,7 @@ from app.services.single_lab import (
     utcnow,
 )
 
-from .depends import CurrentUser, create_access_token
+from .depends import CurrentUser, create_access_token, guest_endpoint
 from .utils import OrganizationNameStr, UidStr
 
 router = APIRouter(prefix="/instance", tags=["instance"])
@@ -299,7 +301,7 @@ async def create_invitation(
 
     email = normalize_email(str(params.email)) if params.email else ""
     existing_user = (
-        await User.find_by(db_session, [User.email == email]) if email else None
+        await account_for_email(db_session, email) if email else None
     )
     if existing_user is not None:
         existing_membership = await LabUser.find_by(
@@ -409,12 +411,16 @@ async def get_invitation(raw_token: str, db_session: DBSession):
     token = await find_valid_account_token(
         db_session,
         raw_token,
-        AccountTokenType.INVITATION,
+        INVITATIONS,
     )
     if token is None:
         raise HTTPException(status_code=404, detail="Invitation is invalid or expired")
     lab = await Lab.find(db_session, token.lab_id)
+    project = await Project.find(db_session, token.project_id) if token.project_id else None
+    if token.project_id and not project:
+        raise HTTPException(404, "Project not found")
     return {
+        "project": {"id": project.id, "name": project.name} if project else None,
         "email": token.email,
         "expires_at": token.expires_at.replace(tzinfo=UTC),
         "lab": InstanceLabInfo(
@@ -423,11 +429,14 @@ async def get_invitation(raw_token: str, db_session: DBSession):
             name=lab.name,
             organization_type=lab.organization_type,
         ),
-        "existing_account": token.user_id is not None,
+        "existing_account": token.user_id is not None or bool(
+            token.email and await account_for_email(db_session, token.email)
+        ),
     }
 
 
 @router.post("/invitations/{raw_token}/accept")
+@guest_endpoint
 async def accept_invitation(
     raw_token: str,
     current_user: CurrentUser,
@@ -437,7 +446,7 @@ async def accept_invitation(
     token = await find_valid_account_token(
         db_session,
         raw_token,
-        AccountTokenType.INVITATION,
+        INVITATIONS,
         for_update=True,
     )
     if token is None:
@@ -452,6 +461,12 @@ async def accept_invitation(
     lab = await get_single_lab(db_session)
     if lab is None or lab.id != token.lab_id:
         raise HTTPException(404, "Invitation not found")
+    if token.token_type == AccountTokenType.PROJECT_INVITATION:
+        await accept_project_invitation(db_session, token, current_user)
+        await db_session.commit()
+        return {"success": True, "project_id": token.project_id}
+    if current_user.project_guest:
+        raise HTTPException(403, "Project guests cannot claim organization membership here")
     joined = await add_user_to_single_lab(
         db_session,
         lab=lab,

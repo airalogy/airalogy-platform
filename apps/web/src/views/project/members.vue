@@ -8,6 +8,7 @@ import { getProjectTeam } from "@/service/api/project-people"
 import { fetchProjectMembers } from "@/service/api/projects"
 import { useInstanceStore } from "@/store/modules/instance"
 import { useOrProvideProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
+import ProjectGuestTeam from "./project-guest-team.vue"
 import ProjectMemberPicker from "./project-member-picker.vue"
 
 defineOptions({ name: "ProjectMembers" })
@@ -132,6 +133,7 @@ watch([projectId, page, revision], async ([id, currentPage], _, onCleanup) => {
         {{ $t("page.projectTeam.noMembers") }}
       </p>
     </section>
+    <project-guest-team v-if="instance.isSingleLab && canAddMembers && projectId" :key="projectId" :project-id="projectId" />
     <section aria-labelledby="project-team-names" class="team-section" data-testid="team-participants">
       <h2 id="project-team-names" class="aira-type-section-title m-0">
         {{ $t("page.projectTeam.namedParticipants") }}

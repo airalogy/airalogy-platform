@@ -21,6 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import aliased, selectinload
 
 from app.config import config
+from app.services.single_lab import account_for_email, normalize_email
 from app.database import DBSession
 from app.models.activity_time import activity_instant
 from app.models.attachment import Attachment
@@ -1462,8 +1463,9 @@ async def update_user(
     avatar_file: UploadFile | None = None,
 ):
     if email is not None and email != current_user.email:
-        email_exists = await User.exists(db_session, [User.email == email])
-        if email_exists:
+        email = normalize_email(email)
+        account = await account_for_email(db_session, email)
+        if account is not None and account.id != current_user.id:
             raise HTTPException(status_code=400, detail="Email already exists")
 
         current_user.email = email

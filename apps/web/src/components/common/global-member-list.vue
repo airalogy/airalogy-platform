@@ -39,7 +39,8 @@
             </template>
           </n-button>
         </n-dropdown>
-        <div v-else class="flex items-center">
+        <div v-else class="flex flex-wrap items-center gap-1">
+          <n-button v-if="canConvert(item)" size="small" @click="openConversion(item)">{{ $t("page.guests.convert") }}</n-button>
           <n-button
             v-if="props.type === 'lab' && checkPermission(item)"
             class="mr-3"
@@ -70,6 +71,8 @@
       </template>
     </n-list-item>
   </n-list>
+  <guest-conversion v-if="converting" :key="converting.id" :user-id="converting.id" :name="converting.name"
+                    @close="converting = null" @converted="converted" />
 </template>
 
 <script setup lang="tsx">
@@ -88,6 +91,7 @@ import { useAppStore } from "@/store/modules/app"
 import { useAuthStore } from "@/store/modules/auth"
 import { useInstanceStore } from "@/store/modules/instance"
 import { useOrProvideLabInfoStore } from "@/views/labs/hooks/useLabsInfoStore"
+import GuestConversion from "@/views/labs/modules/guest-conversion.vue"
 import UpdateAliasModal from "@/views/labs/modules/lab/UpdateAliasModal.vue"
 import { useOrProvideProjectInfoStore } from "@/views/project-protocols/hooks/useProjectInfoStore"
 import { copyToClip } from "@airalogy/shared"
@@ -165,7 +169,22 @@ const options = computed(() => props.type === "project"
       { label: t("role.member"), value: LabRole.MEMBER },
     ])
 
-type MobileMemberAction = "alias" | "reset-password" | "change-role" | "remove"
+const converting = ref<{ id: string, name: string, role: Api.Lab.LabRole } | null>(null)
+type DirectoryMember = IProps["list"][number]
+function canConvert(item: DirectoryMember) {
+  return props.type === "lab" && instanceStore.isSingleLab && !checkIsSelf(item) && checkPermission(item)
+    && (item as Api.Lab.MemberListItem).lab_role !== LabRole.OWNER
+}
+function openConversion(item: DirectoryMember) {
+  converting.value = { id: String(item.id), name: item.name || item.username, role: (item as Api.Lab.MemberListItem).lab_role }
+}
+function converted() {
+  if (converting.value)
+    emit("update:role", converting.value)
+  converting.value = null
+}
+
+type MobileMemberAction = "convert" | "alias" | "reset-password" | "change-role" | "remove"
 
 function mobileActionOptions(
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
@@ -175,6 +194,7 @@ function mobileActionOptions(
     ...(props.type === "lab" && instanceStore.isSingleLab
       ? [{ label: t("page.instance.createResetLink"), key: "reset-password" }]
       : []),
+    ...(canConvert(item) ? [{ label: t("page.guests.convert"), key: "convert" }] : []),
     ...(canChangeMemberRole.value ? [{ label: t("common.changeRole"), key: "change-role" }] : []),
     ...(!checkIsSelf(item) ? [{ label: t("common.remove"), key: "remove" }] : []),
   ]
@@ -185,6 +205,9 @@ function handleMobileAction(
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
 ) {
   switch (key as MobileMemberAction) {
+    case "convert":
+      openConversion(item)
+      break
     case "alias":
       showUpdateLabAliasDialog(item as Api.Lab.MemberListItem)
       break

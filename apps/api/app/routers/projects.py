@@ -898,6 +898,9 @@ async def add_user_to_project(
     )
 
     user = await User.find(db_session, id=params.user_id)
+    if user.project_guest:
+        raise HTTPException(409, "Use a project guest invitation for this account")
+
     exists = await ProjectUser.exists(
         db_session,
         [ProjectUser.project_id == project.id, ProjectUser.user_id == user.id],

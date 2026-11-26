@@ -641,6 +641,9 @@ async def add_user_to_lab(
     if lab.create_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     user = await User.find(db_session, id=params.user_id)
+    if user.project_guest:
+        raise HTTPException(409, "This account is an external project collaborator")
+
     exists = await LabUser.find_by(
         db_session, [LabUser.lab_id == lab.id, LabUser.user_id == user.id]
     )
@@ -764,6 +767,13 @@ async def delete_user_from_lab(
     ):
         raise HTTPException(status_code=403, detail="Managers can only remove members")
 
+    await remove_membership_access(db_session, lab, lab_user, current_user)
+    await db_session.commit()
+    return {"message": "success"}
+
+
+async def remove_membership_access(db_session, lab, lab_user, current_user):
+    user_id = lab_user.user_id
     await revoke_lab_account_tokens(
         db_session,
         lab_id=lab.id,
@@ -831,5 +841,3 @@ async def delete_user_from_lab(
     lab.users_count = await LabUser.count(
         db_session, where_conditions=[LabUser.lab_id == lab.id]
     )
-    await db_session.commit()
-    return {"message": "success"}

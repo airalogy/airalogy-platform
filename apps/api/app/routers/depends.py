@@ -29,6 +29,20 @@ def create_access_token(user: User, auth_version: int = 0) -> str:
     return encoded_jwt
 
 
+def require_guest_endpoint(request: Request, user: User) -> None:
+    if not user.project_guest:
+        return
+    endpoint = request.scope.get("endpoint")
+    allowed = getattr(endpoint, "guest_access", False)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Project invitation required")
+
+
+def guest_endpoint(function):
+    function.guest_access = True
+    return function
+
+
 async def get_current_user(
     db_session: DBSession,
     request: Request,
@@ -54,7 +68,9 @@ async def get_current_user(
         )
     logger.info(f"--- current_user: {user.username}, {user.id} ---")
 
-    await bind_user_scope(db_session, request, user)
+    require_guest_endpoint(request, user)
+    if not user.project_guest:
+        await bind_user_scope(db_session, request, user)
     request.state.current_user = user
     return user
 
@@ -86,7 +102,9 @@ async def get_optional_current_user(
         return None
 
     logger.info(f"--- current_user: {user.username}, {user.id} ---")
-    await bind_user_scope(db_session, request, user)
+    require_guest_endpoint(request, user)
+    if not user.project_guest:
+        await bind_user_scope(db_session, request, user)
     request.state.current_user = user
     return user
 

@@ -18,6 +18,7 @@ from app.models.account_token import AccountTokenType
 from app.models.lab import Lab, LabRole, LabUser
 from app.models.project import ProjectRole
 from app.models.user import User
+from app.services.project_guests import INVITATIONS, accept_project_invitation
 from app.services.account_security import get_auth_version
 from app.services.signup_verification import (
     SIGNUP_VERIFICATION_TTL_SECONDS,
@@ -26,6 +27,7 @@ from app.services.signup_verification import (
     issue_signup_verification,
 )
 from app.services.single_lab import (
+    account_for_email,
     add_user_to_single_lab,
     find_valid_account_token,
     get_single_lab,
@@ -91,7 +93,9 @@ class SignInByEmailParams(BaseModel):
 @router.post("/signin_by_email")
 async def signin_by_email(params: SignInByEmailParams, db_session: DBSession):
     email = normalize_email(str(params.email))
-    user: User | None = await User.find_by(db_session, [User.email == email])
+    user = await User.find_by(db_session, [User.email == email])
+    if user is None:
+        user = await account_for_email(db_session, email)
     if user is None:
         raise HTTPException(status_code=400, detail="User not found")
 
@@ -202,7 +206,7 @@ async def signup(params: SignUpParams, db_session: DBSession):
             invitation = await find_valid_account_token(
                 db_session,
                 params.invite_token,
-                AccountTokenType.INVITATION,
+                INVITATIONS,
                 for_update=True,
             )
             if invitation is None:
@@ -243,7 +247,7 @@ async def signup(params: SignUpParams, db_session: DBSession):
         if phone_exists:
             raise HTTPException(status_code=400, detail="Phone number already exists")
 
-    email_exists = await User.exists(db_session, [User.email == email])
+    email_exists = await account_for_email(db_session, email) is not None
     if email_exists:
         raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -280,29 +284,32 @@ async def signup(params: SignUpParams, db_session: DBSession):
     await db_session.flush()
     if config.is_single_lab:
         assert single_lab is not None
-        await add_user_to_single_lab(
-            db_session,
-            lab=single_lab,
-            user=user,
-            created_by_user_id=(
-                invitation.created_by_user_id
-                if invitation is not None and invitation.created_by_user_id is not None
-                else user.id
-            ),
-            display_name=invitation.invitation_display_name if invitation else None,
-            lab_role=LabRole(
-                invitation.lab_role
-                if invitation is not None and invitation.lab_role is not None
-                else LabRole.MEMBER
-            ),
-            project_role=ProjectRole(
-                invitation.project_role
-                if invitation is not None and invitation.project_role is not None
-                else ProjectRole.RECORDER
-            ),
-        )
-        if invitation is not None:
-            invitation.claim_invitation(user.id, utcnow())
+        if invitation is not None and invitation.token_type == AccountTokenType.PROJECT_INVITATION:
+            await accept_project_invitation(db_session, invitation, user)
+        else:
+            await add_user_to_single_lab(
+                db_session,
+                lab=single_lab,
+                user=user,
+                created_by_user_id=(
+                    invitation.created_by_user_id
+                    if invitation is not None and invitation.created_by_user_id is not None
+                    else user.id
+                ),
+                display_name=invitation.invitation_display_name if invitation else None,
+                lab_role=LabRole(
+                    invitation.lab_role
+                    if invitation is not None and invitation.lab_role is not None
+                    else LabRole.MEMBER
+                ),
+                project_role=ProjectRole(
+                    invitation.project_role
+                    if invitation is not None and invitation.project_role is not None
+                    else ProjectRole.RECORDER
+                ),
+            )
+            if invitation is not None:
+                invitation.claim_invitation(user.id, utcnow())
     else:
         lab = Lab(
             uid=user.username,

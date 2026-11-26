@@ -1,7 +1,7 @@
 <template>
   <n-form ref="formRef" :model="model" :rules="rules" size="large" :show-label="false">
     <n-alert v-if="invitation" type="info" class="mb-5">
-      {{ $t("page.instance.invitedTo", { lab: invitation.lab.name }) }}
+      {{ invitation.project ? $t("page.guests.invited", { name: invitation.project.name }) : $t("page.instance.invitedTo", { lab: invitation.lab.name }) }}
     </n-alert>
     <n-alert v-else-if="invitationRequired" type="warning" class="mb-5">
       {{ $t("page.instance.invitationRequired") }}

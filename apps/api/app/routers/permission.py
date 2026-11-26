@@ -263,6 +263,15 @@ async def check_user_permission(
     protocol: Optional[Protocol] = None,
     record: Optional[Record] = None,
 ) -> ProjectRole:
+    if user is not None and getattr(user, "project_guest", False):
+        from app.services.project_guests import accessible_protocol
+
+        if action == "create_record" and protocol and project.id == protocol.project_id:
+            _, grant, _ = await accessible_protocol(db_session, user.id, protocol.id)
+            if grant.role == ProjectRole.RECORDER:
+                return ProjectRole.RECORDER
+        raise HTTPException(403, "Project guest access does not include this action")
+
     if user is None and (config.is_single_lab or action not in anonymous_read_actions):
         raise HTTPException(status_code=400, detail="Permission denied")
 

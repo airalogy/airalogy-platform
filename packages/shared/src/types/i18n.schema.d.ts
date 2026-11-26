@@ -6179,6 +6179,44 @@ declare namespace I18n {
         cashHint: string
         bookAccessHint: string
       }
+      guests: {
+        external: string
+        members: string
+        invite: string
+        empty: string
+        expired: string
+        reader: string
+        recorder: string
+        revoke: string
+        revokePrompt: string
+        pending: string
+        cancelInvite: string
+        cancelPrompt: string
+        email: string
+        access: string
+        until: string
+        inviteHint: string
+        create: string
+        sent: string
+        link: string
+        failed: string
+        copy: string
+        convert: string
+        transfer: string
+        loss: string
+        keep: string
+        keepNone: string
+        confirm: string
+        noProjects: string
+        workspace: string
+        logout: string
+        projects: string
+        noProtocols: string
+        save: string
+        saved: string
+        invited: string
+        joinHint: string
+      }
       projectTeam: {
         organizationMembers: string
         searchDirectory: string

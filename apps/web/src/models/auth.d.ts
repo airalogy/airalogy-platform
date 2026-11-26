@@ -11,6 +11,7 @@ declare namespace Api {
     }
 
     interface UserInfo {
+      project_guest?: boolean
       id: string
       bio?: string
       username: string

@@ -316,6 +316,9 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     sharing_revision = import_module("migrations.versions.0098_workspace_publications")
     assert sharing_revision.down_revision == "0097_external_project_coverage"
     later_tables.add("workspace_publications")
+    guest_revision = import_module("migrations.versions.0100_project_guests")
+    assert guest_revision.down_revision == "0099_organization_ai_services"
+    later_tables.update({"organization_ai_services", "project_guests"})
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

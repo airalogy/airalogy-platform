@@ -27,6 +27,16 @@ export function createPermissionGuard(router: Router) {
 
     const isLogin = Boolean(localStg.get("token"))
 
+    if (isLogin && authStore.userInfo.project_guest && !["guest-workspace", "join-lab", "password-reset"].includes(String(to.name))) {
+      const projectUid = to.params.projectUid
+      const protocolUid = to.params.protocolUid
+      const query = typeof projectUid === "string"
+        ? { projectUid, ...(typeof protocolUid === "string" ? { protocolUid } : {}) }
+        : {}
+      next({ name: "guest-workspace", replace: true, query })
+      return
+    }
+
     const needLogin = !isGuestAccessibleRoute(to)
     const routeRoles = to.meta.roles || []
     const rootRoute = "root"

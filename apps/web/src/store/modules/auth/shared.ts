@@ -9,6 +9,7 @@ export function getToken() {
 export function getUserInfo() {
   const emptyInfo: Api.Auth.UserInfo = {
     id: "",
+    project_guest: false,
     username: "unknown",
     name: "",
     email: null,

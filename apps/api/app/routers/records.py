@@ -53,7 +53,7 @@ from app.services.record_imports import (
     verify_preview,
 )
 
-from .depends import CurrentUser, OptionalCurrentUser
+from .depends import CurrentUser, OptionalCurrentUser, guest_endpoint
 
 router = APIRouter(
     prefix="/protocols/{protocol_id}/records",
@@ -757,15 +757,16 @@ async def import_records_transaction(
 
 
 @router.post("")
+@guest_endpoint
 async def create_protocol_record(
     protocol_id: UUID,
     params: RecordCreateParams,
     current_user: CurrentUser,
     db_session: DBSession,
 ):
-    from app.services.workflow_files import authorize_record_files
-    await authorize_record_files(db_session, params.model_dump(), current_user)
     protocol = await Protocol.find(db_session, id=protocol_id)
+    if protocol is None:
+        raise HTTPException(404, "Protocol not found")
     project = await Project.find(db_session, id=protocol.project_id)
     await check_user_permission(
         db_session,
@@ -774,6 +775,9 @@ async def create_protocol_record(
         action="create_record",
         protocol=protocol,
     )
+
+    from app.services.workflow_files import authorize_record_files
+    await authorize_record_files(db_session, params.model_dump(), current_user)
 
     protocol_version = await ProtocolVersion.find_by(
         db_session,
@@ -825,6 +829,8 @@ async def create_protocol_record(
     await db_session.flush()
     try:
         bindings = extract_resource_bindings(protocol_version.fields or {}, data)
+        if getattr(current_user, "project_guest", False) and bindings:
+            raise HTTPException(403, "Inventory operations require organization membership")
         await commit_record_resources(
             db_session,
             lab_id=project.lab_id,

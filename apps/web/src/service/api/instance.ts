@@ -99,6 +99,7 @@ export async function postInstanceBootstrap(payload: BootstrapPayload) {
 }
 
 export interface InvitationInfo {
+  project?: { id: string, name: string } | null
   email: string
   expires_at: string
   lab: InstanceLabInfo
@@ -158,7 +159,7 @@ export function revokeInvitation(id: string) {
 }
 
 export async function acceptInvitation(token: string) {
-  return request<{ success: boolean, lab: InstanceLabInfo }>({
+  return request<{ success: boolean, lab?: InstanceLabInfo, project_id?: string }>({
     url: `/instance/invitations/${encodeURIComponent(token)}/accept`,
     method: "POST",
   })

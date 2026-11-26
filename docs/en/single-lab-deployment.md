@@ -101,6 +101,10 @@ The owner or a manager can also create a one-time password-reset URL for an elig
 
 The deployment does not require SMTP or SMS. Invitation and recovery URLs are copied and delivered through a channel chosen by the laboratory.
 
+For a project partner, open **Project → Team → Invite external collaborator**, enter the recipient’s email and choose protocol reading or recording access. An optional end date limits project access independently of the seven-day invitation. With SMTP configured, the platform emails the invitation. Otherwise, copy the private link and deliver it to the invited mailbox. An existing account signs in; a new recipient registers with the same email. The collaboration workspace lists the invited projects and protocols that inherit project access.
+
+Under **Organization management → Members → External collaborators**, administrators can see each collaborator’s current projects. To convert an employee, use **Convert to external collaborator** in their member actions. Review the projects to retain with read access, or explicitly remove all project access. Transfer ownership first if the member owns a project. Conversion ends previous sessions and removes internal access while preserving account identity and historical attribution. The project team can withdraw a pending invitation or revoke accepted access.
+
 If no owner or manager can sign in, a Docker host administrator can issue a reset link without exposing a recovery endpoint on the network:
 
 ```bash

@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-import smtplib
-import ssl
 from datetime import UTC, datetime
-from email.message import EmailMessage
-from urllib.parse import urlparse
 from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
+from app.libs.smtp import send_smtp_message as _send_smtp_message
 from app.models.project import Project
 from app.models.research import (
     ResearchAction,
@@ -281,45 +278,6 @@ async def resolve_research_attention_notifications(
     await db_session.execute(
         update(ResearchNotification).where(*conditions).values(read_at=_utcnow())
     )
-
-
-def _send_smtp_message(
-    *,
-    delivery_id: UUID,
-    recipient: str,
-    subject: str,
-    body: str,
-) -> None:
-    message = EmailMessage()
-    message["From"] = config.SMTP_FROM_ADDRESS
-    message["To"] = recipient
-    message["Subject"] = subject
-    hostname = urlparse(config.SITE_URL).hostname or "localhost"
-    message["Message-ID"] = f"<{delivery_id}@{hostname}>"
-    message.set_content(body)
-
-    context = ssl.create_default_context()
-    if config.SMTP_SECURITY == "ssl":
-        client: smtplib.SMTP = smtplib.SMTP_SSL(
-            config.SMTP_HOST,
-            config.SMTP_PORT,
-            timeout=config.SMTP_TIMEOUT_SECONDS,
-            context=context,
-        )
-    else:
-        client = smtplib.SMTP(
-            config.SMTP_HOST,
-            config.SMTP_PORT,
-            timeout=config.SMTP_TIMEOUT_SECONDS,
-        )
-    with client:
-        client.ehlo()
-        if config.SMTP_SECURITY == "starttls":
-            client.starttls(context=context)
-            client.ehlo()
-        if config.SMTP_USERNAME:
-            client.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
-        client.send_message(message)
 
 
 async def process_research_notification_delivery(

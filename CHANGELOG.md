@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project managers can invite external collaborators by email. Organization administrators can review their projects and convert an employee to guest access while preserving authorship.
+
 - Organization administrators can manage multiple model services and keys, test individual models, and set a default. Members can switch among the configured models in each Aira conversation.
 - Organizations can select `qwen3.8-flash` for Aira. The model selector shows the configured Flash version.
 

@@ -381,7 +381,7 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=No
     if not policy or not policy.enabled:
         fail("lab_external_access_disabled")
     user = await db.get(User, grant.user_id)
-    if not user or grant.auth_version != await get_auth_version(db, user.id):
+    if not user or user.project_guest or grant.auth_version != await get_auth_version(db, user.id):
         fail("invalid_external_token", 401)
     await lab_member(
         db,

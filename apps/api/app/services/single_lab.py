@@ -4,7 +4,8 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 from uuid import UUID
 
-from sqlalchemy import case, or_, select, update
+from fastapi import HTTPException
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
@@ -21,6 +22,16 @@ def utcnow() -> datetime:
 
 def normalize_email(email: str) -> str:
     return email.strip().lower()
+
+
+async def account_for_email(db: AsyncSession, email: str) -> User | None:
+    # Legacy profile edits could preserve mixed case. Never bind an ambiguous address.
+    matches = (await db.scalars(
+        select(User).where(func.lower(User.email) == normalize_email(email)).limit(2)
+    )).all()
+    if len(matches) > 1:
+        raise HTTPException(409, "Resolve duplicate account emails before continuing")
+    return matches[0] if matches else None
 
 
 def hash_account_token(token: str) -> str:
@@ -118,6 +129,10 @@ async def add_user_to_single_lab(
     lab_role: LabRole = LabRole.MEMBER,
     project_role: ProjectRole = ProjectRole.RECORDER,
 ) -> bool:
+    # A concurrent conversion must win over an outstanding organization invitation.
+    is_guest = await db_session.scalar(select(User.project_guest).where(User.id == user.id).with_for_update())
+    if is_guest:
+        raise HTTPException(409, "This account has external project access")
     # Serialize joins from distinct invitations before checking membership and updating the count.
     await db_session.execute(
         select(Lab.id).where(Lab.id == lab.id).with_for_update(key_share=True)
@@ -181,6 +196,8 @@ async def create_account_token(
     user_id: UUID | None = None,
     lab_role: LabRole | None = None,
     project_role: ProjectRole | None = None,
+    project_id: UUID | None = None,
+    access_until: datetime | None = None,
 ) -> tuple[AccountToken, str]:
     normalized_email = normalize_email(email) if email else ""
     invalidation = update(AccountToken).where(
@@ -198,6 +215,7 @@ async def create_account_token(
             invalidation.where(
                 AccountToken.lab_id == lab_id,
                 AccountToken.email == normalized_email,
+                AccountToken.project_id == project_id,
                 AccountToken.expires_at > utcnow(),
             ).values(consumed_at=utcnow(), invitation_outcome="revoked")
         )
@@ -207,6 +225,8 @@ async def create_account_token(
         token_hash=hash_account_token(raw_token),
         token_type=token_type.value,
         email=normalized_email,
+        project_id=project_id,
+        access_until=access_until,
         invitation_display_name=invitation_display_name,
         invitation_note=invitation_note,
         lab_id=lab_id,
@@ -258,7 +278,7 @@ async def revoke_lab_account_tokens(
 async def find_valid_account_token(
     db_session: AsyncSession,
     raw_token: str,
-    token_type: AccountTokenType,
+    token_type: AccountTokenType | tuple[AccountTokenType, ...],
     *,
     for_update: bool = False,
 ) -> AccountToken | None:
@@ -266,7 +286,7 @@ async def find_valid_account_token(
         select(AccountToken)
         .where(
             AccountToken.token_hash == hash_account_token(raw_token),
-            AccountToken.token_type == token_type.value,
+            AccountToken.token_type.in_(token_type if isinstance(token_type, tuple) else (token_type,)),
             AccountToken.consumed_at.is_(None),
             AccountToken.expires_at > utcnow(),
         )

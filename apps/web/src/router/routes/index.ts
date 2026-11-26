@@ -25,6 +25,7 @@ import { ROOT_ROUTE } from "./root"
 export const customRoutes: CustomRoute[] = [
   ROOT_ROUTE,
   { path: "/shared/:id", name: "shared-publication", meta: { title: "Shared publication", allowGuest: true, hideInMenu: true }, component: () => import("@/views/project-protocols/shared-publication.vue") },
+  { path: "/collaboration", name: "guest-workspace", meta: { title: "Project collaboration", hideInMenu: true }, component: () => import("@/views/project/guest-workspace.vue") },
   homeRoute,
   authRoute,
   labsRoute,
