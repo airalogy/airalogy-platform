@@ -255,7 +255,7 @@ onMounted(async () => {
         </p>
         <div v-for="operation in visibleOperations" :key="operation.id" :data-testid="`external-operation-${operation.id}`" class="flex flex-wrap items-center justify-between gap-3 border-b py-3">
           <div class="min-w-0 flex-1 break-all">
-            {{ operation.kind === 'protocol' ? $t('externalResearch.protocolReview') : operation.kind === 'analysis' ? $t('externalResearch.writeAnalysis') : operation.kind === 'import' ? $t('externalAccess.importRecords') : $t('externalAccess.reviseRecords') }}
+            {{ operation.kind === 'meeting_upload' ? $t('externalAccess.meetingUpload') : operation.kind === 'protocol' ? $t('externalResearch.protocolReview') : operation.kind === 'analysis' ? $t('externalResearch.writeAnalysis') : operation.kind === 'import' ? $t('externalAccess.importRecords') : $t('externalAccess.reviseRecords') }}
             <span class="ml-2">{{ states[operation.state] || operation.state }}</span>
             <div class="text-xs color-text-secondary">
               {{ operation.id }}
@@ -374,7 +374,11 @@ onMounted(async () => {
         <p>{{ current.tool_name }} · {{ states[current.state] || current.state }}</p>
         <dl v-if="current.summary" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 break-words">
           <dt>{{ $t('externalAccess.destination') }}</dt><dd class="min-w-0">
-            {{ current.summary.project_name }} / {{ current.summary.protocol_name }}
+            <template v-if="current.kind === 'meeting_upload'">
+              <a :href="current.summary.meeting_url" target="_blank" rel="noopener noreferrer" class="text-primary underline">{{ current.summary.title }}</a>
+              · v{{ current.summary.expected_version }} · {{ current.summary.filename }}
+            </template>
+            <template v-else>{{ current.summary.project_name }} / {{ current.summary.protocol_name }}</template>
           </dd>
           <template v-if="current.summary.row_count !== undefined">
             <dt>{{ $t(current.kind === 'analysis' ? 'externalResearch.exportedRows' : 'externalAccess.rowCount') }}</dt><dd>{{ current.summary.row_count }}</dd>
@@ -389,6 +393,10 @@ onMounted(async () => {
           </template>
           <dt>{{ $t('externalAccess.expires') }}</dt><dd>{{ new Date(current.expires_at).toLocaleString() }}</dd>
         </dl>
+        <section v-if="current.kind === 'meeting_upload'" class="space-y-2">
+          <p>{{ $t(current.summary?.audience === 'participants' ? 'externalAccess.meetingParticipants' : current.summary?.audience === 'selected' ? 'externalAccess.meetingSelected' : 'externalAccess.meetingProject') }}</p>
+          <pre v-if="current.payload" class="max-h-80 overflow-auto whitespace-pre-wrap break-words">{{ current.payload.content }}</pre>
+        </section>
         <div v-if="current.summary?.changes" class="max-h-80 overflow-auto">
           <n-table size="small">
             <thead><tr><th>{{ $t('externalAccess.field') }}</th><th>{{ $t('externalAccess.before') }}</th><th>{{ $t('externalAccess.after') }}</th></tr></thead>

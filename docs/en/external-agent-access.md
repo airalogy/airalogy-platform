@@ -208,3 +208,13 @@ Tools cover authorized-project discovery (`list_projects` returns only the conne
 Ordinary collaboration saves execute directly within the explicit grant and current user permissions. Read before updating and supply the expected revision. Reuse stable object and request UUIDs for retries; conflicts require reviewing current data. Account association, audience changes and deletion remain platform operations. Existing Protocol/Record/analysis preview and confirmation gates continue to apply.
 
 The platform's authorization check is not evidence that a client is connected. Verify the client by listing tools and calling `access_context`; it reports the actual project, deployment version, scopes and available collaboration tools.
+
+## Upload meeting materials over MCP
+
+Enable **Upload meeting materials** (`meetings:upload`) on the external connection in personal settings. Choose the project for a project meeting or the organization for an organization meeting, including a meeting without a project. Existing connections need explicit consent. This scope alone is sufficient. Ordinary members can authorize uploads to organization meetings they own.
+
+1. Provide the meeting link and file to the external tool. Call `preview_meeting_upload` with the linked `meeting_id`, `filename`, original UTF-8 `content`, and a stable `request_key`. A multi-project connection must also supply the authorized `project_id`. Use one key per file and reuse it on retry.
+2. Follow the confirmation link to review the meeting, file, text and audience. SRT, WebVTT (.vtt) and TXT become original transcripts. Markdown (.md) and AIMD (.aimd) become a new minutes revision. Submit one file at a time, up to 1 MiB and up to 200,000 characters for minutes.
+3. After you approve in Platform, the tool calls `execute_operation`. Approval expires after 15 minutes. Repeating the same operation returns its receipt. If the meeting revision changed, review the current minutes and prepare a fresh preview.
+
+The same permissions apply as in the web app. Organization meeting owners can upload. Project meeting editors can upload minutes, while original transcripts require source-management access. The participant list, meeting audience and separately shared minutes editions keep their existing permissions. A different file cannot overwrite an original transcript.

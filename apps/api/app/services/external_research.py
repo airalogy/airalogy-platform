@@ -398,6 +398,7 @@ def result_files(params):
 async def new_operation(
     db, access, *, key, kind, payload, summary, protocol_id=None, version_id=None
 ):
+    project_id = access.project.id if access.project else None
     fingerprint = boundary.digest({"kind": kind, "payload": payload})
     existing = await db.scalar(
         select(ExternalOperation).where(
@@ -408,10 +409,13 @@ async def new_operation(
     if existing:
         if (
             existing.project_id or access.grant.project_id
-        ) != access.project.id or existing.digest != fingerprint:
+        ) != project_id or existing.digest != fingerprint:
             boundary.fail("idempotency_key_conflict", 409)
         await authorize_operation(db, access, existing)
-        return boundary.operation_view(existing)
+        view = boundary.operation_view(existing)
+        if existing.kind == "meeting_upload" and view["state"] == "pending":
+            view["confirmation_url"] = await confirmation_url(db, access, existing)
+        return view
     await boundary.expire_operations(db, access.grant.id)
     count = await db.scalar(
         select(func.count())
@@ -424,7 +428,7 @@ async def new_operation(
     if count >= 10:
         boundary.fail("pending_operation_limit", 429)
     op = ExternalOperation(
-        project_id=access.project.id,
+        project_id=project_id,
         grant_id=access.grant.id,
         request_key=key,
         kind=kind,
@@ -450,7 +454,7 @@ async def new_operation(
     )
     return {
         **boundary.operation_view(op),
-        "confirmation_url": await confirmation_url(db, access, op.id),
+        "confirmation_url": await confirmation_url(db, access, op),
         "instruction": "The user must review and approve in Platform; this credential cannot approve.",
     }
 
@@ -462,10 +466,14 @@ async def project_analysis_path(db, access):
     return f"{project_browser_path(lab.uid, access.project.uid)}/analysis?view=external"
 
 
-async def confirmation_url(db, access, operation_id):
+async def confirmation_url(db, access, op):
     from app.config import config
 
-    return f"{config.SITE_URL.rstrip('/')}{await project_analysis_path(db, access)}&operation_id={operation_id}"
+    if op.kind == "meeting_upload":
+        from urllib.parse import quote
+
+        return f"{config.SITE_URL.rstrip('/')}/users/{quote(access.user.username, safe='')}/settings?operation_id={op.id}"
+    return f"{config.SITE_URL.rstrip('/')}{await project_analysis_path(db, access)}&operation_id={op.id}"
 
 
 async def preview_analysis(db, access, params):
@@ -518,6 +526,11 @@ async def authorize_operation(db, access, op):
         boundary.fail("operation_integrity_failed", 409)
     if op.policy_revision != access.policy.revision:
         boundary.fail("policy_changed_preview_again", 409)
+    if op.kind == "meeting_upload":
+        from app.services.external_meeting_uploads import authorized_target
+
+        await authorized_target(db, access, op)
+        return
     if op.kind == "protocol":
         from app.services.external_protocols import (
             authorize_operation as authorize_protocol,

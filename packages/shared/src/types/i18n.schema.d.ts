@@ -182,6 +182,11 @@ declare namespace I18n {
       savePolicy: string
       saved: string
       readCollaboration: string
+      meetingUpload: string
+      firstMeetingUpload: string
+      meetingParticipants: string
+      meetingSelected: string
+      meetingProject: string
       writeCollaboration: string
       authorizationReviewed: string
       collaborationWriteHint: string

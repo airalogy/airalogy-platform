@@ -8,7 +8,10 @@ from typing import Literal
 from uuid import UUID
 
 import webvtt
+from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.models.meeting_workspace import MeetingTranscript
 
 
 class Cue(BaseModel):
@@ -135,3 +138,30 @@ def export_transcript(cues: list[Cue], fmt: Literal["vtt", "srt", "txt"]) -> str
     out = StringIO()
     webvtt.WebVTT(captions=captions).write(out, format=fmt)
     return out.getvalue()
+
+
+async def import_original(db, identity, filename: str, original: bytes, *, save=True):
+    if len(original) > 4 * 1024 * 1024:
+        raise HTTPException(413, "Transcript exceeds 4 MiB")
+    previous = await db.get(MeetingTranscript, identity)
+    if previous:
+        if original != previous.original:
+            raise HTTPException(409, "This meeting already has an original transcript")
+        return {"revision": previous.revision}
+    filename = Path(filename).name[:255]
+    try:
+        cues = parse_transcript(filename, original)
+    except ValueError as exc:
+        raise HTTPException(422, "Invalid transcript: " + str(exc)[:200]) from None
+    if not save:
+        return {"revision": 1}
+    db.add(
+        MeetingTranscript(
+            meeting_id=identity,
+            original=original,
+            filename=filename,
+            revision=1,
+            cues=[cue.model_dump() for cue in cues],
+        )
+    )
+    return {"revision": 1}

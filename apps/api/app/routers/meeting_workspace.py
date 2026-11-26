@@ -13,7 +13,6 @@ from app.models.lab import Lab, LabUser
 from app.models.meeting_workspace import (
     MeetingFollowUp,
     MeetingFollowUpReader,
-    MeetingMinutesEdition,
     MeetingMinutesShare,
     MeetingSpace,
 )
@@ -26,6 +25,7 @@ from app.routers.depends import CurrentUser, guest_endpoint
 from app.services.knowledge import canonical_digest
 from app.services.meetings import lock_meeting_key
 from app.services.meeting_workspace import (
+    add_minutes_edition,
     guest,
     links,
     member,
@@ -166,16 +166,7 @@ async def save_room(identity: UUID, data: Room, user: CurrentUser, db: DBSession
     space.revision += 1
     await db.flush()
     await set_links(db, space, user, data.project_ids, data.participants)
-    db.add(
-        MeetingMinutesEdition(
-            meeting_id=identity,
-            revision=space.revision,
-            title=space.title,
-            body=space.body,
-            body_format=space.body_format,
-            occurred_at=space.occurred_at,
-        )
-    )
+    add_minutes_edition(db, space)
     await db.commit()
     return await room_view(db, user, identity)
 

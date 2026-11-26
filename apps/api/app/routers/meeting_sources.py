@@ -34,7 +34,7 @@ from app.models.user import User
 from app.routers.depends import CurrentUser
 from app.services.chat_models import enabled_chat_model_types, require_ai_enabled
 from app.services.meeting_drafts import DraftTurn, draft_meeting
-from app.services.meeting_transcript import Cue, export_transcript, parse_transcript
+from app.services.meeting_transcript import Cue, export_transcript, import_original
 from app.services.meeting_workspace import guest, links, sources
 from app.services.model_usage import create_usage_context
 from app.services.organization_ai import bind_organization
@@ -182,29 +182,9 @@ async def import_transcript(
 ):
     await sources(db, user, identity, write=True)
     original = await file.read(4 * 1024 * 1024 + 1)
-    if len(original) > 4 * 1024 * 1024:
-        raise HTTPException(413, "Transcript exceeds 4 MiB")
-    previous = await db.get(MeetingTranscript, identity)
-    if previous:
-        if original != previous.original:
-            raise HTTPException(409, "This meeting already has an original transcript")
-        return {"revision": previous.revision}
-    filename = Path(file.filename or "").name[:255]
-    try:
-        cues = parse_transcript(filename, original)
-    except ValueError as exc:
-        raise HTTPException(422, "Invalid transcript: " + str(exc)[:200]) from None
-    db.add(
-        MeetingTranscript(
-            meeting_id=identity,
-            original=original,
-            filename=filename,
-            revision=1,
-            cues=[cue.model_dump() for cue in cues],
-        )
-    )
+    result = await import_original(db, identity, file.filename or "", original)
     await db.commit()
-    return {"revision": 1}
+    return result
 
 
 @router.put("/{identity}/transcript")

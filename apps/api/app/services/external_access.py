@@ -45,6 +45,7 @@ SCOPES = {
     "contracts:read",
     "contracts:create",
     "cash:link",
+    "meetings:upload",
     "collaboration:read",
     "collaboration:write",
     "protocols:read",
@@ -250,7 +251,7 @@ async def create_grant(db, user, params):
     ) or (multi and not params.organization_id):
         fail("invalid_project_coverage", 422)
     registry = bool(params.organization_id) and not multi
-    if (registry and not scopes <= ORG_SCOPES) or (
+    if (registry and not scopes <= (ORG_SCOPES | {"meetings:upload"})) or (
         not registry and scopes & ORG_SCOPES
     ):
         fail("invalid_scopes_for_target", 422)
@@ -267,7 +268,7 @@ async def create_grant(db, user, params):
         lab_id = project.lab_id
     await lock_user_calls(db, user.id)
     policy = await policy_for(db, lab_id, lock=True, shared=True)
-    await lab_member(db, lab_id, user.id, manager=registry)
+    await lab_member(db, lab_id, user.id, manager=bool(registry and scopes & ORG_SCOPES))
     if not policy or not policy.enabled:
         fail("lab_external_access_disabled")
     if multi:
@@ -298,7 +299,7 @@ async def create_grant(db, user, params):
     else:
         from app.services.project_operations import organization
 
-        await organization(db, user, lab_id, manage=True)
+        await organization(db, user, lab_id, manage=bool(scopes & ORG_SCOPES))
     count = await db.scalar(
         select(func.count())
         .select_from(ExternalGrant)
@@ -343,6 +344,8 @@ async def create_grant(db, user, params):
 
 
 async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=None):
+    from app.services.external_project_ledger import ORG_SCOPES
+
     query = select(ExternalGrant)
     if token is not None:
         if not token.startswith("apl_") or len(token) > 100:
@@ -387,7 +390,7 @@ async def authorize(db, token=None, *, grant_id=None, owner_id=None, audience=No
         db,
         lab_id,
         user.id,
-        manager=bool(grant.organization_id and not grant.project_coverage),
+        manager=bool(ORG_SCOPES.intersection(grant.scopes)),
     )
     if project:
         await check_user_permission(db, project, user, "read_project")
@@ -890,7 +893,7 @@ async def preview_operation(db, access, args, kind):
 
     return {
         **operation_view(op),
-        "confirmation_url": await confirmation_url(db, access, op.id),
+        "confirmation_url": await confirmation_url(db, access, op),
         "instruction": "The user must review and approve in Platform. Agent tokens cannot approve operations.",
     }
 
@@ -914,6 +917,10 @@ async def validate_revision(version, values):
 
 
 async def execute_operation(db, access, op):
+    if op.kind == "meeting_upload":
+        from app.services.external_meeting_uploads import execute
+
+        return await execute(db, access, op)
     if op.kind not in ("import", "revision"):
         from app.services.external_research import execute_analysis
 
@@ -982,10 +989,53 @@ async def execute_operation(db, access, op):
     return operation_view(op)
 
 
-async def tool_call(db, access, name, args):
-    from app.services.external_collaboration import COLLABORATION_TOOLS
+async def operation_request(db, access, operation_id, *, execute):
+    await expire_operations(db, access.grant.id)
+    op = await db.scalar(
+        select(ExternalOperation)
+        .where(
+            ExternalOperation.id == operation_id,
+            ExternalOperation.grant_id == access.grant.id,
+        )
+        .with_for_update()
+    )
+    project_id = access.project.id if access.project else None
+    if not op or (op.project_id or access.grant.project_id) != project_id:
+        fail("operation_not_found", 404)
+    if op.kind != "meeting_upload":
+        scope(access, "protocols:read")
+        if not access.project:
+            fail("operation_not_found", 404)
+    if op.kind not in ("import", "revision"):
+        from app.services.external_research import authorize_operation
 
+        await authorize_operation(db, access, op)
+        return (
+            await execute_operation(db, access, op)
+            if execute
+            else operation_view(op)
+        )
+    protocol, _ = await protocol_context(db, access, op.protocol_id)
+    if op.kind == "revision":
+        scope(access, "records:read")
+        record = await read_record(
+            db, access, protocol, UUID(op.summary["record_id"])
+        )
+        if record.user_id != access.user.id:
+            fail("record_revision_forbidden")
+    if op.policy_revision != access.policy.revision:
+        fail("policy_changed_preview_again", 409)
+    return (
+        await execute_operation(db, access, op)
+        if execute
+        else operation_view(op)
+    )
+
+
+async def tool_call(db, access, name, args):
+    from app.services import external_meeting_uploads as meeting_uploads
     from app.services import external_project_ledger as ledger
+    from app.services.external_collaboration import COLLABORATION_TOOLS
 
     if name in ledger.TOOLS:
         try:
@@ -1002,6 +1052,12 @@ async def tool_call(db, access, name, args):
                 }.get(error.status_code, "project_request_failed"),
                 error.status_code,
             )
+    if name == "preview_meeting_upload":
+        return await meeting_uploads.preview(db, access, args)
+    if name in ("operation_status", "execute_operation"):
+        return await operation_request(
+            db, access, args.operation_id, execute=name == "execute_operation"
+        )
     if access.project is None:
         if name != "access_context":
             fail("insufficient_scope")
@@ -1013,7 +1069,7 @@ async def tool_call(db, access, name, args):
             "scopes": access.grant.scopes,
             "tools": [
                 t for t, s in ledger.REQUIRED.items() if s in access.grant.scopes
-            ],
+            ] + meeting_uploads.available_tools(access),
             "expires_at": access.grant.expires_at.isoformat(),
         }
     if name not in COLLABORATION_TOOLS and name != "access_context":
@@ -1069,6 +1125,7 @@ async def tool_call(db, access, name, args):
             "contract_receipt_access": ledger.contract_receipt_access(
                 access, ledger_role
             ),
+            "meeting_upload_tools": meeting_uploads.available_tools(access),
             "collaboration_tools": [
                 name
                 for name, (_, _, readonly) in COLLABORATION_TOOLS.items()
@@ -1201,42 +1258,6 @@ async def tool_call(db, access, name, args):
     if name in ("preview_import", "preview_revision"):
         return await preview_operation(
             db, access, args, "import" if name == "preview_import" else "revision"
-        )
-    if name in ("operation_status", "execute_operation"):
-        op = await db.scalar(
-            select(ExternalOperation)
-            .where(
-                ExternalOperation.id == args.operation_id,
-                ExternalOperation.grant_id == access.grant.id,
-            )
-            .with_for_update()
-        )
-        if not op or (op.project_id or access.grant.project_id) != access.project.id:
-            fail("operation_not_found", 404)
-        if op.kind not in ("import", "revision"):
-            from app.services.external_research import authorize_operation
-
-            await authorize_operation(db, access, op)
-            return (
-                await execute_operation(db, access, op)
-                if name == "execute_operation"
-                else operation_view(op)
-            )
-        await protocol_context(db, access, op.protocol_id)
-        if op.kind == "revision":
-            scope(access, "records:read")
-            protocol, _ = await protocol_context(db, access, op.protocol_id)
-            record = await read_record(
-                db, access, protocol, UUID(op.summary["record_id"])
-            )
-            if record.user_id != access.user.id:
-                fail("record_revision_forbidden")
-        if op.policy_revision != access.policy.revision:
-            fail("policy_changed_preview_again", 409)
-        return (
-            await execute_operation(db, access, op)
-            if name == "execute_operation"
-            else operation_view(op)
         )
     fail("unknown_tool", 404)
 

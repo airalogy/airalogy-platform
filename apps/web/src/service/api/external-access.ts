@@ -22,7 +22,10 @@ export interface ExternalOperation {
   digest?: string
   tool_name?: string
   summary?: {
-    project_name: string
+    project_name?: string
+    meeting_url?: string
+    filename?: string
+    audience?: "participants" | "selected" | "project"
     protocol_name?: string
     title?: string
     snapshot_id?: string
@@ -41,7 +44,7 @@ export interface ExternalOperation {
     file_changes?: Array<{ path: string, status: string, diff: string }>
     reason?: string
   }
-  payload?: { binary_files?: Record<string, string>, csv?: string, reason?: string, changes?: Record<string, unknown>, report?: string, method?: string, limitations?: string, environment?: Record<string, string>, files?: Array<{ filename: string, kind: string, content_base64: string, sha256: string }> }
+  payload?: { content?: string, binary_files?: Record<string, string>, csv?: string, reason?: string, changes?: Record<string, unknown>, report?: string, method?: string, limitations?: string, environment?: Record<string, string>, files?: Array<{ filename: string, kind: string, content_base64: string, sha256: string }> }
   result?: { links?: string[] }
 }
 export interface ExternalDashboard {

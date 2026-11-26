@@ -19,6 +19,19 @@ from app.services.project_work import project_context
 from app.services.single_lab import utcnow
 
 
+def add_minutes_edition(db, space):
+    db.add(
+        MeetingMinutesEdition(
+            meeting_id=space.id,
+            revision=space.revision,
+            title=space.title,
+            body=space.body,
+            body_format=space.body_format,
+            occurred_at=space.occurred_at,
+        )
+    )
+
+
 def unavailable():
     return HTTPException(404, "Meeting or task unavailable")
 
@@ -59,7 +72,7 @@ def participant(identity, user_id):
     )
 
 
-async def sources(db, user, identity, *, write=False, owner=False):
+async def sources(db, user, identity, *, write=False, owner=False, initialize=True):
     """Resolve project or organization scope before returning any private source."""
     query = select(MeetingSpace).where(MeetingSpace.id == identity)
     space = await db.scalar(query.with_for_update() if write else query)
@@ -78,7 +91,7 @@ async def sources(db, user, identity, *, write=False, owner=False):
     )
     if entry.created_by_user_id != user.id and not await db.scalar(select(attending_account(identity, user.id))):
         raise unavailable()
-    if not space and write:
+    if not space and write and initialize:
         space = await db.get(MeetingSpace, identity, populate_existing=True)
         if space is None:
             space = MeetingSpace(

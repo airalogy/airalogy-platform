@@ -6,7 +6,7 @@ import { consentExternalOAuth, getExternalDashboard, readExternalOAuthRequest } 
 import { useAuthStore } from "@/store/modules/auth"
 import ExternalGuideLink from "@/views/external-access/components/external-guide-link.vue"
 import GrantDuration from "@/views/external-access/components/grant-duration.vue"
-import { canRegisterAndLink, contractReceiptScopes, coveredProjects, eligibleScope, projectTarget, scopeLabel } from "@/views/external-access/components/project-coverage"
+import { canRegisterAndLink, contractReceiptScopes, coveredProjects, eligibleScope, projectTarget, scopeForTarget, scopeLabel } from "@/views/external-access/components/project-coverage"
 import ProjectCoveragePicker from "@/views/external-access/components/project-coverage-picker.vue"
 import { $t } from "@airalogy/shared/locales"
 
@@ -20,14 +20,16 @@ const projectId = ref<string | null>(null)
 const target = ref<ProjectTarget>({ mode: "single", organization: null, ids: [] })
 const destinations = computed(() => coveredProjects(target.value, projectId.value, dashboard.value?.projects || []))
 const hasTarget = computed(() => organizationMode.value ? Boolean(projectId.value) : destinations.value.length > 0)
-const hasOrganizationScopes = computed(() => info.value?.scopes.some(s => s.startsWith("projects:")))
-const hasProjectScopes = computed(() => info.value?.scopes.some(s => !s.startsWith("projects:")))
-const projects = computed(() => (organizationMode.value ? dashboard.value?.organizations?.filter(o => o.can_register !== false) || [] : dashboard.value?.projects || []).filter(p => p.enabled).map(p => ({ value: p.id, label: p.name })))
-const requestedScopes = computed(() => info.value?.scopes.filter(s => s.startsWith("projects:") === organizationMode.value) || [])
+const hasOrganizationScopes = computed(() => info.value?.scopes.some(s => scopeForTarget(s, true)))
+const hasProjectScopes = computed(() => info.value?.scopes.some(s => scopeForTarget(s, false)))
+const projects = computed(() => (organizationMode.value ? dashboard.value?.organizations?.filter(o => o.can_register !== false || info.value?.scopes.includes("meetings:upload")) || [] : dashboard.value?.projects || []).filter(p => p.enabled).map(p => ({ value: p.id, label: p.name })))
+const requestedScopes = computed(() => info.value?.scopes.filter(s => scopeForTarget(s, organizationMode.value)) || [])
 const approvedScopes = ref<string[]>([])
 const reviewed = ref(false)
 function eligible(scope: string) {
-  return organizationMode.value || eligibleScope(scope, destinations.value, target.value.mode === "accessible")
+  if (organizationMode.value)
+    return scope === "meetings:upload" || dashboard.value?.organizations?.some(o => o.id === projectId.value && o.can_register === true)
+  return eligibleScope(scope, destinations.value, target.value.mode === "accessible")
 }
 const showContractPreset = computed(() => !organizationMode.value && requestedScopes.value.some(s => contractReceiptScopes.includes(s)))
 const sameTargetGrants = computed(() => {
@@ -74,7 +76,7 @@ function applyPreset() {
 watch([requestedScopes, projectId, target, sourceId], () => {
   approvedScopes.value = sameTargetGrants.value.length && sourceId.value !== newGrant
     ? baseline.value.filter(s => requestedScopes.value.includes(s) && eligible(s))
-    : requestedScopes.value.filter(s => eligible(s) && !["contracts:read", "contracts:create", "cash:link"].includes(s))
+    : requestedScopes.value.filter(s => eligible(s) && (!["contracts:read", "contracts:create", "cash:link", "meetings:upload"].includes(s) || (s === "meetings:upload" && requestedScopes.value.length === 1)))
   reviewed.value = false
 })
 watch(approvedScopes, () => {
@@ -146,7 +148,7 @@ onMounted(load)
             {{ $t("externalAccess.project") }}
           </n-radio-button>
           <n-radio-button :value="true">
-            {{ $t("externalAccess.organizationProjects") }}
+            {{ $t("externalAccess.organization") }}
           </n-radio-button>
         </n-radio-group>
         <n-form-item :label="$t(organizationMode ? 'externalAccess.organization' : 'externalAccess.project')">

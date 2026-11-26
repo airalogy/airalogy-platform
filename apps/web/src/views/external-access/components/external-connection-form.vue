@@ -7,7 +7,7 @@ import { $t } from "@airalogy/shared/locales"
 import { copyToClip } from "@airalogy/shared/utils"
 import ExternalGuideLink from "./external-guide-link.vue"
 import GrantDuration from "./grant-duration.vue"
-import { canRegisterAndLink, contractReceiptScopes, coveredProjects, eligibleScope, externalScopes, projectTarget, scopeLabel } from "./project-coverage"
+import { canRegisterAndLink, contractReceiptScopes, coveredProjects, eligibleScope, externalScopes, projectTarget, scopeForTarget, scopeLabel } from "./project-coverage"
 import ProjectCoveragePicker from "./project-coverage-picker.vue"
 
 const props = defineProps<{ projects: ExternalDashboard["projects"], organizations?: ExternalDashboard["organizations"], projectId?: string, failed: boolean }>()
@@ -18,9 +18,6 @@ const name = ref("")
 const projectId = ref<string | null>(props.projectId || null)
 const target = ref<ProjectTarget>({ mode: "single", organization: null, ids: [] })
 const destinations = computed(() => coveredProjects(target.value, projectId.value, props.projects))
-function allowed(scope: string) {
-  return eligibleScope(scope, destinations.value, target.value.mode === "accessible")
-}
 const days = ref<number | null>(7)
 const preset = ref("read")
 const selectedScopes = ref(["protocols:read", "records:read"])
@@ -35,16 +32,22 @@ const command = `codex mcp add airalogy --url ${JSON.stringify(endpoint)} --bear
 const organizationMode = ref(false)
 const organizationId = ref<string | null>(null)
 const organization = computed(() => props.organizations?.find(org => org.id === organizationId.value))
-const organizationOptions = computed(() => (props.organizations || []).filter(o => o.can_register !== false).map(org => ({ value: org.id, label: org.name, disabled: !org.enabled })))
+const organizationOptions = computed(() => (props.organizations || []).map(org => ({ value: org.id, label: org.name, disabled: !org.enabled })))
+function allowed(scope: string) {
+  if (organizationMode.value)
+    return scope === "meetings:upload" || organization.value?.can_register === true
+  return eligibleScope(scope, destinations.value, target.value.mode === "accessible")
+}
 function changeTarget(value: boolean) {
   organizationMode.value = value
   if (value && !organizationId.value && organizationOptions.value.filter(o => !o.disabled).length === 1)
     organizationId.value = organizationOptions.value.find(o => !o.disabled)!.value
-  applyPreset(value ? "register" : "read")
+  applyPreset(value ? (organization.value?.can_register ? "register" : "meetingUpload") : "read")
 }
 const selectedProject = computed(() => props.projects.find(item => item.id === projectId.value))
 const projectOptions = computed(() => props.projects.map(p => ({ value: p.id, label: `${p.name}${p.enabled ? "" : ` — ${$t("externalAccess.labDisabled")}`}`, disabled: !p.enabled })))
 const presets: Record<string, string[]> = {
+  meetingUpload: ["meetings:upload"],
   register: ["projects:find", "projects:create"],
   cash: ["cash:read"],
   contractReceipt: contractReceiptScopes,
@@ -53,15 +56,15 @@ const presets: Record<string, string[]> = {
   analyze: ["protocols:read", "records:read", "records:export", "analysis:read", "analysis:write"],
   author: ["protocols:read", "protocols:source", "protocols:candidate", "protocols:publish"],
 }
-const scopeOptions = computed(() => externalScopes.filter(scope => scope.startsWith("projects:") === organizationMode.value)
+const scopeOptions = computed(() => externalScopes.filter(scope => scopeForTarget(scope, organizationMode.value))
   .map(scope => ({ label: scopeLabel(scope), value: scope })))
-const firstTask = computed(() => organizationMode.value ? $t("externalAccess.firstOrganizationTask") : selectedScopes.value.some(s => s.startsWith("cash:")) ? $t("externalAccess.firstCashTask") : $t("externalOnboarding.firstTask"))
-const permissionUnavailable = computed(() => !organizationMode.value && destinations.value.length > 0 && selectedScopes.value.some(scope => !allowed(scope)))
-const canCreate = computed(() => Boolean(name.value.trim() && selectedScopes.value.length && (organizationMode.value ? organization.value?.enabled && organization.value.can_register !== false : destinations.value.length)
+const firstTask = computed(() => selectedScopes.value.includes("meetings:upload") ? $t("externalAccess.firstMeetingUpload") : organizationMode.value ? $t("externalAccess.firstOrganizationTask") : selectedScopes.value.some(s => s.startsWith("cash:")) ? $t("externalAccess.firstCashTask") : $t("externalOnboarding.firstTask"))
+const permissionUnavailable = computed(() => (organizationMode.value ? organization.value : destinations.value.length > 0) && selectedScopes.value.some(scope => !allowed(scope)))
+const canCreate = computed(() => Boolean(name.value.trim() && selectedScopes.value.length && (organizationMode.value ? organization.value?.enabled : destinations.value.length)
   && days.value && !busy.value && !props.failed && !permissionUnavailable.value))
 function allEligible() {
   preset.value = "custom"
-  selectedScopes.value = scopeOptions.value.map(option => option.value).filter(scope => organizationMode.value || allowed(scope))
+  selectedScopes.value = scopeOptions.value.map(option => option.value).filter(allowed)
 }
 watch(() => props.projects, () => {
   const requested = props.projectId || (typeof route.query.project_id === "string" ? route.query.project_id : null)
@@ -144,7 +147,7 @@ onBeforeUnmount(dismiss)
           {{ $t("externalAccess.project") }}
         </n-radio-button>
         <n-radio-button :value="true">
-          {{ $t("externalAccess.organizationProjects") }}
+          {{ $t("externalAccess.organization") }}
         </n-radio-button>
       </n-radio-group>
       <div class="grid gap-x-4 sm:grid-cols-2">
@@ -164,8 +167,21 @@ onBeforeUnmount(dismiss)
       <n-alert v-if="!organizationMode && selectedProject && !selectedProject.enabled" type="warning" class="mb-4">
         {{ $t("externalOnboarding.disabledHint") }}
       </n-alert>
-      <n-form-item v-if="!organizationMode" :label="$t('externalOnboarding.purpose')">
+      <n-form-item v-if="organizationMode" :label="$t('externalOnboarding.purpose')">
+        <div class="flex flex-wrap gap-2">
+          <n-button :aria-pressed="preset === 'meetingUpload'" @click="applyPreset('meetingUpload')">
+            {{ $t("externalAccess.meetingUpload") }}
+          </n-button>
+          <n-button v-if="organization?.can_register" :aria-pressed="preset === 'register'" @click="applyPreset('register')">
+            {{ $t("externalAccess.organizationProjects") }}
+          </n-button>
+        </div>
+      </n-form-item>
+      <n-form-item v-else :label="$t('externalOnboarding.purpose')">
         <div class="grid w-full gap-2 sm:grid-cols-2">
+          <n-button :disabled="!allowed('meetings:upload')" :aria-pressed="preset === 'meetingUpload'" :type="preset === 'meetingUpload' ? 'primary' : 'default'" @click="applyPreset('meetingUpload')">
+            {{ $t("externalAccess.meetingUpload") }}
+          </n-button>
           <n-button v-if="canRegisterAndLink(destinations, target.mode === 'accessible')" data-testid="external-preset-contract-receipt" :aria-pressed="preset === 'contractReceipt'" :type="preset === 'contractReceipt' ? 'primary' : 'default'" :secondary="preset === 'contractReceipt'" class="min-h-12 h-auto! whitespace-normal! py-2!" @click="applyPreset('contractReceipt')">
             {{ $t("externalAccess.contractReceiptPreset") }}
           </n-button>
@@ -194,7 +210,7 @@ onBeforeUnmount(dismiss)
             </n-button>
           </div>
           <n-checkbox-group v-model:value="selectedScopes" class="flex flex-wrap gap-3" @update:value="preset = 'custom'">
-            <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value" :disabled="!organizationMode && !allowed(option.value)">
+            <n-checkbox v-for="option in scopeOptions" :key="option.value" :value="option.value" :disabled="!allowed(option.value)">
               {{ option.label }}
             </n-checkbox>
           </n-checkbox-group>

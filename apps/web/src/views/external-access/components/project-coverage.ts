@@ -30,7 +30,7 @@ export function eligibleScope(scope: string, projects: Project[], ongoing: boole
       return p.can_record !== false
     if (scope === "collaboration:read")
       return p.can_collaborate !== false
-    if (scope === "collaboration:write")
+    if (scope === "collaboration:write" || scope === "meetings:upload")
       return p.can_collaborate !== false && p.can_write_collaboration !== false
     if (scope === "contracts:create")
       return canManageContracts(p.cash_role)
@@ -47,6 +47,10 @@ export function eligibleScope(scope: string, projects: Project[], ongoing: boole
   return projects.length > 0 && (ongoing ? projects.some(allows) : projects.every(allows))
 }
 
+export function scopeForTarget(scope: string, organization: boolean) {
+  return scope === "meetings:upload" || scope.startsWith("projects:") === organization
+}
+
 export const contractReceiptScopes = ["contracts:read", "contracts:create", "cash:read", "cash:link"]
 
 export function canRegisterAndLink(projects: Project[], ongoing: boolean) {
@@ -55,6 +59,7 @@ export function canRegisterAndLink(projects: Project[], ongoing: boolean) {
 }
 
 const scopeLabels = {
+  "meetings:upload": "externalAccess.meetingUpload",
   "projects:find": "externalAccess.findProject",
   "projects:create": "externalAccess.registerProject",
   "cash:read": "externalAccess.readCash",

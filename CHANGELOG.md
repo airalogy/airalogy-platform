@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- External tools can submit transcripts and minutes to existing meetings for user confirmation. Saved materials retain the meeting and original-source access rules.
+
 - Record submission accepts optional notes with an empty text default. Server validation identifies the affected field by name. Read-only reports display saved calculations without rerunning them. The project log shows its project-specific title.
 
 - Organization meetings can span projects, privately retain recordings and timed transcripts, and share a selected edition of minutes. Organizers can review speaker-to-account suggestions, track scoped follow-ups and import Markdown or AIMD documents.
