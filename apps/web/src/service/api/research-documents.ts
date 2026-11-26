@@ -14,6 +14,7 @@ export type DocumentKind =
 export interface DocumentContent {
   title: string
   kind: DocumentKind
+  body_format?: "md" | "aimd"
   body: string
   record_data: AimdProtocolRecordData
   file_ids: string[]

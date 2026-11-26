@@ -45,3 +45,17 @@ Once the person has an account with project access, a project administrator can 
 Saved meetings open in reading mode. Use Edit to change the minutes. During creation, add several action rows and save the meeting and actions together. Existing minutes also accept batches or links to existing work. Paste one title per line, then fill in people, goals, acceptance and timing. Use a timing note for “before the next meeting” rather than guessing a date. A failed batch leaves no partial tasks and keeps the entered rows; retries reuse the same IDs.
 
 When preparing a weekly meeting, expand “Follow up on a previous meeting” and choose a held meeting you can view in the project. Review the current owner, blocker and next step, select unfinished items for discussion, then save the meeting. In a saved meeting, use the same picker under action items and click “Add to this discussion”. Open an item by its title to update it across all linked meetings.
+
+## Organization meetings and follow-up
+
+Start an organization meeting under Home → My work → Meetings. Link zero, one or multiple projects. The organizer and selected participants can read the minutes, transcript and recording. Linking a project lets participants find the meeting in their timeline. To give someone else the minutes, share the current edition with that account. Later edits require a new share. Removing a recipient revokes access to the shared edition.
+
+Create a personal reminder, assign a task to selected accounts, or publish an action to a linked project's work list. Give each task a self-contained title and description. Assignees can update their progress in My work. Sharing a task does not grant access to its source. Project-wide actions use the existing project work item and status.
+
+## Transcripts and speaker attribution
+
+Upload a recording or import an SRT, WebVTT or UTF-8 text transcript under Recording and transcript. Timed formats retain millisecond precision. Select a timestamp to listen to the recording or cite it in the minutes. Text without timestamps remains untimed.
+
+After import, review speaker suggestions by display name or account handle. Attendees appear first. Accept individual accounts, select all unique matches, or skip linking. For generic labels or ambiguous names, choose the account manually. A single segment can also be reassigned. Saving confirms the links without granting access. Download the original bytes at any time, or export corrected text and timed subtitles.
+
+On deployments with Aira configured, the organizer can generate draft minutes from the transcript, review the result and then save it. Minutes accept Markdown and AIMD. Imported .md files retain plain Markdown semantics, while .aimd files use Airalogy extensions.

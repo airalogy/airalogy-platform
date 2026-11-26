@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Organization meetings can span projects, privately retain recordings and timed transcripts, and share a selected edition of minutes. Organizers can review speaker-to-account suggestions, track scoped follow-ups and import Markdown or AIMD documents.
+
 - My work on Home brings together accessible meetings, follow-ups and their source meetings across projects. Single-organization directories use consistent avatars and menus. Administrators can issue collaborator password resets and confirm which projects to retain when converting a collaborator to an ordinary member.
 
 - Organization administrators can filter a unified people directory and maintain external collaborators’ organization-specific names across projects. Member management actions share a compact row menu.

@@ -472,7 +472,7 @@ async function createPlan() {
           >
           <p v-if="notice" role="status" class="text-green-700">{{ notice }}</p>
           <div v-if="currentItem?.meetings?.length && panel === 'details'" class="grid gap-1">
-            <router-link v-for="meeting in currentItem.meetings" :key="meeting.id" :to="{ name: 'project-meetings', params: { ...$route.params }, query: { meeting: meeting.id } }" class="text-primary hover:underline">
+            <router-link v-for="meeting in currentItem.meetings" :key="meeting.id" :to="meeting.href || { name: 'project-meetings', params: { ...$route.params }, query: { meeting: meeting.id } }" class="text-primary hover:underline">
               {{ t(meeting.relation === 'created' ? 'page.myWork.created' : 'page.myWork.discussed') }} · {{ meeting.title }}
             </router-link>
           </div>

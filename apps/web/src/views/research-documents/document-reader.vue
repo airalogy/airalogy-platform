@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DocumentMarkdown from "@/components/common/document-markdown.vue"
 import type { ResearchDocument } from "@/service/api/research-documents"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { fetchResearchFile } from "@/service/api/knowledge"
@@ -101,7 +102,8 @@ onBeforeUnmount(() => sequence++)
         </p>
         <document-audience compact :scope="doc" :name="doc.scope_name" />
         <div class="mt-4 min-w-0 overflow-x-auto">
-          <aimd-recorder-wysiwyg-surface :key="doc.id" :content="doc.body" :model-value="doc.record_data" readonly :show-mode-switch="false" :locale="locale" :min-height="200" :request-collector-permission="denyCollector" />
+          <document-markdown v-if="doc.body_format === 'md'" :body="doc.body" format="md" />
+          <aimd-recorder-wysiwyg-surface v-else :key="doc.id" :content="doc.body" :model-value="doc.record_data" readonly :show-mode-switch="false" :locale="locale" :min-height="200" :request-collector-permission="denyCollector" />
         </div>
         <ul v-if="doc.files.length" class="mt-4 pl-5">
           <li v-for="file in doc.files" :key="file.id" class="break-words">

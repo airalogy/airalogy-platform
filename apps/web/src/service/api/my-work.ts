@@ -1,7 +1,7 @@
 import { documentTimeZone } from "@/utils/documentBrowse"
 import { documentRequest } from "./research-documents"
 
-export interface MeetingLink { id: string, title: string, relation: "created" | "discussed" }
+export interface MeetingLink { href?: string, id: string, title: string, relation: "created" | "discussed" }
 interface WorkEntry { id: string, title: string, project: string, href: string }
 export interface AgendaEntry extends WorkEntry {
   at: string | null

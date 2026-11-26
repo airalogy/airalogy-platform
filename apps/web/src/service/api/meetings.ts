@@ -15,6 +15,7 @@ export interface MeetingAccess {
 export interface MeetingContent {
   title: string
   body: string
+  body_format?: "md" | "aimd"
   status: "held" | "planned" | "cancelled"
   occurred_at: string | null
   scheduled_at: string | null
@@ -30,6 +31,8 @@ export interface Meeting extends MeetingContent {
   revision: number
   created_at: string
   updated_at: string
+  can_read_sources: boolean
+  lab_id: string
   can_manage: boolean
   can_edit: boolean
   can_comment: boolean
@@ -52,6 +55,7 @@ export function meetingContent(m: MeetingContent): MeetingContent {
   return {
     title: m.title,
     body: m.body,
+    body_format: m.body_format || "aimd",
     status: m.status,
     occurred_at: m.occurred_at,
     scheduled_at: m.scheduled_at,

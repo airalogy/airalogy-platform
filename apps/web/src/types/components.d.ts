@@ -57,6 +57,7 @@ declare module 'vue' {
     DeleteButton: typeof import('./../components/custom/delete-button.vue')['default']
     DeleteConfirmationModal: typeof import('./../components/common/settings/DeleteConfirmationModal.vue')['default']
     DeleteIcon: typeof import('./../components/icon/delete-icon.vue')['default']
+    DocumentMarkdown: typeof import('./../components/common/document-markdown.vue')['default']
     DownloadIcon: typeof import('./../components/icon/download-icon.vue')['default']
     DropdownIcon: typeof import('./../components/icon/dropdown-icon.vue')['default']
     DynamicInput: typeof import('./../components/custom/aimd/components/inputs/dynamic-input.vue')['default']

@@ -39,6 +39,7 @@ MODEL_MODULES = [
     "app.models.project_operations",
     "app.models.project_person",
     "app.models.meeting",
+    "app.models.meeting_workspace",
     "app.models.project_visit",
     "app.models.project_group",
     "app.models.protocol",

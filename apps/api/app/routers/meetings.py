@@ -21,6 +21,7 @@ from app.models.meeting import (
     MeetingParticipant,
     MeetingWorkLink,
 )
+from app.models.meeting_workspace import MeetingSpace
 from app.models.project_person import ProjectPerson
 from app.models.project_work import ProjectWork
 from app.models.research import ResearchTask
@@ -39,7 +40,9 @@ from app.services.meeting_drafts import ConversationTurn, DraftTurn, draft_meeti
 from app.services.model_usage import create_usage_context
 from app.services.meetings import (
     MeetingContent,
+    attending_account,
     authorize_meeting,
+    lock_meeting_key,
     meeting_read_condition,
 )
 from app.services.project_work import project_context, visible_snapshot, work_snapshot
@@ -280,12 +283,17 @@ async def payload(db, user, entry, meeting, project, detail=True):
         "created_at": entry.created_at,
         "updated_at": entry.updated_at,
         "can_manage": own and writer,
+        "lab_id": entry.lab_id,
+        "can_read_sources": False,
         "can_edit": writer and (own or role == "editor"),
         "can_comment": writer
         and (own or meeting.visibility == "project" or role in {"commenter", "editor"}),
         "can_create_work": writer,
     }
     if detail:
+        doc = await db.get(ResearchDocument, entry.id)
+        result["body_format"] = "md" if doc.format_version == "md.v1" else "aimd"
+        result["can_read_sources"] = own or bool(await db.scalar(select(attending_account(entry.id, user.id))))
         rows = (
             await db.execute(
                 select(MeetingWorkLink, ResearchTask, ProjectWork)
@@ -672,10 +680,16 @@ async def create_action(
 async def create_meeting_impl(
     data: Create, current_user: CurrentUser, db_session: DBSession
 ):
+    await lock_meeting_key(db_session, data.id)
+    organization_room = await db_session.get(MeetingSpace, data.id)
+    if organization_room and organization_room.project_meeting_id is None:
+        raise HTTPException(409, "Meeting identity already in use")
     project = await project_context(
         db_session, current_user, data.project_id, write=True, lock=True
     )
-    digest = canonical_digest(data.model_dump(mode="json"))
+    # Preserve the create digest used by clients before format selection.
+    definition = data.model_dump(mode="json", exclude={"body_format"} if data.body_format != "md" else set())
+    digest = canonical_digest(definition)
     existing = await db_session.get(Meeting, data.id)
     if existing:
         entry, meeting, project = await context(db_session, current_user, data.id)
@@ -706,7 +720,7 @@ async def create_meeting_impl(
     db_session.add(
         ResearchDocument(
             id=entry.id,
-            format_version="aimd.v1",
+            format_version="md.v1" if data.body_format == "md" else "aimd.v1",
             state="draft",
             record_data={},
             file_ids=[],
@@ -760,6 +774,9 @@ async def update_meeting_impl(
             )
     else:
         await set_people(db_session, current_user, project, entry, data)
+    if data.body_format:
+        doc = await db_session.get(ResearchDocument, entry.id)
+        doc.format_version = data.body_format + ".v1"
     entry.title, entry.body = data.title, data.body
     entry.occurred_at = data.occurred_at or data.scheduled_at or entry.occurred_at
     entry.revision += 1

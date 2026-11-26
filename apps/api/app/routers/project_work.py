@@ -510,6 +510,15 @@ async def get_work(task_id: UUID, current_user: CurrentUser, db_session: DBSessi
         db_session, current_user, project, work_snapshot(task, detail)
     )
     result["meetings"] = (await work_meetings(db_session, current_user.id, [task.id])).get(task.id, [])
+    from app.models.lab import Lab
+    from app.services.browser_paths import project_browser_path
+    from app.services.meeting_workspace import action_sources
+    lab = await db_session.get(Lab, project.lab_id)
+    source = (await action_sources(db_session, current_user.id, [task.id], {
+        project.id: {"path": project_browser_path(lab.uid, project.uid)}
+    })).get(task.id)
+    if source:
+        result["meetings"].append(source)
     result["can_write"] = await has_research_capability(
         db_session, user=current_user, project=project, capability="log.write"
     )

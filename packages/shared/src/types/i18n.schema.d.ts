@@ -6262,6 +6262,68 @@ declare namespace I18n {
         failed: string
         disconnectConfirm: string
       }
+      meetingSpace: {
+        draftTasks: string
+        inviteAttendees: string
+        skipLinks: string
+        matchHint: string
+        linkedTimeline: string
+        structuredValues: string
+        newRoom: string
+        editRoom: string
+        minutes: string
+        sources: string
+        failed: string
+        addAudio: string
+        importTranscript: string
+        play: string
+        original: string
+        correct: string
+        draft: string
+        speakers: string
+        choose: string
+        unlink: string
+        suggested: string
+        unique: string
+        speaker: string
+        account: string
+        words: string
+        unknown: string
+        cite: string
+        actions: string
+        addTask: string
+        taskTitle: string
+        taskDescription: string
+        audience: string
+        personal: string
+        selected: string
+        project: string
+        projectLink: string
+        assignee: string
+        alsoRead: string
+        due: string
+        projectAudience: string
+        pending: string
+        in_progress: string
+        done: string
+        status: string
+        organization: string
+        subject: string
+        date: string
+        attendees: string
+        projects: string
+        privateHint: string
+        format: string
+        importDoc: string
+        invalidFile: string
+        replace: string
+        share: string
+        selectionTask: string
+        export: string
+        shareHint: string
+        confirmShare: string
+        discard: string
+      }
       myWork: {
         title: string
         meetings: string

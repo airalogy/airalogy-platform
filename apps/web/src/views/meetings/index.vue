@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useConfirmDocumentChange } from "@/composables/useConfirmDocumentChange"
 import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
 import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
@@ -23,7 +24,8 @@ import { documentTimeZone, localDocumentDate } from "@/utils/documentBrowse"
 import { preserveVisualFenceMetadata } from "@/utils/recorderMarkdown"
 import { restoreAimdInlineTemplates } from "@airalogy/aimd-core"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
-import { AimdMarkdownPreview } from "@airalogy/aimd-renderer/vue"
+import DocumentMarkdown from "@/components/common/document-markdown.vue"
+import { downloadBlob } from "@/utils/downloadBlob"
 import FilterIcon from "~icons/tabler/filter"
 import SearchIcon from "~icons/tabler/search"
 import { useDialog } from "naive-ui"
@@ -33,15 +35,20 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import ActionBatch from "./action-batch.vue"
 import { meetingHandoffKey, meetingNameKey, organizeMinutesKey } from "./aira-handoff"
+import SourcePanel from "./source-panel.vue"
+import FollowUps from "./follow-ups.vue"
 import PreviousMeetingWork from "./previous-meeting-work.vue"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
 
 const { t, locale } = useI18n()
 const dialog = useDialog()
+const confirmChange = useConfirmDocumentChange()
 const route = useRoute()
 const router = useRouter()
 const { projectInfo } = useProjectInfoStore()
 const projectId = computed(() => projectInfo.value?.id)
+const showSources = ref(false)
+const suggestedTasks = ref<string[]>([])
 const items = ref<Meeting[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -65,10 +72,21 @@ const filterSummary = computed(() => [
   dateFrom.value && `${t("page.meetings.from")} ${dateFrom.value}`,
   dateTo.value && `${t("page.meetings.to")} ${dateTo.value}`,
 ].filter(Boolean).join(" · "))
+const sourcePanel = ref<InstanceType<typeof SourcePanel>>()
+async function recordingLink(event: MouseEvent) {
+  const href = (event.target as HTMLElement).closest("a")?.getAttribute("href")
+  if (!href || !/^#recording-\d+$/.test(href)) return
+  event.preventDefault()
+  if (!selected.value?.can_read_sources) return
+  showSources.value = true
+  await nextTick()
+  await sourcePanel.value?.seek(Number(href.slice(11)))
+}
 const selected = ref<Meeting>()
 const form = ref<MeetingContent>()
 const saved = ref("")
 const creationId = ref("")
+const grantAttendees = ref(true)
 const handoff = inject(meetingHandoffKey, null)
 const meetingName = inject(meetingNameKey, null)
 watchEffect((cleanup) => {
@@ -100,6 +118,8 @@ const draftMeeting = computed<Meeting | undefined>(() => form.value && projectId
       revision: 1,
       created_at: "",
       updated_at: "",
+      lab_id: "",
+      can_read_sources: false,
       can_manage: true,
       can_edit: true,
       can_comment: true,
@@ -139,6 +159,27 @@ function updateBody(body: string, visual = false) {
   visualPending.value = false
   if (visual)
     visualLastMarkdown = body
+}
+async function importMinutes(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ""
+  const content = form.value
+  if (!file || !content || !editable.value) return
+  if (file.size > 800000 || !/\.(?:md|aimd)$/i.test(file.name)) {
+    error.value = t("page.meetingSpace.invalidFile")
+    return
+  }
+  flushVisual()
+  if (content.body && !(await confirmChange(t("page.meetingSpace.replace")))) return
+  const body = await file.text()
+  if (content !== form.value || body.length > 200000) { error.value = t("page.meetingSpace.invalidFile"); return }
+  content.body_format = file.name.toLowerCase().endsWith(".md") ? "md" : "aimd"
+  updateBody(body)
+  surfaceRevision.value++
+}
+function exportMinutes(meeting: Meeting) {
+  downloadBlob(new Blob([meeting.body], {type:"text/plain;charset=utf-8"}), meeting.title + "." + (meeting.body_format || "aimd"))
 }
 function flushVisual() {
   const editor = visualSurface.value?.getMilkdownEditor?.()
@@ -300,6 +341,8 @@ async function loadSelected() {
   history.value = []
   showHistory.value = false
   selected.value = undefined
+  showSources.value = false
+  suggestedTasks.value = []
   form.value = undefined
   comments.value = []
   comment.value = ""
@@ -313,16 +356,18 @@ async function loadSelected() {
     return
   if (id === "new") {
     editing.value = true
+    grantAttendees.value = true
     creationId.value = crypto.randomUUID()
     form.value = {
       title: "",
       body: t("page.meetings.template"),
+      body_format: "aimd",
       status: "held",
       occurred_at: new Date(`${localDocumentDate()}T00:00:00`).toISOString(),
       scheduled_at: null,
       time_precision: "date",
       time_zone: documentTimeZone(),
-      visibility: "project",
+      visibility: "selected",
       participants: [],
       access: [],
     }
@@ -379,12 +424,22 @@ async function save() {
   error.value = ""
   notice.value = ""
   try {
+    let content = form.value
+    if (!selected.value && grantAttendees.value && content.visibility === "selected") {
+      const access = [...content.access]
+      for (const person of content.participants) {
+        const uid = person.user_id || projectPeople.value.find(p => p.id === person.person_id)?.user_id
+        if (uid && person.attendance !== "absent" && members.value.some(m => m.id === uid) && !access.some(grant => grant.user_id === uid))
+          access.push({ user_id: uid, role: "viewer" })
+      }
+      content = { ...content, access }
+    }
     const result = !selected.value && (draftActions.value.length || discussionIds.value.length)
-      ? await saveMeetingWithActions(creationId.value, projectId.value, form.value, batchRequestId, draftActions.value, discussionIds.value)
+      ? await saveMeetingWithActions(creationId.value, projectId.value, content, batchRequestId, draftActions.value, discussionIds.value)
       : await saveMeeting(
         selected.value?.id || creationId.value,
         projectId.value,
-        form.value,
+        content,
         selected.value?.revision,
       )
     const creating = !selected.value
@@ -634,6 +689,7 @@ watch(page, loadList)
       {{ notice }}
     </n-alert>
     <template v-if="!form">
+      <router-link v-if="projectId" :to="{ name: 'my-work', query: { view: 'meetings', scope: 'visible', project: projectId, period: 'past' } }">{{ t("page.meetingSpace.linkedTimeline") }}</router-link>
       <div class="meeting-filters">
         <form class="meeting-search-row" role="search" @submit.prevent="searchMeetings()">
           <n-input
@@ -740,7 +796,13 @@ watch(page, loadList)
         <h1 class="m-0 text-2xl font-semibold">{{ selected.title }}</h1>
         <p class="text-sm text-gray-500">{{ t(`page.meetings.${selected.status}`) }} · {{ dateValue(selected.occurred_at || selected.scheduled_at, selected.time_precision) || t("page.meetings.noDate") }} · {{ t(`page.meetings.visibility.${selected.visibility}`) }}</p>
         <p v-if="selected.participants.length" class="text-sm">{{ selected.participants.map(p => `${p.name}${p.organization ? `（${p.organization}）` : ''} · ${t(`page.meetings.attendance.${p.attendance}`)}`).join('；') }}</p>
-        <aimd-markdown-preview :content="selected.body" />
+        <div @click="recordingLink"><document-markdown :body="selected.body" :format="selected.body_format || 'aimd'" /></div>
+        <n-button size="small" @click="exportMinutes(selected)">{{ t("page.meetingSpace.export") }} .{{ selected.body_format || "aimd" }}</n-button>
+        <template v-if="selected.can_read_sources">
+          <n-button @click="showSources=!showSources">{{ t("page.meetingSpace.sources") }}</n-button>
+          <source-panel ref="sourcePanel" v-if="showSources" :key="selected.id" :id="selected.id" :manage="selected.can_manage" @draft="(body, tasks) => { if (form) { form.body = body; suggestedTasks = tasks; editing = true } }" @cite="ms => { if(form) { form.body += ' [' + Math.floor(ms/1000) + 's](#recording-' + ms + ')'; editing=true } }" />
+          <follow-ups :suggestions="suggestedTasks" :id="selected.id" :lab="selected.lab_id" :projects="[selected.project_id]" :revision="selected.revision" :manage="selected.can_manage" />
+        </template>
       </article>
       <template v-if="editing">
         <label class="block">{{ t("page.meetings.subject")
@@ -833,6 +895,7 @@ watch(page, loadList)
             <p class="text-sm text-gray-500">
               {{ t("page.meetings.audienceHint") }}
             </p>
+            <n-checkbox v-if="!selected && form.visibility === 'selected'" v-model:checked="grantAttendees">{{ t("page.meetingSpace.inviteAttendees") }}</n-checkbox>
             <template v-if="manageable">
               <div class="flex flex-wrap gap-2">
                 <n-select
@@ -871,7 +934,12 @@ watch(page, loadList)
               {{ t("page.airaActions.organize") }}
             </aira-action-button>
           </div>
-          <aimd-editor
+          <div v-if="editable" class="mb-3 flex flex-wrap items-center gap-3">
+            <label>{{ t("page.meetingSpace.format") }} <select v-model="form.body_format" @focus="flushVisual"><option value="aimd">AIMD</option><option value="md">Markdown</option></select></label>
+            <label>{{ t("page.meetingSpace.importDoc") }} <input type="file" accept=".md,.aimd" @change="importMinutes"></label>
+          </div>
+          <n-input v-if="form.body_format === 'md'" v-model:value="form.body" type="textarea" :readonly="!editable" :autosize="{minRows:8}" />
+          <aimd-editor v-else
             :key="surfaceRevision"
             ref="visualSurface"
             :model-value="form.body"

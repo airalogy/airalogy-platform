@@ -412,3 +412,26 @@ def test_document_calendar_browse_respects_scope_dates_order_and_pagination():
                 )["days"]
 
     asyncio.run(exercise())
+
+
+def test_plain_markdown_preserves_literal_aimd_across_copy_export_and_submit():
+    async def exercise():
+        async with database() as sessions:
+            seed = await seed_analysis(sessions)
+            source = "Example syntax: {{var|temperature: float}}"
+            data = api.DocumentCreate(id=uuid4(), title="Markdown", scope_type="project",
+                                      project_id=seed.project.id, body_format="md", body=source)
+            async with sessions() as db:
+                doc = await api.create_document(data, seed.owner, db)
+                assert doc["body_format"] == "md"
+                validation = await api.check_document(data.id, seed.owner, db)
+                assert validation["valid"] and not validation["schema"].get("properties")
+                artifact = await api.export_document(data.id, seed.owner, db)
+                content, _, _ = read_document_archive(artifact.body)
+                assert content.body_format == "md" and content.body == source
+                copy = await api.create_document(api.DocumentCreate(id=uuid4(), title="Copy", scope_type="project",
+                        project_id=seed.project.id, source_document_id=data.id), seed.owner, db)
+                assert copy["body_format"] == "md" and copy["body"] == source
+                submission = await api.submit_document(data.id, api.RevisionRequest(expected_revision=1), seed.owner, db)
+                assert submission["snapshot"]["content"]["body_format"] == "md"
+    asyncio.run(exercise())

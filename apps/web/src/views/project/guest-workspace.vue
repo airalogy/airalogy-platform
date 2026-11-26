@@ -4,6 +4,7 @@ import { type GuestProject, guestProjects, guestProtocol, type GuestProtocol, gu
 import { request } from "@/service/request"
 import { useAuthStore } from "@/store/modules/auth"
 import { AimdRecorder, createEmptyProtocolRecordData } from "@airalogy/aimd-recorder"
+import AssignedTask from "@/views/meetings/assigned-task.vue"
 import { useI18n } from "vue-i18n"
 
 const { t, locale } = useI18n()
@@ -82,6 +83,7 @@ function logout() {
     <p class="aira-type-meta">
       {{ auth.userInfo.email }}
     </p>
+    <section><h2>{{ t("page.myWork.todos") }}</h2><assigned-task /></section>
     <template v-if="project">
       <router-link :to="{ name: 'guest-workspace' }">
         ← {{ t("page.guests.projects") }}

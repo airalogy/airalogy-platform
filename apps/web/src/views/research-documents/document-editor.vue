@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useConfirmDocumentChange } from "@/composables/useConfirmDocumentChange"
+import DocumentMarkdown from "@/components/common/document-markdown.vue"
+import { downloadBlob } from "@/utils/downloadBlob"
 import type {
   DocumentContent,
   DocumentPreview,
@@ -41,6 +44,7 @@ const { t } = useOrganizationTranslation()
 const route = useRoute()
 const router = useRouter()
 const dialog = useDialog()
+const confirmChange = useConfirmDocumentChange()
 const doc = ref<ResearchDocument>()
 const form = ref<DocumentContent>()
 const mode = ref<"source" | "wysiwyg">("wysiwyg")
@@ -123,6 +127,7 @@ function contentOf(value: ResearchDocument): DocumentContent {
     title: value.title,
     kind: value.kind,
     body: value.body,
+    body_format: value.body_format || "aimd",
     record_data: {
       var: value.record_data.var || {},
       step: value.record_data.step || {},
@@ -448,6 +453,32 @@ function removeValue(scope: string, field: string) {
   delete values[field]
   surfaceRevision.value++
 }
+async function importSource(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ""
+  const content = form.value
+  if (!file || !content || !editable.value) return
+  if (!/\.(?:md|aimd)$/i.test(file.name) || file.size > 800000) {
+    error.value = t("page.meetingSpace.invalidFile")
+    return
+  }
+  if (content.body && !(await confirmChange(t("page.meetingSpace.replace")))) return
+  const format = file.name.toLowerCase().endsWith(".aimd") ? "aimd" : "md"
+  if (format === "md" && Object.values(content.record_data).some(group => Object.keys(group || {}).length)) {
+    error.value = t("page.meetingSpace.structuredValues")
+    return
+  }
+  const text = await file.text()
+  if (content !== form.value || text.length > 200000) { error.value = t("page.meetingSpace.invalidFile"); return }
+  await switchMode("source")
+  content.body_format = format
+  updateBody(text)
+}
+function downloadSource() {
+  const content = form.value
+  if (content) downloadBlob(new Blob([content.body], { type: "text/plain;charset=utf-8" }), content.title + "." + (content.body_format || "aimd"))
+}
 async function downloadAttachment(id: string) {
   try {
     const blob = await fetchResearchFile(id, "download")
@@ -659,7 +690,12 @@ onBeforeUnmount(() => {
             :aria-label="t('page.researchDocuments.bodyLabel')"
           >
             <div class="mb-3 flex flex-wrap items-center gap-2">
-              <n-button v-if="editable && mode === 'source'" size="small" :disabled="saving || busy" @click="showField = true">
+              <label v-if="editable">{{ t("page.meetingSpace.format") }}
+                <select v-model="form.body_format" :disabled="Object.values(form.record_data).some(group => Object.keys(group || {}).length)"><option value="aimd">AIMD</option><option value="md">Markdown</option></select>
+              </label>
+              <label v-if="editable">{{ t("page.meetingSpace.importDoc") }} <input type="file" accept=".md,.aimd" @change="importSource"></label>
+              <n-button size="small" @click="downloadSource">{{ t("page.meetingSpace.export") }} .{{ form.body_format }}</n-button>
+              <n-button v-if="editable && mode === 'source' && form.body_format !== 'md'" size="small" :disabled="saving || busy" @click="showField = true">
                 {{ t('page.researchDocuments.addField') }}
               </n-button>
               <n-button
@@ -678,8 +714,12 @@ onBeforeUnmount(() => {
                 {{ t("page.researchDocuments.source") }}
               </n-button>
             </div>
+            <template v-if="form.body_format === 'md'">
+              <n-input v-if="mode === 'source'" type="textarea" :readonly="!editable" :value="form.body" :autosize="{minRows:10}" @update:value="updateBody($event)" />
+              <document-markdown v-else :body="form.body" format="md" />
+            </template>
             <aimd-editor
-              v-if="mode === 'source'"
+              v-else-if="mode === 'source'"
               :model-value="form.body"
               mode="source"
               :readonly="!editable"

@@ -63,6 +63,7 @@ class DocumentContent(BaseModel):
     title: str = Field(min_length=1, max_length=512)
     kind: DocumentKind = "document"
     body: str = Field(default="", max_length=200_000)
+    body_format: Literal["md", "aimd"] | None = None
     record_data: DocumentData = Field(default_factory=DocumentData)
     file_ids: list[UUID] = Field(default_factory=list, max_length=100)
     tags: list[str] = Field(default_factory=list, max_length=50)
@@ -81,6 +82,8 @@ class DocumentContent(BaseModel):
             raise ValueError("Tags must be at most 100 characters")
         if len(json.dumps(self.record_data.model_dump(), allow_nan=False)) > 1_000_000:
             raise ValueError("Document values exceed the size limit")
+        if self.body_format == "md" and any(self.record_data.model_dump().values()):
+            raise ValueError("Structured field values require AIMD format")
         if self.occurred_at is not None and self.occurred_at.tzinfo is None:
             raise ValueError("Occurrence time requires a timezone")
         return self
@@ -296,16 +299,17 @@ def validate_document(body: str, data: dict) -> dict[str, Any]:
 def document_change_impact(previous: dict, proposed: DocumentContent) -> dict:
     next_data = proposed.record_data.model_dump(mode="json")
     old_data = previous.get("record_data") or {}
-    changed_definition = definition_signature(
-        previous.get("body", "")
-    ) != definition_signature(proposed.body)
+    old_format = previous.get("body_format", "aimd")
+    old_body = "" if old_format == "md" else previous.get("body", "")
+    new_body = "" if (proposed.body_format or old_format) == "md" else proposed.body
+    changed_definition = definition_signature(old_body) != definition_signature(new_body)
     field_changes = []
     if changed_definition:
         try:
-            old_fields = document_schema(previous.get("body", ""))[0].get(
+            old_fields = document_schema(old_body)[0].get(
                 "properties", {}
             )
-            new_fields = document_schema(proposed.body)[0].get("properties", {})
+            new_fields = document_schema(new_body)[0].get("properties", {})
             for key in sorted(set(old_fields) | set(new_fields)):
                 before, after = old_fields.get(key), new_fields.get(key)
                 if before != after:

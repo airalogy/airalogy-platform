@@ -64,6 +64,8 @@ from .knowledge import router as knowledge_router
 from .labs import router as labs_router
 from .login import router as login_router
 from .meetings import router as meetings_router
+from .meeting_workspace import router as meeting_workspace_router
+from .meeting_sources import router as meeting_sources_router
 from .my_work import router as my_work_router
 from .oauth import router as oauth_router
 from .organizations import router as organizations_router
@@ -358,6 +360,8 @@ app.include_router(project_people_router)
 app.include_router(project_operations_router)
 app.include_router(project_work_router)
 app.include_router(meetings_router)
+app.include_router(meeting_workspace_router)
+app.include_router(meeting_sources_router)
 app.include_router(my_work_router)
 app.include_router(groups_router)
 app.include_router(sharing_router)

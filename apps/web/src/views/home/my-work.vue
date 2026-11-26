@@ -2,6 +2,8 @@
 import { loadWorkPage, loadWorkProjects, type Period, type Scope, type WorkView } from "@/service/api/my-work"
 import { useAuthStore } from "@/store/modules/auth"
 import { localDocumentDate } from "@/utils/documentBrowse"
+import OrganizationRoom from "@/views/meetings/organization-room.vue"
+import AssignedTask from "@/views/meetings/assigned-task.vue"
 import { useI18n } from "vue-i18n"
 
 const { t, locale } = useI18n()
@@ -65,21 +67,26 @@ watch([view, scope, period, project, page, () => auth.userInfo.id, retry], async
   }
 }, { immediate: true })
 function statusLabel(kind: string, status: string) {
+  if (kind === "followup") return t("page.meetingSpace." + status)
   if (kind === "approval")
     return t("page.myWork.pending")
   const group = kind === "manual" ? "research.workItemStatus" : kind === "research" ? "research.taskStatus" : "projectWork.states"
   return t(`page.${group}.${status}`)
 }
 function kindLabel(kind: string) {
+  if (kind === "followup") return t("page.meetingSpace.actions")
   return t(["approval", "manual", "research"].includes(kind) ? `page.myWork.${kind}` : `page.projectWork.kinds.${kind}`)
 }
 </script>
 
 <template>
-  <main class="my-work mx-auto max-w-5xl w-full p-4 sm:p-6">
+  <organization-room v-if="typeof route.query.room === 'string'" :key="route.query.room" :id="route.query.room" />
+  <div v-else-if="typeof route.query.task === 'string'" class="mx-auto max-w-4xl p-4"><router-link to="/my-work?view=todos">← {{ t("page.myWork.todos") }}</router-link><assigned-task :key="route.query.task" :id="route.query.task" /></div>
+  <main v-else class="my-work mx-auto max-w-5xl w-full p-4 sm:p-6">
     <h1 class="aira-type-page-title mb-4">
       {{ t("page.myWork.title") }}
     </h1>
+    <router-link v-if="view === 'meetings'" class="mb-3 inline-block text-primary" to="/my-work?room=new">{{ t("page.meetingSpace.newRoom") }}</router-link>
     <nav :aria-label="t('page.myWork.title')" class="mb-4 flex gap-5 border-b border-gray-200">
       <router-link
         v-for="tab in (['meetings', 'todos'] as const)" :key="tab"

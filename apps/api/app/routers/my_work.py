@@ -12,6 +12,19 @@ from app.database import DBSession
 from app.models.group import GroupProject
 from app.models.lab import Lab, LabUser
 from app.models.meeting import Meeting, MeetingParticipant, MeetingWorkLink
+from app.models.meeting_workspace import (
+    MeetingFollowUp,
+    MeetingMinutesEdition,
+    MeetingMinutesShare,
+    MeetingSpace,
+    MeetingSpaceProject,
+)
+from app.services.meeting_workspace import (
+    action_sources,
+    member,
+    participant,
+    restricted_tasks,
+)
 from app.models.project import Project, ProjectUser
 from app.models.project_person import ProjectPerson
 from app.models.project_work import ProjectWork
@@ -94,7 +107,17 @@ async def readable_projects(db, user, scope, project_id):
 
 
 async def meeting_rows(
-    db, user, projects, scope, period, zone, today, offset, limit, planned_only=False
+    db,
+    user,
+    projects,
+    scope,
+    period,
+    zone,
+    today,
+    offset,
+    limit,
+    planned_only=False,
+    project_filter=None,
 ):
     entry = ResearchLogEntry
     event_at = case(
@@ -115,6 +138,30 @@ async def meeting_rows(
         .correlate(entry)
         .scalar_subquery()
     )
+    restricted_ids = (
+        restricted_tasks(user.id).with_only_columns(MeetingFollowUp.id).subquery()
+    )
+
+    def followup_count(identity):
+        f = MeetingFollowUp
+        return (
+            select(func.count(f.id))
+            .outerjoin(ResearchTask, ResearchTask.id == f.project_work_id)
+            .where(
+                f.meeting_id == identity,
+                ((f.id.in_(select(restricted_ids.c.id))) & (f.state != "done"))
+                | (
+                    (ResearchTask.project_id.in_(projects))
+                    & ResearchTask.archived_at.is_(None)
+                    & ResearchTask.status.not_in(
+                        ("completed", "cancelled", "failed", "archived")
+                    )
+                ),
+            )
+            .correlate(identity.class_)
+            .scalar_subquery()
+        )
+
     query = (
         select(
             entry.id,
@@ -124,7 +171,7 @@ async def meeting_rows(
             Meeting.time_precision,
             day.label("day"),
             event_at.label("at"),
-            open_work.label("open_count"),
+            (open_work + followup_count(entry.id)).label("open_count"),
         )
         .join(Meeting, Meeting.document_id == entry.id)
         .where(
@@ -146,29 +193,77 @@ async def meeting_rows(
         query = query.where(
             or_(entry.created_by_user_id == user.id, entry.id.in_(participating))
         )
+    org = MeetingSpace
+    is_attendee = participant(org.id, user.id) | (org.owner_id == user.id)
+    shared = MeetingMinutesShare
+    edition = MeetingMinutesEdition
+    at = case((is_attendee, org.occurred_at), else_=edition.occurred_at)
+    org_query = (
+        select(
+            org.id,
+            case((is_attendee, org.title), else_=edition.title).label("title"),
+            literal(None, type_=entry.project_id.type).label("project_id"),
+            case((at > func.now(), "planned"), else_="held").label("status"),
+            literal("datetime").label("time_precision"),
+            cast(func.timezone(zone, at), Date).label("day"),
+            at.label("at"),
+            case((is_attendee, followup_count(org.id)), else_=0).label("open_count"),
+            Lab.name.label("org_name"),
+        )
+        .join(Lab, Lab.id == org.lab_id)
+        .outerjoin(shared, (shared.meeting_id == org.id) & (shared.user_id == user.id))
+        .outerjoin(
+            edition,
+            (edition.meeting_id == org.id) & (edition.revision == shared.revision),
+        )
+        .where(
+            org.project_meeting_id.is_(None),
+            member(org.lab_id, user.id),
+            is_attendee | (shared.user_id == user.id),
+        )
+    )
+    if project_filter or scope == "managed":
+        org_query = org_query.where(
+            is_attendee,
+            org.id.in_(
+                select(MeetingSpaceProject.meeting_id).where(
+                    MeetingSpaceProject.project_id.in_(projects)
+                )
+            ),
+        )
+    combined = union_all(
+        query.add_columns(literal("").label("org_name")), org_query
+    ).subquery()
+    c = combined.c
+    query = select(combined)
+    day, event_at = c.day, c.at
     if planned_only:
-        query = query.where(Meeting.status == "planned")
+        query = query.where(c.status == "planned")
     if period == "upcoming":
-        query = query.where(day >= today).order_by(day, event_at, entry.id)
+        query = query.where(day >= today).order_by(day, event_at, c.id)
     elif period == "recent":
-        query = query.where(Meeting.status == "held", day <= today).order_by(
-            day.desc(), event_at.desc(), entry.id
+        query = query.where(c.status == "held", day <= today).order_by(
+            day.desc(), event_at.desc(), c.id
         )
     elif period == "past":
-        query = query.where(day < today).order_by(day.desc(), event_at.desc(), entry.id)
+        query = query.where(day < today).order_by(day.desc(), event_at.desc(), c.id)
     else:
-        query = query.where(event_at.is_(None)).order_by(entry.title, entry.id)
+        query = query.where(event_at.is_(None)).order_by(c.title, c.id)
     return [
         {
             **r,
-            "project": projects[r.project_id]["name"],
-            "href": f"{projects[r.project_id]['path']}/meetings?meeting={r.id}",
+            "project": projects[r.project_id]["name"] if r.project_id else r.org_name,
+            "href": f"{projects[r.project_id]['path']}/meetings?meeting={r.id}"
+            if r.project_id
+            else f"/my-work?room={r.id}",
         }
         for r in (await db.execute(query.offset(offset).limit(limit))).mappings()
     ]
 
 
-async def todo_rows(db, user, projects, scope, zone, today, offset, limit):
+async def todo_rows(
+    db, user, projects, scope, zone, today, offset, limit, project_filter=None
+):
     task, work = ResearchTask, ProjectWork
     active = (
         task.project_id.in_(projects),
@@ -256,7 +351,27 @@ async def todo_rows(db, user, projects, scope, zone, today, offset, limit):
     if scope == "mine":
         manual = manual.where(ResearchHumanWorkItem.assignee_user_id == user.id)
         approvals = approvals.where(ResearchApproval.approver_user_id == user.id)
-    items = union_all(coordination, research, manual, approvals).subquery()
+    f = MeetingFollowUp
+    limited = (
+        restricted_tasks(user.id)
+        .with_only_columns(
+            f.id,
+            f.id,
+            f.project_id,
+            f.title,
+            literal("followup"),
+            f.state,
+            f.due,
+            User.name,
+        )
+        .outerjoin(User, User.id == f.assignee_id)
+        .where(f.state != "done")
+    )
+    if project_filter or scope == "managed":
+        limited = limited.where(f.project_id.in_(projects))
+    if scope == "mine":
+        limited = limited.where((f.owner_id == user.id) | (f.assignee_id == user.id))
+    items = union_all(coordination, research, manual, approvals, limited).subquery()
     c = items.c
     priority = case(
         (c.due < today, 0), (c.due == today, 1), (c.status == "paused", 2), else_=3
@@ -277,8 +392,21 @@ async def todo_rows(db, user, projects, scope, zone, today, offset, limit):
         r.id for r in rows if r.kind not in ("research", "manual", "approval")
     ]
     meetings = await work_meetings(db, user.id, coordination_ids)
+    sources = await action_sources(db, user.id, coordination_ids, projects)
     result = []
     for r in rows:
+        source_links = [sources[r.id]] if r.id in sources else []
+        if r.kind == "followup":
+            result.append(
+                {
+                    **r,
+                    "href": f"/my-work?task={r.id}",
+                    "meetings": source_links,
+                    "project_id": r.project_id if r.project_id in projects else None,
+                    "project": projects.get(r.project_id, {}).get("name", ""),
+                }
+            )
+            continue
         project = projects[r.project_id]
         href = f"/research/tasks/{r.task_id}"
         state = r.status
@@ -301,7 +429,8 @@ async def todo_rows(db, user, projects, scope, zone, today, offset, limit):
                         "href": f"{project['path']}/meetings?meeting={meeting['id']}",
                     }
                     for meeting in meetings.get(r.id, [])
-                ],
+                ]
+                + source_links,
             }
         )
     return result
@@ -359,9 +488,18 @@ async def my_work(
             today,
             offset,
             page_size + 1,
+            project_filter=project_id,
         )
     else:
         items = await todo_rows(
-            db, current_user, projects, scope, time_zone, today, offset, page_size + 1
+            db,
+            current_user,
+            projects,
+            scope,
+            time_zone,
+            today,
+            offset,
+            page_size + 1,
+            project_filter=project_id,
         )
     return {"items": items[:page_size], "has_more": len(items) > page_size}

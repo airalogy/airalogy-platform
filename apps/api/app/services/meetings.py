@@ -7,11 +7,25 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import exists, or_, select
+from sqlalchemy import exists, func, or_, select
 
-from app.models.meeting import Meeting, MeetingAccess, MeetingWorkLink
+from app.models.meeting import Meeting, MeetingAccess, MeetingParticipant, MeetingWorkLink
+from app.models.project_person import ProjectPerson
 from app.models.research import ResearchTask
 from app.models.research_log import ResearchLogEntry
+
+
+async def lock_meeting_key(db, identity, kind="meeting"):
+    await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(f"{kind}/{identity}", 0))))
+
+
+def attending_account(identity, user_id):
+    return select(MeetingParticipant.id).outerjoin(
+        ProjectPerson, ProjectPerson.id == MeetingParticipant.person_id
+    ).where(
+        MeetingParticipant.meeting_id == identity, MeetingParticipant.attendance != "absent",
+        or_(MeetingParticipant.user_id == user_id, ProjectPerson.user_id == user_id),
+    ).exists()
 
 
 class Participant(BaseModel):
@@ -42,6 +56,7 @@ class MeetingContent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title: str = Field(min_length=1, max_length=512)
     body: str = Field(default="", max_length=200000)
+    body_format: Literal["md", "aimd"] | None = None
     status: Literal["held", "planned", "cancelled"] = "held"
     occurred_at: datetime | None = None
     scheduled_at: datetime | None = None

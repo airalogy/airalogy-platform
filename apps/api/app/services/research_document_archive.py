@@ -31,7 +31,8 @@ def read_document_archive(data: bytes):
         files = manifest.get("files", [])
         if not isinstance(files, list) or len(files) > 100:
             raise ValueError("Invalid attachment manifest")
-        expected = {"document.json", "document.aimd"}
+        source_name = "document.md" if content.body_format == "md" else "document.aimd"
+        expected = {"document.json", source_name}
         attachments = []
         seen = set()
         for item in files:
@@ -58,6 +59,6 @@ def read_document_archive(data: bytes):
             attachments.append((item, body))
         if set(names) != expected or set(map(str, content.file_ids)) != seen:
             raise ValueError("Archive contains missing or unexpected content")
-        if archive.read("document.aimd").decode("utf-8") != content.body:
-            raise ValueError("AIMD source differs from the document manifest")
+        if archive.read(source_name).decode("utf-8") != content.body:
+            raise ValueError("Document source differs from the document manifest")
         return content, attachments, manifest

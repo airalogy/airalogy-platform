@@ -833,6 +833,9 @@ importers:
       localforage:
         specifier: 'catalog:'
         version: 1.10.0
+      marked:
+        specifier: 16.4.2
+        version: 16.4.2
       mdast-util-from-markdown:
         specifier: 2.0.1
         version: 2.0.1
@@ -7712,11 +7715,6 @@ packages:
   marked@14.0.0:
     resolution: {integrity: sha512-uIj4+faQ+MgHgwUW1l2PsPglZLOLOT1uErt06dAPtx2kjteLAkbsd/0FiYg/MGS+i7ZKLb7w2WClxHkzOOuryQ==}
     engines: {node: '>= 18'}
-    hasBin: true
-
-  marked@16.2.1:
-    resolution: {integrity: sha512-r3UrXED9lMlHF97jJByry90cwrZBBvZmjG1L68oYfuPMW+uDTnuMbyJDymCWwbTE+f+3LhpNDKfpR3a3saFyjA==}
-    engines: {node: '>= 20'}
     hasBin: true
 
   marked@16.4.2:
@@ -18403,8 +18401,6 @@ snapshots:
 
   marked@14.0.0: {}
 
-  marked@16.2.1: {}
-
   marked@16.4.2: {}
 
   math-intrinsics@1.1.0: {}
@@ -18593,7 +18589,7 @@ snapshots:
       katex: 0.16.22
       khroma: 2.1.0
       lodash-es: 4.17.21
-      marked: 16.2.1
+      marked: 16.4.2
       roughjs: 4.6.6
       stylis: 4.3.6
       ts-dedent: 2.2.0

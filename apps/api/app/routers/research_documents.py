@@ -158,6 +158,7 @@ def _content(entry, doc):
         "title": entry.title,
         "kind": entry.kind,
         "body": entry.body,
+        "body_format": "md" if doc.format_version == "md.v1" else "aimd",
         "record_data": doc.record_data,
         "file_ids": doc.file_ids,
         "tags": doc.tags,
@@ -670,7 +671,7 @@ async def create_document(
     # Copies never carry historical measured values or attachments implicitly.
     doc = ResearchDocument(
         id=entry.id,
-        format_version="aimd.v1",
+        format_version=source_doc.format_version if params.source_document_id else ("md.v1" if params.body_format == "md" and not origin else "aimd.v1"),
         state="draft",
         record_data=defaults if origin else params.record_data.model_dump(mode="json"),
         file_ids=[] if origin else [str(x) for x in params.file_ids],
@@ -795,7 +796,7 @@ async def import_document(
         doc = ResearchDocument(
             id=entry.id,
             state="draft",
-            format_version="aimd.v1",
+            format_version="md.v1" if content.body_format == "md" else "aimd.v1",
             record_data=content.record_data.model_dump(mode="json"),
             file_ids=ids,
             tags=content.tags,
@@ -830,13 +831,11 @@ async def get_document(
 
 
 def _update_preview(entry, doc, params):
-    proposed = (
-        DocumentContent.model_validate(params.model_dump())
-        if type(params) is DocumentContent
-        else DocumentContent.model_validate(
-            params.model_dump(include=set(DocumentContent.model_fields))
-        )
-    )
+    values = params.model_dump(include=set(DocumentContent.model_fields))
+    values["body_format"] = values.get("body_format") or ("md" if doc.format_version == "md.v1" else "aimd")
+    if values["body_format"] == "md" and any(values["record_data"].values()):
+        raise HTTPException(422, "Structured field values require AIMD format")
+    proposed = DocumentContent.model_validate(values)
     impact = document_change_impact(_content(entry, doc), proposed)
     digest = canonical_digest(
         {
@@ -888,6 +887,10 @@ async def update_document(
     entry.revision += 1
     entry.updated_at = datetime.now(UTC)
     doc.state = "draft"
+    if params.body_format:
+        doc.format_version = params.body_format + ".v1"
+    if doc.format_version == "md.v1" and any(params.record_data.model_dump().values()):
+        raise HTTPException(422, "Structured field values require AIMD format")
     doc.record_data = params.record_data.model_dump(mode="json")
     doc.file_ids = [str(item) for item in params.file_ids]
     doc.tags, doc.collection = params.tags, params.collection
@@ -956,6 +959,7 @@ async def restore_document(
         old.snapshot["kind"],
     )
     entry.occurred_at = datetime.fromisoformat(old.snapshot["occurred_at"])
+    doc.format_version = data.get("format_version", "aimd.v1")
     for key in ("record_data", "file_ids", "tags", "collection"):
         setattr(doc, key, deepcopy(data[key]))
     doc.state = "draft"
@@ -973,7 +977,7 @@ async def check_document(
     document_id: UUID, current_user: CurrentUser, db_session: DBSession
 ):
     entry, doc = await _context(db_session, current_user, document_id)
-    return await asyncio.to_thread(validate_document, entry.body, doc.record_data)
+    return await asyncio.to_thread(validate_document, "" if doc.format_version == "md.v1" else entry.body, doc.record_data)
 
 
 @router.post("/{document_id}/submit")
@@ -985,7 +989,7 @@ async def submit_document(
 ):
     entry, doc = await _context(db_session, current_user, document_id, write=True)
     _assert_revision(entry, params.expected_revision)
-    validation = await asyncio.to_thread(validate_document, entry.body, doc.record_data)
+    validation = await asyncio.to_thread(validate_document, "" if doc.format_version == "md.v1" else entry.body, doc.record_data)
     if not validation["valid"]:
         raise HTTPException(422, validation)
     files = await _files(db_session, current_user, entry, doc.file_ids)
@@ -1171,7 +1175,7 @@ async def export_document(
         )
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("document.aimd", entry.body)
+        archive.writestr("document.md" if doc.format_version == "md.v1" else "document.aimd", entry.body)
         archive.writestr(
             "document.json",
             json.dumps(
