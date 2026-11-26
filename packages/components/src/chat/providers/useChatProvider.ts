@@ -87,7 +87,7 @@ export interface ContextDialogState {
   defaultSelectedOptions?: CascaderOption[]
   readonlyList?: string[]
 }
-export type ChatProviderContext = ToRefs<Required<Omit<ChatProviderProps, "requestHeaders">>> & { requestHeaders?: Ref<Record<string, string>> }
+export type ChatProviderContext = ToRefs<Required<Omit<ChatProviderProps, "requestHeaders">>> & { requestHeaders?: Ref<ChatProviderProps["requestHeaders"]> }
 export const ChatProviderKey: InjectionKey<ChatProviderContext> = Symbol("ChatProvider")
 
 export function createDefaultRendererContext(): LegacyRendererContext {
