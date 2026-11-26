@@ -21,7 +21,7 @@ def test_community_links_always_include_organization(monkeypatch):
 
 
 @pytest.mark.parametrize("mode,prefix", [("community", "/orgs/company"), ("single_organization", "")])
-def test_sitemap_uses_canonical_asset_paths(mode, prefix, monkeypatch):
+def test_sitemap_respects_instance_visibility(mode, prefix, monkeypatch):
     import asyncio
     from types import SimpleNamespace
     from starlette.requests import Request
@@ -38,6 +38,9 @@ def test_sitemap_uses_canonical_asset_paths(mode, prefix, monkeypatch):
     request = Request({"type": "http", "scheme": "https", "server": ("research.example.org", 443), "path": "/sitemap.xml", "headers": [(b"host", b"research.example.org")]})
     response = asyncio.run(get_sitemap(request, Database()))
     body = response.body.decode()
+    if mode == "single_organization":
+        assert "<loc>" not in body
+        return
     assert f"https://research.example.org{prefix}/projects/optics/protocols</loc>" in body
     assert f"https://research.example.org{prefix}/projects/optics/protocols/assay/protocol</loc>" in body
     assert "/labs/" not in body

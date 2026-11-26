@@ -196,6 +196,8 @@ def test_required_phone_signup_consumes_token_and_uses_bound_phone(monkeypatch):
         "exists",
         AsyncMock(side_effect=[False, False, False]),
     )
+    email_lookup = AsyncMock(return_value=None)
+    monkeypatch.setattr(login_router, "account_for_email", email_lookup)
     monkeypatch.setattr(login_router.Lab, "exists", AsyncMock(return_value=False))
     monkeypatch.setattr(login_router, "create_access_token", lambda _user: "access-token")
     check_code = AsyncMock()
@@ -215,6 +217,7 @@ def test_required_phone_signup_consumes_token_and_uses_bound_phone(monkeypatch):
     )
 
     result = asyncio.run(login_router.signup(params, db_session))
+    email_lookup.assert_awaited_once_with(db_session, "user@example.org")
 
     get_verification.assert_awaited_once_with("s" * 43)
     consume_verification.assert_awaited_once_with("s" * 43)
@@ -234,6 +237,8 @@ def test_disabled_sms_signup_keeps_email_registration(monkeypatch):
         "exists",
         AsyncMock(side_effect=[False, False]),
     )
+    email_lookup = AsyncMock(return_value=None)
+    monkeypatch.setattr(login_router, "account_for_email", email_lookup)
     monkeypatch.setattr(login_router.Lab, "exists", AsyncMock(return_value=False))
     monkeypatch.setattr(login_router, "create_access_token", lambda _user: "access-token")
     get_verification = AsyncMock()
@@ -254,6 +259,7 @@ def test_disabled_sms_signup_keeps_email_registration(monkeypatch):
     )
 
     result = asyncio.run(login_router.signup(params, db_session))
+    email_lookup.assert_awaited_once_with(db_session, "user@example.org")
 
     get_verification.assert_not_awaited()
     consume_verification.assert_not_awaited()
