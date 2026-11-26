@@ -24,7 +24,8 @@ compose() { printf 'fixture-container'; }
 docker() {
   if [[ "$*" == *'{{.Image}}'* ]]; then printf 'current';
   elif [[ "$*" == *'{{.Id}}'* ]]; then printf '%s' "$TARGET_ID";
-  elif [[ "\${*: -1}" == current ]]; then printf '%s' "$CURRENT_COMMIT";
+  elif [[ "$1 $2" == 'container inspect' && "\${*: -1}" == fixture-container ]]; then printf '%s' "$CURRENT_COMMIT";
+  elif [[ "\${*: -1}" == current ]]; then return 1;
   else printf '%s' "$TARGET_COMMIT"; fi
 }
 verify_object_storage_compatibility target

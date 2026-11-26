@@ -381,8 +381,10 @@ verify_object_storage_compatibility() {
   target_id="$(docker image inspect --format '{{.Id}}' "$target")" || die "target object storage image is unavailable"
   [[ -n "$current" && -n "$target_id" ]] || die "missing object storage image identity"
   [[ "$current" != "$target_id" ]] || return 0
-  current_commit="$(docker image inspect --format '{{ index .Config.Labels "io.airalogy.minio.commit" }}' "$current")"
-  target_commit="$(docker image inspect --format '{{ index .Config.Labels "io.airalogy.minio.commit" }}' "$target")"
+  # A source build can replace the tag before this check. The running
+  # container retains its engine label even if its old image is untagged.
+  current_commit="$(docker container inspect --format '{{ index .Config.Labels "io.airalogy.minio.commit" }}' "$container")"
+  target_commit="$(docker image inspect --format '{{ index .Config.Labels "io.airalogy.minio.commit" }}' "$target_id")"
   [[ "$current_commit" =~ ^[a-f0-9]{40}$ && "$current_commit" == "$target_commit" ]] || \
     die "Object storage engine change blocked. Rehearse a logical export/restore onto fresh storage and approve a separate migration; do not reuse or downgrade the existing volume."
 }
