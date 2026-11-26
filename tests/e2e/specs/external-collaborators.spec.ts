@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from "@playwright/test"
+import type { APIRequestContext, Locator, Page } from "@playwright/test"
 import { Buffer } from "node:buffer"
 import { randomUUID } from "node:crypto"
 import { readFileSync } from "node:fs"
@@ -42,7 +42,20 @@ async function login(page: Page, email: string, loginPassword = password) {
 function locale(page: Page) {
   return page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
 }
-for (const width of [1440, 390]) {
+async function findPerson(page: Page, row: Locator) {
+  const list = page.locator(".member-list")
+  await expect(list.locator(".member-list__item").first()).toBeVisible()
+  const next = page.locator(".n-pagination-item--button").last()
+  while (!await row.count() && !await next.evaluate(el => el.classList.contains("n-pagination-item--disabled"))) {
+    const loaded = page.waitForResponse(r => r.url().includes("/project-guests/people?"))
+    await next.click()
+    await (await loaded).finished()
+    await expect(page.locator(".n-spin-content--spinning")).toHaveCount(0)
+  }
+  await expect(row).toBeVisible()
+}
+
+for (const width of [1440, 759, 390]) {
   test(`project invite, account reuse, membership conversion and isolation at ${width}px`, async ({ page, browser, request }) => {
     test.setTimeout(180000)
     const suffix = randomUUID().slice(0, 8)
@@ -60,6 +73,8 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: zh.page.guests.invite }).click()
     const email = `partner.${suffix}@example.org`
     await page.getByLabel(zh.page.guests.email).fill(email)
+    const alias = `Partner directory ${suffix}`
+    await page.getByLabel(zh.common.labAliasLabel).fill(alias)
     const response = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/invitations"))
     await page.getByRole("button", { name: zh.page.guests.create }).click()
     const { url } = await (await response).json()
@@ -85,7 +100,7 @@ for (const width of [1440, 390]) {
       await expect(guest.getByRole("heading", { name: "Partner worksheet" })).toBeVisible()
       const account = await post(request, "/signin_by_email", { email, password })
       const headers = { "Auth-Token": account.token }
-      for (const path of [`/project-guests/mine/${internal.id}`, `/projects/${internal.id}`, `/labs/${lab.id}/users`, "/project-guests/directory", "/users/api_key", `/project-guests/protocols/${privateSheet.id}`, "/knowledge/items", `/project-operations/projects/${shared.id}`, `/project-operations/projects/${internal.id}`]) {
+      for (const path of [`/project-guests/mine/${internal.id}`, `/projects/${internal.id}`, `/labs/${lab.id}/users`, "/project-guests/directory", "/project-guests/people", "/users/api_key", `/project-guests/protocols/${privateSheet.id}`, "/knowledge/items", `/project-operations/projects/${shared.id}`, `/project-operations/projects/${internal.id}`]) {
         expect([403, 404]).toContain((await request.get(`/api${path}`, { headers })).status())
       }
       expect((await request.post(`/api/protocols/${worksheet.id}/records`, {
@@ -109,12 +124,17 @@ for (const width of [1440, 390]) {
       await guest.getByRole("button", { name: new RegExp(account.user.username) }).click()
       await expect(guest.getByRole("heading", { name: internal.name })).toBeVisible()
       expect((await request.post(`/api/instance/invitations/${token}/accept`, { headers })).status()).toBe(404)
+      const directory = await (await request.get("/api/project-guests/people?kind=guest&page_size=100", { headers: adminHeaders })).json()
+      const matches = directory.list.filter((person: { id: string }) => person.id === account.user.id)
+      expect(matches).toHaveLength(1)
+      expect(matches[0].name).toBe(alias)
+      expect(matches[0].projects.sort()).toEqual([shared.name, internal.name].sort())
       expect((await request.delete(`/api/project-guests/projects/${internal.id}/people/${account.user.id}`, { headers: { "Auth-Token": owner.token } })).ok()).toBeTruthy()
       expect((await request.get(`/api/project-guests/mine/${internal.id}`, { headers })).status()).toBe(404)
 
       const staffEmail = `staff.${suffix}@example.org`
       const invitation = await post(request, "/instance/invitations", { email: staffEmail, display_name: `Employee ${suffix}` }, owner.token)
-      const staff = await post(request, "/signup", { email: staffEmail, name: `Employee ${suffix}`, username: `staff_${suffix}`, password, confirm_password: password, invite_token: new URL(invitation.url).searchParams.get("token") })
+      const staff = await post(request, "/signup", { email: staffEmail, name: `Staff profile ${suffix}`, username: `staff_${suffix}`, password, confirm_password: password, invite_token: new URL(invitation.url).searchParams.get("token") })
       await post(request, `/projects/${shared.id}/organization-members`, [{ user_id: staff.user.id, role: 40 }], owner.token)
       const record = await post(request, `/protocols/${worksheet.id}/records`, {
         var: { observations: "Staff observation" },
@@ -123,29 +143,71 @@ for (const width of [1440, 390]) {
         report: "",
       }, staff.token)
       await page.goto("/organization/members")
+      const filters = page.getByRole("radiogroup")
+      await expect(filters.getByRole("radio", { name: zh.common.all, exact: true })).toBeChecked()
+      const guestRow = page.getByTestId("guest-row").filter({ hasText: account.user.username })
+      await findPerson(page, guestRow)
+      await expect(guestRow.getByText(alias, { exact: true })).toBeVisible()
+      const pageBeforeRename = await page.locator(".n-pagination-item--active").textContent()
+      await expect(guestRow.locator('img[src="/images/role_member.png"]')).toBeVisible()
+      const guestActions = guestRow.getByRole("button", { name: zh.common.actions, exact: true })
+      await guestActions.click()
+      await page.getByText(zh.page.guests.collaborationDetails, { exact: true }).click()
+      await expect(page.getByRole("dialog")).toContainText(email)
+      await expect(page.getByRole("dialog")).toContainText(shared.name)
+      await page.keyboard.press("Escape")
+      await guestActions.click()
+      await page.getByText(zh.page.instance.createResetLink, { exact: true }).click()
+      await expect(page.getByRole("dialog").locator("textarea")).toHaveValue(/reset/)
+      await page.getByRole("dialog").getByRole("button", { name: zh.common.close }).click()
+      await guestActions.click()
+      await page.getByText(zh.common.setAlias, { exact: true }).click()
+      await page.getByLabel(zh.common.labAliasLabel).fill(`Updated ${suffix}`)
+      await page.getByRole("button", { name: zh.common.save, exact: true }).click()
+      await expect(guestRow.getByText(`Updated ${suffix}`, { exact: true })).toBeVisible()
+      await expect(page.locator(".n-pagination-item--active")).toHaveText(pageBeforeRename!)
+      await filters.getByText(zh.page.guests.members, { exact: true }).click()
+      await expect(guestRow).toHaveCount(0)
       const row = page.locator(".member-list__item").filter({ hasText: `Employee ${suffix}` })
-      if (width < 600)
-        await row.getByRole("button", { name: zh.common.actions }).click()
-      if (width < 600)
-        await page.getByText(zh.page.guests.convert, { exact: true }).last().click()
-      else await row.getByRole("button", { name: zh.page.guests.convert }).click()
+      await findPerson(page, row)
+      const actions = row.getByRole("button", { name: zh.common.actions, exact: true })
+      await expect(row.locator(".n-list-item__suffix button")).toHaveCount(1)
+      const rowHeight = Math.ceil((await row.boundingBox())!.height)
+      expect(rowHeight).toBeLessThanOrEqual(width < 600 ? 85 : 72)
+      console.log(`Organization member row: ${width}px viewport, ${rowHeight}px height`)
+      await actions.click()
+      const menu = page.locator(".n-dropdown-menu:visible")
+      for (const label of [zh.common.setAlias, zh.page.instance.createResetLink, zh.common.changeRole, zh.common.remove])
+        await expect(menu.getByText(label, { exact: true })).toBeVisible()
+      await menu.getByText(zh.page.guests.convert, { exact: true }).click()
       await page.getByRole("checkbox", { name: shared.name }).click()
       await page.getByRole("button", { name: zh.page.guests.confirm }).click()
       await expect(row).toHaveCount(0)
-      await page.getByText(zh.page.guests.external, { exact: true }).click()
-      await expect(page.getByText(staffEmail, { exact: true })).toBeVisible()
-      await expect(page.getByText(email, { exact: true })).toBeVisible()
+      await filters.getByText(zh.page.guests.external, { exact: true }).click()
+      await findPerson(page, page.getByTestId("guest-row").filter({ hasText: staff.user.username }))
       expect((await request.get("/api/project-guests/mine", { headers: { "Auth-Token": staff.token } })).status()).toBe(401)
       const after = await post(request, "/signin_by_email", { email: staffEmail, password })
       expect(after.user.id).toBe(staff.user.id)
+      await expect(page.getByTestId("guest-row").filter({ hasText: staff.user.username })).toContainText(`Employee ${suffix}`)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy()
+      await page.goto(`/projects/${shared.uid}/members`)
+      await expect(page.getByTestId("external-team")).toContainText(`Updated ${suffix}`)
+      await page.getByRole("button", { name: zh.page.guests.invite }).click()
+      await page.getByLabel(zh.page.guests.email).fill(email)
+      await page.getByLabel(zh.page.guests.email).press("Tab")
+      await expect(page.getByText(zh.page.guests.reuseName, { exact: true })).toBeVisible()
+      await expect(page.getByRole("button", { name: zh.page.guests.create })).toBeEnabled()
+      expect(account.user.name).toBe("Partner")
       const historical = await request.get(`/api/protocols/${worksheet.id}/records/${record.id}?version=1`, { headers: adminHeaders })
       expect(historical.ok()).toBeTruthy()
       expect((await historical.json()).metadata.record_initial_version_submission_user_id).toBe(after.user.username)
       const permitted = await (await request.get("/api/project-guests/mine", { headers: { "Auth-Token": after.token } })).json()
       expect(permitted.map((p: { id: string }) => p.id)).toEqual([shared.id])
       expect(after.user.project_guest).toBe(true)
-      const upgrade = await post(request, `/project-guests/projects/${shared.id}/invitations`, { email, role: "recorder" }, owner.token)
+      const upgrade = await post(request, `/project-guests/projects/${shared.id}/invitations`, { email, display_name: "Stale invitation name", role: "recorder" }, owner.token)
       await post(request, `/instance/invitations/${new URL(upgrade.url).searchParams.get("token")}/accept`, {}, account.token)
+      const updatedTeam = await (await request.get(`/api/project-guests/projects/${shared.id}/team`, { headers: adminHeaders })).json()
+      expect(updatedTeam.people.find((person: { id: string }) => person.id === account.user.id).name).toBe(`Updated ${suffix}`)
       const submitted = await post(request, `/protocols/${worksheet.id}/records`, {
         var: { observations: "Partner observation" },
         step: {},
@@ -153,6 +215,39 @@ for (const width of [1440, 390]) {
         report: "",
       }, account.token)
       expect(submitted.user_id).toBe(account.user.id)
+      const reset = await post(request, "/instance/password-reset-links", { user_id: account.user.id }, owner.token)
+      const resetPath = "/instance/password-resets/" + new URL(reset.url).searchParams.get("token")
+      const newPassword = "ChangedDev123!"
+      await post(request, resetPath, { password: newPassword, confirm_password: newPassword })
+      expect((await request.post("/api" + resetPath, { data: { password, confirm_password: password } })).status()).toBe(404)
+      expect((await request.get("/api/project-guests/mine", { headers })).status()).toBe(401)
+      const reauthed = await post(request, "/signin_by_email", { email, password: newPassword })
+      expect(reauthed.user.project_guest).toBe(true)
+      const promotion = "/project-guests/promotion/" + account.user.id
+      expect((await request.post("/api" + promotion, { headers: adminHeaders, data: { projects: [internal.id], confirm: true } })).status()).toBe(422)
+      expect((await request.get("/api" + promotion, { headers: { "Auth-Token": reauthed.token } })).status()).toBe(403)
+      const previous = await invite(internal.id, email)
+      await post(request, `/instance/invitations/${new URL(previous.url).searchParams.get("token")}/accept`, {}, reauthed.token)
+      await page.goto("/organization/members")
+      await filters.getByText(zh.page.guests.external, { exact: true }).click()
+      await findPerson(page, guestRow)
+      await guestActions.click()
+      await page.getByText(zh.page.guests.promote, { exact: true }).click()
+      await expect(page.getByRole("button", { name: zh.page.guests.confirm })).toBeDisabled()
+      await expect(page.getByRole("checkbox", { name: new RegExp(internal.name) })).not.toBeChecked()
+      await page.getByRole("checkbox", { name: new RegExp(shared.name) }).check()
+      await page.getByRole("button", { name: zh.page.guests.confirm }).click()
+      await expect(page.getByRole("dialog")).toHaveCount(0)
+      await expect(guestRow).toHaveCount(0)
+      expect((await request.get("/api/project-guests/mine", { headers: { "Auth-Token": reauthed.token } })).status()).toBe(401)
+      const promoted = await post(request, "/signin_by_email", { email, password: newPassword })
+      expect(promoted.user.id).toBe(account.user.id)
+      expect(promoted.user.project_guest).toBe(false)
+      const promotedHeaders = { "Auth-Token": promoted.token }
+      expect((await request.get(`/api/projects/${shared.id}`, { headers: promotedHeaders })).ok()).toBeTruthy()
+      expect([403, 404]).toContain((await request.get(`/api/projects/${internal.id}`, { headers: promotedHeaders })).status())
+      await filters.getByText(zh.page.guests.members, { exact: true }).click()
+      await findPerson(page, page.locator(".member-list__item").filter({ hasText: `Updated ${suffix}` }))
       for (const path of ["/knowledge/items", `/project-guests/mine/${internal.id}`, `/project-operations/projects/${shared.id}`]) {
         expect([403, 404]).toContain((await request.get(`/api${path}`, { headers: { "Auth-Token": after.token } })).status())
       }
@@ -181,9 +276,18 @@ test("a project owner can invite independently and must transfer ownership befor
   const path = `/project-guests/projects/${project.id}/invitations`
   const email = `visitor.${id}@example.org`
   expect((await request.post(`/api${path}`, { headers: { "Auth-Token": colleague.token }, data: { email } })).status()).toBe(403)
-  const issued = await post(request, path, { email }, owner.token)
+  expect((await request.post(`/api${path}`, { headers: { "Auth-Token": owner.token }, data: { email } })).status()).toBe(422)
+  for (const member of [owner, colleague]) {
+    const privateHeaders = { "Auth-Token": member.token }
+    expect((await request.get("/api/project-guests/people", { headers: privateHeaders })).status()).toBe(403)
+    expect((await request.patch(`/api/project-guests/directory/${colleague.user.id}`, { headers: privateHeaders, data: { display_name: "Other" } })).status()).toBe(403)
+  }
+  const issued = await post(request, path, { email, display_name: "Project visitor" }, owner.token)
   expect(["sent", "link"]).toContain(issued.delivery)
   await post(request, `/project-guests/conversion/${colleague.user.id}`, { projects: [], confirm: true, keep_none: true }, admin.token)
+  const projectOwnerHeaders = { "Auth-Token": owner.token }
+  expect((await request.post("/api/instance/password-reset-links", { headers: projectOwnerHeaders, data: { user_id: colleague.user.id } })).status()).toBe(403)
+  expect((await request.get(`/api/project-guests/promotion/${colleague.user.id}`, { headers: projectOwnerHeaders })).status()).toBe(403)
   const guest = await post(request, "/signin_by_email", { email: colleague.user.email, password })
   expect((await (await request.get("/api/project-guests/mine", { headers: { "Auth-Token": guest.token } })).json())).toEqual([])
 })

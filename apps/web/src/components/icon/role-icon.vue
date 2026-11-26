@@ -1,5 +1,5 @@
 <template>
-  <n-avatar :size="40" :src="source" color="transparent" fallback-src="/images/role_default.png" />
+  <n-avatar :size="40" :src="src || source" color="transparent" object-fit="cover" :fallback-src="source" />
 </template>
 
 <script setup lang="ts">
@@ -7,16 +7,16 @@ import { LabRole, ProjectRole } from "@/enum"
 
 interface IProps {
   role?: Api.Lab.LabRole | Api.Project.ProjectRole
-  type: "lab" | "project" | "group"
+  type: "lab" | "project" | "group" | "guest"
   src?: string | null
 }
 
 const props = withDefaults(defineProps<IProps>(), { role: 1, src: null })
 const source = computed(() => {
-  const { role, src, type } = props
-  if (src) {
-    return src
-  }
+  const { role, type } = props
+
+  if (type === "guest")
+    return "/images/role_member.png"
 
   if (type === "lab") {
     if (role === LabRole.OWNER)

@@ -6176,7 +6176,13 @@
       "bookAccessHint": "查看项目账目需要先启用经营账并获得经营角色。登记收支需要财务角色。"
     },
     "guests": {
+      "promote": "转为组织成员",
+      "promotionEffect": "{name} 将成为普通成员，可查看组织内共享资料。勾选的项目将按原查看或记录角色建立长期成员权限，其余项目结束外部协作。对方需重新登录。",
+      "previouslyUntil": "原到期日 {date}",
+      "retainProjects": "转为长期成员权限的项目",
       "external": "外部协作者",
+      "collaborator": "外部协作者",
+      "collaborationDetails": "合作详情",
       "members": "组织成员",
       "invite": "邀请外部协作者",
       "empty": "暂无外部协作者或待接受的邀请。",
@@ -6211,7 +6217,10 @@
       "save": "提交记录",
       "saved": "记录已提交。",
       "invited": "受邀加入项目「{name}」",
-      "joinHint": "仅授予此项目的协作权限。"
+      "joinHint": "仅授予此项目的协作权限。",
+      "reuseName": "沿用此人在本组织的显示名。",
+      "emptyRoster": "没有符合条件的人员。",
+      "projectList": "参与项目：{projects}"
     },
     "projectTeam": {
       "organizationMembers": "组织成员",
@@ -6248,6 +6257,42 @@
       "confirm": "将“{name}”关联为“{account}”。当前有 {count} 项任务以此人为负责人，关联后会按该账号归集到“我的任务”。此操作不会更改项目权限，历史会议姓名保持原样。",
       "failed": "人员信息未保存或未加载成功，请刷新后重试；如信息已变化，请重新核对。",
       "disconnectConfirm": "解除“{name}”的账号关联。{count} 项任务仍由这条人员记录负责，但不再通过此关联归入原账号的“我的任务”。项目权限和历史会议不变。"
+    },
+    "myWork": {
+      "title": "我的工作",
+      "meetings": "会议时间线",
+      "todos": "待办",
+      "mineMeetings": "我参与的",
+      "mineTodos": "待我处理",
+      "managed": "我负责的项目",
+      "visible": "全部可见",
+      "scope": "范围",
+      "projects": "全部项目",
+      "period": "会议日期",
+      "upcoming": "今天起",
+      "past": "今天以前",
+      "undated": "日期待定",
+      "due": "截止 {day}",
+      "overdue": "已逾期",
+      "today": "今天截止",
+      "open": "{count} 项待跟进",
+      "source": "关联会议",
+      "created": "来源会议",
+      "discussed": "讨论会议",
+      "emptyMeetings": "当前范围内没有符合条件的会议。",
+      "emptyTodos": "当前范围内没有待办。",
+      "noneNext": "暂无已安排的会议",
+      "noneTodo": "暂无待办",
+      "next": "近期会议",
+      "last": "最近一次会议",
+      "urgent": "优先待办",
+      "research": "科研任务",
+      "manual": "执行任务",
+      "approval": "审批",
+      "pending": "待审批",
+      "error": "暂时无法加载工作。",
+      "page": "第 {page} 页",
+      "assignee": "负责人 {name}"
     }
   },
   "form": {

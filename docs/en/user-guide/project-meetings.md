@@ -1,5 +1,7 @@
 # Project meetings and research activity
 
+Open **Home → My work** for your meeting timeline and to-dos across projects. Switch between meetings from today onwards, earlier meetings and meetings without a date. The default shows meetings you organized or participated in. The project-management and all-accessible filters still respect each meeting’s audience. Open a meeting to follow its actions, or use a work item's meeting link to return to the minutes. Project work, research tasks, manual actions and approvals use the current state of the original items.
+
 Project Documents lists standalone documents by default, including manually written meeting notes. Searching titles or text, or selecting the meeting type, also finds accessible formal minutes and opens the corresponding meeting directly. In Meetings, expand Filters to narrow results by participant or dates.
 
 Open Team → Add member to select organization accounts. Search by organization display name or username, choose each project role, and confirm the selection together. Accounts with a direct project role are omitted from the picker.

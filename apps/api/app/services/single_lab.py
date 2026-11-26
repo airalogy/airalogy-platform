@@ -127,7 +127,7 @@ async def add_user_to_single_lab(
     created_by_user_id: UUID,
     display_name: str | None = None,
     lab_role: LabRole = LabRole.MEMBER,
-    project_role: ProjectRole = ProjectRole.RECORDER,
+    project_role: ProjectRole | None = ProjectRole.RECORDER,
 ) -> bool:
     # A concurrent conversion must win over an outstanding organization invitation.
     is_guest = await db_session.scalar(select(User.project_guest).where(User.id == user.id).with_for_update())
@@ -161,7 +161,7 @@ async def add_user_to_single_lab(
             Project.deleted_at.is_(None),
         ],
     )
-    if default_project is not None:
+    if default_project is not None and project_role is not None:
         project_membership = await ProjectUser.find_by(
             db_session,
             [

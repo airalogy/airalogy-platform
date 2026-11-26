@@ -471,6 +471,11 @@ async function createPlan() {
             }}</n-button></n-alert
           >
           <p v-if="notice" role="status" class="text-green-700">{{ notice }}</p>
+          <div v-if="currentItem?.meetings?.length && panel === 'details'" class="grid gap-1">
+            <router-link v-for="meeting in currentItem.meetings" :key="meeting.id" :to="{ name: 'project-meetings', params: { ...$route.params }, query: { meeting: meeting.id } }" class="text-primary hover:underline">
+              {{ t(meeting.relation === 'created' ? 'page.myWork.created' : 'page.myWork.discussed') }} · {{ meeting.title }}
+            </router-link>
+          </div>
           <work-snapshot v-if="!loading && !canWrite && currentItem" v-show="panel === 'details'" :item="currentItem" :members="members" :people="people" :items="items" :project-id="projectId" />
           <form v-if="canWrite" v-show="panel === 'details'" class="space-y-4" @submit.prevent="save">
             <fieldset :disabled="!canWrite || busy" class="m-0 min-w-0 border-0 p-0 space-y-4">

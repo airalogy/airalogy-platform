@@ -662,6 +662,8 @@ async def structured_project_ids_for_action(
     user_id: UUID,
     projects: list[Project],
     action: str,
+    *,
+    role_key_filter: str | None = None,
 ) -> set[UUID]:
     """Resolve structured grants in bulk for Project discovery queries."""
     result: set[UUID] = set()
@@ -679,7 +681,7 @@ async def structured_project_ids_for_action(
             role_key = (
                 "lab_owner" if membership.role == LabRole.OWNER else "lab_admin"
             )
-            if ACTION_CAPABILITY.get(action, action) in ROLE_CAPABILITIES[role_key]:
+            if (role_key_filter is None or role_key == role_key_filter) and ACTION_CAPABILITY.get(action, action) in ROLE_CAPABILITIES[role_key]:
                 result.update(project.id for project in candidates)
                 continue
 
@@ -708,7 +710,8 @@ async def structured_project_ids_for_action(
         grants = [
             grant
             for grant in grants
-            if capability in ROLE_CAPABILITIES.get(grant.role_key, frozenset())
+            if (role_key_filter is None or grant.role_key == role_key_filter)
+            and capability in ROLE_CAPABILITIES.get(grant.role_key, frozenset())
         ]
         if not grants:
             continue

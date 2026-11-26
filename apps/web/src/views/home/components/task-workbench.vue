@@ -18,6 +18,7 @@ import WorkSummary from "@/views/project-work/work-summary.vue"
 import ResearchApprovalActions from "@/views/research/components/research-approval-actions.vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
+import MyWorkSummary from "./my-work-summary.vue"
 import ProjectWorkspaces from "./project-workspaces.vue"
 
 defineProps<{ pins: PinnedItem[], pinningKeys: Set<string> }>()
@@ -111,6 +112,7 @@ onBeforeUnmount(() => sequence++)
         {{ t('page.home.workspace.askAira') }}
       </aira-action-button>
     </div>
+    <my-work-summary />
     <project-workspaces :pins="pins" :pinning-keys="pinningKeys" @toggle-pin="emit('togglePin', $event)" />
     <work-summary />
     <div class="grid min-w-0 gap-4 lg:grid-cols-2">

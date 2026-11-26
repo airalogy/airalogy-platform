@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -18,3 +18,15 @@ class ProjectGuest(Base):
     )
     role: Mapped[int]
     access_until: Mapped[datetime | None]
+
+
+class OrganizationGuestProfile(Base):
+    __tablename__ = "organization_guest_profiles"
+
+    lab_id: Mapped[UUID] = mapped_column(
+        ForeignKey("labs.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    display_name: Mapped[str | None] = mapped_column(String(255))

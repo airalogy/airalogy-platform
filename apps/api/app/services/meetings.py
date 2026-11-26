@@ -9,7 +9,8 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import exists, or_, select
 
-from app.models.meeting import Meeting, MeetingAccess
+from app.models.meeting import Meeting, MeetingAccess, MeetingWorkLink
+from app.models.research import ResearchTask
 from app.models.research_log import ResearchLogEntry
 
 
@@ -97,6 +98,31 @@ def meeting_read_condition(user_id, entry=ResearchLogEntry):
     return or_(
         ~has_meeting, visible_meeting, entry.created_by_user_id == user_id, grant
     )
+
+
+async def work_meetings(db, user_id, task_ids):
+    """For already authorized work, disclose only readable meetings in its own project."""
+    result = {}
+    if not task_ids:
+        return result
+    entry = ResearchLogEntry
+    rows = await db.execute(
+        select(MeetingWorkLink.task_id, entry.id, entry.title, MeetingWorkLink.relation)
+        .join(entry, entry.id == MeetingWorkLink.meeting_id)
+        .join(ResearchTask, ResearchTask.id == MeetingWorkLink.task_id)
+        .where(
+            MeetingWorkLink.task_id.in_(task_ids),
+            entry.project_id == ResearchTask.project_id,
+            entry.archived_at.is_(None),
+            meeting_read_condition(user_id),
+        )
+        .order_by(entry.occurred_at.desc(), entry.id)
+    )
+    for task_id, meeting_id, title, relation in rows:
+        result.setdefault(task_id, []).append(
+            {"id": meeting_id, "title": title, "relation": relation}
+        )
+    return result
 
 
 async def authorize_meeting(db, user, entry, permission="read"):

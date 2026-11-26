@@ -52,7 +52,9 @@
       <span v-if="(item as Api.Project.MemberListItem).group_name" class="ml-2 text-xs">
         ({{ (item as Api.Project.MemberListItem).group_name }})
       </span>
-      <global-role-tag v-bind="props" :class="[!props.isCompact && 'ml-5']" />
+      <slot name="role">
+        <global-role-tag v-bind="props" :class="[!props.isCompact && 'ml-5']" />
+      </slot>
     </span>
   </div>
 </template>

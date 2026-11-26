@@ -14,6 +14,10 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- My work on Home brings together accessible meetings, follow-ups and their source meetings across projects. Single-organization directories use consistent avatars and menus. Administrators can issue collaborator password resets and confirm which projects to retain when converting a collaborator to an ordinary member.
+
+- Organization administrators can filter a unified people directory and maintain external collaborators’ organization-specific names across projects. Member management actions share a compact row menu.
+
 - Project managers can invite external collaborators by email. Organization administrators can review their projects and convert an employee to guest access while preserving authorship.
 
 - Organization administrators can manage multiple model services and keys, test individual models, and set a default. Members can switch among the configured models in each Aira conversation.

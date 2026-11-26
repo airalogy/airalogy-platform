@@ -1,19 +1,29 @@
 <template>
-  <n-radio-group v-if="canManageGuests" v-model:value="directory" class="mb-3" :aria-label="$t('page.labs.members')">
-    <n-radio-button value="staff">{{ $t("page.guests.members") }}</n-radio-button>
-    <n-radio-button value="guests">{{ $t("page.guests.external") }}</n-radio-button>
+  <n-radio-group v-if="canManageGuests" :value="directory" class="mb-3" role="radiogroup" :aria-label="$t('page.labs.members')" @update:value="selectDirectory">
+    <n-radio-button value="all">
+      {{ $t("common.all") }}
+    </n-radio-button>
+    <n-radio-button value="staff">
+      {{ $t("page.guests.members") }}
+    </n-radio-button>
+    <n-radio-button value="guest">
+      {{ $t("page.guests.external") }}
+    </n-radio-button>
   </n-radio-group>
-  <guest-directory v-if="canManageGuests && directory === 'guests'" />
-  <loading-list-wrapper v-else ref="wrapperRef" :fetcher="fetcher">
+  <loading-list-wrapper :key="`${labId}-${canManageGuests}-${directory}`" ref="wrapperRef" :fetcher="fetcher">
     <template #default="{ data }">
       <global-member-list
-        :id="labId" :list="data" type="lab"
+        :id="labId" :list="canManageGuests ? staffRows(data) : data" type="lab"
         @update:role="handleUpdateRole"
-      />
+      >
+        <template v-if="canManageGuests" #additional-rows="{ resetPassword }">
+          <guest-directory :people="guestRows(data)" @reset="resetPassword" @updated="wrapperRef?.reload(false)" />
+        </template>
+      </global-member-list>
     </template>
     <template #empty>
       <div class="absolute-center">
-        No members
+        {{ $t("page.guests.emptyRoster") }}
       </div>
     </template>
   </loading-list-wrapper>
@@ -25,6 +35,7 @@ import GlobalMemberList from "@/components/common/global-member-list.vue"
 import LoadingListWrapper from "@/components/common/loading-list-wrapper.vue"
 import { useRouterPush } from "@/composables/useRouterPush"
 import { fetchLabMemberList } from "@/service/api/labs"
+import { type DirectoryFilter, type DirectoryPerson, organizationPeople } from "@/service/api/project-guests"
 import { useInstanceStore } from "@/store/modules/instance"
 import { useOrProvideLabInfoStore } from "./hooks/useLabsInfoStore"
 import GuestDirectory from "./modules/guest-directory.vue"
@@ -33,11 +44,12 @@ defineOptions({
   name: "LabsMembers",
 })
 
-const wrapperRef = ref<{ reload: () => void }>()
+const wrapperRef = ref<{ reload: (resetPage?: boolean) => void }>()
 
 const route = useRoute()
+const router = useRouter()
 
-const directory = ref("staff")
+const directory = ref<DirectoryFilter>("all")
 const instance = useInstanceStore()
 const { labInfo, isManager, fetchLabInfoByUid } = useOrProvideLabInfoStore(null)
 const canManageGuests = computed(() => instance.isSingleLab && isManager.value)
@@ -48,29 +60,30 @@ const labId = computed(() => {
 
 const { routerPushByKey } = useRouterPush()
 
-async function fetcher(params: FetchPayload): Promise<FetchData> {
-  if (!labId.value) {
-    return null
-  }
+async function selectDirectory(value: DirectoryFilter) {
+  if (directory.value === value)
+    return
+  if (route.query.page)
+    await router.replace({ path: route.path, query: { ...route.query, page: undefined }, hash: route.hash })
+  directory.value = value
+}
 
-  try {
-    const { currentPage, currentPageSize, requestId } = params
-    const data = await fetchLabMemberList(labId.value, {
-      page: currentPage,
-      pageSize: currentPageSize,
-    }, requestId)
-    if (data && Array.isArray(data.users)) {
-      const { users, total_count } = data
-      return { list: users, total: total_count }
-    }
+function staffRows(people: DirectoryPerson[]) {
+  return people.filter(person => person.kind === "staff")
+}
+function guestRows(people: DirectoryPerson[]) {
+  return people.filter(person => person.kind === "guest")
+}
+
+async function fetcher({ currentPage, currentPageSize, requestId }: FetchPayload): Promise<FetchData> {
+  if (!labId.value)
+    return null
+  if (canManageGuests.value) {
+    const { data } = await organizationPeople(directory.value, currentPage, currentPageSize)
+    return data || null
   }
-  catch (e) {
-    // TODO
-  }
-  finally {
-    routerPushByKey.bind(null, "lab-not-found")
-  }
-  return null
+  const data = await fetchLabMemberList(labId.value, { page: currentPage, pageSize: currentPageSize }, requestId)
+  return data ? { list: data.users, total: data.total_count } : null
 }
 
 async function handleUpdateRole() {
@@ -83,10 +96,6 @@ onMounted(async () => {
     await fetchLabInfoByUid(labUid as string, routerPushByKey.bind(null, "not-found"))
   }
 })
-
-watch(() => labInfo.value?.id, async () => {
-  await wrapperRef.value?.reload()
-}, { immediate: true })
 </script>
 
 <style scoped lang="sass">

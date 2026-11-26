@@ -21,6 +21,30 @@ def test_deployment_validator_reports_profile_mismatch(monkeypatch):
     assert "API_ROOT_PATH must be empty because the bundled proxy strips /api" in errors
 
 
+def test_multi_organization_never_issues_or_accepts_admin_password_reset(monkeypatch):
+    import asyncio
+    from uuid import uuid4
+
+    import pytest
+    from fastapi import HTTPException
+
+    from app.routers.instance import (
+        CreatePasswordResetParams, ResetPasswordParams, create_password_reset_link,
+        get_password_reset, reset_password,
+    )
+
+    monkeypatch.setattr(config, "DEPLOYMENT_MODE", "community")
+    credentials = ResetPasswordParams(password="Synthetic123!", confirm_password="Synthetic123!")
+    for endpoint, args in (
+        (create_password_reset_link, (CreatePasswordResetParams(user_id=uuid4()), None, None)),
+        (get_password_reset, ("synthetic", None)),
+        (reset_password, ("synthetic", credentials, None)),
+    ):
+        with pytest.raises(HTTPException) as error:
+            asyncio.run(endpoint(*args))
+        assert error.value.status_code == 404
+
+
 def test_initial_revision_excludes_tables_owned_by_later_revisions():
     initial_revision = import_module("migrations.versions.0001_initial_schema")
     resource_revision = import_module(
@@ -319,6 +343,9 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     guest_revision = import_module("migrations.versions.0100_project_guests")
     assert guest_revision.down_revision == "0099_organization_ai_services"
     later_tables.update({"organization_ai_services", "project_guests"})
+    names_revision = import_module("migrations.versions.0101_guest_directory_names")
+    assert names_revision.down_revision == guest_revision.revision
+    later_tables.add("organization_guest_profiles")
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

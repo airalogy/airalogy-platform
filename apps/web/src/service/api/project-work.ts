@@ -1,3 +1,4 @@
+import type { MeetingLink } from "./my-work"
 import { documentRequest } from "./research-documents"
 
 export const workStates = [
@@ -46,6 +47,7 @@ export interface WorkContent {
   evidence: WorkEvidence[]
 }
 export interface ProjectWork extends WorkContent {
+  meetings?: MeetingLink[]
   people_snapshot?: { id: string, name: string, organization: string }[]
   id: string
   project_id: string

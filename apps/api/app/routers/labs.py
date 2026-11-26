@@ -590,6 +590,13 @@ async def get_lab_users(
     require_configured_single_lab(lab)
     await require_lab_membership(db_session, lab_id, current_user.id)
     total_count = await LabUser.count(db_session, [LabUser.lab_id == lab_id])
+    users = await lab_member_page(
+        db_session, lab_id, current_user.id, (page - 1) * page_size, page_size
+    )
+    return {"users": users, "total_count": total_count}
+
+
+async def lab_member_page(db_session, lab_id, viewer_id, offset, limit):
     query = (
         select(
             User,
@@ -603,13 +610,13 @@ async def get_lab_users(
             UserAlias,
             and_(
                 UserAlias.target_user_id == User.id,
-                UserAlias.user_id == current_user.id,
+                UserAlias.user_id == viewer_id,
             ),
         )
         .where(LabUser.lab_id == lab_id)
         .order_by(LabUser.role.asc(), LabUser.id.asc())
-        .limit(page_size)
-        .offset((page - 1) * page_size)
+        .limit(limit)
+        .offset(offset)
     )
     result = (await db_session.execute(query)).all()
     users = []
@@ -622,7 +629,7 @@ async def get_lab_users(
         )
         users.append(user)
 
-    return {"users": users, "total_count": total_count}
+    return users
 
 
 @router.post("/{lab_id}/users")

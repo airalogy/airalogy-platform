@@ -140,24 +140,27 @@ test("English navigation keeps the current section readable on a narrow phone", 
 })
 
 test("organization display names can be cleared and personal notes stay secondary", async ({ page }, testInfo) => {
-  await page.route("**/api/labs/*/users?**", async (route) => {
+  await page.route("**/api/project-guests/people?**", async (route) => {
     const response = await route.fetch()
     const result = await response.json()
-    await route.fulfill({ response, json: { ...result, users: result.users.map((u: object) => ({ ...u, user_alias: "Synthetic private note" })) } })
+    await route.fulfill({ response, json: { ...result, list: result.list.map((u: object) => ({ ...u, user_alias: "Synthetic private note" })) } })
   })
   await page.goto("/organization/members")
-  const row = page.locator(".member-list__item").filter({ has: page.getByRole("button", { name: "设置组织内显示名" }) }).first()
+  const row = page.locator(".member-list__item").filter({ has: page.getByRole("button", { name: "操作", exact: true }) }).first()
   await expect(row).toBeVisible()
   const profile = row.locator("a").first()
   const accountLink = await profile.getAttribute("href")
   const { project } = await loadFixtures()
-  const edit = row.getByRole("button", { name: "设置组织内显示名" })
-  await row.getByRole("button", { name: "变更角色", exact: true }).click()
+  async function openAction(name: string) {
+    await row.getByRole("button", { name: "操作", exact: true }).click()
+    await page.locator(".n-dropdown-menu:visible").getByText(name, { exact: true }).click()
+  }
+  await openAction("变更角色")
   await expect(page.getByRole("dialog")).toContainText("的角色")
   await expect(page.getByRole("dialog").getByRole("radio", { name: /管理者/ })).toBeVisible()
   await page.getByRole("dialog").getByRole("button", { name: "取消", exact: true }).click()
   const name = `合成显示名-${randomUUID().slice(0, 8)}`
-  await edit.click()
+  await openAction("设置组织内显示名")
   const dialog = page.getByRole("dialog")
   const field = dialog.getByRole("textbox")
   const original = await field.inputValue()
@@ -198,7 +201,7 @@ test("organization display names can be cleared and personal notes stay secondar
     if (original) {
       await page.setViewportSize({ width: 876, height: 844 })
       await page.goto("/organization/members")
-      await edit.click()
+      await openAction("设置组织内显示名")
       await field.fill(original)
       await dialog.getByRole("button", { name: "保存", exact: true }).click()
     }

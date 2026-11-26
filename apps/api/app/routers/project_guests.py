@@ -3,12 +3,12 @@
 import asyncio
 import os
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
-from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from sqlalchemy import delete, select, update
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field, StringConstraints
+from sqlalchemy import delete, func, or_, select, update
 
 from app.config import config
 from app.database import DBSession
@@ -19,33 +19,46 @@ from app.models.group import GroupProject, GroupUser
 from app.models.lab import LabRole, LabUser
 from app.models.oauth import OAuthAccessToken, OAuthAuthorizationCode
 from app.models.project import PermissionType, Project, ProjectRole, ProjectUser
-from app.models.project_guest import ProjectGuest
+from app.models.project_guest import OrganizationGuestProfile, ProjectGuest
 from app.models.project_operations import OperationsGrant
 from app.models.protocol import Protocol
 from app.models.protocol_version import ProtocolVersion
 from app.models.user import User
 from app.routers.depends import CurrentUser, guest_endpoint
 from app.routers.instance import require_single_lab_manager
-from app.routers.labs import remove_membership_access
+from app.routers.labs import lab_member_page, remove_membership_access
 from app.services.account_security import bump_auth_version
 from app.services.project_guests import (
     accessible_protocol,
     active_projects,
+    ensure_guest_profile,
+    exclusive_guest_profile,
     project_manager,
 )
 from app.services.single_lab import (
     account_for_email,
+    add_user_to_single_lab,
     create_account_token,
     invitation_url,
     normalize_email,
+    revoke_lab_account_tokens,
     utcnow,
 )
 
 router = APIRouter(prefix="/project-guests", tags=["project collaboration"])
 
 
-class Invite(BaseModel):
+DisplayName = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+]
+
+
+class Recipient(BaseModel):
     email: EmailStr
+
+
+class Invite(Recipient):
+    display_name: DisplayName | None = None
     role: Literal["reader", "recorder"] = "reader"
     access_until: AwareDatetime | None = None
     locale: Literal["zh-CN", "en-US"] = "zh-CN"
@@ -53,6 +66,23 @@ class Invite(BaseModel):
 
 def role_name(role):
     return "recorder" if role == ProjectRole.RECORDER else "reader"
+
+
+async def guest_name(db, project, user):
+    if not user or not user.project_guest:
+        return None
+    profile = await db.get(OrganizationGuestProfile, (project.lab_id, user.id))
+    return profile.display_name if profile else None
+
+
+@router.post("/projects/{project_id}/invitation-name")
+async def invitation_name(
+    project_id: UUID, params: Recipient, current_user: CurrentUser, db: DBSession
+):
+    project = await project_manager(db, project_id, current_user.id)
+    user = await account_for_email(db, str(params.email))
+    # Project managers only need to know whether another name is required.
+    return {"reuse": bool(await guest_name(db, project, user))}
 
 
 @router.post("/projects/{project_id}/invitations")
@@ -64,6 +94,9 @@ async def invite(
     user = await account_for_email(db, email)
     if user and await LabUser.exists(db, [LabUser.user_id == user.id]):
         raise HTTPException(409, "Use the organization member picker for this account")
+    name = await guest_name(db, project, user) or params.display_name
+    if not name:
+        raise HTTPException(422, "Organization display name is required")
     until = (
         params.access_until.astimezone(UTC).replace(tzinfo=None)
         if params.access_until
@@ -75,6 +108,7 @@ async def invite(
         db,
         token_type=AccountTokenType.PROJECT_INVITATION,
         email=email,
+        invitation_display_name=name,
         project_role=ProjectRole.RECORDER
         if params.role == "recorder"
         else ProjectRole.VIEWER,
@@ -114,11 +148,16 @@ async def invite(
 
 @router.get("/projects/{project_id}/team")
 async def team(project_id: UUID, current_user: CurrentUser, db: DBSession):
-    await project_manager(db, project_id, current_user.id)
+    project = await project_manager(db, project_id, current_user.id)
     people = (
         await db.execute(
-            select(User, ProjectGuest)
+            select(User, ProjectGuest, OrganizationGuestProfile.display_name)
             .join(ProjectGuest, ProjectGuest.user_id == User.id)
+            .outerjoin(
+                OrganizationGuestProfile,
+                (OrganizationGuestProfile.user_id == User.id)
+                & (OrganizationGuestProfile.lab_id == project.lab_id),
+            )
             .where(ProjectGuest.project_id == project_id)
             .order_by(User.name)
         )
@@ -137,15 +176,20 @@ async def team(project_id: UUID, current_user: CurrentUser, db: DBSession):
         "people": [
             {
                 "id": u.id,
-                "name": u.name,
+                "name": name or u.name or u.username,
                 "email": u.email,
                 "role": role_name(g.role),
                 "expired": bool(g.access_until and g.access_until <= utcnow()),
             }
-            for u, g in people
+            for u, g, name in people
         ],
         "pending": [
-            {"id": i.id, "email": i.email, "role": role_name(i.project_role)}
+            {
+                "id": i.id,
+                "email": i.email,
+                "name": i.invitation_display_name,
+                "role": role_name(i.project_role),
+            }
             for i in pending
         ],
     }
@@ -194,35 +238,113 @@ async def revoke(
     return {"success": True}
 
 
+def guest_rows(lab_id):
+    return (
+        select(User, OrganizationGuestProfile.display_name)
+        .join(OrganizationGuestProfile, OrganizationGuestProfile.user_id == User.id)
+        .where(OrganizationGuestProfile.lab_id == lab_id, User.project_guest.is_(True))
+        # Keep a collaborator on the same directory page when their name is edited.
+        .order_by(User.username, User.id)
+    )
+
+
+async def guest_people(db, lab_id, query):
+    people = {}
+    for user, name in await db.execute(query):
+        await user.load_avatar_attachment()
+        people[user.id] = {
+            "id": user.id,
+            "name": name or user.name or user.username,
+            "display_name": name,
+            "username": user.username,
+            "email": user.email,
+            "avatar_url": user.avatar_url,
+            "projects": [],
+        }
+    if people:
+        projects = await db.execute(
+            select(ProjectGuest.user_id, Project.name)
+            .join(Project, Project.id == ProjectGuest.project_id)
+            .where(
+                Project.lab_id == lab_id,
+                Project.deleted_at.is_(None),
+                ProjectGuest.user_id.in_(people.keys()),
+                or_(
+                    ProjectGuest.access_until.is_(None),
+                    ProjectGuest.access_until > utcnow(),
+                ),
+            )
+            .order_by(Project.name, Project.id)
+        )
+        for user_id, project_name in projects:
+            people[user_id]["projects"].append(project_name)
+    return list(people.values())
+
+
 @router.get("/directory")
 async def directory(current_user: CurrentUser, db: DBSession):
     lab, _ = await require_single_lab_manager(db, current_user)
-    rows = await db.execute(
-        select(
-            User.id,
-            User.name,
-            User.email,
-            Project.name.label("project"),
-            ProjectGuest.access_until,
+    return await guest_people(db, lab.id, guest_rows(lab.id))
+
+
+@router.get("/people")
+async def people(
+    current_user: CurrentUser,
+    db: DBSession,
+    kind: Literal["all", "staff", "guest"] = "all",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+):
+    lab, _ = await require_single_lab_manager(db, current_user)
+    offset = (page - 1) * page_size
+    total = 0
+    rows = []
+    if kind != "guest":
+        total = await LabUser.count(db, [LabUser.lab_id == lab.id])
+        if offset < total:
+            staff = await lab_member_page(
+                db, lab.id, current_user.id, offset, page_size
+            )
+            rows.extend(dict(person, kind="staff") for person in staff)
+    if kind != "staff":
+        guests = guest_rows(lab.id)
+        guest_offset = max(0, offset - total)
+        total += await db.scalar(
+            select(func.count()).select_from(guests.order_by(None).subquery())
         )
-        .outerjoin(ProjectGuest, ProjectGuest.user_id == User.id)
-        .outerjoin(
-            Project,
-            (Project.id == ProjectGuest.project_id)
-            & (Project.lab_id == lab.id)
-            & Project.deleted_at.is_(None),
+        if len(rows) < page_size and offset < total:
+            batch = await guest_people(
+                db, lab.id, guests.offset(guest_offset).limit(page_size - len(rows))
+            )
+            rows.extend(dict(person, kind="guest") for person in batch)
+    return {"list": rows, "total": total}
+
+
+class RenameGuest(BaseModel):
+    display_name: DisplayName
+
+
+@router.patch("/directory/{user_id}")
+async def rename_guest(
+    user_id: UUID, params: RenameGuest, current_user: CurrentUser, db: DBSession
+):
+    lab, _ = await require_single_lab_manager(db, current_user)
+    result = await db.execute(
+        update(OrganizationGuestProfile)
+        .where(
+            OrganizationGuestProfile.lab_id == lab.id,
+            OrganizationGuestProfile.user_id == user_id,
+            OrganizationGuestProfile.user_id.in_(
+                select(User.id).where(User.project_guest.is_(True))
+            ),
         )
-        .where(User.project_guest.is_(True))
-        .order_by(User.name, Project.name)
+        .values(display_name=params.display_name)
+        .returning(OrganizationGuestProfile.user_id)
     )
-    people = {}
-    for row in rows:
-        person = people.setdefault(
-            row.id, {"id": row.id, "name": row.name, "email": row.email, "projects": []}
-        )
-        if row.project and (row.access_until is None or row.access_until > utcnow()):
-            person["projects"].append(row.project)
-    return list(people.values())
+    if not result.scalar_one_or_none():
+        raise HTTPException(404, "Collaborator not found")
+    await db.commit()
+    return {"display_name": params.display_name}
 
 
 async def conversion_context(db, actor, user_id, *, lock=False):
@@ -305,6 +427,7 @@ async def convert(
     user = await db.scalar(
         select(User).where(User.id == user_id).with_for_update(of=User)
     )
+    await ensure_guest_profile(db, lab.id, user.id, member.alias or None)
     await remove_membership_access(db, lab, member, current_user)
     await db.execute(
         delete(OperationsGrant).where(
@@ -339,6 +462,94 @@ async def convert(
             for pid in keep
         ]
     )
+    await db.commit()
+    return {"success": True}
+
+
+async def promotion_context(db, actor, user_id, *, lock=False):
+    lab, _ = await require_single_lab_manager(db, actor)
+    user = await db.get(User, user_id, with_for_update=lock)
+    profile = await exclusive_guest_profile(db, lab.id, user)
+    if not profile:
+        raise HTTPException(404, "Collaborator unavailable")
+    query = (
+        active_projects(user.id).where(Project.lab_id == lab.id).order_by(Project.id)
+    )
+    if lock:
+        query = query.with_for_update(of=(ProjectGuest, Project))
+    return lab, user, profile, (await db.execute(query)).all()
+
+
+@router.get("/promotion/{user_id}")
+async def preview_promotion(user_id: UUID, current_user: CurrentUser, db: DBSession):
+    _, _, _, rows = await promotion_context(db, current_user, user_id)
+    return {
+        "projects": [
+            {
+                "id": project.id,
+                "name": project.name,
+                "role": role_name(guest.role),
+                "access_until": guest.access_until.replace(tzinfo=UTC)
+                if guest.access_until
+                else None,
+            }
+            for project, guest in rows
+        ]
+    }
+
+
+@router.post("/promotion/{user_id}")
+async def promote(
+    user_id: UUID, params: Convert, current_user: CurrentUser, db: DBSession
+):
+    lab, user, profile, rows = await promotion_context(
+        db, current_user, user_id, lock=True
+    )
+    keep = set(params.projects)
+    eligible = {project.id: guest for project, guest in rows}
+    if params.keep_none == bool(keep) or not keep.issubset(eligible):
+        raise HTTPException(422, "Confirm which active collaborations to retain")
+    user.project_guest = False
+    user.api_key_iv = os.urandom(16).hex()
+    await db.flush()
+    await add_user_to_single_lab(
+        db,
+        lab=lab,
+        user=user,
+        created_by_user_id=current_user.id,
+        display_name=profile.display_name or user.name or user.username,
+        project_role=None,
+    )
+    for project_id in keep:
+        role = (
+            ProjectRole.RECORDER
+            if eligible[project_id].role == ProjectRole.RECORDER
+            else ProjectRole.VIEWER
+        )
+        db.add(
+            ProjectUser(
+                project_id=project_id,
+                user_id=user.id,
+                role=role,
+                create_user_id=current_user.id,
+            )
+        )
+    await db.execute(delete(ProjectGuest).where(ProjectGuest.user_id == user.id))
+    await db.delete(profile)
+    await db.execute(
+        update(AccountToken)
+        .where(
+            AccountToken.lab_id == lab.id,
+            AccountToken.token_type == AccountTokenType.PROJECT_INVITATION,
+            AccountToken.email == normalize_email(user.email),
+            AccountToken.consumed_at.is_(None),
+        )
+        .values(consumed_at=utcnow(), invitation_outcome="revoked")
+    )
+    await revoke_lab_account_tokens(
+        db, lab_id=lab.id, user_id=user.id, include_targeted_tokens=True
+    )
+    await bump_auth_version(db, user.id)
     await db.commit()
     return {"success": True}
 

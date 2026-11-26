@@ -6180,7 +6180,13 @@ declare namespace I18n {
         bookAccessHint: string
       }
       guests: {
+        promote: string
+        promotionEffect: string
+        previouslyUntil: string
+        retainProjects: string
         external: string
+        collaborator: string
+        collaborationDetails: string
         members: string
         invite: string
         empty: string
@@ -6216,6 +6222,9 @@ declare namespace I18n {
         saved: string
         invited: string
         joinHint: string
+        reuseName: string
+        emptyRoster: string
+        projectList: string
       }
       projectTeam: {
         organizationMembers: string
@@ -6252,6 +6261,42 @@ declare namespace I18n {
         confirm: string
         failed: string
         disconnectConfirm: string
+      }
+      myWork: {
+        title: string
+        meetings: string
+        todos: string
+        mineMeetings: string
+        mineTodos: string
+        managed: string
+        visible: string
+        scope: string
+        projects: string
+        period: string
+        upcoming: string
+        past: string
+        undated: string
+        due: string
+        overdue: string
+        today: string
+        open: string
+        source: string
+        created: string
+        discussed: string
+        emptyMeetings: string
+        emptyTodos: string
+        noneNext: string
+        noneTodo: string
+        next: string
+        last: string
+        urgent: string
+        research: string
+        manual: string
+        approval: string
+        pending: string
+        error: string
+        page: string
+        assignee: string
       }
     }
     form: {

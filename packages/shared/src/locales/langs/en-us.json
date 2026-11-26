@@ -6176,7 +6176,13 @@
       "bookAccessHint": "The project ledger must be enabled and an operations role assigned to view it. Recording cash requires the finance role."
     },
     "guests": {
+      "promote": "Convert to organization member",
+      "promotionEffect": "{name} will become an ordinary member with access to organization-wide resources. Selected projects grant ongoing membership with the existing viewer or recorder role. Other guest access ends. They must sign in again.",
+      "previouslyUntil": "Previously until {date}",
+      "retainProjects": "Projects to retain as a member",
       "external": "External collaborators",
+      "collaborator": "External collaborator",
+      "collaborationDetails": "Collaboration details",
       "members": "Organization members",
       "invite": "Invite external collaborator",
       "empty": "No external collaborators or pending invitations.",
@@ -6211,7 +6217,10 @@
       "save": "Submit record",
       "saved": "Record submitted.",
       "invited": "Invitation to project “{name}”",
-      "joinHint": "This invitation grants access to this project only."
+      "joinHint": "This invitation grants access to this project only.",
+      "reuseName": "Their existing organization display name will be used.",
+      "emptyRoster": "No people match this filter.",
+      "projectList": "Projects: {projects}"
     },
     "projectTeam": {
       "organizationMembers": "Organization members",
@@ -6248,6 +6257,42 @@
       "confirm": "Associate {name} with {account}? This person is responsible for {count} tasks. The linked account will see these in My tasks, subject to project access. Permissions and historical meeting names remain unchanged.",
       "failed": "People could not be loaded or saved. Refresh and review any changes before retrying.",
       "disconnectConfirm": "Unlink the account from {name}? The {count} tasks remain assigned to this person but no longer appear in the previous account’s My tasks through this association. Permissions and historical meetings stay unchanged."
+    },
+    "myWork": {
+      "title": "My work",
+      "meetings": "Meeting timeline",
+      "todos": "To-dos",
+      "mineMeetings": "My meetings",
+      "mineTodos": "Assigned to me",
+      "managed": "Projects I manage",
+      "visible": "Everything I can access",
+      "scope": "Scope",
+      "projects": "All projects",
+      "period": "Meeting dates",
+      "upcoming": "Today onward",
+      "past": "Before today",
+      "undated": "Unscheduled",
+      "due": "Due {day}",
+      "overdue": "Overdue",
+      "today": "Due today",
+      "open": "{count} open follow-ups",
+      "source": "Related meetings",
+      "created": "Source meeting",
+      "discussed": "Discussed at",
+      "emptyMeetings": "No meetings in this view.",
+      "emptyTodos": "No open to-dos in this view.",
+      "noneNext": "No upcoming meetings",
+      "noneTodo": "No pending to-dos",
+      "next": "Upcoming meeting",
+      "last": "Latest meeting",
+      "urgent": "First to-do",
+      "research": "Research task",
+      "manual": "Work item",
+      "approval": "Approval",
+      "pending": "Awaiting approval",
+      "error": "Couldn’t load your work.",
+      "page": "Page {page}",
+      "assignee": "Assignee: {name}"
     }
   },
   "form": {

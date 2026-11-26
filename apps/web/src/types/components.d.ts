@@ -253,6 +253,7 @@ declare module 'vue' {
     LoadingResult: typeof import('./../components/common/loading-result.vue')['default']
     LockIcon: typeof import('./../components/icon/lock-icon.vue')['default']
     MdInput: typeof import('./../components/custom/aimd/components/inputs/md-input.vue')['default']
+    MemberActions: typeof import('./../components/common/member-actions.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
     NAvatar: typeof import('naive-ui')['NAvatar']
     NAvatarGroup: typeof import('naive-ui')['NAvatarGroup']

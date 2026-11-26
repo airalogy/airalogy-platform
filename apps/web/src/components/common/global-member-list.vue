@@ -1,16 +1,8 @@
 <template>
-  <n-list class="member-list" hoverable>
+  <n-list class="member-list" :class="{ 'member-list--directory': props.type === 'lab' }" hoverable>
     <n-list-item v-for="item in props.list" :key="item.id" class="member-list__item">
       <template #prefix>
-        <n-avatar
-          v-if="item.avatar_url"
-          :src="item.avatar_url"
-          :size="40"
-          color="transparent"
-          object-fit="cover"
-          class="vertical-middle"
-        />
-        <role-icon v-else :type="props.type" :role="roleRecord[item.id]" />
+        <role-icon :src="item.avatar_url" :type="props.type" :role="roleRecord[item.id]" />
       </template>
       <global-member-item
         :item="item"
@@ -21,43 +13,8 @@
         class="min-w-0 w-fit"
       />
       <template v-if="checkPermission(item)" #suffix>
-        <n-dropdown
-          v-if="isMobile"
-          trigger="click"
-          :options="mobileActionOptions(item)"
-          @select="handleMobileAction($event, item)"
-        >
-          <n-button
-            quaternary
-            circle
-            size="small"
-            :aria-label="$t('common.actions')"
-            :title="$t('common.actions')"
-          >
-            <template #icon>
-              <icon-tabler-dots-vertical />
-            </template>
-          </n-button>
-        </n-dropdown>
+        <member-actions v-if="props.type === 'lab' || isMobile" :options="actionOptions(item)" @select="handleAction($event, item)" />
         <div v-else class="flex flex-wrap items-center gap-1">
-          <n-button v-if="canConvert(item)" size="small" @click="openConversion(item)">{{ $t("page.guests.convert") }}</n-button>
-          <n-button
-            v-if="props.type === 'lab' && checkPermission(item)"
-            class="mr-3"
-            size="small"
-            @click="showUpdateLabAliasDialog(item as Api.Lab.MemberListItem)"
-          >
-            {{ $t("common.setAlias") }}
-          </n-button>
-          <n-button
-            v-if="props.type === 'lab' && instanceStore.isSingleLab && checkPermission(item)"
-            class="mr-3"
-            size="small"
-            :loading="resettingUserId === item.id"
-            @click="showPasswordResetLink(item as Api.Lab.MemberListItem)"
-          >
-            {{ $t("page.instance.createResetLink") }}
-          </n-button>
           <n-button
             v-if="canChangeMemberRole"
             class="mr-3"
@@ -70,9 +27,12 @@
         </div>
       </template>
     </n-list-item>
+    <slot name="additional-rows" :reset-password="showPasswordResetLink" />
   </n-list>
-  <guest-conversion v-if="converting" :key="converting.id" :user-id="converting.id" :name="converting.name"
-                    @close="converting = null" @converted="converted" />
+  <guest-conversion
+    v-if="converting" :key="converting.id" :user-id="converting.id" :name="converting.name"
+    @close="converting = null" @converted="converted"
+  />
 </template>
 
 <script setup lang="tsx">
@@ -97,6 +57,7 @@ import { useOrProvideProjectInfoStore } from "@/views/project-protocols/hooks/us
 import { copyToClip } from "@airalogy/shared"
 import { useDialog } from "naive-ui"
 import { useI18n } from "vue-i18n"
+import MemberActions from "./member-actions.vue"
 import RoleChangeDialog from "./role-change-dialog.vue"
 
 defineOptions({ name: "GlobalMemberList" })
@@ -184,15 +145,15 @@ function converted() {
   converting.value = null
 }
 
-type MobileMemberAction = "convert" | "alias" | "reset-password" | "change-role" | "remove"
+type MemberAction = "convert" | "alias" | "reset-password" | "change-role" | "remove"
 
-function mobileActionOptions(
+function actionOptions(
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
 ): DropdownOption[] {
   return [
     ...(props.type === "lab" ? [{ label: t("common.setAlias"), key: "alias" }] : []),
     ...(props.type === "lab" && instanceStore.isSingleLab
-      ? [{ label: t("page.instance.createResetLink"), key: "reset-password" }]
+      ? [{ label: t("page.instance.createResetLink"), key: "reset-password", disabled: resettingUserId.value === item.id }]
       : []),
     ...(canConvert(item) ? [{ label: t("page.guests.convert"), key: "convert" }] : []),
     ...(canChangeMemberRole.value ? [{ label: t("common.changeRole"), key: "change-role" }] : []),
@@ -200,11 +161,11 @@ function mobileActionOptions(
   ]
 }
 
-function handleMobileAction(
+function handleAction(
   key: string | number,
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
 ) {
-  switch (key as MobileMemberAction) {
+  switch (key as MemberAction) {
     case "convert":
       openConversion(item)
       break
@@ -223,7 +184,9 @@ function handleMobileAction(
   }
 }
 
-async function showPasswordResetLink(item: Api.Lab.MemberListItem) {
+async function showPasswordResetLink(item: { id: string, name: string, username: string }) {
+  if (resettingUserId.value)
+    return
   resettingUserId.value = item.id
   try {
     const { data } = await createPasswordResetLink(String(item.id))
@@ -475,6 +438,9 @@ function checkPermission(item: Api.Lab.MemberListItem | Api.Project.MemberListIt
 </script>
 
 <style scoped lang="sass">
+.member-list--directory :deep(.member-list__item)
+  padding-block: 10px
+
 @media (max-width: 639px)
   :deep(.member-list__item)
     padding: 12px 8px

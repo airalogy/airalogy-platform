@@ -22,9 +22,13 @@ from app.models.lab import Lab, LabRole, LabUser, OrganizationType
 from app.models.project import Project, ProjectRole
 from app.models.user import User
 from app.services.account_security import bump_auth_version
-from app.services.project_guests import INVITATIONS, accept_project_invitation
 from app.services.chat_models import ChatCapabilities, enabled_chat_model_types
 from app.services.organization_ai import bind_organization
+from app.services.project_guests import (
+    INVITATIONS,
+    accept_project_invitation,
+    exclusive_guest_profile,
+)
 from app.services.single_lab import (
     account_for_email,
     add_user_to_single_lab,
@@ -495,6 +499,22 @@ class CreatePasswordResetParams(BaseModel):
     user_id: UUID
 
 
+async def ensure_reset_target(db, lab_id, issuer_id, target):
+    actor_role = await user_single_lab_role(db, issuer_id, lab_id)
+    if actor_role not in (LabRole.OWNER, LabRole.MANAGER):
+        raise HTTPException(403, "Organization administrator required")
+    if target is None:
+        raise HTTPException(404, "Account unavailable")
+    target_role = await user_single_lab_role(db, target.id, lab_id)
+    if target_role is not None and not target.project_guest:
+        if actor_role == LabRole.MANAGER and target_role != LabRole.MEMBER:
+            raise HTTPException(403, "Managers can only reset ordinary accounts")
+        return
+    if await exclusive_guest_profile(db, lab_id, target):
+        return
+    raise HTTPException(404, "Account unavailable")
+
+
 @router.post("/password-reset-links")
 async def create_password_reset_link(
     params: CreatePasswordResetParams,
@@ -502,17 +522,9 @@ async def create_password_reset_link(
     db_session: DBSession,
 ):
     ensure_single_lab_mode()
-    lab, current_role = await require_single_lab_manager(db_session, current_user)
-    target_role = await user_single_lab_role(db_session, params.user_id, lab.id)
-    if target_role is None:
-        raise HTTPException(status_code=404, detail="Lab member not found")
-    if current_role == LabRole.MANAGER and target_role != LabRole.MEMBER:
-        raise HTTPException(
-            status_code=403,
-            detail="Managers can only reset member passwords",
-        )
-
-    target_user = await User.find(db_session, params.user_id)
+    lab, _ = await require_single_lab_manager(db_session, current_user)
+    target_user = await db_session.get(User, params.user_id, with_for_update=True)
+    await ensure_reset_target(db_session, lab.id, current_user.id, target_user)
     token, raw_token = await create_account_token(
         db_session,
         token_type=AccountTokenType.PASSWORD_RESET,
@@ -575,6 +587,7 @@ async def reset_password(
             status_code=404, detail="Password reset is invalid or expired"
         )
     user = await User.find(db_session, token.user_id, with_for_update=True)
+    await ensure_reset_target(db_session, token.lab_id, token.created_by_user_id, user)
     user.password = params.password
     await bump_auth_version(db_session, user.id)
     token.consumed_at = utcnow()

@@ -12,9 +12,10 @@ from app.models.project_work import ProjectWork
 from app.models.research import ResearchEvent, ResearchTask
 from app.models.user import User
 from app.routers.depends import CurrentUser
+from app.services.knowledge import canonical_digest
+from app.services.meetings import work_meetings
 from app.services.organization_overview import organization_project_overview
 from app.services.project_people import organization_accounts
-from app.services.knowledge import canonical_digest
 from app.services.project_work import (
     evidence_view,
     project_context,
@@ -508,6 +509,7 @@ async def get_work(task_id: UUID, current_user: CurrentUser, db_session: DBSessi
     result = await visible_snapshot(
         db_session, current_user, project, work_snapshot(task, detail)
     )
+    result["meetings"] = (await work_meetings(db_session, current_user.id, [task.id])).get(task.id, [])
     result["can_write"] = await has_research_capability(
         db_session, user=current_user, project=project, capability="log.write"
     )
