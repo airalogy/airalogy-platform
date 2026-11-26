@@ -1,6 +1,6 @@
 import type { JsonSchema } from "@/components/custom/aimd/types/aimd-types"
 import type { FieldKey, IFileDataItem, IRecordData, IRecordDataItem, IRecordDataKey, ScopeFieldKey } from "@airalogy/aimd-core/types"
-import type { FieldItem, ProtocolInfo } from "@airalogy/shared/types/models/protocol"
+import type { DataObject, FieldItem, ProtocolInfo } from "@airalogy/shared/types/models/protocol"
 import type { JSONSchemaType } from "ajv"
 import type { Ref } from "vue"
 import type { IFieldItem as IExtendedFieldItem } from "../types/types"
@@ -496,7 +496,7 @@ export function getFieldStructure(
         }
 
         const isRequired = Boolean(hasRequired && required?.includes(name))
-        const fieldProps = properties?.[name] ?? {}
+        const fieldProps: Partial<DataObject> = properties?.[name] ?? {}
         const {
           title,
           type,

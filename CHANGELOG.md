@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Record submission accepts optional notes with an empty text default. Server validation identifies the affected field by name. Read-only reports display saved calculations without rerunning them. The project log shows its project-specific title.
+
 - Organization meetings can span projects, privately retain recordings and timed transcripts, and share a selected edition of minutes. Organizers can review speaker-to-account suggestions, track scoped follow-ups and import Markdown or AIMD documents.
 
 - My work on Home brings together accessible meetings, follow-ups and their source meetings across projects. Single-organization directories use consistent avatars and menus. Administrators can issue collaborator password resets and confirm which projects to retain when converting a collaborator to an ordinary member.

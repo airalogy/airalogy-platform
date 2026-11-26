@@ -1660,7 +1660,7 @@ watch(
 watch(
   fieldRecordDefault,
   (record) => {
-    if (!record) {
+    if (!record || props.readonly) {
       return
     }
 

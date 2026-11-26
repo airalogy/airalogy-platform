@@ -10,7 +10,7 @@ import ResearchLogEntryModal from "@/views/record-diary/modules/research-log-ent
 import ResearchLogList from "@/views/record-diary/modules/research-log-list.vue"
 import { useI18n } from "vue-i18n"
 
-const props = withDefaults(defineProps<{ scope: ResearchLogScopeParams, compact?: boolean, organizationOverview?: boolean }>(), {
+const props = withDefaults(defineProps<{ scope: ResearchLogScopeParams, compact?: boolean, organizationOverview?: boolean, title?: string }>(), {
   compact: false,
 })
 const { t, locale } = useI18n()
@@ -164,7 +164,7 @@ onBeforeUnmount(() => requestId++)
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 class="m-0 text-xl font-semibold">
-          {{ t("page.researchActivity.title") }}
+          {{ title || t("page.researchActivity.title") }}
         </h2><p v-if="!compact" class="mb-0 mt-1 text-sm text-gray-500">
           {{ t("page.researchActivity.hint") }}
         </p>
@@ -182,7 +182,7 @@ onBeforeUnmount(() => requestId++)
           v-if="canWrite"
           ref="logModal"
           :scope="scope"
-          :scope-label="t('page.researchActivity.title')"
+          :scope-label="title || t('page.researchActivity.title')"
           @saved="load"
         />
       </div>

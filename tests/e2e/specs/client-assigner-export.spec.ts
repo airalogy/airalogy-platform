@@ -79,8 +79,10 @@ test("client calculations persist and both Protocol archives round-trip", async 
   await page.getByRole("dialog").getByRole("button", { name: "View saved Record", exact: true }).click()
   await expect(page).toHaveURL(/\/record\/[^/]+\/v1$/)
   await page.reload()
-  await expect(field("b")).toHaveValue("8")
-  await expect(field("c")).toHaveValue("9")
+  const report = page.getByTestId("record-main-content")
+  await expect(report.locator('[data-aimd-type="var"][data-aimd-id="b"]')).toHaveText("8")
+  await expect(report.locator('[data-aimd-type="var"][data-aimd-id="c"]')).toHaveText("9")
+  await expect(page.locator(".compact-progress")).toBeHidden()
   expect(serverAssignments).toEqual([])
 
   // Actual published parser/runtime, inside Chromium, not mocked JS execution.

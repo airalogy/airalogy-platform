@@ -382,7 +382,7 @@ test("project team follows meetings and separates accounts from named participan
   await page.addInitScript(() => localStorage.setItem("lang", JSON.stringify({ data: "zh-CN", expire: null })))
   const errors: string[] = []
   page.on("pageerror", e => errors.push(e.message))
-  // Hold the first project lookup until the user switches tabs, as on a slow connection.
+  // Navigation depends on the resolved project permissions, including on a slow connection.
   let lookupStarted!: () => void
   const firstLookup = new Promise<void>((resolve) => {
     lookupStarted = resolve
@@ -402,14 +402,20 @@ test("project team follows meetings and separates accounts from named participan
     await page.setViewportSize({ width, height: width === 390 ? 844 : 983 })
     await page.goto(`${path}/meetings`)
     const team = page.locator('.n-tabs-tab[data-name="project-members"]')
+    if (width === 1440) {
+      await firstLookup
+      try {
+        await expect(team).toBeHidden()
+      }
+      finally {
+        releaseLookup()
+      }
+    }
     await expect(team).toHaveText("团队")
     const tabs = await page.locator(".n-tabs-tab").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-name")))
     expect(tabs.slice(tabs.indexOf("project-meetings"), tabs.indexOf("project-meetings") + 3))
       .toEqual(["project-meetings", "project-members", "project-documents"])
-    if (width === 1440)
-      await firstLookup
     await team.click()
-    releaseLookup()
     await expect(page).toHaveURL(/\/members$/)
     await expect(accounts).toContainText("Dev Owner")
     await expect(accounts).not.toContainText(name)

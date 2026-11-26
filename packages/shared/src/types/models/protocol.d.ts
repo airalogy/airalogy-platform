@@ -166,6 +166,7 @@ export interface FieldItem {
 export type Fields<T = FieldKey> = { [K in T]: FieldItem[] }
 
 export interface JsonSchema {
+  vars?: ResearchVariable
   research_check: ResearchCheckpoint
   research_result: ResearchResult
   research_step: ResearchStep

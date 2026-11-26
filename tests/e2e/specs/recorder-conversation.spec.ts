@@ -192,7 +192,10 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     await expect(fieldsDrawer).toBeHidden()
     await expect(reference).toHaveText("@Duration in minutes")
     await expect(reference).toBeInViewport()
-    await expect(page.getByTestId("context-aira")).toContainText("Recorder suggestion")
+    // Reopening on a field keeps both the conversation and its last decision.
+    await expect(page.getByTestId("context-aira")).toContainText("Change the second to 25; hold for a moment")
+    await expect(page.getByTestId("context-aira")).toContainText(/Skipped[^\n]*minutes/)
+    await expect(field("minutes")).toHaveValue("31")
     await page.getByTestId("context-aira-close").click()
     const viewerLogin = await request.post(`${api}/signin_by_email`, { data: { email: "dev.viewer@airalogy.dev", password: "AiralogyDev123!" } })
     const denied = await request.post(`${api}/chats/qa/message`, { headers: { "Auth-Token": (await viewerLogin.json()).token }, data: {

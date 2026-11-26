@@ -53,6 +53,7 @@ test("an author publishes a template and a Lab member submits and revises a real
   await expect(page.getByText("2/2", { exact: true })).toHaveCount(0)
   await page.locator("#form-research_variable-sample_label textarea, #form-research_variable-sample_label input").fill("PRACTICE-001")
   await page.locator("#form-research_variable-observation_count input").fill("12")
+  await expect(page.getByText("2/2", { exact: true })).toBeVisible()
   // Inject one server field error to exercise recovery and focus independently
   // of client validation. Successful writes below still use the real API.
   const validationUrl = `**/api/protocols/${protocol.id}/records/validate`
@@ -89,7 +90,7 @@ test("an author publishes a template and a Lab member submits and revises a real
   const revise = page.getByRole("button", { name: "Revise", exact: true })
   try {
     await reportRequested
-    await expect(revise).toBeDisabled()
+    await expect(page.getByRole("button", { name: "Revise", exact: true, disabled: false })).toHaveCount(0)
   }
   finally {
     releaseReport()
@@ -103,8 +104,9 @@ test("an author publishes a template and a Lab member submits and revises a real
   await page.getByRole("dialog").getByRole("button", { name: "Submit revision", exact: true }).click()
   await page.getByRole("dialog").getByRole("button", { name: "View saved Record", exact: true }).click()
   await expect(page).toHaveURL(/\/record\/[^/]+\/v2$/)
-  await expect(page.locator("#form-research_variable-observation_count input")).toHaveValue("13")
+  const savedCount = page.getByTestId("record-main-content").locator('[data-aimd-type="var"][data-aimd-id="observation_count"]')
+  await expect(savedCount).toHaveText("13")
   await page.goto(originalReport)
-  await expect(page.locator("#form-research_variable-observation_count input")).toHaveValue("12")
+  await expect(savedCount).toHaveText("12")
   await memberContext.close()
 })

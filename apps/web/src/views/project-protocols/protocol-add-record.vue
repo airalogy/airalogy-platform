@@ -650,10 +650,11 @@ async function showSubmissionErrors(error: unknown) {
   const candidates = Array.isArray(error) ? error : Array.isArray(detail) ? detail : (detail as { errors?: unknown } | null)?.errors
   const fieldErrors = Array.isArray(candidates) ? candidates.filter(item => Array.isArray(item?.loc)) : []
   if (fieldErrors.length) {
-    const schema = protocolInfo.value?.json_schema?.research_variable as { properties?: Record<string, { title?: string }> } | undefined
+    const schema = protocolInfo.value?.json_schema
+    const variables = schema?.vars ?? schema?.research_variable
     submissionErrors.value = (fieldErrors as PydanticError[]).map((item) => {
       const field = String(item.loc[0] || "")
-      const label = schema?.properties?.[field]?.title || field
+      const label = variables?.properties?.[field]?.title || field
       const nested = item.loc.slice(1).join(" / ")
       return { field: "fieldKey" in item && typeof item.fieldKey === "string" ? item.fieldKey : field, message: `${label}${nested ? ` (${nested})` : ""}: ${item.msg}` }
     })

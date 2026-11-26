@@ -1,5 +1,5 @@
 <template>
-  <research-activity v-if="isProjectScope && logScope" :scope="logScope">
+  <research-activity v-if="isProjectScope && logScope" :scope="logScope" :title="logPageTitle">
     <template v-if="canBulkExport && exportLabId && exportProjectId" #actions="{ day }">
       <record-export-modal
         scope-type="project"

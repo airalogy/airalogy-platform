@@ -7,7 +7,7 @@ async function expectVisualToolbarLayout(page: Page) {
   for (const width of [820, 390, 1440]) {
     await page.setViewportSize({ width, height: 989 })
     await expect(inputs).toHaveCSS("display", "flex")
-    const buttons = inputs.locator(":scope > button")
+    const buttons = inputs.getByRole("button", { name: /^Insert .+ input$/i })
     await expect(buttons).toHaveCount(6)
     for (const button of await buttons.all()) {
       // A flex child computes inline-flex as flex; both preserve icon/label alignment.
@@ -17,16 +17,19 @@ async function expectVisualToolbarLayout(page: Page) {
       expect(box!.x).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width).toBeLessThanOrEqual(width)
     }
-    const more = inputs.locator("summary")
+    const more = inputs.getByRole("button", { name: "More inputs" })
     await more.click()
-    const menu = inputs.locator(".aimd-input-tools__menu")
+    const menu = page.getByRole("menu", { name: "More inputs" })
     await expect(menu).toBeVisible()
-    await expect(menu).toHaveCSS("position", "absolute")
     const box = await menu.boundingBox()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.x + box!.width).toBeLessThanOrEqual(width)
-    await more.press("Escape")
+    const viewport = page.viewportSize()!
+    expect(box!.y).toBeGreaterThanOrEqual(0)
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1)
+    await page.keyboard.press("Escape")
     await expect(menu).toBeHidden()
+    await expect(more).toBeFocused()
   }
   await inputs.getByRole("button", { name: "Insert text input", exact: true }).click()
   const dialog = page.getByRole("dialog")
