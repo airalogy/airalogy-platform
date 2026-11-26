@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AimdProtocolRecordData } from "@airalogy/aimd-recorder"
-import { type GuestProject, guestProjects, guestProtocol, type GuestProtocol, guestProtocols } from "@/service/api/project-guests"
+import { type GuestProject, guestProjects, guestProtocol, type GuestProtocol, guestProtocols, reviseGuestProtocol } from "@/service/api/project-guests"
 import { request } from "@/service/request"
 import { useAuthStore } from "@/store/modules/auth"
 import { AimdRecorder, createEmptyProtocolRecordData } from "@airalogy/aimd-recorder"
@@ -17,6 +17,32 @@ const protocol = ref<GuestProtocol>()
 const record = ref<AimdProtocolRecordData>(createEmptyProtocolRecordData())
 const busy = ref(false)
 const saved = ref(false)
+const editing = ref(false)
+const text = ref("")
+const nextVersion = ref("")
+function openRevision() {
+  if (!protocol.value)
+    return
+  text.value = protocol.value.aimd
+  const parts = protocol.value.version.split(".").map(Number)
+  nextVersion.value = parts[2] < 999 ? [parts[0], parts[1], parts[2] + 1].join(".") : ""
+  editing.value = true
+}
+async function publish() {
+  const id = route.query.protocol
+  const original = protocol.value
+  if (typeof id !== "string" || !original || busy.value)
+    return
+  busy.value = true
+  try {
+    const { data } = await reviseGuestProtocol(id, original.version, nextVersion.value, text.value)
+    if (data && original === protocol.value) {
+      protocol.value = { ...original, version: data.version, aimd: text.value }
+      editing.value = false
+    }
+  }
+  finally { busy.value = false }
+}
 const loading = ref(true)
 const recorder = ref<InstanceType<typeof AimdRecorder>>()
 onMounted(async () => {
@@ -29,6 +55,7 @@ watch([project, () => route.query.protocol, () => route.query.protocolUid], asyn
   onCleanup(() => {
     active = false
   })
+  editing.value = false
   protocols.value = []
   protocol.value = undefined
   saved.value = false
@@ -102,8 +129,22 @@ function logout() {
       </p>
       <section v-if="protocol" :key="String(route.query.protocol)">
         <h3>{{ protocol.name }} · v{{ protocol.version }}</h3>
+        <n-button v-if="protocol.role === 'editor' && !editing" @click="openRevision">
+          {{ t("page.guests.revise") }}
+        </n-button>
+        <form v-if="editing" class="grid my-3 gap-3" @submit.prevent="publish">
+          <label>{{ t("page.guests.revise") }}<n-input v-model:value="text" type="textarea" :autosize="{ minRows: 5, maxRows: 16 }" /></label>
+          <label>{{ t("page.guests.newVersion") }}<n-input v-model:value="nextVersion" /></label>
+          <div class="flex gap-2">
+            <n-button :disabled="busy" @click="editing = false">
+              {{ t("common.cancel") }}
+            </n-button><n-button type="primary" attr-type="submit" :loading="busy" :disabled="text === protocol.aimd || !nextVersion">
+              {{ t("common.save") }}
+            </n-button>
+          </div>
+        </form>
         <aimd-recorder ref="recorder" v-model="record" :content="protocol.aimd" :locale="locale" :readonly="protocol.role === 'reader' || saved" :show-search="false" />
-        <n-button v-if="protocol.role === 'recorder' && !saved" type="primary" :loading="busy" @click="save">
+        <n-button v-if="protocol.role !== 'reader' && !saved && !editing" type="primary" :loading="busy" @click="save">
           {{ t("page.guests.save") }}
         </n-button>
         <p v-if="saved" role="status">

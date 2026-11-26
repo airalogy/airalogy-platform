@@ -27,6 +27,12 @@ function getProjectRoleDetailsPrivate(): Partial<Record<ProjectRole, RoleInfo>> 
         $t("role.permission.project.manager.deleteOthersRecords"),
       ],
     },
+    [ProjectRole.PROTOCOL_EDITOR]: {
+      label: $t("page.guests.editor"),
+      value: ProjectRole.PROTOCOL_EDITOR,
+      description: $t("page.guests.editorHint"),
+      permissions: [$t("page.guests.editorHint")],
+    },
     [ProjectRole.COLLABORATOR]: {
       label: $t("role.collaborator"),
       value: ProjectRole.COLLABORATOR,
@@ -101,6 +107,7 @@ export function getProjectRoleDetailsPublic(): Partial<Record<ProjectRole, RoleI
 export const projectRoleHierarchyPrivate = [
   ProjectRole.RECORDER_SELF_ONLY,
   ProjectRole.RECORDER,
+  ProjectRole.PROTOCOL_EDITOR,
   ProjectRole.COLLABORATOR,
   ProjectRole.MANAGER,
   ProjectRole.OWNER,

@@ -44,7 +44,7 @@ async function submit() {
           <n-checkbox :value="project.id" :disabled="keepNone">
             {{ project.name }}
             <template v-if="project.role">
-              · {{ $t(project.role === 'reader' ? 'role.viewer' : 'role.recorder') }}
+              · {{ $t(`page.guests.${project.role}`) }}
             </template>
             <template v-if="project.access_until">
               · {{ $t('page.guests.previouslyUntil', { date: new Date(project.access_until).toLocaleDateString() }) }}

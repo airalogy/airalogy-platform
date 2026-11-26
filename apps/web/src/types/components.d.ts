@@ -354,6 +354,7 @@ declare module 'vue' {
     OperationFeedback: typeof import('./../components/common/operation-feedback.vue')['default']
     OrganizationCard: typeof import('./../components/OrganizationCard.vue')['default']
     PeoplePicker: typeof import('./../components/project/people-picker.vue')['default']
+    PersonProjects: typeof import('./../components/common/person-projects.vue')['default']
     PinInput: typeof import('./../components/common/pin-input.vue')['default']
     PlatformVersion: typeof import('./../components/common/platform-version.vue')['default']
     PreviewRenderer: typeof import('./../components/custom/aimd/components/preview-renderer.vue')['default']

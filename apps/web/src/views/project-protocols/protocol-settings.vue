@@ -445,6 +445,7 @@ import {
   useDeleteConfirmation,
   useSettingsForm,
 } from "@/components/common/settings"
+import { ProjectRole } from "@/enum"
 import { useBoolean, useProjectPermissions } from "@/composables"
 import { LAB_OWNER_AND_MANAGER } from "@/composables/useLabPermissions"
 import { useRouterPush } from "@/composables/useRouterPush"
@@ -578,7 +579,7 @@ const canManageProtocol = computed(() => {
   return canManageOthersProtocolsByRole.value
 })
 
-const hasEditPermission = computed(() => canManageProtocol.value)
+const hasEditPermission = computed(() => canManageProtocol.value || projectInfo.value?.user_role === ProjectRole.PROTOCOL_EDITOR)
 const hasDeletePermission = computed(() => canManageProtocol.value)
 const deleteExtraWarning = computed(() => {
   return isManagingOthersProtocol.value

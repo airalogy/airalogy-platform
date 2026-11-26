@@ -207,6 +207,7 @@ export async function postNewProject(payload: {
 export async function fetchProjectMembers(id: string | number, payload: {
   page: number
   pageSize: number
+  person?: string
 } = { page: 1, pageSize: 10 }, requestId?: string) {
   if (!id) {
     throw new Error("projectId is required")
@@ -219,6 +220,7 @@ export async function fetchProjectMembers(id: string | number, payload: {
     params: {
       page,
       page_size: pageSize,
+      person: payload.person,
     },
     metadata: {
       requestId,

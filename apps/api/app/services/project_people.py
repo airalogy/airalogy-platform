@@ -11,6 +11,7 @@ from app.models.lab import LabUser
 from app.models.project import ProjectUser
 from app.models.project_person import ProjectPerson
 from app.models.user import User
+from app.services.access_control import resolve_structured_access
 from app.services.knowledge import canonical_digest
 from app.services.project_work import project_context
 from app.services.research_runtime import has_research_capability
@@ -169,15 +170,18 @@ async def team_roster(db, user, project_id):
     )
     additional_members = []
     for account, display_name in candidates.unique():
-        if await has_research_capability(
-            db, user=account, project=project, capability="research.read"
-        ):
+        access = await resolve_structured_access(
+            db, account.id, project.lab_id, project
+        )
+        if access.allows("read_project") or access.allows("research.read"):
+            await account.load_avatar_attachment()
             additional_members.append(
                 {
                     "id": account.id,
                     "name": account.name,
                     "username": account.username,
                     "display_name": display_name,
+                    "avatar_url": account.avatar_url,
                 }
             )
     participants = await db.execute(

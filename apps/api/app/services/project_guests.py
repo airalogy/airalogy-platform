@@ -2,12 +2,14 @@ from fastapi import HTTPException
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.config import config
 from app.models.account_token import AccountTokenType
 from app.models.lab import LabRole, LabUser
-from app.models.project import PermissionType, Project, ProjectRole, ProjectUser
+from app.models.project import PermissionType, Project, ProjectRole
 from app.models.project_guest import OrganizationGuestProfile, ProjectGuest
 from app.models.protocol import Protocol
 from app.models.user import User
+from app.services.access_control import resolve_structured_access
 from app.services.single_lab import get_single_lab, user_single_lab_role, utcnow
 
 INVITATIONS = (AccountTokenType.INVITATION, AccountTokenType.PROJECT_INVITATION)
@@ -26,16 +28,19 @@ async def project_manager(db, project_id, actor_id, *, lock=False):
     role = await user_single_lab_role(db, actor_id, lab.id)
     if role in (LabRole.OWNER, LabRole.MANAGER):
         return project
-    manager = await db.scalar(
-        select(ProjectUser.id).where(
-            ProjectUser.user_id == actor_id,
-            ProjectUser.project_id == project_id,
-            ProjectUser.role.in_((ProjectRole.OWNER, ProjectRole.MANAGER)),
-        )
-    )
-    if role is None or manager is None:
-        raise HTTPException(403, "Project manager required")
-    return project
+    if role is not None:
+        from app.routers.permission import get_user_project_role
+
+        direct_or_group = await get_user_project_role(db, actor_id, project_id)
+        if direct_or_group in (ProjectRole.OWNER, ProjectRole.MANAGER):
+            return project
+        if config.effective_lab_structure_mode == "structured":
+            access = await resolve_structured_access(
+                db, actor_id, project.lab_id, project, include_legacy=False
+            )
+            if "project_manager" in access.role_keys:
+                return project
+    raise HTTPException(403, "Project manager required")
 
 
 async def exclusive_guest_profile(db, lab_id, user):
@@ -101,6 +106,7 @@ async def accept_project_invitation(db, invitation, user):
         .values(**values)
         .on_conflict_do_update(
             index_elements=[ProjectGuest.project_id, ProjectGuest.user_id],
+            where=ProjectGuest.access_until <= utcnow(),
             set_={
                 "role": invitation.project_role,
                 "access_until": invitation.access_until,
@@ -125,20 +131,21 @@ def active_projects(user_id):
     )
 
 
-async def accessible_protocol(db, user_id, protocol_id):
-    row = (
-        await db.execute(
-            active_projects(user_id)
-            .add_columns(Protocol)
-            .join(Protocol, Protocol.project_id == Project.id)
-            .where(
-                Protocol.id == protocol_id,
-                Protocol.deleted_at.is_(None),
-                Protocol.inherit_permissions.is_(True),
-                Project.permission_type == PermissionType.INHERIT,
-            )
+async def accessible_protocol(db, user_id, protocol_id, *, lock=False):
+    query = (
+        active_projects(user_id)
+        .add_columns(Protocol)
+        .join(Protocol, Protocol.project_id == Project.id)
+        .where(
+            Protocol.id == protocol_id,
+            Protocol.deleted_at.is_(None),
+            Protocol.inherit_permissions.is_(True),
+            Project.permission_type == PermissionType.INHERIT,
         )
-    ).first()
+    )
+    if lock:
+        query = query.with_for_update(of=(Protocol, ProjectGuest))
+    row = (await db.execute(query)).first()
     if not row:
         raise HTTPException(404, "Protocol not found")
     return row

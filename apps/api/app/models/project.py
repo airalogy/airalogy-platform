@@ -14,6 +14,7 @@ class ProjectRole(IntEnum):
     MANAGER = 20
     COLLABORATOR = 30
     PROTOCOL_OWNER = 35
+    PROTOCOL_EDITOR = 37
     RECORDER = 40
     RECORDER_SELF_ONLY = 45
     EXPLORER = 50

@@ -1,5 +1,5 @@
 <template>
-  <n-list class="member-list" :class="{ 'member-list--directory': props.type === 'lab' }" hoverable>
+  <n-list class="member-list" :class="{ 'member-list--directory': props.type !== 'group' }" hoverable>
     <n-list-item v-for="item in props.list" :key="item.id" class="member-list__item">
       <template #prefix>
         <role-icon :src="item.avatar_url" :type="props.type" :role="roleRecord[item.id]" />
@@ -11,24 +11,21 @@
         :type="props.type"
         :project-type="projectInfo?.type"
         class="min-w-0 w-fit"
-      />
-      <template v-if="checkPermission(item)" #suffix>
-        <member-actions v-if="props.type === 'lab' || isMobile" :options="actionOptions(item)" @select="handleAction($event, item)" />
-        <div v-else class="flex flex-wrap items-center gap-1">
-          <n-button
-            v-if="canChangeMemberRole"
-            class="mr-3"
-            size="small"
-            @click="showRoleChangeDialog(item)"
-          >
-            {{ $t("common.changeRole") }}
-          </n-button>
-          <delete-button v-if="!checkIsSelf(item)" @click="handleRemoveUser(item)" />
-        </div>
+      >
+        <template v-if="props.type === 'project' && instanceStore.isSingleLab" #role>
+          <span class="ml-2 inline-flex flex-wrap items-center gap-1">
+            <n-tag size="small" :bordered="false">{{ t("page.guests.members") }}</n-tag>
+            <global-role-tag type="project" :item="item" :project-type="projectInfo?.type" size="small" />
+          </span>
+        </template>
+      </global-member-item>
+      <template v-if="checkPermission(item) || showProjectOverview" #suffix>
+        <member-actions :options="actionOptions(item)" @select="handleAction($event, item)" />
       </template>
     </n-list-item>
     <slot name="additional-rows" :reset-password="showPasswordResetLink" />
   </n-list>
+  <person-projects v-if="overview" :person="overview" @close="overview = undefined" />
   <guest-conversion
     v-if="converting" :key="converting.id" :user-id="converting.id" :name="converting.name"
     @close="converting = null" @converted="converted"
@@ -37,12 +34,11 @@
 
 <script setup lang="tsx">
 import type { RoleInfo } from "@/composables"
-import type { ProjectRole } from "@/enum"
 import type { DropdownOption } from "naive-ui"
-import { getRoleLabel, projectRoleHierarchyPrivate, useBasicLayout, useClosableMessage, useRoleDescription } from "@/composables"
+import { getRoleLabel, projectRoleHierarchyPrivate, useClosableMessage, useRoleDescription } from "@/composables"
 import { useLabPermissions } from "@/composables/useLabPermissions"
 import { useProjectPermissions } from "@/composables/useProjectPermissions"
-import { LabRole, ProjectType } from "@/enum"
+import { LabRole, ProjectRole, ProjectType } from "@/enum"
 import { deleteGroupsMember } from "@/service/api/groups"
 import { createPasswordResetLink } from "@/service/api/instance"
 import { deleteLabMember, putLabMember } from "@/service/api/labs"
@@ -58,6 +54,7 @@ import { copyToClip } from "@airalogy/shared"
 import { useDialog } from "naive-ui"
 import { useI18n } from "vue-i18n"
 import MemberActions from "./member-actions.vue"
+import PersonProjects from "./person-projects.vue"
 import RoleChangeDialog from "./role-change-dialog.vue"
 
 defineOptions({ name: "GlobalMemberList" })
@@ -70,7 +67,7 @@ const emit = defineEmits<IEmits>()
 
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
-const { isMobile } = useBasicLayout()
+const overview = ref<{ id: string, name: string }>()
 const resettingUserId = ref("")
 const { projectInfo } = useOrProvideProjectInfoStore(null)
 const { labInfo } = useOrProvideLabInfoStore(null)
@@ -124,7 +121,7 @@ const { reloadPage } = useAppStore()
 const { t } = useI18n()
 const canChangeMemberRole = computed(() => props.type === "project" || (props.type === "lab" && isLabOwner.value))
 const options = computed(() => props.type === "project"
-  ? projectRoleOptions.value
+  ? projectRoleOptions.value.filter(option => option.value !== ProjectRole.OWNER && (option.value !== ProjectRole.MANAGER || userProjectRole.value === ProjectRole.OWNER))
   : [
       { label: t("role.manager"), value: LabRole.MANAGER },
       { label: t("role.member"), value: LabRole.MEMBER },
@@ -145,12 +142,17 @@ function converted() {
   converting.value = null
 }
 
-type MemberAction = "convert" | "alias" | "reset-password" | "change-role" | "remove"
+const showProjectOverview = computed(() => props.type === "lab" && instanceStore.isSingleLab && (isLabOwner.value || isLabManager.value))
+type MemberAction = "project-access" | "convert" | "alias" | "reset-password" | "change-role" | "remove"
 
 function actionOptions(
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
 ): DropdownOption[] {
+  const overviewAction = showProjectOverview.value ? [{ label: t("page.guests.collaborationDetails"), key: "project-access" }] : []
+  if (!checkPermission(item))
+    return overviewAction
   return [
+    ...overviewAction,
     ...(props.type === "lab" ? [{ label: t("common.setAlias"), key: "alias" }] : []),
     ...(props.type === "lab" && instanceStore.isSingleLab
       ? [{ label: t("page.instance.createResetLink"), key: "reset-password", disabled: resettingUserId.value === item.id }]
@@ -166,6 +168,9 @@ function handleAction(
   item: Api.Lab.MemberListItem | Api.Project.MemberListItem | Api.Groups.MemberListItem,
 ) {
   switch (key as MemberAction) {
+    case "project-access":
+      overview.value = { id: String(item.id), name: (item as Api.Lab.MemberListItem).lab_alias || item.name || item.username }
+      break
     case "convert":
       openConversion(item)
       break

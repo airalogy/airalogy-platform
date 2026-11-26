@@ -21,7 +21,7 @@ export function associateProjectPerson(person: ProjectPerson, userId: string | n
 }
 
 export interface ProjectTeam {
-  additional_members: { id: string, name: string, username: string, display_name?: string }[]
+  additional_members: { id: string, name: string, username: string, display_name?: string, avatar_url?: string | null }[]
   participants: Pick<ProjectPerson, "id" | "name" | "organization">[]
 }
 

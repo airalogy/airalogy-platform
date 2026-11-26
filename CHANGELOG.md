@@ -14,6 +14,8 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Project teams share one roster for staff and external collaborators. Administrators can look up a person’s projects, open their team row and change collaborator permissions or expiry. Protocol editors can publish text revisions of shared protocols.
+
 - My work on Home brings together accessible meetings, follow-ups and their source meetings across projects. Single-organization directories use consistent avatars and menus. Administrators can issue collaborator password resets and confirm which projects to retain when converting a collaborator to an ordinary member.
 
 - Organization administrators can filter a unified people directory and maintain external collaborators’ organization-specific names across projects. Member management actions share a compact row menu.

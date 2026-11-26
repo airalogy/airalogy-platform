@@ -1,12 +1,13 @@
 import { request } from "../request"
 
 const root = "/project-guests"
-export type GuestRole = "reader" | "recorder"
+export type GuestRole = "reader" | "recorder" | "editor"
 export interface GuestPerson { avatar_url: string | null, id: string, name: string, email: string, username: string, display_name: string | null, projects: string[] }
 interface Project { id: string, name: string }
 export interface GuestProject extends Project { uid: string, description: string, role: GuestRole }
 export interface GuestTeam {
-  people: { id: string, name: string, email: string, role: GuestRole, expired: boolean }[]
+  can_manage: boolean
+  people: { id: string, name: string, username: string, avatar_url: string | null, email: string | null, access_until: string | null, role: GuestRole, expired: boolean }[]
   pending: { id: string, name: string | null, email: string, role: GuestRole }[]
 }
 export const guestTeam = (id: string) => request<GuestTeam>({ url: `${root}/projects/${id}/team` })
@@ -39,3 +40,18 @@ export const guestProjects = () => request<GuestProject[]>({ url: `${root}/mine`
 export const guestProtocols = (id: string) => request<{ protocols: (Project & { uid: string })[] }>({ url: `${root}/mine/${id}` })
 export interface GuestProtocol { name: string, aimd: string, version: string, role: GuestRole }
 export const guestProtocol = (id: string) => request<GuestProtocol>({ url: `${root}/protocols/${id}` })
+
+export function changeGuestAccess(project: string, person: string, role: GuestRole, until: number | null, previous: Pick<GuestTeam["people"][number], "role" | "access_until">) {
+  return request({ url: `${root}/projects/${project}/people/${person}`, method: "PATCH", data: { previous: { role: previous.role, access_until: previous.access_until }, role, access_until: until === null ? null : new Date(until).toISOString() } })
+}
+export interface PersonProject extends Project {
+  source: "direct" | "group" | "guest" | "inherited"
+  role: Api.Project.ProjectRole | null
+  path: string | null
+  expired: boolean
+  access_until: string | null
+}
+export const personProjects = (id: string) => request<PersonProject[]>({ url: `${root}/people/${id}/projects` })
+export function reviseGuestProtocol(id: string, base: string, version: string, aimd: string) {
+  return request<{ version: string }>({ url: `${root}/protocols/${id}/revisions`, method: "POST", data: { base_version: base, version, aimd } })
+}

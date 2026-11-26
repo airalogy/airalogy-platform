@@ -78,6 +78,7 @@ ROLE_CAPABILITIES: dict[str, frozenset[str]] = {
         "role.assign.manager",
         "knowledge.restricted.read",
     },
+    "protocol_reviser": frozenset({"protocol.read", "protocol.update", "record.create", "record.read", "assigner.execute"}),
     "protocol_editor": frozenset(
         {
             "protocol.create",
@@ -223,13 +224,14 @@ ROLE_CAPABILITIES: dict[str, frozenset[str]] = {
     "resource_viewer": frozenset({"resource.read", "inventory.read"}),
 }
 
-GRANTABLE_ROLE_KEYS = frozenset(ROLE_CAPABILITIES) - {"lab_owner", "lab_admin"}
+GRANTABLE_ROLE_KEYS = frozenset(ROLE_CAPABILITIES) - {"protocol_reviser", "lab_owner", "lab_admin"}
 
 ROLE_LABELS = {
     "lab_owner": "Lab owner",
     "lab_admin": "Lab administrator",
     "project_manager": "Project manager",
     "protocol_editor": "Protocol editor",
+    "protocol_reviser": "Protocol reviser",
     "contributor": "Contributor",
     "recorder": "Recorder",
     "viewer": "Viewer",
@@ -250,6 +252,7 @@ ROLE_LEGACY_PROJECT_ROLE = {
     "lab_admin": ProjectRole.MANAGER,
     "project_manager": ProjectRole.MANAGER,
     "protocol_editor": ProjectRole.PROTOCOL_OWNER,
+    "protocol_reviser": ProjectRole.PROTOCOL_EDITOR,
     "contributor": ProjectRole.COLLABORATOR,
     "recorder": ProjectRole.RECORDER,
     "viewer": ProjectRole.VIEWER,
@@ -266,6 +269,7 @@ LEGACY_ROLE_KEY = {
     ProjectRole.MANAGER: "project_manager",
     ProjectRole.COLLABORATOR: "contributor",
     ProjectRole.PROTOCOL_OWNER: "protocol_editor",
+    ProjectRole.PROTOCOL_EDITOR: "protocol_reviser",
     ProjectRole.RECORDER: "recorder",
     ProjectRole.RECORDER_SELF_ONLY: "recorder",
     ProjectRole.EXPLORER: "viewer",

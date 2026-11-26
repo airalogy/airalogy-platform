@@ -6187,6 +6187,17 @@ declare namespace I18n {
         external: string
         collaborator: string
         collaborationDetails: string
+        editor: string
+        editorHint: string
+        manageAccess: string
+        revise: string
+        newVersion: string
+        openTeam: string
+        showTeam: string
+        source_direct: string
+        source_group: string
+        source_guest: string
+        source_inherited: string
         members: string
         invite: string
         empty: string

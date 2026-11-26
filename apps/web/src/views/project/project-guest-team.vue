@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { type GuestRole, guestTeam, type GuestTeam, inviteGuest, inviteNameStatus, removeGuest } from "@/service/api/project-guests"
+import { type GuestRole, type GuestTeam, inviteGuest, inviteNameStatus, removeGuest } from "@/service/api/project-guests"
 import { copyToClip } from "@airalogy/shared"
 import { useI18n } from "vue-i18n"
 
-const props = defineProps<{ projectId: string }>()
+const props = defineProps<{ projectId: string, team?: GuestTeam }>()
+const emit = defineEmits<{ updated: [] }>()
 const { t, locale } = useI18n()
-const team = ref<GuestTeam>()
+
 const show = ref(false)
 const email = ref("")
 const displayName = ref("")
@@ -31,13 +32,7 @@ const role = ref<GuestRole>("reader")
 const until = ref<number | null>(null)
 const busy = ref(false)
 const result = ref<{ url: string, delivery: "sent" | "link" | "failed" }>()
-const roles = computed(() => (["reader", "recorder"] as const).map(value => ({ value, label: t(`page.guests.${value}`) })))
-async function reload() {
-  const id = props.projectId
-  const { data } = await guestTeam(id)
-  if (id === props.projectId)
-    team.value = data || undefined
-}
+const roles = computed(() => (["reader", "recorder", "editor"] as const).map(value => ({ value, label: t(`page.guests.${value}`) })))
 function open() {
   email.value = ""
   displayName.value = ""
@@ -55,7 +50,7 @@ async function submit() {
     const { data } = await inviteGuest(props.projectId, { email: email.value.trim(), display_name: reuse.value ? undefined : displayName.value.trim(), role: role.value, access_until: until.value ? new Date(until.value).toISOString() : null, locale: locale.value })
     if (data) {
       result.value = data
-      await reload()
+      emit("updated")
     }
   }
   finally { busy.value = false }
@@ -63,37 +58,13 @@ async function submit() {
 async function remove(kind: "people" | "invitations", id: string) {
   const { error } = await removeGuest(props.projectId, kind, id)
   if (!error)
-    await reload()
+    emit("updated")
 }
-watch(() => props.projectId, reload, { immediate: true })
+defineExpose({ open })
 </script>
 
 <template>
-  <section class="team-section" data-testid="external-team">
-    <header class="flex flex-wrap items-center justify-between gap-2">
-      <h2 class="aira-type-section-title m-0">
-        {{ t("page.guests.external") }}
-      </h2>
-      <n-button @click="open">
-        {{ t("page.guests.invite") }}
-      </n-button>
-    </header>
-    <p v-if="team && !team.people.length && !team.pending.length" class="aira-type-meta">
-      {{ t("page.guests.empty") }}
-    </p>
-    <div v-for="row in team?.people" :key="row.id" class="flex flex-wrap items-center gap-2 py-1">
-      <strong>{{ row.name }}</strong><span class="break-all">{{ row.email }}</span>
-      <n-tag size="small">
-        {{ t(row.expired ? "page.guests.expired" : `page.guests.${row.role}`) }}
-      </n-tag>
-      <n-popconfirm @positive-click="remove('people', row.id)">
-        <template #trigger>
-          <n-button text>
-            {{ t("page.guests.revoke") }}
-          </n-button>
-        </template>{{ t("page.guests.revokePrompt") }}
-      </n-popconfirm>
-    </div>
+  <div v-if="show || team?.pending.length" class="grid gap-2">
     <div v-for="row in team?.pending" :key="row.id" class="flex flex-wrap items-center gap-2 py-1">
       <strong v-if="row.name">{{ row.name }}</strong><span class="break-all">{{ row.email }}</span><n-tag size="small">
         {{ t("page.guests.pending") }}
@@ -132,5 +103,5 @@ watch(() => props.projectId, reload, { immediate: true })
         </n-button>
       </div>
     </n-modal>
-  </section>
+  </div>
 </template>

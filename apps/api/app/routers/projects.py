@@ -887,6 +887,8 @@ async def add_user_to_project(
     db_session: DBSession,
 ):
     project: Project = await Project.find(db_session, id=project_id, with_for_update=True)
+    if params.role in (ProjectRole.OWNER, ProjectRole.PROTOCOL_OWNER):
+        raise HTTPException(422, "Role cannot be assigned through the member list")
     action = (
         "set_role_manager" if params.role <= ProjectRole.MANAGER else "set_role_other"
     )
@@ -929,22 +931,26 @@ async def change_user_role_in_project(
     db_session: DBSession,
 ):
     project = await Project.find(db_session, id=project_id)
-    action = (
-        "set_role_manager" if params.role <= ProjectRole.MANAGER else "set_role_other"
-    )
+    if project is None or project.deleted_at is not None:
+        raise HTTPException(404, "Project not found")
     await check_user_permission(
-        db_session,
-        project=project,
-        user=current_user,
-        action=action,
+        db_session, project=project, user=current_user, action="set_role_other"
     )
-
-    project_user = await ProjectUser.find_by(
-        db_session,
-        [ProjectUser.project_id == project_id, ProjectUser.user_id == user_id],
+    project_user = await db_session.scalar(
+        select(ProjectUser)
+        .where(ProjectUser.project_id == project_id, ProjectUser.user_id == user_id)
+        .with_for_update()
     )
-    if project_user is None:
-        raise HTTPException(status_code=404, detail="User not found in project")
+    if not project_user:
+        raise HTTPException(404, "User not found in project")
+    if (
+        user_id == current_user.id
+        or project_user.role == ProjectRole.OWNER
+        or params.role in (ProjectRole.OWNER, ProjectRole.PROTOCOL_OWNER)
+    ):
+        raise HTTPException(403, "This role cannot be reassigned")
+    if ProjectRole.MANAGER in (params.role, project_user.role):
+        await check_user_permission(db_session, project=project, user=current_user, action="set_role_manager")
 
     project_user.role = params.role
     await db_session.commit()
@@ -969,6 +975,8 @@ async def delete_user_from_project(
     if project_user is None:
         return {"message": "success"}
 
+    if project_user.role == ProjectRole.OWNER:
+        raise HTTPException(403, "Transfer project ownership first")
     action = (
         "set_role_manager"
         if project_user.role <= ProjectRole.MANAGER
@@ -993,6 +1001,7 @@ async def get_project_users(
     current_user: CurrentUser,
     page: int = 1,
     page_size: int = 10,
+    person: UUID | None = None,
 ):
     project = await Project.find(db_session, id=project_id)
     await check_user_permission(
@@ -1002,7 +1011,10 @@ async def get_project_users(
         action="read_project",
     )
 
-    count_stmt = select(func.count()).where(ProjectUser.project_id == project_id)
+    filters = [ProjectUser.project_id == project_id]
+    if person is not None:
+        filters.append(ProjectUser.user_id == person)
+    count_stmt = select(func.count()).where(*filters)
     total_count = (await db_session.execute(count_stmt)).scalar()
 
     stmt = (
@@ -1028,7 +1040,7 @@ async def get_project_users(
                 LabUser.lab_id == project.lab_id,
             ),
         )
-        .where(ProjectUser.project_id == project_id)
+        .where(*filters)
         .order_by(ProjectUser.role.asc(), ProjectUser.created_at.asc())
         .limit(page_size)
         .offset((page - 1) * page_size)

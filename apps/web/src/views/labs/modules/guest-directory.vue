@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MemberActions from "@/components/common/member-actions.vue"
+import PersonProjects from "@/components/common/person-projects.vue"
 import { type GuestPerson, renameGuest } from "@/service/api/project-guests"
 import { useI18n } from "vue-i18n"
 import GuestConversion from "./guest-conversion.vue"
@@ -65,13 +66,7 @@ async function save() {
     </template>
   </n-list-item>
   <guest-conversion v-if="promoting" :key="promoting.id" :user-id="promoting.id" :name="promoting.name" to-member @close="promoting = null" @converted="promoting = null; emit('updated')" />
-  <n-modal :show="!!details" preset="card" :title="$t('page.guests.collaborationDetails')" style="width: min(26rem, calc(100vw - 2rem))" @update:show="value => { if (!value) details = null }">
-    <div v-if="details" class="grid gap-2 break-words">
-      <strong>{{ details.name }}</strong>
-      <span class="break-all">{{ details.email }}</span>
-      <span>{{ details.projects.length ? $t("page.guests.projectList", { projects: details.projects.join(" · ") }) : $t("page.guests.noProjects") }}</span>
-    </div>
-  </n-modal>
+  <person-projects v-if="details" :person="details" @close="details = null" />
   <n-modal :show="!!editing" preset="card" :title="$t('common.labAliasLabel')" style="width: min(26rem, calc(100vw - 2rem))" @update:show="value => { if (!value) editing = null }">
     <form class="grid gap-4" @submit.prevent="save">
       <label>{{ $t("common.labAliasLabel") }}<n-input v-model:value="name" :maxlength="255" :input-props="{ required: true }" /></label>

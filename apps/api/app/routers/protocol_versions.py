@@ -519,7 +519,7 @@ async def save_protocol_package(
     env_vars_dict.update(
         {
             "AIRALOGY_ENDPOINT": config.AIRALOGY_ENDPOINT,
-            "AIRALOGY_API_KEY": "" if delegated_review else current_user.api_key,
+            "AIRALOGY_API_KEY": "" if delegated_review or getattr(current_user, "project_guest", False) else current_user.api_key,
         }
     )
     if protocol is not None:

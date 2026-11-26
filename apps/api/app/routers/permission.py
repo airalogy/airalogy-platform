@@ -47,11 +47,13 @@ private_project_permissions = {
         ProjectRole.PROTOCOL_OWNER,
     },
     "update_protocol": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
     },
     "read_protocol": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -59,6 +61,7 @@ private_project_permissions = {
         ProjectRole.RECORDER,
     },
     "exec_assigner": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -66,6 +69,7 @@ private_project_permissions = {
         ProjectRole.RECORDER,
     },
     "create_record": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -78,6 +82,7 @@ private_project_permissions = {
         ProjectRole.PROTOCOL_OWNER,
     },
     "read_record": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -102,11 +107,13 @@ public_project_permissions = {
         ProjectRole.PROTOCOL_OWNER,
     },
     "update_protocol": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
     },
     "read_protocol": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -119,6 +126,7 @@ public_project_permissions = {
         ProjectRole.VIEWER_SELF_ONLY,
     },
     "exec_assigner": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -129,6 +137,7 @@ public_project_permissions = {
         ProjectRole.EXPLORER_SELF_ONLY,
     },
     "create_record": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -142,6 +151,7 @@ public_project_permissions = {
         ProjectRole.PROTOCOL_OWNER,
     },
     "read_record": {
+        ProjectRole.PROTOCOL_EDITOR,
         ProjectRole.OWNER,
         ProjectRole.MANAGER,
         ProjectRole.PROTOCOL_OWNER,
@@ -266,10 +276,16 @@ async def check_user_permission(
     if user is not None and getattr(user, "project_guest", False):
         from app.services.project_guests import accessible_protocol
 
-        if action == "create_record" and protocol and project.id == protocol.project_id:
-            _, grant, _ = await accessible_protocol(db_session, user.id, protocol.id)
-            if grant.role == ProjectRole.RECORDER:
-                return ProjectRole.RECORDER
+        if (
+            action in {"create_record", "update_protocol"}
+            and protocol
+            and project.id == protocol.project_id
+        ):
+            _, grant, _ = await accessible_protocol(
+                db_session, user.id, protocol.id, lock=True
+            )
+            if grant.role in private_project_permissions[action]:
+                return ProjectRole(grant.role)
         raise HTTPException(403, "Project guest access does not include this action")
 
     if user is None and (config.is_single_lab or action not in anonymous_read_actions):
@@ -312,6 +328,8 @@ async def check_user_permission(
 
     # Project owners and managers always have full access
     if role <= ProjectRole.MANAGER:
+        if role == ProjectRole.MANAGER and action == "set_role_manager":
+            raise HTTPException(403, "Project owner permission required")
         return role
 
     # If user is protocol owner (creator), grant PROTOCOL_OWNER role
@@ -369,6 +387,12 @@ async def check_user_permission(
             ]
         ):
             raise HTTPException(status_code=400, detail="Permission denied")
+
+    if role == ProjectRole.PROTOCOL_EDITOR and action in {
+        "update_project",
+        "delete_project",
+    }:
+        raise HTTPException(403, "Project administration permission required")
 
     # project 的权限是基于协议的权限
     if action.endswith("_project"):

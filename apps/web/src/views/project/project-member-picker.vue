@@ -26,6 +26,7 @@ const visibleUsers = computed(() => selectedOnly.value ? Array.from(selected.val
 const options = computed(() => [
   ...(props.canSetManager ? [{ value: ProjectRole.MANAGER, label: $t("role.manager") }] : []),
   { value: ProjectRole.COLLABORATOR, label: $t("role.collaborator") },
+  { value: ProjectRole.PROTOCOL_EDITOR, label: $t("page.guests.editor") },
   { value: ProjectRole.RECORDER, label: $t("role.recorder") },
   ...(props.isPrivate
     ? []

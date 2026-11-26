@@ -2,11 +2,14 @@
 
 import asyncio
 import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile
+from starlette.datastructures import Headers
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field, StringConstraints
 from sqlalchemy import delete, func, or_, select, update
 
@@ -26,7 +29,10 @@ from app.models.protocol_version import ProtocolVersion
 from app.models.user import User
 from app.routers.depends import CurrentUser, guest_endpoint
 from app.routers.instance import require_single_lab_manager
+from app.routers.permission import check_user_permission
 from app.routers.labs import lab_member_page, remove_membership_access
+from app.services.access_control import structured_project_ids_for_action
+from app.services.browser_paths import project_browser_path
 from app.services.account_security import bump_auth_version
 from app.services.project_guests import (
     accessible_protocol,
@@ -57,15 +63,42 @@ class Recipient(BaseModel):
     email: EmailStr
 
 
-class Invite(Recipient):
+GUEST_ROLES = {
+    "reader": ProjectRole.VIEWER,
+    "recorder": ProjectRole.RECORDER,
+    "editor": ProjectRole.PROTOCOL_EDITOR,
+}
+GuestRole = Literal["reader", "recorder", "editor"]
+
+
+class GrantChange(BaseModel):
+    role: GuestRole
+    access_until: AwareDatetime | None
+
+    def expiry(self):
+        until = (
+            self.access_until.astimezone(UTC).replace(tzinfo=None)
+            if self.access_until
+            else None
+        )
+        if until and until <= utcnow():
+            raise HTTPException(422, "Access expiry must be in the future")
+        return until
+
+
+class EditGrant(GrantChange):
+    previous: GrantChange | None = None
+
+
+class Invite(Recipient, GrantChange):
     display_name: DisplayName | None = None
-    role: Literal["reader", "recorder"] = "reader"
+    role: GuestRole = "reader"
     access_until: AwareDatetime | None = None
     locale: Literal["zh-CN", "en-US"] = "zh-CN"
 
 
 def role_name(role):
-    return "recorder" if role == ProjectRole.RECORDER else "reader"
+    return next(name for name, value in GUEST_ROLES.items() if value == role)
 
 
 async def guest_name(db, project, user):
@@ -97,21 +130,20 @@ async def invite(
     name = await guest_name(db, project, user) or params.display_name
     if not name:
         raise HTTPException(422, "Organization display name is required")
-    until = (
-        params.access_until.astimezone(UTC).replace(tzinfo=None)
-        if params.access_until
-        else None
-    )
-    if until and until <= utcnow():
-        raise HTTPException(422, "Access expiry must be in the future")
+    until = params.expiry()
+    if (
+        user
+        and (
+            await db.execute(active_projects(user.id).where(Project.id == project_id))
+        ).first()
+    ):
+        raise HTTPException(409, "This collaborator already has access. Change their project permissions instead.")
     token, raw = await create_account_token(
         db,
         token_type=AccountTokenType.PROJECT_INVITATION,
         email=email,
         invitation_display_name=name,
-        project_role=ProjectRole.RECORDER
-        if params.role == "recorder"
-        else ProjectRole.VIEWER,
+        project_role=GUEST_ROLES[params.role],
         lab_id=project.lab_id,
         project_id=project.id,
         access_until=until,
@@ -148,7 +180,15 @@ async def invite(
 
 @router.get("/projects/{project_id}/team")
 async def team(project_id: UUID, current_user: CurrentUser, db: DBSession):
-    project = await project_manager(db, project_id, current_user.id)
+    can_manage = True
+    try:
+        project = await project_manager(db, project_id, current_user.id)
+    except HTTPException as exc:
+        if exc.status_code != 403:
+            raise
+        project = await db.get(Project, project_id)
+        await check_user_permission(db, project, current_user, "read_project")
+        can_manage = False
     people = (
         await db.execute(
             select(User, ProjectGuest, OrganizationGuestProfile.display_name)
@@ -162,6 +202,8 @@ async def team(project_id: UUID, current_user: CurrentUser, db: DBSession):
             .order_by(User.name)
         )
     ).all()
+    for user, _, _ in people:
+        await user.load_avatar_attachment()
     pending = await db.scalars(
         select(AccountToken)
         .where(
@@ -173,15 +215,22 @@ async def team(project_id: UUID, current_user: CurrentUser, db: DBSession):
         .order_by(AccountToken.created_at.desc())
     )
     return {
+        "can_manage": can_manage,
         "people": [
             {
                 "id": u.id,
                 "name": name or u.name or u.username,
-                "email": u.email,
+                "email": u.email if can_manage else None,
+                "username": u.username,
+                "avatar_url": u.avatar_url,
+                "access_until": g.access_until.replace(tzinfo=UTC)
+                if g.access_until
+                else None,
                 "role": role_name(g.role),
                 "expired": bool(g.access_until and g.access_until <= utcnow()),
             }
             for u, g, name in people
+            if can_manage or g.access_until is None or g.access_until > utcnow()
         ],
         "pending": [
             {
@@ -191,6 +240,7 @@ async def team(project_id: UUID, current_user: CurrentUser, db: DBSession):
                 "role": role_name(i.project_role),
             }
             for i in pending
+            if can_manage
         ],
     }
 
@@ -209,6 +259,51 @@ async def cancel(
         )
         .values(consumed_at=utcnow(), invitation_outcome="revoked")
     )
+    await db.commit()
+    return {"success": True}
+
+
+@router.patch("/projects/{project_id}/people/{user_id}")
+async def change_guest_access(
+    project_id: UUID,
+    user_id: UUID,
+    params: EditGrant,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    await project_manager(db, project_id, current_user.id, lock=True)
+    # Invalidate earlier invitations before locking the grant, in claim order.
+    await db.execute(
+        update(AccountToken)
+        .where(
+            AccountToken.project_id == project_id,
+            AccountToken.token_type == AccountTokenType.PROJECT_INVITATION,
+            AccountToken.email
+            == select(func.lower(User.email))
+            .where(User.id == user_id)
+            .scalar_subquery(),
+            AccountToken.consumed_at.is_(None),
+        )
+        .values(consumed_at=utcnow(), invitation_outcome="revoked")
+    )
+    grant = await db.get(ProjectGuest, (user_id, project_id), with_for_update=True)
+    if grant is None:
+        raise HTTPException(404, "Project collaboration not found")
+    if params.previous:
+        previous_until = params.previous.access_until
+        stored_until = (
+            grant.access_until.replace(tzinfo=UTC) if grant.access_until else None
+        )
+        if (
+            grant.role != GUEST_ROLES[params.previous.role]
+            or previous_until != stored_until
+        ):
+            raise HTTPException(
+                409,
+                "Project access changed. Reopen the team and review the latest permissions.",
+            )
+    grant.role = GUEST_ROLES[params.role]
+    grant.access_until = params.expiry()
     await db.commit()
     return {"success": True}
 
@@ -318,6 +413,96 @@ async def people(
             )
             rows.extend(dict(person, kind="guest") for person in batch)
     return {"list": rows, "total": total}
+
+
+@router.get("/people/{user_id}/projects")
+async def person_projects(user_id: UUID, current_user: CurrentUser, db: DBSession):
+    lab, _ = await require_single_lab_manager(db, current_user)
+    staff = await LabUser.exists(
+        db, [LabUser.lab_id == lab.id, LabUser.user_id == user_id]
+    )
+    sources = []
+    if staff:
+        direct = (
+            select(Project, ProjectUser.role)
+            .join(ProjectUser)
+            .where(ProjectUser.user_id == user_id)
+        )
+        groups = (
+            select(Project, func.min(GroupProject.role))
+            .join(GroupProject)
+            .join(GroupUser, GroupUser.group_id == GroupProject.group_id)
+            .where(GroupUser.user_id == user_id)
+            .group_by(Project.id)
+        )
+        for source, query in (("direct", direct), ("group", groups)):
+            for project, role in await db.execute(
+                query.where(Project.lab_id == lab.id, Project.deleted_at.is_(None))
+            ):
+                sources.append((project, source, role, None))
+        if config.effective_lab_structure_mode == "structured":
+            projects = (
+                await db.scalars(
+                    select(Project).where(
+                        Project.lab_id == lab.id, Project.deleted_at.is_(None)
+                    )
+                )
+            ).all()
+            inherited = await structured_project_ids_for_action(
+                db, user_id, projects, "read_project"
+            )
+            listed = {row[0].id for row in sources}
+            remaining = inherited - listed
+            sources.extend(
+                (project, "inherited", None, None)
+                for project in projects
+                if project.id in remaining
+            )
+    else:
+        if not await db.get(OrganizationGuestProfile, (lab.id, user_id)):
+            raise HTTPException(404, "Person not found")
+        rows = await db.execute(
+            select(Project, ProjectGuest)
+            .join(ProjectGuest)
+            .where(
+                Project.lab_id == lab.id,
+                Project.deleted_at.is_(None),
+                ProjectGuest.user_id == user_id,
+            )
+        )
+        sources = [
+            (project, "guest", grant.role, grant.access_until)
+            for project, grant in rows
+        ]
+    if config.effective_lab_structure_mode == "structured":
+        # Only organization owners and administrators reach the directory endpoint.
+        browsable = {project.id for project, *_ in sources}
+    else:
+        direct = select(ProjectUser.project_id).where(
+            ProjectUser.user_id == current_user.id
+        )
+        groups = (
+            select(GroupProject.project_id)
+            .join(GroupUser, GroupUser.group_id == GroupProject.group_id)
+            .where(GroupUser.user_id == current_user.id)
+        )
+        browsable = set(await db.scalars(direct.union(groups)))
+    return [
+        {
+            "id": project.id,
+            "name": project.name,
+            "source": source,
+            "role": role,
+            "access_until": until.replace(tzinfo=UTC) if until else None,
+            "expired": bool(until and until <= utcnow()),
+            "path": project_browser_path(lab.uid, project.uid) + "/members"
+            if project.id in browsable
+            else None,
+        }
+        for project, source, role, until in sorted(
+            sources, key=lambda row: (row[0].name, row[0].id, row[1])
+        )
+    ]
 
 
 class RenameGuest(BaseModel):
@@ -521,11 +706,7 @@ async def promote(
         project_role=None,
     )
     for project_id in keep:
-        role = (
-            ProjectRole.RECORDER
-            if eligible[project_id].role == ProjectRole.RECORDER
-            else ProjectRole.VIEWER
-        )
+        role = eligible[project_id].role
         db.add(
             ProjectUser(
                 project_id=project_id,
@@ -618,3 +799,69 @@ async def my_protocol(protocol_id: UUID, current_user: CurrentUser, db: DBSessio
         "aimd": version.aimd,
         "role": role_name(grant.role),
     }
+
+
+class TextRevision(BaseModel):
+    base_version: str = Field(max_length=16)
+    version: str = Field(pattern=r"^\d{1,3}(\.\d{1,3}){2}$")
+    aimd: str = Field(min_length=1, max_length=512 * 1024)
+
+
+@router.post("/protocols/{protocol_id}/revisions")
+@guest_endpoint
+async def revise_protocol_text(
+    protocol_id: UUID,
+    params: TextRevision,
+    current_user: CurrentUser,
+    db: DBSession,
+    background_tasks: BackgroundTasks,
+):
+    from app.routers.protocol_versions import save_protocol_package
+    from app.services.protocol_text_revision import revised_package
+
+    project, grant, protocol = await accessible_protocol(
+        db, current_user.id, protocol_id, lock=True
+    )
+    if grant.role != ProjectRole.PROTOCOL_EDITOR:
+        raise HTTPException(403, "Editing permission is required")
+    if params.base_version != protocol.latest_version:
+        raise HTTPException(409, "The Protocol has changed. Reopen the latest version.")
+    if tuple(map(int, params.version.split("."))) <= tuple(
+        map(int, protocol.latest_version.split("."))
+    ):
+        raise HTTPException(
+            422, "The new version must be greater than the current version"
+        )
+    base = await db.scalar(
+        select(ProtocolVersion).where(
+            ProtocolVersion.protocol_id == protocol.id,
+            ProtocolVersion.version == protocol.latest_version,
+        )
+    )
+    if not base:
+        raise HTTPException(404, "Protocol version not found")
+    with TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        source = folder / "original.zip"
+        await base.download_package(str(source))
+        try:
+            archive = await asyncio.to_thread(
+                revised_package, source, folder, params.aimd, params.version
+            )
+        except (ValueError, SyntaxError, KeyError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        with archive.open("rb") as stream:
+            file = UploadFile(
+                file=stream,
+                filename="revision.zip",
+                headers=Headers({"content-type": "application/zip"}),
+            )
+            await save_protocol_package(
+                current_user,
+                db,
+                file,
+                background_tasks,
+                project.id,
+                protocol_id=protocol.id,
+            )
+    return {"version": params.version}
