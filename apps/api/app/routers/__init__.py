@@ -50,6 +50,7 @@ from .groups import router as groups_router
 from .health import router as health_router
 from .hub import router as hub_router
 from .instance import router as instance_router
+from .instance_backup import router as instance_backup_router
 from .instrument_activations import router as instrument_activations_router
 from .instrument_authoring import router as instrument_authoring_router
 from .instrument_exploration import router as instrument_exploration_router
@@ -340,6 +341,7 @@ app.include_router(login_router)
 app.include_router(analysis_protocol_drafts_router)
 app.include_router(access_router)
 app.include_router(instance_router)
+app.include_router(instance_backup_router)
 app.include_router(project_guests_router)
 app.include_router(health_router)
 app.include_router(system_router)

@@ -105,6 +105,7 @@
 
     <template v-if="labInfo">
       <workspace-sharing-settings v-if="instanceStore.isSingleLab && canManageLab" :id="String(labInfo.id)" organization />
+      <storage-backups v-if="instanceStore.isSingleLab && canManageLab" />
       <organization-ai-settings v-if="canManageLab" :key="labInfo.id" :lab-id="labInfo.id" :uid="labInfo.uid" class="my-6" />
       <kit-catalog :lab-id="labInfo.id" class="my-6" />
 
@@ -297,6 +298,7 @@ import OperationsSettings from "../project-operations/settings.vue"
 import { useOrProvideLabInfoStore } from "./hooks/useLabsInfoStore"
 import ExternalAccessPolicy from "./modules/external-access-policy.vue"
 import OrganizationAiSettings from "./modules/organization-ai-settings.vue"
+import StorageBackups from "./modules/storage-backups.vue"
 
 const { t: $t } = useOrganizationTranslation()
 

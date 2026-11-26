@@ -5542,6 +5542,50 @@ declare namespace I18n {
         replaceFile: string
       }
       organization: {
+        backups: {
+          title: string
+          refresh: string
+          targets: string
+          frequency: string
+          daily: string
+          hourly: string
+          off: string
+          hour: string
+          days: string
+          weeks: string
+          run: string
+          points: string
+          drill: string
+          ready: string
+          used: string
+          free: string
+          lastSuccess: string
+          lastAttempt: string
+          none: string
+          online: string
+          unconfigured: string
+          offline: string
+          running: string
+          queued: string
+          saved: string
+          saveError: string
+          requestError: string
+          retry: string
+          disk_missing: string
+          read_only: string
+          key_unavailable: string
+          low_space: string
+          low_staging_space: string
+          ok: string
+          interrupted: string
+          capture_failed: string
+          backup_failed: string
+          retention_failed: string
+          unknown_target: string
+          dailyHint: string
+          hourlyHint: string
+          offHint: string
+        }
         ai: {
           title: string
           description: string

@@ -189,6 +189,8 @@ Do not add `--volumes` unless the persistent PostgreSQL, MinIO, Caddy, and appli
 
 ### Backup
 
+[Configure data disks, scheduled backups, retention and cross-host recovery](./single-instance-backups.md).
+
 ```bash
 backup_path="$(./scripts/backup.sh)"
 echo "$backup_path"

@@ -1,0 +1,43 @@
+volumes:
+  api_logs:
+    name: ${COMPOSE_PROJECT_NAME}_disk_api_logs
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${AIRALOGY_DATA_ROOT}/api_logs"
+  api_protocols:
+    name: ${COMPOSE_PROJECT_NAME}_disk_api_protocols
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${AIRALOGY_DATA_ROOT}/api_protocols"
+  caddy_config:
+    name: ${COMPOSE_PROJECT_NAME}_disk_caddy_config
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${AIRALOGY_DATA_ROOT}/caddy_config"
+  caddy_data:
+    name: ${COMPOSE_PROJECT_NAME}_disk_caddy_data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${AIRALOGY_DATA_ROOT}/caddy_data"
+  minio_data:
+    name: ${COMPOSE_PROJECT_NAME}_disk_minio_data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${AIRALOGY_DATA_ROOT}/minio_data"
+  postgres_data:
+    name: ${COMPOSE_PROJECT_NAME}_disk_postgres_data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${AIRALOGY_DATA_ROOT}/postgres_data"

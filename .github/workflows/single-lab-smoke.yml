@@ -65,6 +65,13 @@ jobs:
           backup_path="$(./scripts/backup.sh ci-restore)"
           ./scripts/restore.sh "$backup_path" --yes
 
+      - name: Rehearse managed backup on a clean data root
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y restic
+          python3 -m unittest discover -s tests/deployment -p test_managed_backups.py
+          bash tests/deployment/managed-backup-smoke.sh
+
       - name: Verify upgrade and rollback
         working-directory: deploy/single-lab
         run: |

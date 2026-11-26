@@ -3,6 +3,8 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+lock_maintenance "$@"
+
 "$SCRIPT_DIR/preflight.sh"
 if release_metadata_required; then
   pull_release_images
@@ -19,6 +21,12 @@ wait_for_service web 300
 verify_running_release
 write_deployment_state install
 
+data_root="$(env_value AIRALOGY_DATA_ROOT)"
+if [[ -n "$data_root" ]]; then
+  info "PostgreSQL: $data_root/postgres_data"
+  info "Object storage: $data_root/minio_data"
+  info "Protocol workspace, logs and Caddy state: $data_root/{api_protocols,api_logs,caddy_config,caddy_data}"
+fi
 site_url="$(env_value SITE_URL)"
 info "Airalogy Lab is ready at $site_url"
 info "First run: open $site_url/setup and enter INITIAL_ADMIN_TOKEN from $ENV_FILE"

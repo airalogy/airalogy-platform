@@ -3,6 +3,8 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+lock_maintenance "$@"
+
 build_db=false
 pull=true
 while [[ $# -gt 0 ]]; do

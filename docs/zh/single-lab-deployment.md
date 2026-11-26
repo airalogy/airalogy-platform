@@ -190,6 +190,8 @@ docker compose --env-file .env -f compose.yml logs -f api-server web
 
 ### 备份
 
+[配置数据盘、定时备份、保留策略和换机恢复](./single-instance-backups.md)。
+
 ```bash
 backup_path="$(./scripts/backup.sh)"
 echo "$backup_path"

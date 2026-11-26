@@ -3,6 +3,8 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+lock_maintenance "$@"
+
 backup_dir=""
 assume_yes=false
 
@@ -26,7 +28,7 @@ done
 
 [[ -n "$backup_dir" ]] || die "usage: restore.sh BACKUP_DIRECTORY [--yes]"
 backup_dir="$(cd "$backup_dir" 2>/dev/null && pwd)" || die "backup directory not found"
-for file in database.dump objects.tar.gz secrets.env manifest.env SHA256SUMS; do
+for file in database.dump secrets.env manifest.env SHA256SUMS; do
   [[ -f "$backup_dir/$file" ]] || die "backup is missing $file"
 done
 
@@ -34,11 +36,18 @@ require_command docker
 require_command tar
 require_env_file
 network_preflight
+python3 "$SCRIPT_DIR/backup_files.py" checksums "$backup_dir"
 verify_checksums "$backup_dir"
-[[ "$(env_value_from "$backup_dir/manifest.env" BACKUP_FORMAT_VERSION)" == "1" ]] || die "unsupported backup format"
+format="$(env_value_from "$backup_dir/manifest.env" BACKUP_FORMAT_VERSION)"
+case "$format" in
+  1) grep -q "  objects\.tar\.gz$" "$backup_dir/SHA256SUMS" || die "Missing object archive" ;;
+  2) grep -q "  objects\.jsonl$" "$backup_dir/SHA256SUMS" || die "Missing object inventory checksum"
+     python3 "$SCRIPT_DIR/backup_files.py" verify "$backup_dir" ;;
+  *) die "unsupported backup format" ;;
+esac
 
 backup_aes_key="$(env_value_from "$backup_dir/secrets.env" AES_KEY)"
-[[ "$backup_aes_key" == "$(env_value AES_KEY)" ]] || die "AES_KEY differs from the backup; restore its secrets.env as the deployment .env before restoring data"
+[[ -n "$backup_aes_key" && "$backup_aes_key" == "$(env_value AES_KEY)" ]] || die "AES_KEY differs from the backup; restore its secrets.env as the deployment .env before restoring data"
 
 if [[ "$assume_yes" != true ]]; then
   printf 'This replaces the current PostgreSQL database and MinIO bucket. Type RESTORE to continue: ' >&2
@@ -53,10 +62,14 @@ minio_password="$(env_value MINIO_ROOT_PASSWORD)"
 minio_bucket="$(env_value MINIO_BUCKET)"
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
-mkdir -p "$work_dir/objects"
-tar -C "$work_dir/objects" -xzf "$backup_dir/objects.tar.gz"
+objects="$backup_dir/objects"
+if [[ "$format" == 1 ]]; then
+  objects="$work_dir/objects"
+  mkdir "$objects"
+  tar -C "$objects" -xzf "$backup_dir/objects.tar.gz"
+fi
 
-compose stop api-server web >/dev/null 2>&1 || true
+compose stop api-server web >/dev/null
 compose up -d db minio redis
 wait_for_service db 120
 wait_for_service minio 120
@@ -81,7 +94,7 @@ docker run --rm \
   --user "$(id -u):$(id -g)" \
   --env MC_CONFIG_DIR=/tmp/airalogy-mc \
   --network "$network" \
-  --volume "$work_dir/objects:/restore:ro" \
+  --volume "$objects:/restore:ro" \
   --env "MINIO_ROOT_USER=$minio_user" \
   --env "MINIO_ROOT_PASSWORD=$minio_password" \
   --env "MINIO_BUCKET=$minio_bucket" \

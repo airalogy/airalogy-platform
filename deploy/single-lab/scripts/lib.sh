@@ -69,22 +69,36 @@ set_env_value() {
   mv "$temporary_file" "$ENV_FILE"
 }
 
+source "$SCRIPT_DIR/storage.sh"
+
+compose_files() {
+  compose_options=(-f "$COMPOSE_FILE")
+  storage_root_check
+  if [[ -n "$(env_value AIRALOGY_DATA_ROOT)" ]]; then
+    compose_options+=(-f "$DEPLOY_DIR/compose.data-root.yml")
+  fi
+}
+
 compose() {
+  local -a compose_options
+  compose_files
   case "${1:-}" in
     up|run|create|start|restart) network_preflight ;;
   esac
   docker compose \
     --project-directory "$DEPLOY_DIR" \
     --env-file "$ENV_FILE" \
-    -f "$COMPOSE_FILE" \
+    "${compose_options[@]}" \
     "$@"
 }
 
 network_preflight() {
   require_command python3
   require_env_file
+  local -a compose_options
+  compose_files
   python3 "$SCRIPT_DIR/network_preflight.py" "$@" -- docker compose \
-    --project-directory "$DEPLOY_DIR" --env-file "$ENV_FILE" -f "$COMPOSE_FILE"
+    --project-directory "$DEPLOY_DIR" --env-file "$ENV_FILE" "${compose_options[@]}"
 }
 
 absolute_path() {
@@ -147,6 +161,14 @@ deployment_state_dir() {
     digest="$(printf '%s' "$env_file_identity" | shasum -a 256 | awk '{print $1}')"
   fi
   printf '%s/state/%s-%s\n' "$DEPLOY_DIR" "$safe_project" "${digest:0:16}"
+}
+
+lock_maintenance() {
+  local lock="$(deployment_state_dir)/maintenance.lock"
+  if [[ "${PLATFORM_MAINTENANCE_FD:-}" =~ ^[0-9]+$ ]] && python3 "$SCRIPT_DIR/operation_lock.py" --inherited "$lock"; then
+    return
+  fi
+  exec python3 "$SCRIPT_DIR/operation_lock.py" "$lock" "${BASH_SOURCE[1]}" "$@"
 }
 
 release_metadata_required() {

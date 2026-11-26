@@ -18,6 +18,10 @@ Commands:
   rollback        Restore the previous images and matching data backup
   status          Show service health and verified release identity
   support-bundle  Create a sanitized diagnostic bundle
+  storage-init    Prepare an empty data root for a new deployment
+  backup-tick     Run the managed backup scheduler once (host timer)
+  backup-drill    Record an operator-verified recovery drill for a snapshot
+  backup-export   Export an encrypted snapshot into an empty recovery directory
   backup          Create a consistent database and object backup
   restore         Restore a matching backup
   preflight       Validate deployment configuration and release metadata
@@ -33,6 +37,15 @@ case "$command_name" in
   rollback) exec "$SCRIPT_DIR/scripts/rollback.sh" "$@" ;;
   status) exec "$SCRIPT_DIR/scripts/status.sh" "$@" ;;
   support-bundle) exec "$SCRIPT_DIR/scripts/support-bundle.sh" "$@" ;;
+  storage-init) source "$SCRIPT_DIR/scripts/lib.sh"; prepare_storage ;;
+  backup-resume) exec "$SCRIPT_DIR/scripts/resume-backup.sh" "$@" ;;
+  backup-estimate) source "$SCRIPT_DIR/scripts/lib.sh"; capture_estimate ;;
+  backup-bridge) source "$SCRIPT_DIR/scripts/lib.sh"; compose exec -T api-server python3 app/services/backup_console.py "$@" ;;
+  backup-tick|backup-export|backup-drill)
+    source "$SCRIPT_DIR/scripts/lib.sh"
+    require_env_file
+    exec python3 "$SCRIPT_DIR/managed_backup.py" "$command_name" "$(deployment_state_dir)" "$(env_value AIRALOGY_DEPLOYMENT_ID)" "$@"
+    ;;
   backup) exec "$SCRIPT_DIR/scripts/backup.sh" "$@" ;;
   restore) exec "$SCRIPT_DIR/scripts/restore.sh" "$@" ;;
   preflight) exec "$SCRIPT_DIR/scripts/preflight.sh" "$@" ;;
@@ -40,7 +53,7 @@ case "$command_name" in
   logs)
     source "$SCRIPT_DIR/scripts/lib.sh"
     require_env_file
-    exec docker compose --project-directory "$DEPLOY_DIR" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --follow api-server web
+    compose logs --follow api-server web
     ;;
   stop) exec "$SCRIPT_DIR/scripts/stop.sh" "$@" ;;
   "") usage ;;

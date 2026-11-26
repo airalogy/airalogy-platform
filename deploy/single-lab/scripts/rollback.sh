@@ -3,6 +3,8 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+lock_maintenance "$@"
+
 assume_yes=false
 if [[ "${1:-}" == "--yes" ]]; then
   assume_yes=true
