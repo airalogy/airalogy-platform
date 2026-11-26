@@ -16,6 +16,7 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 - Single-organization operators can bind a data disk and schedule encrypted, deduplicated backups with daily/weekly retention, per-destination status, readback verification and portable recovery.
 - Fresh single-organization source installs use the bundled object storage image for both the server and backup client.
+- Fresh API containers initialize the local Protocol runner log with the runtime user’s permissions, so importing the first Protocol works on a clean deployment.
 
 - Project teams share one roster for staff and external collaborators. Administrators can look up a person’s projects, open their team row and change collaborator permissions or expiry. Protocol editors can publish text revisions of shared protocols.
 

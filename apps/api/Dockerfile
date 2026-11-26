@@ -50,7 +50,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Add a non-root user and pre-create writable volume mount points. Docker copies
 # these ownership bits into newly created named volumes.
 RUN useradd -ms /bin/bash deploy && \
-    install -d -o deploy -g deploy /home/deploy/app/log /home/deploy/app/protocols
+    install -d -o deploy -g deploy /home/deploy/app/log /home/deploy/app/protocols && \
+    install -o deploy -g deploy -m 0600 /dev/null /home/deploy/app/protocol_executor.log
 USER deploy
 WORKDIR /home/deploy/app
 

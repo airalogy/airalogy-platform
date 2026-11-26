@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run only after acceptance-test.sh on the isolated Linux deployment-smoke runner.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'printf "Managed backup rehearsal failed at line %s\n" "$LINENO" >&2' ERR
 [[ "${GITHUB_ACTIONS:-}" == true && -n "${RUNNER_TEMP:-}" ]] || exit 2
 source deploy/single-lab/scripts/lib.sh
 test_dir="$(mktemp -d "$RUNNER_TEMP/managed-backup-XXXXXXXX")"
@@ -25,24 +26,27 @@ object() {
     mc "$1" "smoke/$2/acceptance/managed-backup.txt"
   ' sh "$1" "$(env_value MINIO_BUCKET)"
 }
-url="$(env_value SITE_URL)/api"
+site_url="$(env_value SITE_URL)"
+url="${site_url%/}/api"
+info "Creating the recovery fixture through the API..."
 owner_token() {
-  curl --fail --silent -H 'Content-Type: application/json' --data '{"email":"owner@acceptance.example.com","password":"AcceptanceOwner123"}' "$url/signin_by_email" | jq -er .token
+  curl --fail --silent --show-error -H 'Content-Type: application/json' --data '{"email":"owner@acceptance.example.com","password":"AcceptanceOwner123"}' "$url/signin_by_email" | jq -er .token
 }
 token="$(owner_token)"
-project_id="$(curl --fail --silent -H "Auth-Token: $token" "$url/projects?lab_uid=$(env_value SINGLE_LAB_UID)&page_size=100" | jq -er '.projects[] | select(.uid == "structured_access_test").id')"
+project_id="$(curl --fail --silent --show-error -H "Auth-Token: $token" "$url/projects?lab_uid=$(env_value SINGLE_LAB_UID)&page_size=100" | jq -er '.projects[] | select(.uid == "structured_access_test").id')"
 python3 - "$test_dir/inspection.zip" <<'PYZIP'
 import sys, zipfile
 with zipfile.ZipFile(sys.argv[1], "w") as archive:
     archive.writestr("protocol.toml", '[airalogy_protocol]\nid="backup_inspection"\nname="Backup inspection"\nversion="0.1.0"\n')
     archive.writestr("protocol.aimd", "# Inspection\n{{var|label: str}}")
 PYZIP
-protocol_id="$(curl --fail --silent -H "Auth-Token: $token" -F "project_id=$project_id" -F "file=@$test_dir/inspection.zip;type=application/zip" "$url/protocols" | jq -er '.data.id')"
-record_id="$(curl --fail --silent -H "Auth-Token: $token" -H 'Content-Type: application/json' --data '{"var":{"label":"recovery fixture"},"step":{},"check":{},"report":""}' "$url/protocols/$protocol_id/records" | jq -er .id)"
+protocol_id="$(curl --fail --silent --show-error -H "Auth-Token: $token" -F "project_id=$project_id" -F "file=@$test_dir/inspection.zip;type=application/zip" "$url/protocols" | jq -er '.data.id')"
+record_id="$(curl --fail --silent --show-error -H "Auth-Token: $token" -H 'Content-Type: application/json' --data '{"var":{"label":"recovery fixture"},"step":{},"check":{},"report":""}' "$url/protocols/$protocol_id/records" | jq -er .id)"
 read_record() {
-  curl --fail --silent -H "Auth-Token: $token" "$url/protocols/$protocol_id/records/$record_id?version=1" | jq -eS '{record_id,record_version,data}'
+  curl --fail --silent --show-error -H "Auth-Token: $token" "$url/protocols/$protocol_id/records/$record_id?version=1" | jq -eS '{record_id,record_version,data}'
 }
 read_record > "$test_dir/original-record.json"
+jq -e --arg id "$record_id" ' .record_id == $id and .record_version == 1 and (.data | tostring | contains("recovery fixture"))' "$test_dir/original-record.json" >/dev/null
 printf 'synthetic attachment' | object pipe
 "$DEPLOY_DIR/platformctl" backup-tick "$config" --now
 id="$(restic -r "$repo" --password-file "$key" snapshots --host "$source_id" --tag airalogy-managed --json | jq -er '.[0].id')"
@@ -86,8 +90,8 @@ done
 "$DEPLOY_DIR/platformctl" restore "$test_dir/point" --yes
 [[ "$(object cat)" == "synthetic attachment" ]]
 token="$(owner_token)"
-curl --fail --silent -H "Auth-Token: $token" "$url/projects?lab_uid=$(env_value SINGLE_LAB_UID)&page_size=100" | jq -e --arg id "$project_id" '.projects | any(.id == $id)' >/dev/null
-curl --fail --silent -H "Auth-Token: $token" "$url/protocols/$protocol_id?version=0.1.0" >/dev/null
+curl --fail --silent --show-error -H "Auth-Token: $token" "$url/projects?lab_uid=$(env_value SINGLE_LAB_UID)&page_size=100" | jq -e --arg id "$project_id" '.projects | any(.id == $id)' >/dev/null
+curl --fail --silent --show-error -H "Auth-Token: $token" "$url/protocols/$protocol_id?version=0.1.0" >/dev/null
 read_record > "$test_dir/restored-record.json"
 cmp "$test_dir/original-record.json" "$test_dir/restored-record.json"
 [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$url/protocols/$protocol_id/records/$record_id?version=1")" != 200 ]]

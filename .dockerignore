@@ -35,3 +35,5 @@ packages/masterbrain/build
 **/*.key
 apps/api/log
 apps/api/protocols
+
+**/protocol_executor.log*
