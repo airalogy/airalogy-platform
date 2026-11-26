@@ -15,7 +15,8 @@ from app.models.lab import Lab
 from app.models.organization import OrganizationType
 from app.models.organization_ai import OrganizationAI
 from app.services import organization_ai as ai
-from app.services.chat_models import ChatCapabilities, enabled_chat_model_types
+from app.services import organization_ai_catalog as catalog
+from app.services.chat_models import OrganizationChatCapabilities, enabled_chat_model_types
 
 from . import labs
 from .depends import CurrentUser, get_current_user
@@ -127,17 +128,21 @@ async def remove_member(
     )
 
 
-@router.get("/uid/{organization_uid}/ai-capabilities")
+@router.get("/uid/{organization_uid}/ai-capabilities", response_model_exclude_none=True)
 async def ai_capabilities(
     organization_uid: str, current_user: CurrentUser, db_session: DBSession
-) -> ChatCapabilities:
+) -> OrganizationChatCapabilities:
     org = await Lab.find_by(db_session, [Lab.uid == organization_uid])
     if not org:
         raise HTTPException(404, "Organization unavailable")
     labs.require_configured_single_lab(org)
     await labs.require_lab_membership(db_session, org.id, current_user.id)
-    await ai.bind_organization(db_session, org.id)
-    return ChatCapabilities(
+    row = await ai.bind_organization(db_session, org.id)
+    options = None
+    if row and row.default_service_id and config.effective_ai_enabled:
+        options = await catalog.member_models(db_session, row)
+    return OrganizationChatCapabilities(
+        organization_models=options,
         ai_enabled=config.effective_ai_enabled,
         enabled_chat_models=list(enabled_chat_model_types()),
     )
@@ -165,6 +170,24 @@ async def get_ai_settings(
 ):
     await ai_manager(db_session, organization_id, current_user)
     return ai.status(await db_session.get(OrganizationAI, organization_id))
+
+
+@router.get("/{organization_id}/ai-settings/catalog")
+async def get_ai_catalog(organization_id: UUID, current_user: CurrentUser, db_session: DBSession):
+    await ai_manager(db_session, organization_id, current_user)
+    return await catalog.read(db_session, organization_id)
+
+
+@router.put("/{organization_id}/ai-settings/catalog")
+async def save_ai_catalog(organization_id: UUID, request: Request, current_user: CurrentUser, db_session: DBSession):
+    await ai_manager(db_session, organization_id, current_user)
+    return await catalog.write(db_session, organization_id, await key_form(request, catalog.CatalogInput))
+
+
+@router.post("/{organization_id}/ai-settings/catalog/test")
+async def test_ai_catalog(organization_id: UUID, request: Request, current_user: CurrentUser, db_session: DBSession):
+    await ai_manager(db_session, organization_id, current_user)
+    return await catalog.test_model(db_session, organization_id, await key_form(request, catalog.TestInput))
 
 
 @router.put("/{organization_id}/ai-settings")

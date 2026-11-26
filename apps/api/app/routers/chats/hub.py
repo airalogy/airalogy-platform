@@ -172,6 +172,8 @@ async def send_hub_chat_message(
         chat_id=chat.id,
     )
 
+    if params.model.organization_model:
+        chat.context = {**(chat.context or {}), "organization_model": params.model.organization_model}
     message = params.message
     context = chat.context
 

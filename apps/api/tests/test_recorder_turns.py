@@ -92,7 +92,7 @@ def test_untrusted_unknown_duplicate_or_ungrounded_slots_cannot_update(monkeypat
 
     response = {
         "intent": "fill",
-        "answer": "",
+        "answer": "I already replaced every value.",
         "references": ["temperature"],
         "operations": [
             op("sample_id", "001", "001"),
@@ -105,9 +105,10 @@ def test_untrusted_unknown_duplicate_or_ungrounded_slots_cannot_update(monkeypat
     }
     monkeypatch.setattr(recorder, "json_request", AsyncMock(return_value=response))
     chat = SimpleNamespace(model={"name": "test"}, context={}, messages=[])
-    _, _, proposal = asyncio.run(
+    reply, _, proposal = asyncio.run(
         recorder.plan_recorder_turn(chat, version(), target(), "Use 001, 3 or 4", None)
     )
+    assert reply == "Proposed fields: sample_id"
     assert proposal["values"] == {"sample_id": "001"}
     assert set(proposal["skipped"]) == {"temperature", "output", "used", "invented"}
 

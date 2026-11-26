@@ -1,4 +1,4 @@
-import type { ChatModel } from "@airalogy/shared/enum/chat"
+import type { ChatModel, OrganizationChatModel } from "@airalogy/shared/enum/chat"
 import { request } from "../request"
 
 export type DeploymentMode = "community" | "single_lab" | "single_organization"
@@ -35,6 +35,7 @@ export interface InstanceStatus {
   ai_enabled: boolean
   sms_login_enabled: boolean
   sms_signup_required: boolean
+  organization_models?: OrganizationChatModel[]
   enabled_chat_models: ChatModel[]
   chat_model_names?: Partial<Record<ChatModel, string>>
   lab: InstanceLabInfo | null

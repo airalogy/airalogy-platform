@@ -53,6 +53,7 @@ export interface ChatState {
   messageList: Ref<Chat.ChatMessage[]>
   messageCount: Ref<number>
   selectedRole: Ref<ChatType>
+  organizationModel: Ref<string | undefined>
   selectedModel: Ref<ChatModel>
   deepResearch: Ref<boolean>
   enableThinking: Ref<boolean>

@@ -457,6 +457,7 @@ function setupChatStore(accountId: string) {
         : [])
     session.memorySummariesResolved = true
     session.serverId = data.id
+    session.organizationModel = data.context?.organization_model
     session.memoryDisabled = Boolean(data.context?.memory_disabled)
     session.rootBranchIndex = 0
     session.rootBranchIndices = visible.length ? [0] : []

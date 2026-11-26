@@ -252,3 +252,151 @@ def test_organization_configuration_and_dispatch(monkeypatch):
                 assert cleared.status_code == 200 and not cleared.json()["has_key"]
 
     asyncio.run(run())
+
+
+def test_model_catalog_routes_member_choices_and_keeps_default(monkeypatch):
+    from uuid import uuid4
+    from app.libs.ai_scope import active_ai_scope
+    from app.models.chat import ChatModel, ChatModelType
+    from app.routers.chats.utils import check_model_usage
+    from masterbrain.configs import build_litellm_openai_compatible_client
+    from masterbrain.providers import litellm as adapter
+
+    async def run():
+        monkeypatch.setattr(config, "AI_ENABLED", True)
+        monkeypatch.setattr(config, "DEPLOYMENT_MODE", "community")
+        monkeypatch.setattr(config, "AES_KEY", "68" * 32)
+        gateway = "https://gateway.example.test/v1"
+        monkeypatch.setattr(config, "ORGANIZATION_AI_ALLOWED_BASE_URLS", gateway)
+        calls = []
+
+        async def completion(**payload):
+            calls.append((payload["api_base"], payload["model"], payload["api_key"]))
+            return SimpleNamespace(usage=None)
+
+        monkeypatch.setattr(
+            adapter, "_load_litellm", lambda: SimpleNamespace(acompletion=completion)
+        )
+        async with database() as sessions:
+            a, b = await seed_analysis(sessions), await seed_analysis(sessions)
+            url = f"/organizations/{a.lab.id}/ai-settings"
+            owner = {"Auth-Token": create_access_token(a.owner)}
+            member = {"Auth-Token": create_access_token(a.recorder)}
+            gpt = dict(
+                id=str(uuid4()),
+                name="Gateway",
+                provider="openai",
+                base_url=gateway,
+                models=["team/gpt-one", "team/gpt-two"],
+                api_key="synthetic-gateway",
+            )
+            async with client(sessions) as http:
+                legacy = await http.put(
+                    url,
+                    headers=owner,
+                    json=dict(
+                        expected_revision=0,
+                        model="qwen3.8-flash",
+                        enabled=True,
+                        api_key="synthetic-qwen",
+                    ),
+                )
+                assert legacy.status_code == 200, legacy.text
+                url += "/catalog"
+                initial = (await http.get(url, headers=owner)).json()
+                qwen = initial["services"][0]
+                del qwen["has_key"]
+                form = dict(
+                    services=[qwen, gpt],
+                    default_service_id=qwen["id"],
+                    model="qwen3.8-flash",
+                    enabled=True,
+                    expected_revision=1,
+                )
+                assert (await http.get(url, headers=member)).status_code == 403
+                assert (
+                    await http.put(url, headers=member, json=form)
+                ).status_code == 403
+                saved = await http.put(url, headers=owner, json=form)
+                assert saved.status_code == 200, saved.text
+                assert "synthetic-" not in saved.text
+                assert all(s["has_key"] for s in saved.json()["services"])
+                assert (
+                    await http.put(url, headers=owner, json=form)
+                ).status_code == 409
+                cap_url = f"/organizations/uid/{a.lab.uid}/ai-capabilities"
+                caps = await http.get(cap_url, headers=member)
+                assert caps.status_code == 200, caps.text
+                choices = caps.json()["organization_models"]
+                assert {c["model"] for c in choices} == {
+                    "qwen3.8-flash",
+                    *gpt["models"],
+                }
+                assert [c["model"] for c in choices if c["is_default"]] == [
+                    "qwen3.8-flash"
+                ]
+                assert gateway not in caps.text and "synthetic-" not in caps.text
+                path = "endpoints/chat/qa/language"
+
+                async def turn(name):
+                    async with sessions() as db:
+                        await ai.bind_organization(db, a.lab.id)
+                        choice = next(c["value"] for c in choices if c["model"] == name)
+                        model = ChatModel(
+                            model_type=ChatModelType.BASIC, organization_model=choice
+                        )
+                        await check_model_usage(db, a.recorder, model)
+                        assert model.name == name
+                        usage = create_usage_context(
+                            feature="chat.qa",
+                            user_id=a.recorder.id,
+                            project_id=a.project.id,
+                        )
+                        async with ai.provider_dispatch(
+                            path, {"model": model.model_dump()}, usage
+                        ) as body:
+                            scoped = current_credential(body["model"]["name"])
+                            client_ = build_litellm_openai_compatible_client(
+                                provider=scoped.provider,
+                                api_key=scoped.key,
+                                base_url=scoped.base_url,
+                            )
+                            await client_.chat.completions.create(
+                                model=body["model"]["name"], messages=[]
+                            )
+
+                await asyncio.gather(turn("qwen3.8-flash"), turn("team/gpt-two"))
+                assert set(calls) == {
+                    (qwen["base_url"], "openai/qwen3.8-flash", "synthetic-qwen"),
+                    (gateway, "openai/team/gpt-two", "synthetic-gateway"),
+                }
+                assert (await http.get(url, headers=owner)).json()[
+                    "model"
+                ] == "qwen3.8-flash"
+                async with sessions() as db:
+                    await ai.bind_organization(db, b.lab.id)
+                    with pytest.raises(HTTPException):
+                        await ai.select_conversation_model(db, choices[0]["value"])
+                    await ai.bind_organization(db, a.lab.id)
+                    with pytest.raises(HTTPException):
+                        await ai.select_conversation_model(db, gpt["id"] + "|unlisted")
+                gpt.pop("api_key")
+                form.update(
+                    default_service_id=gpt["id"],
+                    model="team/gpt-one",
+                    expected_revision=2,
+                )
+                switched = await http.put(url, headers=owner, json=form)
+                assert (
+                    switched.status_code == 200
+                    and switched.json()["model"] == "team/gpt-one"
+                )
+                form["expected_revision"] = 3
+                gpt["base_url"] = qwen["base_url"]
+                assert (
+                    await http.put(url, headers=owner, json=form)
+                ).status_code == 422
+                assert (await http.get(url, headers=owner)).json()["revision"] == 3
+                active_ai_scope.set(None)
+
+    asyncio.run(run())

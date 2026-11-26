@@ -14,6 +14,11 @@ Component versions may differ when only the backend or frontend changes. The pro
 
 ## [Unreleased]
 
+- Organization administrators can manage multiple model services and keys, test individual models, and set a default. Members can switch among the configured models in each Aira conversation.
+- Organizations can select `qwen3.8-flash` for Aira. The model selector shows the configured Flash version.
+
+- Aira answers Record questions in the language of the request. Field suggestions remain proposals in chat history. The live draft identifies which values were filled and which replacements await confirmation.
+
 - Record field definitions show each equivalent constraint once. Expanding a definition keeps the field panel open. Required markers stay beside field titles, and the More inputs menu fits the viewport.
 
 - Field references in the Aira composer show the Protocol field name in a readable badge. Sending the message uses the original field ID.

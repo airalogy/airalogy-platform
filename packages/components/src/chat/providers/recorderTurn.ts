@@ -17,6 +17,8 @@ export interface RecorderProposal {
   intent: "fill" | "simulate" | "answer" | "clarify"
   values: Record<string, string | number | boolean>
   skipped: string[]
+  reply_locale?: RecorderTarget["locale"]
+  explanation?: string
 }
 
 export interface RecorderTurn {
@@ -40,7 +42,8 @@ export async function* applyRecorderResponse(stream: AsyncGenerator<ChatEvent, C
       const message = event.type === "message" && event.data.message
       if (turn && message?.recorder_proposal) {
         const receipt = await turn.apply(message.recorder_proposal, serverId)
-        message.content = [message.content, receipt].filter(Boolean).join("\n\n")
+        if (receipt && message.recorder_proposal.intent === "fill")
+          message.content = [message.recorder_proposal.explanation, receipt].filter(Boolean).join("\n\n")
       }
       yield event
     }

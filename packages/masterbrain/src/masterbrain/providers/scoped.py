@@ -12,10 +12,12 @@ from .registry import DEFAULT_PROVIDER_BASE_URL, ProviderName, detect_model_prov
 class ProviderCredential:
     provider: ProviderName
     key: str = field(repr=False)
+    endpoint: str | None = None
+    chat_model: str | None = None
 
     @property
     def base_url(self) -> str:
-        return DEFAULT_PROVIDER_BASE_URL[self.provider]
+        return self.endpoint or DEFAULT_PROVIDER_BASE_URL[self.provider]
 
 
 _credential: ContextVar[ProviderCredential | None] = ContextVar(

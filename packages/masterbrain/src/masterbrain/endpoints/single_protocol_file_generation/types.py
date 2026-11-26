@@ -1,5 +1,6 @@
 from typing import Literal
 
+from masterbrain.providers.registry import QwenFlashModel
 from pydantic import BaseModel, Field
 
 from masterbrain.types.model import Model
@@ -9,9 +10,10 @@ class SupportedModels(BaseModel):
     """Supported model configurations"""
 
     name: Literal[
-        "qwen3.5-flash",
+        QwenFlashModel,
         "qwen3.5-plus",
         "qwen3-max",
+        "gpt-4.1",
         "gpt-4o-mini",
     ]
     enable_thinking: bool = False

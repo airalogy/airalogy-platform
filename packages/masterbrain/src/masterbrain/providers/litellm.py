@@ -84,6 +84,13 @@ class LiteLLMChatCompletions:
         self._config = config
 
     async def create(self, **kwargs: Any) -> Any:
+        from .scoped import current_credential
+
+        scoped = current_credential()
+        if scoped and scoped.chat_model:
+            # Force the OpenAI-compatible transport for this deployment even
+            # when the upstream model ID itself has a provider prefix or slash.
+            kwargs["model"] = scoped.chat_model
         requested_model = kwargs.get("model")
         if not isinstance(requested_model, str) or not requested_model:
             requested_model = "unknown"
@@ -93,6 +100,8 @@ class LiteLLMChatCompletions:
             call_type="chat.completion",
         )
         payload = self._build_payload(kwargs)
+        if scoped and scoped.chat_model:
+            payload["model"] = "openai/" + scoped.chat_model
         try:
             response = await _load_litellm().acompletion(**payload)
         except BaseException as exc:

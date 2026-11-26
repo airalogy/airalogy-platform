@@ -1,5 +1,6 @@
 from typing import Annotated, Literal
 
+from masterbrain.providers.registry import QwenFlashModel
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -11,7 +12,7 @@ class SupportedModels(BaseModel):
     """Supported model configurations for code editing."""
 
     name: Literal[
-        "qwen3.5-flash",
+        QwenFlashModel,
         "qwen3.5-plus",
         "qwen3-max",
         "gpt-4.1",

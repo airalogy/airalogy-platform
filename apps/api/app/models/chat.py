@@ -1,9 +1,12 @@
 from datetime import datetime
 from enum import IntEnum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
 from uuid import UUID
 
 from Crypto import Protocol
+from app.config import config
+from app.libs.ai_scope import active_ai_scope
+from masterbrain.providers.registry import QwenFlashModel
 from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import JSON, ForeignKey, func
 from sqlalchemy.ext.mutable import MutableDict, MutableList
@@ -23,11 +26,10 @@ class ChatType(IntEnum):
     STT = 8
 
 
-FastModels = Literal["qwen3.5-flash"]
 AccurateModels = Literal["qwen3.5-plus"]
 DeepModels = Literal["qwen3-max"]
 GPTModels = Literal["gpt-4.1"]
-SupportedModels = FastModels | AccurateModels | DeepModels | GPTModels
+SupportedModels = QwenFlashModel | AccurateModels | DeepModels | GPTModels
 
 
 class ChatModelType(IntEnum):
@@ -93,14 +95,26 @@ class ChatContext(BaseModel):
 
 class ChatModel(BaseModel):
     model_type: Annotated[ChatModelType, Field(exclude=True)] = ChatModelType.BASIC
+    organization_model: str | None = Field(default=None, max_length=237, exclude=True)
     enable_thinking: bool = False
     enable_search: bool = False
 
     @computed_field
     @property
-    def name(self) -> SupportedModels:
+    def name(self) -> str:
+        scope = active_ai_scope.get()
+        if scope and scope.upstream_model and scope.model == self.routing_name:
+            return scope.upstream_model
+        return self.routing_name
+
+    @property
+    def routing_name(self) -> SupportedModels:
         if self.model_type == ChatModelType.BASIC:
-            return "qwen3.5-flash"
+            scope = active_ai_scope.get()
+            if scope and scope.upstream_model:
+                return scope.model
+            model = scope.model if scope else config.CHAT_MODEL_FAST
+            return model if model in get_args(QwenFlashModel) else "qwen3.5-flash"
         elif self.model_type == ChatModelType.PLUS:
             return "qwen3.5-plus"
         elif self.model_type == ChatModelType.PRO:

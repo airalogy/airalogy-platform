@@ -6,6 +6,12 @@ See [same-repository AI development](../masterbrain-development.md) for the shar
 
 Prompts and context assembly that depend on Platform objects remain in Platform. A model response cannot grant access, approve itself, write a final asset or authorize an instrument operation. Built-in provider SDK imports in API product code are guarded by an offline regression test; integration goes through `app/libs/masterbrain.py`. Protocol executor code supplied by users is a separate execution boundary, not a built-in model capability.
 
+## Organization model services
+
+In organization settings, open **Organization AI** and add a model service. Enter its name, API type, base URL, provider key and the upstream model IDs, one per line. DashScope and OpenAI can be configured together. For an internal OpenAI-compatible gateway, the deployment operator can add its exact API root to `ORGANIZATION_AI_ALLOWED_BASE_URLS` and restart the API. Test a model to send a short synthetic chat request. Save the service and select the default for new conversations.
+
+Members can choose a configured model below the Aira message box. This affects subsequent messages in that conversation. Services without a key are unavailable. Previous organization settings remain active and the first catalog save preserves the existing credential. Changing a credential’s service address requires a new key.
+
 ## Conversational Record filling
 
 Open Aira from the top bar of an editable Record. On desktop the form and conversation appear side by side. On a phone, close the panel to return to the draft. In the form or Fields panel, select Add to chat beside a variable to reference it, then enter its observed value. Use the same conversation to ask about the Protocol or request a draft update. Attach observations with the plus button or dictate and review the text before sending. If the target or value is unclear, Aira asks for clarification. Aira can resolve references such as “the second field”. Review replacements of existing values or undo the last fill. Ask explicitly for simulated data to see an isolated preview. Exit the preview to return to the original draft. File and resource references and calculated fields require their normal input paths.

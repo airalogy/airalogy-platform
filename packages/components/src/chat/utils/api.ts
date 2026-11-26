@@ -483,6 +483,7 @@ export async function* postStartChat(payload: {
   memoryDisabled?: boolean
   memoryRequestId?: string
   recorderTarget?: RecorderTarget
+  organizationModel?: string
   headers?: Record<string, string>
   protocolId?: string | null
   content: string
@@ -511,10 +512,7 @@ export async function* postStartChat(payload: {
     memory_disabled: payload.memoryDisabled ?? false,
     memory_request_id: payload.memoryRequestId,
     chat_id: chatId,
-    model: chatModelToConfig(model, {
-      enableThinking: payload.enableThinking,
-      enableSearch: payload.enableSearch,
-    }),
+    model: { ...chatModelToConfig(model, { enableThinking: payload.enableThinking, enableSearch: payload.enableSearch }), organization_model: payload.organizationModel },
     hub_search: payload.hubSearch ?? false,
   }
 

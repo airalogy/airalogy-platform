@@ -11,6 +11,7 @@ from Crypto.Protocol.KDF import HKDF
 from fastapi import HTTPException
 from masterbrain.providers.registry import (
     DEFAULT_PROVIDER_BASE_URL,
+    QwenFlashModel,
     detect_model_provider,
 )
 from masterbrain.providers.scoped import ProviderCredential, bind_credential
@@ -21,10 +22,10 @@ from app.config import config
 from app.database import sessionmanager
 from app.libs.ai_scope import OrganizationAIScope, active_ai_scope
 from app.models.lab import Lab, LabUser
-from app.models.organization_ai import OrganizationAI
+from app.models.organization_ai import OrganizationAI, OrganizationAIService
 from app.models.project import Project
 
-ModelName = Literal["qwen3.5-flash", "qwen3.5-plus", "qwen3-max", "gpt-4.1"]
+ModelName = Literal[QwenFlashModel, "qwen3.5-plus", "qwen3-max", "gpt-4.1"]
 DEFAULT_MODEL = "qwen3.5-flash"
 
 
@@ -58,17 +59,27 @@ def associated_data(org_id, model):
 
 
 def seal(value, org_id, model):
+    return encrypt_key(value, associated_data(org_id, model))
+
+
+def encrypt_key(value, binding):
     cipher = AES.new(cipher_key(), AES.MODE_GCM)
-    cipher.update(associated_data(org_id, model))
+    cipher.update(binding)
     data, tag = cipher.encrypt_and_digest(value.encode())
     return b64encode(cipher.nonce + tag + data).decode()
 
 
 def unseal(row):
+    return decrypt_key(
+        row.encrypted_key, associated_data(row.organization_id, row.model)
+    )
+
+
+def decrypt_key(encrypted, binding):
     try:
-        raw = b64decode(row.encrypted_key, validate=True)
+        raw = b64decode(encrypted, validate=True)
         cipher = AES.new(cipher_key(), AES.MODE_GCM, nonce=raw[:16])
-        cipher.update(associated_data(row.organization_id, row.model))
+        cipher.update(binding)
         return cipher.decrypt_and_verify(raw[32:], raw[16:32]).decode()
     except (ValueError, TypeError, UnicodeError):
         raise HTTPException(503, "Organization credential unavailable") from None
@@ -79,14 +90,18 @@ def status(row):
         "enabled": row.enabled if row else config.instance_ai_enabled,
         "inherited": row is None,
         "models": list(get_args(ModelName)),
-        "model": row.model if row else DEFAULT_MODEL,
-        "has_key": bool(row and row.encrypted_key),
+        "model": (row.model or DEFAULT_MODEL) if row else DEFAULT_MODEL,
+        "has_key": bool(
+            row and (row.service if row.default_service_id else row).encrypted_key
+        ),
         "revision": row.revision if row else 0,
         "instance_blocked": config.AI_ENABLED is False,
     }
 
 
 def scope_for(row):
+    if row and row.default_service_id:
+        return service_scope(row, row.service, row.model)
     return (
         OrganizationAIScope(
             row.organization_id, row.enabled, row.model, bool(row.encrypted_key)
@@ -94,6 +109,47 @@ def scope_for(row):
         if row
         else None
     )
+
+
+def service_alias(provider, model):
+    if model in get_args(ModelName) and detect_model_provider(model) == provider:
+        return model
+    return "gpt-4.1" if provider == "openai" else "qwen3.8-flash"
+
+
+def service_scope(row, service, model, *, explicit=False):
+    return OrganizationAIScope(
+        row.organization_id,
+        row.enabled,
+        service_alias(service.provider, model),
+        bool(service.encrypted_key),
+        model,
+        service.id if explicit else None,
+        service.base_url == DEFAULT_PROVIDER_BASE_URL["qwen"]
+        and service.provider == "qwen",
+    )
+
+
+async def select_conversation_model(db, selection):
+    scope = active_ai_scope.get()
+    if not scope or not scope.enabled or not scope.upstream_model:
+        raise HTTPException(403, "Organization model unavailable")
+    raw_id, _, name = selection.partition("|")
+    try:
+        service_id = UUID(raw_id)
+    except ValueError:
+        raise HTTPException(422, "Invalid model selection") from None
+    row = await db.get(OrganizationAI, scope.organization_id)
+    service = await db.get(OrganizationAIService, (scope.organization_id, service_id))
+    if (
+        not row
+        or not row.enabled
+        or not service
+        or not service.encrypted_key
+        or name not in service.models
+    ):
+        raise HTTPException(409, "Organization model unavailable")
+    active_ai_scope.set(service_scope(row, service, name, explicit=True))
 
 
 async def bind_organization(db, org_id):
@@ -121,6 +177,8 @@ async def bind_user_scope(db, request, user):
 
 
 def proposed_key(data, row):
+    if row and row.default_service_id:
+        raise HTTPException(409, "Manage this organization through its model services")
     if (row.revision if row else 0) != data.expected_revision:
         raise HTTPException(409, "Organization AI settings changed")
     if data.api_key is not None:
@@ -207,6 +265,12 @@ async def resolve_dispatch(usage):
                 select(Lab.id).where(Lab.uid == config.SINGLE_LAB_UID)
             )
         row = await db.get(OrganizationAI, org_id) if org_id else None
+        if (
+            scope
+            and scope.selected_service_id
+            and (org_id != scope.organization_id or not row or not row.service)
+        ):
+            raise HTTPException(409, "Organization model unavailable")
         if row:
             try:
                 user_id = UUID(str(usage.user_id)) if usage else None
@@ -220,8 +284,38 @@ async def resolve_dispatch(usage):
                 raise HTTPException(
                     403, "Organization membership is required for its AI"
                 )
-            if config.AI_ENABLED is False or not row.enabled or not row.encrypted_key:
+            if (
+                config.AI_ENABLED is False
+                or not row.enabled
+                or not (row.service if row.default_service_id else row).encrypted_key
+            ):
                 raise HTTPException(503, "Organization AI is disabled")
+            if row.service:
+                from app.services.organization_ai_catalog import (
+                    allowed_base_url,
+                    service_binding,
+                )
+
+                service, name = row.service, row.model
+                if scope and scope.selected_service_id:
+                    service = await db.get(
+                        OrganizationAIService, (org_id, scope.selected_service_id)
+                    )
+                    name = scope.upstream_model
+                    if (
+                        scope.organization_id != org_id
+                        or not service
+                        or not service.encrypted_key
+                        or name not in service.models
+                    ):
+                        raise HTTPException(409, "Organization model unavailable")
+                url = allowed_base_url(service.base_url)
+                return service_alias(service.provider, name), ProviderCredential(
+                    service.provider,
+                    decrypt_key(service.encrypted_key, service_binding(service)),
+                    url,
+                    name,
+                )
             return row.model, ProviderCredential(
                 detect_model_provider(row.model), unseal(row)
             )
@@ -243,10 +337,17 @@ async def provider_dispatch(path, body, usage):
         "endpoints/chat/qa/stt",
         "endpoints/chat/qa/vision",
     }:
-        if detect_model_provider(body["model"]) != credential.provider:
+        if (
+            detect_model_provider(body["model"]) != credential.provider
+            or credential.base_url != DEFAULT_PROVIDER_BASE_URL[credential.provider]
+        ):
             raise HTTPException(
                 409, "The selected provider does not support this feature"
             )
+        # Embedding, speech and vision endpoints request their own specialized model.
+        credential = ProviderCredential(
+            credential.provider, credential.key, credential.base_url
+        )
     elif "use_model" in body:
         payload["use_model"] = {**body["use_model"], "name": model}
     elif isinstance(body.get("model"), dict):

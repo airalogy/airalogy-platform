@@ -9,11 +9,12 @@ from openai.types.chat.chat_completion_tool_message_param import (
 from openai.types.chat.chat_completion_user_message_param import (
     ChatCompletionUserMessageParam,
 )
+from masterbrain.providers.registry import QwenFlashModel
 from pydantic import BaseModel
 
 
 class SupportedModels(BaseModel):
-    name: Literal["qwen3.5-flash", "qwen3.5-plus", "qwen3-max", "gpt-4.1"]
+    name: Literal[QwenFlashModel, "qwen3.5-plus", "qwen3-max", "gpt-4.1"]
     enable_thinking: bool = False
     enable_search: bool = False
 

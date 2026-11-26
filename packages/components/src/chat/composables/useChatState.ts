@@ -1,3 +1,4 @@
+import type { OrganizationChatModel } from "@airalogy/shared/enum/chat"
 import type { SelectOption } from "naive-ui"
 import type { MaybeRefOrGetter, ToRefs } from "vue"
 import type { ChatController, ChatState, InputMethod, IProps } from "./types"
@@ -22,6 +23,7 @@ export function useChatState(
   props: ToRefs<IProps>,
   enabledModelsRef: MaybeRefOrGetter<ChatModel[]> = defaultEnabledModels,
   modelNames: MaybeRefOrGetter<Partial<Record<ChatModel, string>>> = {},
+  organizationModels: MaybeRefOrGetter<OrganizationChatModel[]> = [],
 ): ChatState {
   const { chatId: defaultChatId, source: sourceRef, role: roleRef, level: levelRef } = props as ToRefs<Required<IProps>>
   const hubSearchDefault = props.hubSearchDefault ?? ref(false)
@@ -110,7 +112,34 @@ export function useChatState(
     )
   })
 
+  const draftModel = ref<string>()
+  watch(emptyDraftId, () => {
+    draftModel.value = undefined
+  }, { flush: "sync" })
+  const organizationModel = computed({
+    get() {
+      const models = toValue(organizationModels)
+      const preferred = session.value ? session.value.organizationModel : draftModel.value
+      return models.find(option => option.value === preferred)?.value ?? models.find(option => option.is_default)?.value
+    },
+    set(value: string | undefined) {
+      if (session.value)
+        chatStore.updateSession(session.value, { organizationModel: value })
+      else
+        draftModel.value = value
+    },
+  })
   const modelOptions = computed<SelectOption[]>(() => {
+    const models = toValue(organizationModels)
+    if (models.length) {
+      return models.map(option => ({
+        value: option.value,
+        key: option.value,
+        label: option.model,
+        service: option.service,
+        isDefault: option.is_default,
+      }))
+    }
     const level = toValue(levelRef) ?? 3 // Default to highest permission level, showing all options
     const enabledModels = toValue(enabledModelsRef)
     return modelOptionDefs
@@ -124,12 +153,14 @@ export function useChatState(
 
   watch(modelOptions, (options) => {
     const available = options.map(option => option.value)
-    if (!available.includes(selectedModel.value))
+    if (toValue(organizationModels).length)
+      selectedModel.value = ChatModel.BASIC
+    else if (!available.includes(selectedModel.value))
       selectedModel.value = toValue(enabledModelsRef).find(model => available.includes(model)) ?? ChatModel.BASIC
   }, { immediate: true })
 
   const modelName = computed(() => {
-    const selected = modelOptions.value.find(option => option.value === selectedModel.value)
+    const selected = modelOptions.value.find(option => option.value === (organizationModel.value ?? selectedModel.value))
     return selected ? String(selected.label) : $t("chat.model.unavailable")
   })
 
@@ -172,6 +203,7 @@ export function useChatState(
     messageList,
     messageCount,
 
+    organizationModel,
     // Model and role state
     selectedRole,
     selectedModel,

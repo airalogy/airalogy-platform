@@ -255,6 +255,7 @@ const [useProvideChatConfigStore, _useChatConfigStore] = createInjectionState(()
     enableDiscussion,
     discussionScope,
     enabledModels,
+    organizationModels: computed(() => instanceStore.organizationModels),
     modelNames: computed(() => instanceStore.chatModelNames),
     baseUrl,
     requestHeaders: computed(organizationHeaders),

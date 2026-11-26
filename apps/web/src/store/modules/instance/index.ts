@@ -44,7 +44,7 @@ export const useInstanceStore = defineStore(SetupStoreId.INSTANCE, () => {
   const documentationProfile = computed(() => status.value.documentation_profile)
   const documentationUrl = computed(() => status.value.documentation_url)
   const supportUrl = computed(() => status.value.support_url)
-  type Capabilities = Pick<InstanceStatus, "ai_enabled" | "enabled_chat_models" | "chat_model_names">
+  type Capabilities = Pick<InstanceStatus, "ai_enabled" | "enabled_chat_models" | "chat_model_names" | "organization_models">
   const scoped = ref<Capabilities | null>(null)
   let sequence = 0
   let capabilitiesPending: Promise<void> | undefined
@@ -116,6 +116,7 @@ export const useInstanceStore = defineStore(SetupStoreId.INSTANCE, () => {
     smsLoginEnabled,
     smsSignupRequired,
     enabledChatModels,
+    organizationModels: computed(() => scoped.value?.organization_models ?? []),
     chatModelNames,
     loadOrganizationAI,
     whenOrganizationAIReady: () => capabilitiesPending,

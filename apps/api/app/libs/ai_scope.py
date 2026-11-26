@@ -11,6 +11,9 @@ class OrganizationAIScope:
     enabled: bool
     model: str
     has_key: bool
+    upstream_model: str | None = None
+    selected_service_id: UUID | None = None
+    supports_embeddings: bool = True
 
 
 active_ai_scope: ContextVar[OrganizationAIScope | None] = ContextVar(

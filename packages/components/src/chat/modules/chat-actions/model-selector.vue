@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<{
   iconSize: 14,
 })
 
-const { selectedModel, modelName, isRecording, modelOptions } = useChatInfoStore()!
+const { selectedModel, organizationModel, modelName, isRecording, modelOptions } = useChatInfoStore()!
 
 const modelIcon = computed(() => {
   return modelOptions.value.find(option => option.value === selectedModel.value)?.icon
@@ -49,11 +49,17 @@ const dropdownOptions = computed<DropdownOption[]>(() => ([
     type: "group",
     key: "model-group",
     label: $t("chat.model.select"),
-    children: modelOptions.value as DropdownOption[],
+    children: modelOptions.value.map(option => ({
+      ...option,
+      label: option.service ? `${option.label} · ${option.service}${option.isDefault ? ` · ${$t("page.organization.ai.defaultBadge")}` : ""}` : option.label,
+    })) as DropdownOption[],
   },
 ]))
 
 function handleSelect(_: unknown, option: SelectOption) {
-  selectedModel.value = option.value as ChatModel
+  if (typeof option.value === "string")
+    organizationModel.value = option.value
+  else
+    selectedModel.value = option.value as ChatModel
 }
 </script>

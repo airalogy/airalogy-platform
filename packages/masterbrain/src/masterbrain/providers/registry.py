@@ -32,12 +32,14 @@ AvailableOpenAIModel = Literal[
     "gpt-4o-transcribe",
 ]
 
+QwenFlashModel = Literal["qwen3.5-flash", "qwen3.8-flash"]
+
 AvailableQwenModel = Literal[
     "qwen-long",
     "qwen3-max",
     "qwen3.5-plus",
     "qwen3.5-plus-latest",
-    "qwen3.5-flash",
+    QwenFlashModel,
     "qvq-72b-preview",
     "qwq-32b-preview",
     "qwen-vl-plus",

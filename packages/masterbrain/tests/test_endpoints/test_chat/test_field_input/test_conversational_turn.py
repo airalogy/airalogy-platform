@@ -61,7 +61,9 @@ def test_question_then_reference_uses_dialogue_and_keeps_typed_slots(monkeypatch
         ],
     )
     assert [op.rf_value for op in result.operations] == ["001", 0]
-    payload = json.loads(completion.call_args.kwargs["messages"][-1]["content"])
+    messages = completion.call_args.kwargs["messages"]
+    assert messages[-1] == {"role": "user", "content": data["current_message"]}
+    payload = json.loads(messages[-2]["content"])
     assert payload["references"] == ["sample", "duration"] and payload["conversation"]
     with pytest.raises(ValueError):
         output("fill", [{"rf_name": "duration", "rf_value": 37, "source": "37"}])
@@ -109,7 +111,7 @@ def test_only_user_message_can_request_writes_from_an_attachment(monkeypatch, re
         calls.append(dict(payload))
         intent = requested if len(calls) == 1 else proposed
         ops = [{"rf_name": "duration", "rf_value": 23, "source": "23"}] if len(calls) > 1 and intent == "fill" else []
-        return turn.RecorderTurnResponse(intent=intent, answer="reply", references=[], operations=ops)
+        return turn._ModelTurn(intent=intent, answer="reply", references=[], operations=ops)
 
     monkeypatch.setattr(turn, "_plan", planner)
     if requested == "answer" and proposed == "fill":
@@ -125,3 +127,32 @@ def test_only_user_message_can_request_writes_from_an_attachment(monkeypatch, re
         assert calls[1]["requested_intent"] == requested
     else:
         assert len(calls) == 1
+
+
+@pytest.mark.parametrize("asks_question", [True, False])
+def test_fill_discards_predicted_success_and_preserves_a_separate_question(monkeypatch, asks_question):
+    question = "Minutes 的单位是什么？"
+    message = "把 Minutes 改为 17。" + (question if asks_question else "")
+    calls = []
+
+    async def planner(model, payload, instructions):
+        calls.append(payload["current_message"])
+        if payload.get("requested_intent") == "answer":
+            return turn._ModelTurn(intent="answer", answer="单位是分钟。", references=["minutes"], operations=[])
+        return turn._ModelTurn(
+            intent="fill", answer="已替换 Minutes。", reply_locale="zh-CN",
+            references=["minutes"], question=question,
+            operations=[{"rf_name": "minutes", "rf_value": 17, "source": "17"}],
+        )
+
+    monkeypatch.setattr(turn, "_plan", planner)
+    request = turn.RecorderTurnRequest(
+        model={"name": "qwen3.5-flash"}, protocol="Example", fields={"minutes": {"type": "integer"}},
+        filled=["minutes"], locale="en-US", references=[], conversation=[], last_applied=[],
+        current_message=message, include_reply_context=True,
+    )
+    result = asyncio.run(turn.resolve_recorder_turn(request))
+    assert calls == ([message, question] if asks_question else [message])
+    assert result.answer == ("单位是分钟。" if asks_question else "")
+    assert result.reply_locale == "zh-CN"
+    assert result.operations[0].rf_value == 17

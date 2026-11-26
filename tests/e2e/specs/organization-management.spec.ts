@@ -102,7 +102,7 @@ test("ordinary members see their member directory instead of administrator contr
   }
 })
 
-test("organization owner configures an AI model and can remove the saved key", async ({ page }) => {
+test("members can select an organization model without changing defaults or seeing keys", async ({ page, browser }) => {
   await login(page, "owner")
   await page.goto("/organization/settings")
   const card = page.getByTestId("organization-ai-settings")
@@ -113,18 +113,37 @@ test("organization owner configures an AI model and can remove the saved key", a
   await expect(toggle).toBeVisible()
   if (await toggle.isDisabled()) {
     await expect(card.getByText(zh.page.organization.ai.blocked)).toBeVisible()
-    await expect(testKey).toBeDisabled()
+    await expect(save).toBeDisabled()
     return
   }
-  // The provider directory alone is simulated. Saving and read-back use the real API.
-  await page.route("**/ai-settings/test", route => route.fulfill({ json: { status: "ok" } }))
+  await card.getByRole("button", { name: zh.page.organization.ai.addService }).click()
+  // Only the upstream chat probe is simulated. Saving and read-back use the real API.
+  await page.route("**/ai-settings/catalog/test", route => route.fulfill({ json: { status: "ok" } }))
   await field.fill("synthetic-browser-config-only")
   await testKey.click()
   await expect(card.getByRole("status")).toHaveText(zh.page.organization.ai.ok)
-  await toggle.click()
+  await card.getByRole("button", { name: zh.page.organization.ai.addService }).click()
+  await card.getByTestId("ai-model-ids").locator("textarea").fill("gpt-member-test")
+  await field.fill("synthetic-second-provider")
+  if (!await toggle.isChecked())
+    await toggle.click()
   await save.click()
   await expect(card.getByRole("status")).toHaveText(zh.page.organization.ai.saved)
+  const member = await browser.newPage()
+  try {
+    await login(member, "viewer")
+    await member.goto("/chat")
+    const selector = member.getByTestId("chat-model")
+    await expect(selector).toContainText("qwen3.8-flash")
+    await selector.click()
+    await member.locator(".n-dropdown-option").filter({ hasText: "gpt-member-test" }).click()
+    await expect(selector).toContainText("gpt-member-test")
+  }
+  finally {
+    await member.close()
+  }
   await page.reload()
+  await expect(card.getByTestId("ai-default-model")).toContainText("qwen3.8-flash")
   await expect(toggle).toBeChecked()
   await expect(field).toHaveValue("")
   await expect(field).toHaveAttribute("placeholder", zh.page.organization.ai.keepKey)

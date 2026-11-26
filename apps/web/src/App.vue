@@ -29,8 +29,8 @@ const authStore = useAuthStore()
 const appStore = useAppStore()
 const instanceStore = useInstanceStore()
 const route = useRoute()
-watch([() => route.params.labUid, () => authStore.token, () => instanceStore.isSingleLab], ([uid, token, single]) => {
-  void instanceStore.loadOrganizationAI(!single && token && typeof uid === "string" ? uid : "")
+watch([() => instanceStore.isSingleLab ? instanceStore.organization?.uid : route.params.labUid, () => authStore.token], ([uid, token]) => {
+  void instanceStore.loadOrganizationAI(token && typeof uid === "string" ? uid : "")
 }, { immediate: true })
 
 const naiveLocale = computed(() => naiveLocales[appStore.locale] || naiveLocales[DEFAULT_LOCALE])

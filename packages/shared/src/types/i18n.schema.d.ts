@@ -775,6 +775,7 @@ declare namespace I18n {
         previewOnly: string
         openPreview: string
         replace: string
+        replaced: string
         filled: string
         skipped: string
         undone: string
@@ -5565,6 +5566,20 @@ declare namespace I18n {
           rate_limited: string
           unreachable: string
           failed: string
+          services: string
+          addService: string
+          removeService: string
+          serviceName: string
+          provider: string
+          endpoint: string
+          endpointHint: string
+          modelIds: string
+          modelsHint: string
+          testModel: string
+          defaultModel: string
+          defaultBadge: string
+          provider_error: string
+          invalid_response: string
         }
         setupSection: string
         name: string

@@ -143,6 +143,9 @@ def generate_tool_call_messages(
 async def check_model_usage(
     db_session: DBSession, current_user: User, model: ChatModel
 ):
+    if model.organization_model:
+        from app.services.organization_ai import select_conversation_model
+        await select_conversation_model(db_session, model.organization_model)
     if not is_chat_model_enabled(model.model_type):
         raise HTTPException(status_code=400, detail="Chat model is not enabled.")
 

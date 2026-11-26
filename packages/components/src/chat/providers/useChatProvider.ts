@@ -1,6 +1,6 @@
 import type { RenderMode } from "@airalogy/aimd-core/types"
 import type { ProtocolModels } from "@airalogy/shared"
-import type { ChatModel } from "@airalogy/shared/enum/chat"
+import type { ChatModel, OrganizationChatModel } from "@airalogy/shared/enum/chat"
 import type { CascaderOption, SelectOption } from "naive-ui"
 import type { Component, InjectionKey, MaybeRefOrGetter, Ref, ToRefs } from "vue"
 import { pick } from "lodash-es"
@@ -67,6 +67,7 @@ export interface ChatProviderProps<InjectContext = any> {
   createChatContext: (context?: Chat.ChatContext[] | null) => InjectContext
   currentEditorProtocolContext: CurrentEditorProtocolContext
   currentRecorderRecordContext: CurrentRecorderRecordContext
+  organizationModels?: OrganizationChatModel[]
   enabledModels: ChatModel[]
   modelNames?: Partial<Record<ChatModel, string>>
   /**
@@ -110,7 +111,7 @@ export function createDefaultCurrentRecorderRecordContext(): CurrentRecorderReco
 }
 
 export function useProvideChatProvider(config: ChatProviderContext) {
-  const context = pick(config, ["postToolResultChat", "uploadAttachment", "stopStream", "baseUrl", "requestHeaders", "token", "mode", "protocolId", "userInfo", "contextDialog", "contextDialogEventHandlers", "contextOptions", "createChatContext", "currentEditorProtocolContext", "currentRecorderRecordContext", "enabledModels", "modelNames", "createRendererContext"])
+  const context = pick(config, ["postToolResultChat", "uploadAttachment", "stopStream", "baseUrl", "requestHeaders", "token", "mode", "protocolId", "userInfo", "contextDialog", "contextDialogEventHandlers", "contextOptions", "createChatContext", "currentEditorProtocolContext", "currentRecorderRecordContext", "enabledModels", "modelNames", "organizationModels", "createRendererContext"])
 
   provide(ChatProviderKey, context)
 

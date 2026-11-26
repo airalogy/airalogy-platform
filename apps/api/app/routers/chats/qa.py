@@ -291,6 +291,8 @@ async def send_qa_chat_message(
         )
 
     await check_model_usage(db_session, current_user, params.model)
+    if params.model.organization_model:
+        chat.context = {**(chat.context or {}), "organization_model": params.model.organization_model}
     memory_state = await load_for_inference(current_user.id, disabled=memory_disabled)
     memory_meta = {
         "status": memory_state["status"],
@@ -533,6 +535,8 @@ async def send_qa_chat_message(
             )
         )
 
+    if params.model.organization_model:
+        context["organization_model"] = params.model.organization_model
     chat.context = {**context, "memory_disabled": memory_disabled}
 
     # 创建一个新的流式响应，同时捕获内容

@@ -136,7 +136,7 @@ export function useRecorderConversation(options: RecorderOptions) {
     const request = activeRequest
     const applied = await writeChanges(choices)
     if (current(request) && applied.length)
-      receipt.value = `${t("page.recorderAira.filled")}: ${applied.join(", ")}`
+      receipt.value = `${t("page.recorderAira.replaced")}: ${applied.join(", ")}`
   }
   function dismiss(field?: string) {
     if (busy.value || !current(activeRequest))
@@ -178,9 +178,10 @@ export function useRecorderConversation(options: RecorderOptions) {
         return ""
       if (proposal.intent !== "fill")
         return ""
+      const chatLocale = proposal.reply_locale || target.locale
       if (awaitingReview) {
         receipt.value = t("page.recorderAira.finishReview")
-        return receipt.value
+        return t("page.recorderAira.finishReview", {}, { locale: chatLocale })
       }
       const suggestions: RecorderFieldEdit[] = []
       const direct: RecorderFieldEdit[] = []
@@ -209,15 +210,19 @@ export function useRecorderConversation(options: RecorderOptions) {
       const written = await writeChanges(direct)
       if (!current(target.request_id))
         return ""
-      const labels = (label: string, names: string[]) => names.length ? `${label} (${names.length}): ${names.join(", ")}` : ""
-      receipt.value = [
-        labels(t("page.recorderAira.filled"), written),
-        labels(t("page.recorderAira.skipped"), proposal.skipped),
-        labels(t("page.recorderAira.preserved"), preserved),
-      ].filter(Boolean).join("\n")
-      if (!receipt.value && !pending.value.size)
-        receipt.value = t("page.recorderAira.noChanges")
-      return [receipt.value, labels(t("page.recorderAira.replace"), [...pending.value.keys()])].filter(Boolean).join("\n")
+      function describe(lang: string) {
+        const groups = [
+          ["page.recorderAira.filled", written],
+          ["page.recorderAira.replace", [...pending.value.keys()]],
+          ["page.recorderAira.skipped", proposal.skipped],
+          ["page.recorderAira.preserved", preserved],
+        ] as const
+        return groups.filter(([, names]) => names.length)
+          .map(([key, names]) => `${t(key, {}, { locale: lang })} (${names.length}): ${names.join(", ")}`)
+          .join("\n") || t("page.recorderAira.noChanges", {}, { locale: lang })
+      }
+      receipt.value = describe(locale.value)
+      return describe(chatLocale)
     }
     return { target, apply }
   }

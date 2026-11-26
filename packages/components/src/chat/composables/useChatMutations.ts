@@ -29,9 +29,12 @@ export function useChatMutations(state: ChatState, providerContext: ChatProvider
   function handleDraftMessage(uuid: string, draftMessage?: Chat.ChatMessage) {
     // Create empty session (messages will be added by handleCreateBranch)
     const memoryDisabled = state.memoryDisabled.value
+    const organizationModel = state.organizationModel.value
     const newSession = chatStore.createEmptySession(uuid, source.value, airalogyId.value)
 
     if (newSession) {
+      if (organizationModel && !newSession.organizationModel)
+        chatStore.updateSession(newSession, { organizationModel })
       if (newSession.memoryDisabled === undefined)
         chatStore.updateSession(newSession, { memoryDisabled })
       // Save draft context if it exists

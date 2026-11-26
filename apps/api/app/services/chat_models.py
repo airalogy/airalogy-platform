@@ -12,6 +12,13 @@ DEFAULT_CHAT_MODEL_TYPES = (
 )
 
 
+class OrganizationModelOption(BaseModel):
+    value: str
+    model: str
+    service: str
+    is_default: bool
+
+
 class ChatCapabilities(BaseModel):
     ai_enabled: bool
     enabled_chat_models: list[ChatModelType]
@@ -22,13 +29,19 @@ class ChatCapabilities(BaseModel):
         return {kind: ChatModel(model_type=kind).name for kind in self.enabled_chat_models}
 
 
+class OrganizationChatCapabilities(ChatCapabilities):
+    organization_models: list[OrganizationModelOption] | None = None
+
+
 def enabled_chat_model_types() -> tuple[ChatModelType, ...]:
     if not config.effective_ai_enabled:
         return ()
 
     scope = active_ai_scope.get()
+    if scope and scope.upstream_model:
+        return (ChatModelType.BASIC,)
     if scope:
-        return tuple(kind for kind in ChatModelType if ChatModel(model_type=kind).name == scope.model)
+        return tuple(kind for kind in ChatModelType if ChatModel(model_type=kind).routing_name == scope.model)
 
     enabled_models: tuple[ChatModelType, ...] = ()
     if config.qwen_chat_configured:

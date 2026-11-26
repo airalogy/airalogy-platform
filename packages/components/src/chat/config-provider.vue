@@ -26,6 +26,7 @@ const props = withDefaults(defineProps<ChatProviderProps>(), {
   token: "",
   userInfo: () => ({}),
   modelNames: () => ({}),
+  organizationModels: () => [],
 })
 
 const emit = defineEmits<IEmits>()

@@ -154,6 +154,7 @@ _QWEN3_THINKING_MODELS = frozenset(
         "qwen3-max",
         "qwen3.5-plus",
         "qwen3.5-flash",
+        "qwen3.8-flash",
         "qwen3-vl-flash",
         "qwen3-vl-plus",
     }

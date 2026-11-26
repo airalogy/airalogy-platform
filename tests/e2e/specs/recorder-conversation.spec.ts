@@ -45,7 +45,7 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
         : data.current_message.includes("25") ? [op("minutes", 25)] : [op("label", "001"), op("minutes", 20)]
     res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({
       intent,
-      answer: intent === "answer" ? "Label is an identifier; minutes is duration." : intent === "clarify" ? "Which field should contain 12?" : "Recorder suggestion",
+      answer: intent === "answer" ? "Label is an identifier; minutes is duration." : intent === "clarify" ? "Which field should contain 12?" : "I already updated your form.",
       attachment_count: data.attachment_texts?.length || 0,
       references: ["label", "minutes"],
       operations: intent === "fill" ? operations : [],
@@ -117,6 +117,8 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     await expect(suggestion("minutes")).toHaveText("20 → 25")
     await expect(field("minutes")).toHaveValue("20")
     await expect(field("note")).toHaveValue("mixed-note")
+    await expect(page.getByTestId("context-aira")).toContainText("Suggested replacements")
+    await expect(page.getByTestId("context-aira")).not.toContainText("I already updated your form.")
     await expect(page.getByRole("dialog")).toHaveCount(0)
     await expect(page.getByRole("button", { name: "Submit", exact: true })).toBeDisabled()
     await say("Please simulate the remaining fields")
@@ -125,6 +127,7 @@ test("one Aira conversation explains, fills, reviews individual replacements, un
     await expect(field("minutes")).toHaveValue("20")
     await action("label", "Keep original").click()
     await action("minutes", "Replace").click()
+    await expect(page.getByTestId("recorder-receipt")).toContainText("Replaced: minutes")
     await expect(field("label")).toHaveValue("001")
     await expect(field("minutes")).toHaveValue("25")
     await action("minutes", "Undo this field").click()

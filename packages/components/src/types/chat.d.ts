@@ -173,6 +173,7 @@ declare global {
     export type ChatContext = ChatRecordContext | ChatProtocolContext | ChatDocumentContext
 
     export interface ChatSession {
+      organizationModel?: string
       memorySummariesResolved?: boolean
       memoryDisabled?: boolean
       memoryStatus?: { status: string, keys: string[], revision: number }

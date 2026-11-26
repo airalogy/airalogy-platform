@@ -314,6 +314,7 @@ const {
   prompt,
   clearActive,
   selectedModel,
+  organizationModel,
   enableThinking,
   startLoading,
   endLoading,
@@ -573,6 +574,7 @@ const codeEditClient = {
       syntax_repair: syntaxRepairInProgress,
       model: {
         model_type: modelType,
+        organization_model: organizationModel.value,
         enable_thinking: model.enable_thinking,
         enable_search: false,
       },

@@ -7,6 +7,7 @@ The field_input endpoint provides automatic slot filling functionality for exper
 
 from typing import Any, Dict, List, Literal
 
+from masterbrain.providers.registry import QwenFlashModel
 from pydantic import BaseModel, Field
 
 # Supported models for field_input endpoint
@@ -22,7 +23,7 @@ SupportedModels = Literal[
     "qwen-max",
     "qwen3-max",
     "qwen3.5-plus",
-    "qwen3.5-flash",
+    QwenFlashModel,
     # Qwen vision models（用于图片槽位抽取）
     "qwen-vl-plus",
     "qwen-vl-plus-latest",

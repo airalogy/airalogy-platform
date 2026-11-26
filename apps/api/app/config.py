@@ -94,6 +94,7 @@ class Settings(BaseSettings):
     # enabled as a compatibility escape hatch.
     MASTERBRAIN_CALL_MODE: str = "package"
     CHAT_API_ENDPOINT: str = ""
+    ORGANIZATION_AI_ALLOWED_BASE_URLS: str = ""
     CHAT_MODEL_FAST: str = "qwen3.5-flash"
     CHAT_MODEL_ACCURATE: str = "qwen3.5-plus"
     CHAT_MODEL_DEEP: str = "qwen-max"
@@ -312,7 +313,8 @@ class Settings(BaseSettings):
     def effective_embeddings_enabled(self) -> bool:
         # Existing indexes use Qwen v4. An OpenAI chat key does not authorize
         # switching vector spaces; keyword search remains available instead.
-        return self.effective_ai_enabled and self.qwen_chat_configured
+        scope = active_ai_scope.get()
+        return self.effective_ai_enabled and self.qwen_chat_configured and (not scope or scope.supports_embeddings)
 
     @field_validator("LEGACY_ACTIVITY_TIME_ZONE")
     @classmethod

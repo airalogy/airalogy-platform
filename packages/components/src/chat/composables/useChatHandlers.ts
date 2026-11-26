@@ -74,6 +74,7 @@ export function useChatHandlers({ state, mutations, stream, scrollToBottom, navi
       memoryDisabled: state.memoryDisabled.value,
       memoryRequestId: crypto.randomUUID(),
       recorderTarget: turn?.target,
+      organizationModel: state.organizationModel.value,
       chatId: params.chatId || existingServerId,
       protocolId: toValue(protocolId),
       content,

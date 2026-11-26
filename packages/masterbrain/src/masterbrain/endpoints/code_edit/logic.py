@@ -294,6 +294,15 @@ def _build_provider_config(
     require_api_key: bool = True,
 ) -> ProviderConfig:
     scoped = current_credential(model_name)
+    if scoped and scoped.chat_model:
+        env_key = "DASHSCOPE_API_KEY" if scoped.provider == "qwen" else "OPENAI_API_KEY"
+        return ProviderConfig(provider_id="organization", model_id=scoped.chat_model, config={
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {"organization": {"npm": "@ai-sdk/openai-compatible", "name": "Organization",
+                "options": {"baseURL": scoped.base_url, "apiKey": "{env:" + env_key + "}"},
+                "models": {scoped.chat_model: {"name": scoped.chat_model}},
+            }},
+        })
     if model_name.startswith("qwen"):
         if require_api_key and not scoped and not DASHSCOPE_API_KEY:
             raise RuntimeError(
@@ -320,6 +329,10 @@ def _build_provider_config(
                         "models": {
                             "qwen3.5-flash": {
                                 "name": "Qwen 3.5 Flash",
+                                "limit": {"context": 131072, "output": 8192},
+                            },
+                            "qwen3.8-flash": {
+                                "name": "Qwen 3.8 Flash",
                                 "limit": {"context": 131072, "output": 8192},
                             },
                             "qwen3.5-plus": {

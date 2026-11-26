@@ -207,6 +207,7 @@ async def plan_recorder_turn(chat, version, target, message, usage, *, attachmen
         fields=fields,
         filled=target.filled,
         locale=target.locale,
+        include_reply_context=True,
         conversation=history,
         references=prior.get("fields", []) if prior.get("scope") == scope else [],
         last_applied=target.last_applied,
@@ -241,11 +242,13 @@ async def plan_recorder_turn(chat, version, target, message, usage, *, attachmen
     focus = [key for key in plan.references if key in fields]
     operations = {}
     skipped = []
+    reply_locale = plan.reply_locale or target.locale
+    explanation = ""
     reply = plan.answer
     if plan.intent == "simulate":
         reply = (
             "要试用示例数据，请打开 Protocol 编辑器，在预览中选择「用示例数据测试」。当前记录保持原样。"
-            if target.locale == "zh-CN"
+            if reply_locale == "zh-CN"
             else "To try example data, open the Protocol editor and choose Test with example data in Preview. Your Record is unchanged."
         )
     elif plan.intent == "fill":
@@ -268,6 +271,15 @@ async def plan_recorder_turn(chat, version, target, message, usage, *, attachmen
                 skipped.append(key)
             else:
                 operations[key] = value
+        # An older external service may send a model's claim of a successful
+        # update. History can attest only to the proposal, never to a browser edit.
+        explanation = plan.answer if plan.reply_locale else ""
+        if operations:
+            label = "建议填写" if reply_locale == "zh-CN" else "Proposed fields"
+            summary = f"{label}: {', '.join(operations)}"
+        else:
+            summary = "没有可填写的字段建议。" if reply_locale == "zh-CN" else "No field changes proposed."
+        reply = "\n\n".join(part for part in (explanation, summary) if part)
     return (
         reply,
         {"scope": scope, "fields": focus},
@@ -277,5 +289,7 @@ async def plan_recorder_turn(chat, version, target, message, usage, *, attachmen
             "intent": plan.intent,
             "values": operations,
             "skipped": skipped,
+            "reply_locale": reply_locale,
+            **({"explanation": explanation} if explanation else {}),
         },
     )

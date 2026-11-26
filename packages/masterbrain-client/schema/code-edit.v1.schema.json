@@ -52,6 +52,7 @@
           "name": {
             "enum": [
               "qwen3.5-flash",
+              "qwen3.8-flash",
               "qwen3.5-plus",
               "qwen3-max",
               "gpt-4.1",
