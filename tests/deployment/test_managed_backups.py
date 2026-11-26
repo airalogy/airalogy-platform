@@ -129,6 +129,19 @@ class BackupRepositoryTests(unittest.TestCase):
 
 
 class LifecycleLockTests(unittest.TestCase):
+    def test_fresh_install_uses_bundled_storage_for_server_and_backup_client(self):
+        with tempfile.TemporaryDirectory() as temp:
+            env_file = Path(temp) / "source.env"
+            subprocess.run([SCRIPTS / "generate-env.sh", "--protected-cidrs", "none"],
+                           env={**os.environ, "AIRALOGY_ENV_FILE": str(env_file)},
+                           check=True, stdout=subprocess.DEVNULL)
+            values = dict(line.split("=", 1) for line in env_file.read_text().splitlines()
+                          if line and not line.startswith("#"))
+            expected = "airalogy-platform-object-storage:" + values["PLATFORM_VERSION"]
+            self.assertEqual(values["MINIO_IMAGE"], expected)
+            self.assertEqual(values["MINIO_MC_IMAGE"], expected)
+
+
     def test_owner_can_reenter_and_independent_process_is_excluded(self):
         with tempfile.TemporaryDirectory() as temp:
             lock = Path(temp) / "maintenance.lock"

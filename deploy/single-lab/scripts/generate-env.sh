@@ -181,8 +181,8 @@ AIRALOGY_RELEASE_MANIFEST_FILE=./release-manifest.json
 AIRALOGY_RELEASE_METADATA_FILE=./release-manifest.env
 AIRALOGY_STATE_DIR=./state/$deployment_id
 REDIS_IMAGE=redis:7-alpine
-MINIO_IMAGE=quay.io/minio/minio:RELEASE.2024-03-26T22-10-45Z
-MINIO_MC_IMAGE=quay.io/minio/mc:RELEASE.2024-03-25T16-41-14Z
+MINIO_IMAGE=airalogy-platform-object-storage:$platform_version
+MINIO_MC_IMAGE=airalogy-platform-object-storage:$platform_version
 COMPONENT_BUILD_MEMORY_MB=3072
 WEB_BUILD_MEMORY_MB=6144
 
