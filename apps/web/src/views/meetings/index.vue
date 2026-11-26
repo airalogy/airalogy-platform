@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { useConfirmDocumentChange } from "@/composables/useConfirmDocumentChange"
 import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
 import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
+import type SourcePanel from "./source-panel.vue"
 import AiraActionButton from "@/components/common/aira-action-button.vue"
+import DocumentMarkdown from "@/components/common/document-markdown.vue"
 import PeoplePicker from "@/components/project/people-picker.vue"
+import { useConfirmDocumentChange } from "@/composables/useConfirmDocumentChange"
 import {
   addMeetingComment,
   getMeeting,
@@ -21,11 +23,10 @@ import { listProjectPeople } from "@/service/api/project-people"
 import { listProjectWork } from "@/service/api/project-work"
 import { researchDocumentHistory } from "@/service/api/research-documents"
 import { documentTimeZone, localDocumentDate } from "@/utils/documentBrowse"
+import { downloadBlob } from "@/utils/downloadBlob"
 import { preserveVisualFenceMetadata } from "@/utils/recorderMarkdown"
 import { restoreAimdInlineTemplates } from "@airalogy/aimd-core"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
-import DocumentMarkdown from "@/components/common/document-markdown.vue"
-import { downloadBlob } from "@/utils/downloadBlob"
 import FilterIcon from "~icons/tabler/filter"
 import SearchIcon from "~icons/tabler/search"
 import { useDialog } from "naive-ui"
@@ -35,7 +36,6 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { useProjectInfoStore } from "../project-protocols/hooks/useProjectInfoStore"
 import ActionBatch from "./action-batch.vue"
 import { meetingHandoffKey, meetingNameKey, organizeMinutesKey } from "./aira-handoff"
-import SourcePanel from "./source-panel.vue"
 import FollowUps from "./follow-ups.vue"
 import PreviousMeetingWork from "./previous-meeting-work.vue"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
@@ -72,17 +72,19 @@ const filterSummary = computed(() => [
   dateFrom.value && `${t("page.meetings.from")} ${dateFrom.value}`,
   dateTo.value && `${t("page.meetings.to")} ${dateTo.value}`,
 ].filter(Boolean).join(" · "))
+const selected = ref<Meeting>()
 const sourcePanel = ref<InstanceType<typeof SourcePanel>>()
 async function recordingLink(event: MouseEvent) {
   const href = (event.target as HTMLElement).closest("a")?.getAttribute("href")
-  if (!href || !/^#recording-\d+$/.test(href)) return
+  if (!href || !/^#recording-\d+$/.test(href))
+    return
   event.preventDefault()
-  if (!selected.value?.can_read_sources) return
+  if (!selected.value?.can_read_sources)
+    return
   showSources.value = true
   await nextTick()
   await sourcePanel.value?.seek(Number(href.slice(11)))
 }
-const selected = ref<Meeting>()
 const form = ref<MeetingContent>()
 const saved = ref("")
 const creationId = ref("")
@@ -165,21 +167,26 @@ async function importMinutes(event: Event) {
   const file = input.files?.[0]
   input.value = ""
   const content = form.value
-  if (!file || !content || !editable.value) return
+  if (!file || !content || !editable.value)
+    return
   if (file.size > 800000 || !/\.(?:md|aimd)$/i.test(file.name)) {
     error.value = t("page.meetingSpace.invalidFile")
     return
   }
   flushVisual()
-  if (content.body && !(await confirmChange(t("page.meetingSpace.replace")))) return
+  if (content.body && !(await confirmChange(t("page.meetingSpace.replace"))))
+    return
   const body = await file.text()
-  if (content !== form.value || body.length > 200000) { error.value = t("page.meetingSpace.invalidFile"); return }
+  if (content !== form.value || body.length > 200000) {
+    error.value = t("page.meetingSpace.invalidFile")
+    return
+  }
   content.body_format = file.name.toLowerCase().endsWith(".md") ? "md" : "aimd"
   updateBody(body)
   surfaceRevision.value++
 }
 function exportMinutes(meeting: Meeting) {
-  downloadBlob(new Blob([meeting.body], {type:"text/plain;charset=utf-8"}), meeting.title + "." + (meeting.body_format || "aimd"))
+  downloadBlob(new Blob([meeting.body], { type: "text/plain;charset=utf-8" }), `${meeting.title}.${meeting.body_format || "aimd"}`)
 }
 function flushVisual() {
   const editor = visualSurface.value?.getMilkdownEditor?.()
@@ -799,8 +806,8 @@ watch(page, loadList)
         <div @click="recordingLink"><document-markdown :body="selected.body" :format="selected.body_format || 'aimd'" /></div>
         <n-button size="small" @click="exportMinutes(selected)">{{ t("page.meetingSpace.export") }} .{{ selected.body_format || "aimd" }}</n-button>
         <template v-if="selected.can_read_sources">
-          <n-button @click="showSources=!showSources">{{ t("page.meetingSpace.sources") }}</n-button>
-          <source-panel ref="sourcePanel" v-if="showSources" :key="selected.id" :id="selected.id" :manage="selected.can_manage" @draft="(body, tasks) => { if (form) { form.body = body; suggestedTasks = tasks; editing = true } }" @cite="ms => { if(form) { form.body += ' [' + Math.floor(ms/1000) + 's](#recording-' + ms + ')'; editing=true } }" />
+          <n-button @click="showSources = !showSources">{{ t("page.meetingSpace.sources") }}</n-button>
+          <source-panel ref="sourcePanel" v-if="showSources" :key="selected.id" :id="selected.id" :manage="selected.can_manage" @draft="(body, tasks) => { if (form) { form.body = body; suggestedTasks = tasks; editing = true } }" @cite="ms => { if (form) { form.body += ` [${Math.floor(ms / 1000)}s](#recording-${ms})`; editing = true } }" />
           <follow-ups :suggestions="suggestedTasks" :id="selected.id" :lab="selected.lab_id" :projects="[selected.project_id]" :revision="selected.revision" :manage="selected.can_manage" />
         </template>
       </article>
@@ -938,21 +945,21 @@ watch(page, loadList)
             <label>{{ t("page.meetingSpace.format") }} <select v-model="form.body_format" @focus="flushVisual"><option value="aimd">AIMD</option><option value="md">Markdown</option></select></label>
             <label>{{ t("page.meetingSpace.importDoc") }} <input type="file" accept=".md,.aimd" @change="importMinutes"></label>
           </div>
-          <n-input v-if="form.body_format === 'md'" v-model:value="form.body" type="textarea" :readonly="!editable" :autosize="{minRows:8}" />
+          <n-input v-if="form.body_format === 'md'" v-model:value="form.body" type="textarea" :readonly="!editable" :autosize="{ minRows: 8 }" />
           <aimd-editor v-else
-            :key="surfaceRevision"
-            ref="visualSurface"
-            :model-value="form.body"
-            :mode="editorMode"
-            :readonly="!editable"
-            :locale="locale"
-            :show-aimd-toolbar="false"
-            :min-height="320"
-            :keep-inactive-editors-mounted="false"
-            @ready="onVisualReady"
-            @input.capture="markInput"
-            @update:model-value="updateBody($event, editorMode === 'wysiwyg')"
-            @update:mode="switchMode"
+                       :key="surfaceRevision"
+                       ref="visualSurface"
+                       :model-value="form.body"
+                       :mode="editorMode"
+                       :readonly="!editable"
+                       :locale="locale"
+                       :show-aimd-toolbar="false"
+                       :min-height="320"
+                       :keep-inactive-editors-mounted="false"
+                       @ready="onVisualReady"
+                       @input.capture="markInput"
+                       @update:model-value="updateBody($event, editorMode === 'wysiwyg')"
+                       @update:mode="switchMode"
           />
         </section>
       </template>

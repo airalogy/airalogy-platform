@@ -2,8 +2,8 @@
 import { loadWorkPage, loadWorkProjects, type Period, type Scope, type WorkView } from "@/service/api/my-work"
 import { useAuthStore } from "@/store/modules/auth"
 import { localDocumentDate } from "@/utils/documentBrowse"
-import OrganizationRoom from "@/views/meetings/organization-room.vue"
 import AssignedTask from "@/views/meetings/assigned-task.vue"
+import OrganizationRoom from "@/views/meetings/organization-room.vue"
 import { useI18n } from "vue-i18n"
 
 const { t, locale } = useI18n()
@@ -67,14 +67,16 @@ watch([view, scope, period, project, page, () => auth.userInfo.id, retry], async
   }
 }, { immediate: true })
 function statusLabel(kind: string, status: string) {
-  if (kind === "followup") return t("page.meetingSpace." + status)
+  if (kind === "followup")
+    return t(`page.meetingSpace.${status}`)
   if (kind === "approval")
     return t("page.myWork.pending")
   const group = kind === "manual" ? "research.workItemStatus" : kind === "research" ? "research.taskStatus" : "projectWork.states"
   return t(`page.${group}.${status}`)
 }
 function kindLabel(kind: string) {
-  if (kind === "followup") return t("page.meetingSpace.actions")
+  if (kind === "followup")
+    return t("page.meetingSpace.actions")
   return t(["approval", "manual", "research"].includes(kind) ? `page.myWork.${kind}` : `page.projectWork.kinds.${kind}`)
 }
 </script>

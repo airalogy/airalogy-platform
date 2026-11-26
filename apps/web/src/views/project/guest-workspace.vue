@@ -3,8 +3,8 @@ import type { AimdProtocolRecordData } from "@airalogy/aimd-recorder"
 import { type GuestProject, guestProjects, guestProtocol, type GuestProtocol, guestProtocols } from "@/service/api/project-guests"
 import { request } from "@/service/request"
 import { useAuthStore } from "@/store/modules/auth"
-import { AimdRecorder, createEmptyProtocolRecordData } from "@airalogy/aimd-recorder"
 import AssignedTask from "@/views/meetings/assigned-task.vue"
+import { AimdRecorder, createEmptyProtocolRecordData } from "@airalogy/aimd-recorder"
 import { useI18n } from "vue-i18n"
 
 const { t, locale } = useI18n()

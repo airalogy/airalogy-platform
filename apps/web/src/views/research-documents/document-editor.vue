@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { useConfirmDocumentChange } from "@/composables/useConfirmDocumentChange"
-import DocumentMarkdown from "@/components/common/document-markdown.vue"
-import { downloadBlob } from "@/utils/downloadBlob"
 import type {
   DocumentContent,
   DocumentPreview,
@@ -11,6 +8,8 @@ import type {
   ResearchDocument,
 } from "@/service/api/research-documents"
 import type { AimdProtocolRecordData } from "@airalogy/aimd-recorder"
+import DocumentMarkdown from "@/components/common/document-markdown.vue"
+import { useConfirmDocumentChange } from "@/composables/useConfirmDocumentChange"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { fetchResearchFile } from "@/service/api/knowledge"
 import {
@@ -27,6 +26,7 @@ import {
   validateResearchDocument,
 } from "@/service/api/research-documents"
 import { documentBrowseQuery, documentDateInstant, localDocumentDate } from "@/utils/documentBrowse"
+import { downloadBlob } from "@/utils/downloadBlob"
 import { preserveVisualFenceMetadata } from "@/utils/recorderMarkdown"
 import { createResearchDocumentId } from "@/utils/research-document-id"
 import { AimdEditor } from "@airalogy/aimd-editor/vue"
@@ -458,26 +458,32 @@ async function importSource(event: Event) {
   const file = input.files?.[0]
   input.value = ""
   const content = form.value
-  if (!file || !content || !editable.value) return
+  if (!file || !content || !editable.value)
+    return
   if (!/\.(?:md|aimd)$/i.test(file.name) || file.size > 800000) {
     error.value = t("page.meetingSpace.invalidFile")
     return
   }
-  if (content.body && !(await confirmChange(t("page.meetingSpace.replace")))) return
+  if (content.body && !(await confirmChange(t("page.meetingSpace.replace"))))
+    return
   const format = file.name.toLowerCase().endsWith(".aimd") ? "aimd" : "md"
   if (format === "md" && Object.values(content.record_data).some(group => Object.keys(group || {}).length)) {
     error.value = t("page.meetingSpace.structuredValues")
     return
   }
   const text = await file.text()
-  if (content !== form.value || text.length > 200000) { error.value = t("page.meetingSpace.invalidFile"); return }
+  if (content !== form.value || text.length > 200000) {
+    error.value = t("page.meetingSpace.invalidFile")
+    return
+  }
   await switchMode("source")
   content.body_format = format
   updateBody(text)
 }
 function downloadSource() {
   const content = form.value
-  if (content) downloadBlob(new Blob([content.body], { type: "text/plain;charset=utf-8" }), content.title + "." + (content.body_format || "aimd"))
+  if (content)
+    downloadBlob(new Blob([content.body], { type: "text/plain;charset=utf-8" }), `${content.title}.${content.body_format || "aimd"}`)
 }
 async function downloadAttachment(id: string) {
   try {
@@ -715,7 +721,7 @@ onBeforeUnmount(() => {
               </n-button>
             </div>
             <template v-if="form.body_format === 'md'">
-              <n-input v-if="mode === 'source'" type="textarea" :readonly="!editable" :value="form.body" :autosize="{minRows:10}" @update:value="updateBody($event)" />
+              <n-input v-if="mode === 'source'" type="textarea" :readonly="!editable" :value="form.body" :autosize="{ minRows: 10 }" @update:value="updateBody($event)" />
               <document-markdown v-else :body="form.body" format="md" />
             </template>
             <aimd-editor

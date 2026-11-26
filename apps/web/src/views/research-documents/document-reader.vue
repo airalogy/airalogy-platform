@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import DocumentMarkdown from "@/components/common/document-markdown.vue"
 import type { ResearchDocument } from "@/service/api/research-documents"
+import DocumentMarkdown from "@/components/common/document-markdown.vue"
 import { useOrganizationTranslation } from "@/composables/useOrganizationTranslation"
 import { fetchResearchFile } from "@/service/api/knowledge"
 import { getResearchDocument } from "@/service/api/research-documents"
