@@ -346,6 +346,13 @@ def test_initial_revision_excludes_tables_owned_by_later_revisions():
     names_revision = import_module("migrations.versions.0101_guest_directory_names")
     assert names_revision.down_revision == guest_revision.revision
     later_tables.add("organization_guest_profiles")
+    workspace_revision = import_module("migrations.versions.0102_meeting_workspace")
+    assert workspace_revision.down_revision == names_revision.revision
+    later_tables.update({
+        "meeting_spaces", "meeting_space_projects", "meeting_space_people",
+        "meeting_minutes_editions", "meeting_minutes_shares", "meeting_transcripts",
+        "meeting_audio", "meeting_follow_ups", "meeting_follow_up_readers",
+    })
     expected_initial_tables = set(Base.metadata.tables) - later_tables
 
     assert set(initial_revision.INITIAL_TABLE_NAMES) == expected_initial_tables

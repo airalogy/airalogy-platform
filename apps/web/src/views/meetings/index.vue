@@ -2,7 +2,6 @@
 import type { Meeting, MeetingActionDraft, MeetingComment, MeetingContent, MeetingMember } from "@/service/api/meetings"
 import type { ProjectPerson } from "@/service/api/project-people"
 import type { ProjectWork } from "@/service/api/project-work"
-import type SourcePanel from "./source-panel.vue"
 import AiraActionButton from "@/components/common/aira-action-button.vue"
 import DocumentMarkdown from "@/components/common/document-markdown.vue"
 import PeoplePicker from "@/components/project/people-picker.vue"
@@ -38,6 +37,7 @@ import ActionBatch from "./action-batch.vue"
 import { meetingHandoffKey, meetingNameKey, organizeMinutesKey } from "./aira-handoff"
 import FollowUps from "./follow-ups.vue"
 import PreviousMeetingWork from "./previous-meeting-work.vue"
+import SourcePanel from "./source-panel.vue"
 import WorkFollowUpDetails from "./work-follow-up-details.vue"
 
 const { t, locale } = useI18n()
@@ -73,7 +73,7 @@ const filterSummary = computed(() => [
   dateTo.value && `${t("page.meetings.to")} ${dateTo.value}`,
 ].filter(Boolean).join(" · "))
 const selected = ref<Meeting>()
-const sourcePanel = ref<InstanceType<typeof SourcePanel>>()
+const sourcePlayback = ref<InstanceType<typeof SourcePanel>>()
 async function recordingLink(event: MouseEvent) {
   const href = (event.target as HTMLElement).closest("a")?.getAttribute("href")
   if (!href || !/^#recording-\d+$/.test(href))
@@ -83,7 +83,7 @@ async function recordingLink(event: MouseEvent) {
     return
   showSources.value = true
   await nextTick()
-  await sourcePanel.value?.seek(Number(href.slice(11)))
+  await sourcePlayback.value?.seek(Number(href.slice(11)))
 }
 const form = ref<MeetingContent>()
 const saved = ref("")
@@ -807,7 +807,7 @@ watch(page, loadList)
         <n-button size="small" @click="exportMinutes(selected)">{{ t("page.meetingSpace.export") }} .{{ selected.body_format || "aimd" }}</n-button>
         <template v-if="selected.can_read_sources">
           <n-button @click="showSources = !showSources">{{ t("page.meetingSpace.sources") }}</n-button>
-          <source-panel ref="sourcePanel" v-if="showSources" :key="selected.id" :id="selected.id" :manage="selected.can_manage" @draft="(body, tasks) => { if (form) { form.body = body; suggestedTasks = tasks; editing = true } }" @cite="ms => { if (form) { form.body += ` [${Math.floor(ms / 1000)}s](#recording-${ms})`; editing = true } }" />
+          <component :is="SourcePanel" ref="sourcePlayback" v-if="showSources" :key="selected.id" :id="selected.id" :manage="selected.can_manage" @draft="(body, tasks) => { if (form) { form.body = body; suggestedTasks = tasks; editing = true } }" @cite="ms => { if (form) { form.body += ` [${Math.floor(ms / 1000)}s](#recording-${ms})`; editing = true } }" />
           <follow-ups :suggestions="suggestedTasks" :id="selected.id" :lab="selected.lab_id" :projects="[selected.project_id]" :revision="selected.revision" :manage="selected.can_manage" />
         </template>
       </article>
